@@ -1,4 +1,4 @@
-# Unreal Engien PopcornFX Plugin
+# Unreal Engine PopcornFX Plugin
 
 Integrates the **PopcornFX Runtime SDK** into **Unreal Engine 4** and **Unreal Engine 5** as a Plugin.
 * **Version:** `v2.11.2`
