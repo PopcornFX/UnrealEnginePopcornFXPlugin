@@ -207,12 +207,12 @@ namespace
 		{
 			mat.MaterialType = kTransparentBillboard_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_Type())];
 			mat.DrawOrder = _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride());
-			if (_GetPropertyValueAsBool(decl, UE4RendererProperties::SID_SixWayLightmap()))
+			if (_GetPropertyValueAsBool(decl, UERendererProperties::SID_SixWayLightmap()))
 			{
 				mat.CastShadow = true; // Tmp: Force cast shadows true when six way lightmap material is used
 				mat.MaterialType = EPopcornFXMaterialType::Billboard_SixWayLightmap;
-				mat.TextureSixWay_RLTS = LoadTexturePk(_GetPropertyValueAsPath(decl, UE4RendererProperties::SID_SixWayLightmap_RightLeftTopSmoke()));
-				mat.TextureSixWay_BBF = LoadTexturePk(_GetPropertyValueAsPath(decl, UE4RendererProperties::SID_SixWayLightmap_BottomBackFront()));
+				mat.TextureSixWay_RLTS = LoadTexturePk(_GetPropertyValueAsPath(decl, UERendererProperties::SID_SixWayLightmap_RightLeftTopSmoke()));
+				mat.TextureSixWay_BBF = LoadTexturePk(_GetPropertyValueAsPath(decl, UERendererProperties::SID_SixWayLightmap_BottomBackFront()));
 			}
 		}
 		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Opaque()))
@@ -221,11 +221,11 @@ namespace
 			if (mat.MaterialType == EPopcornFXMaterialType::Billboard_Masked)
 				mat.MaskThreshold = _GetPropertyValueAsFloat(decl, PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold());
 		}
-		else if (_GetPropertyValueAsBool(decl, UE4RendererProperties::SID_VolumetricFog()))
+		else if (_GetPropertyValueAsBool(decl, UERendererProperties::SID_VolumetricFog()))
 		{
 			mat.MaterialType = EPopcornFXMaterialType::Billboard_VolumetricFog;
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, UE4RendererProperties::SID_VolumetricFog_AlbedoMap()));
-			mat.SphereMaskHardness = _GetPropertyValueAsFloat(decl, UE4RendererProperties::SID_VolumetricFog_SphereMaskHardness());
+			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, UERendererProperties::SID_VolumetricFog_AlbedoMap()));
+			mat.SphereMaskHardness = _GetPropertyValueAsFloat(decl, UERendererProperties::SID_VolumetricFog_SphereMaskHardness());
 		}
 
 		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Emissive()))
@@ -1186,11 +1186,7 @@ void	UPopcornFXRendererMaterial::PreSave(const class ITargetPlatform* TargetPlat
 #if WITH_EDITOR
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION >= 25)
 void	UPopcornFXRendererMaterial::PreEditChange(FProperty *propertyThatWillChange)
-#else
-void	UPopcornFXRendererMaterial::PreEditChange(UProperty *propertyThatWillChange)
-#endif // (ENGINE_MINOR_VERSION >= 25)
 {
 	Super::PreEditChange(propertyThatWillChange);
 
@@ -1216,11 +1212,7 @@ void	UPopcornFXRendererMaterial::PostEditChangeChainProperty(struct FPropertyCha
 		}
 		else if (propertyChangedEvent.PropertyChain.GetActiveMemberNode() != null)
 		{
-#if (ENGINE_MINOR_VERSION >= 25)
 			FProperty		*member =  propertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue();
-#else
-			UProperty		*member =  propertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue();
-#endif // (ENGINE_MINOR_VERSION >= 25)
 			if (member != null && member->GetFName() == SubMaterialsName)
 			{
 				TriggerParticleRenderersModification();
@@ -1371,19 +1363,12 @@ bool	UPopcornFXRendererMaterial::_ReloadInstance(uint32 subMatId)
 
 	newInstance->SetParentEditorOnly(subMat.Material);
 
-#if (ENGINE_MINOR_VERSION >= 25)
 	// UE4.25: crashes in UMaterialInstance::CacheShadersForResources
 	// 	check(!HasAnyFlags(RF_NeedPostLoad));
 	// during UpdateStaticPermutation if mat instance is not loaded
 	newInstance->ConditionalPostLoad();
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	kRendererMaterialFuncs[subMat.m_RMId].m_ParamsConstFunc(this, newInstance, subMatId);
-
-#if (ENGINE_MINOR_VERSION < 25)
-	// < UE4.25: Keep old behavior
-	newInstance->ConditionalPostLoad();
-#endif // (ENGINE_MINOR_VERSION < 25)
 
 	subMat.MaterialInstance = newInstance;
 

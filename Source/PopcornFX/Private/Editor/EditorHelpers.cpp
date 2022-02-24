@@ -87,11 +87,7 @@ bool			HelperImportFile(const FString &src, const FString& dst, UClass *uclass)
 		FString			dstPkg = dstDir / dstName;
 		PK_ASSERT(SanitizeObjectPath(dstPkg) == dstPkg);
 
-#if (ENGINE_MINOR_VERSION >= 26)
 		UPackage		*pkg = CreatePackage(*dstPkg);
-#else
-		UPackage		*pkg = CreatePackage(NULL, *dstPkg);
-#endif // (ENGINE_MINOR_VERSION >= 26)
 		if (!PK_VERIFY(pkg != null))
 		{
 			UE_LOG(LogPopcornFXEditorHelpers, Error, TEXT("Could not import '%s': could not create package '%s'"), *src, *dstDir);
@@ -112,27 +108,7 @@ bool			HelperImportFile(const FString &src, const FString& dst, UClass *uclass)
 	}
 
 	PK_ASSERT(importedObject != null);
-
-	{
-		// Generates a crash on UE4.25
-		// "A FRenderResource was deleted without being released first!"
-#if (ENGINE_MINOR_VERSION < 25)
-		// Hack to force Load and PostLoad assets
-		// Or we get later crash in
-		// Source\Runtime\Engine\Private\ContentStreaming.cpp 275
-		// check(Texture && Texture->Resource);
-		auto linker = importedObject->GetLinker();
-		if (linker && !importedObject->HasAnyFlags(RF_LoadCompleted))
-		{
-			//CLog::Log(PK_INFO, "FileSystem FindUObject: Preloading '%s'", TCHAR_TO_ANSI(*p));
-			importedObject->SetFlags(RF_NeedLoad | RF_NeedPostLoad);
-			linker->Preload(importedObject);
-		}
-#endif //(ENGINE_MINOR_VERSION < 25)
-
-		importedObject->ConditionalPostLoad();
-	}
-
+	importedObject->ConditionalPostLoad();
 
 	UE_LOG(LogPopcornFXEditorHelpers, Log, TEXT("Import succeeded: '%s' as '%s'"), *src, *(importedObject->GetPathName()));
 	return true;

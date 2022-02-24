@@ -25,19 +25,9 @@ IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, "Popc
 class	FPopcornFXGPUVertexFactoryShaderParametersBase : public FVertexFactoryShaderParameters
 {
 public:
-#if (ENGINE_MINOR_VERSION >= 25)
 	void	Bind(const FShaderParameterMap& ParameterMap)
 	{
 	}
-#else
-	virtual void	Bind(const FShaderParameterMap& ParameterMap) override
-	{
-	}
-
-	virtual void	Serialize(FArchive& Ar) override
-	{
-	}
-#endif // (ENGINE_MINOR_VERSION >= 25)
 };
 
 //----------------------------------------------------------------------------
@@ -47,9 +37,6 @@ public:
 class	FPopcornFXGPUVertexFactoryShaderParametersVertex : public FPopcornFXGPUVertexFactoryShaderParametersBase
 {
 public:
-#if (ENGINE_MINOR_VERSION < 25)
-virtual
-#endif // (ENGINE_MINOR_VERSION < 25)
 	void					GetElementShaderBindings(	const FSceneInterface *scene,
 														const FSceneView *view,
 														const FMeshMaterialShader *shader,
@@ -59,9 +46,6 @@ virtual
 														const FMeshBatchElement &batchElement,
 														class FMeshDrawSingleShaderBindings &shaderBindings,
 														FVertexInputStreamArray &vertexStreams) const
-#if (ENGINE_MINOR_VERSION < 25)
-														override
-#endif // (ENGINE_MINOR_VERSION < 25)
 	{
 		FPopcornFXGPUVertexFactory	*_vertexFactory = (FPopcornFXGPUVertexFactory*)vertexFactory;
 		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXGPUBillboardVSUniforms>(), _vertexFactory->GetVSUniformBuffer());
@@ -75,9 +59,6 @@ virtual
 class	FPopcornFXGPUVertexFactoryShaderParametersFragment : public FPopcornFXGPUVertexFactoryShaderParametersBase
 {
 public:
-#if (ENGINE_MINOR_VERSION < 25)
-	virtual
-#	endif // (ENGINE_MINOR_VERSION < 25)
 	void					GetElementShaderBindings(	const FSceneInterface *scene,
 														const FSceneView *view,
 														const FMeshMaterialShader *shader,
@@ -87,9 +68,6 @@ public:
 														const FMeshBatchElement &batchElement,
 														class FMeshDrawSingleShaderBindings &shaderBindings,
 														FVertexInputStreamArray &vertexStreams) const
-#if (ENGINE_MINOR_VERSION < 25)
-	override
-#endif // (ENGINE_MINOR_VERSION < 25)
 	{
 		FPopcornFXGPUVertexFactory	*_vertexFactory = (FPopcornFXGPUVertexFactory*)vertexFactory;
 		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXGPUBillboardVSUniforms>(), _vertexFactory->GetVSUniformBuffer());
@@ -102,14 +80,17 @@ public:
 //
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
+IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXGPUVertexFactory, PKUE_SHADER_PATH("PopcornFXGPUVertexFactory"),
+	EVertexFactoryFlags::UsedWithMaterials | EVertexFactoryFlags::SupportsDynamicLighting); // TODO
+#else
 IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXGPUVertexFactory, PKUE_SHADER_PATH("PopcornFXGPUVertexFactory"), true, false, true, false, false);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
-#if (ENGINE_MINOR_VERSION >= 25)
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXGPUVertexFactory, SF_Vertex, FPopcornFXGPUVertexFactoryShaderParametersVertex);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXGPUVertexFactory, SF_Compute, FPopcornFXGPUVertexFactoryShaderParametersVertex);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXGPUVertexFactory, SF_RayHitGroup, FPopcornFXGPUVertexFactoryShaderParametersVertex);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXGPUVertexFactory, SF_Pixel, FPopcornFXGPUVertexFactoryShaderParametersFragment);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 //----------------------------------------------------------------------------
 
@@ -129,18 +110,13 @@ FPopcornFXGPUVertexFactory::~FPopcornFXGPUVertexFactory()
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION >= 25)
 void	FPopcornFXGPUVertexFactory::ModifyCompilationEnvironment(const FVertexFactoryShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 {
 	FVertexFactory::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-#else
-void	FPopcornFXGPUVertexFactory::ModifyCompilationEnvironment(const FVertexFactoryType* Type, EShaderPlatform Platform, const FMaterial* Material, FShaderCompilerEnvironment& OutEnvironment)
-{
-	FVertexFactory::ModifyCompilationEnvironment(Type, Platform, Material, OutEnvironment);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	// @FIXME: it wont trigger recompilation !!
 	OutEnvironment.SetDefine(TEXT("ENGINE_MINOR_VERSION"), ENGINE_MINOR_VERSION);
+	OutEnvironment.SetDefine(TEXT("ENGINE_MAJOR_VERSION"), ENGINE_MAJOR_VERSION);
 
 	// 4.9: Needed to have DynamicParameters
 	OutEnvironment.SetDefine(TEXT("PARTICLE_FACTORY"),TEXT("1"));
@@ -161,21 +137,12 @@ bool	FPopcornFXGPUVertexFactory::PlatformIsSupported(EShaderPlatform platform)
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION >= 25)
 bool	FPopcornFXGPUVertexFactory::ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters)
 {
 	return	PlatformIsSupported(Parameters.Platform) &&
 			(Parameters.MaterialParameters.bIsUsedWithParticleSprites || Parameters.MaterialParameters.bIsUsedWithNiagaraSprites || Parameters.MaterialParameters.bIsSpecialEngineMaterial) &&
 			(Parameters.MaterialParameters.MaterialDomain == EMaterialDomain::MD_Surface || Parameters.MaterialParameters.MaterialDomain == EMaterialDomain::MD_Volume);
 }
-#else
-bool	FPopcornFXGPUVertexFactory::ShouldCompilePermutation(EShaderPlatform platform, const class FMaterial *material, const class FShaderType *shaderType)
-{
-	return	PlatformIsSupported(platform) &&
-			(material->IsUsedWithNiagaraSprites() || material->IsUsedWithParticleSprites() || material->IsSpecialEngineMaterial()) &&
-			(material->GetMaterialDomain() == EMaterialDomain::MD_Surface || material->GetMaterialDomain() == EMaterialDomain::MD_Volume);
-}
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 //----------------------------------------------------------------------------
 
@@ -229,7 +196,7 @@ public:
 	virtual void	InitRHI() override
 	{
 		const u32				sizeInBytes = sizeof(CFloat2) * 6;
-		FRHIResourceCreateInfo	info;
+		FRHIResourceCreateInfo	info(TEXT("PopcornFX Texcoords buffer"));
 
 		void	*data = null;
 		VertexBufferRHI = RHICreateAndLockVertexBuffer(sizeInBytes, BUF_Static, info, data);
@@ -243,7 +210,11 @@ public:
 		vertices[4] = CFloat2(0.0f, 2.0f); // Capsule up
 		vertices[5] = CFloat2(0.0f, -2.0f); // Capsule down
 
+#if (ENGINE_MAJOR_VERSION == 5)
+		RHIUnlockBuffer(VertexBufferRHI);
+#else
 		RHIUnlockVertexBuffer(VertexBufferRHI);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	}
 };
 
@@ -253,11 +224,7 @@ TGlobalResource<FPopcornFXGPUParticlesTexCoordVertexBuffer>	GPopcornFXGPUParticl
 
 void	FPopcornFXGPUVertexFactory::InitRHI()
 {
-#if (ENGINE_MINOR_VERSION >= 25)
 	const bool	bInstanced = true; // Supported everyone since 4.25
-#else
-	const bool	bInstanced = GRHISupportsInstancing;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	Streams.Empty();
 	if (bInstanced)
@@ -269,32 +236,3 @@ void	FPopcornFXGPUVertexFactory::InitRHI()
 	}
 	SetDeclaration(GPopcornFXBillboardsParticleDeclaration.VertexDeclarationRHI);
 }
-
-//----------------------------------------------------------------------------
-
-#if (ENGINE_MINOR_VERSION < 25)
-FVertexFactoryShaderParameters	*FPopcornFXGPUVertexFactory::ConstructShaderParameters(EShaderFrequency shaderFrequency)
-{
-	// Create the corresponding shader parameters, depending on the shader type
-
-	if (shaderFrequency == SF_Vertex)
-	{
-		return new FPopcornFXGPUVertexFactoryShaderParametersVertex();
-	}
-	else if (shaderFrequency == SF_Pixel)
-	{
-		return new FPopcornFXGPUVertexFactoryShaderParametersFragment();
-	}
-#if RHI_RAYTRACING
-	else if (shaderFrequency == SF_Compute)
-	{
-		return new FPopcornFXGPUVertexFactoryShaderParametersVertex();
-	}
-	else if (shaderFrequency == SF_RayHitGroup)
-	{
-		return new FPopcornFXGPUVertexFactoryShaderParametersVertex();
-	}
-#endif // (RHI_RAYTRACING)
-	return null;
-}
-#endif //(ENGINE_MINOR_VERSION < 25)

@@ -13,7 +13,7 @@
 
 FWD_PK_API_BEGIN
 class	CParticleSamplerDescriptor;
-class	CParticleNodeSamplerData;
+class	CResourceDescriptor;
 class	CMeshSurfaceSamplerStructuresRandom;
 class	CMeshVolumeSamplerStructuresRandom;
 FWD_PK_API_END
@@ -61,7 +61,7 @@ namespace EPopcornFXAttribSamplerShapeType
 	{
 		Box = 0,
 		Sphere,
-		ComplexEllipsoid,
+		Ellipsoid,
 		Cylinder,
 		Capsule,
 		Cone,
@@ -109,7 +109,7 @@ public:
 	EPopcornFXAttributeSamplerType::Type			SamplerType() const { return m_SamplerType; }
 
 	// PopcornFX Internal
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler) { return nullptr; }
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) { return nullptr; }
 	virtual void									_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType) { return; }
 
 #if WITH_EDITOR

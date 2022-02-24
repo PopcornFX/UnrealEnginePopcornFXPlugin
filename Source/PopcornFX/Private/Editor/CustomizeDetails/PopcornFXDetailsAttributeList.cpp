@@ -61,37 +61,38 @@ namespace
 
 	EPopcornFXAttribSamplerShapeType::Type	ToUEShapeType(PopcornFX::CShapeDescriptor::EShapeType pkShapeType)
 	{
-		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box					== (u32)PopcornFX::CShapeDescriptor::ShapeBox);
-		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere				== (u32)PopcornFX::CShapeDescriptor::ShapeSphere);
-		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::ComplexEllipsoid		== (u32)PopcornFX::CShapeDescriptor::ShapeComplexEllipsoid);
-		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder				== (u32)PopcornFX::CShapeDescriptor::ShapeCylinder);
-		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule				== (u32)PopcornFX::CShapeDescriptor::ShapeCapsule);
-		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone					== (u32)PopcornFX::CShapeDescriptor::ShapeCone);
-		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh					== (u32)PopcornFX::CShapeDescriptor::ShapeMesh);
-		//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection			== (u32)PopcornFX::CShapeDescriptor::ShapeCollection);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box			== (u32)PopcornFX::CShapeDescriptor::ShapeBox);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere		== (u32)PopcornFX::CShapeDescriptor::ShapeSphere);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Ellipsoid	== (u32)PopcornFX::CShapeDescriptor::ShapeEllipsoid);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder		== (u32)PopcornFX::CShapeDescriptor::ShapeCylinder);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule		== (u32)PopcornFX::CShapeDescriptor::ShapeCapsule);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone			== (u32)PopcornFX::CShapeDescriptor::ShapeCone);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh			== (u32)PopcornFX::CShapeDescriptor::ShapeMesh);
+		//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)PopcornFX::CShapeDescriptor::ShapeCollection);
 		return static_cast<EPopcornFXAttribSamplerShapeType::Type>(pkShapeType);
 	}
 
 	//----------------------------------------------------------------------------
 
-	const char		*ResolveAttribSamplerNodeName(const PopcornFX::CParticleNodeSamplerData *sampler, EPopcornFXAttributeSamplerType::Type samplerType)
+	const char		*ResolveAttribSamplerNodeName(const PopcornFX::CParticleAttributeSamplerDeclaration *sampler, EPopcornFXAttributeSamplerType::Type samplerType)
 	{
 		if (!PK_VERIFY(sampler != null))
 			return null;
 
 		// Same as for ResolveAttribSamplerType, no need to discard everything that doesn't have a default descriptor
-		const PopcornFX::CParticleSamplerDescriptor	*desc = sampler->GetSamplerDefaultDescriptor().Get();
 		switch (samplerType)
 		{
 			case	EPopcornFXAttributeSamplerType::Shape:
-			{
-				if (sampler->GetSamplerDefaultDescriptor() == null)
-					return "CParticleSamplerShape";
-				const PopcornFX::CParticleSamplerDescriptor_Shape_Default	*shapeDesc = static_cast<const PopcornFX::CParticleSamplerDescriptor_Shape_Default*>(desc);
-				if (!PK_VERIFY(shapeDesc->m_Shape != null))
-					return "CParticleSamplerShape";
-				return ResolveAttribSamplerShapeNodeName(ToUEShapeType(shapeDesc->m_Shape->ShapeType()));
-			}
+				{
+					const PopcornFX::CParticleSamplerDescriptor	*desc = sampler->GetSamplerDefaultDescriptor().Get();
+					if (desc == null || !PK_VERIFY(desc->SamplerTypeID() == PopcornFX::CParticleSamplerDescriptor_Shape::SamplerTypeID()))
+						return "CParticleSamplerShape";
+
+					const PopcornFX::CParticleSamplerDescriptor_Shape_Default	*shapeDesc = PopcornFX::checked_cast<const PopcornFX::CParticleSamplerDescriptor_Shape_Default*>(desc);
+					if (!PK_VERIFY(shapeDesc->m_Shape != null))
+						return "CParticleSamplerShape";
+					return ResolveAttribSamplerShapeNodeName(ToUEShapeType(shapeDesc->m_Shape->ShapeType()));
+				}
 			case	EPopcornFXAttributeSamplerType::Curve:
 				return "CParticleSamplerCurve";
 			case	EPopcornFXAttributeSamplerType::Image:
@@ -296,7 +297,7 @@ namespace
 						.Visibility(this, &SAttributeDesc::GetExpanderVisibility)
 						.ClickMethod(EButtonClickMethod::MouseDown)
 						.OnClicked(this, &SAttributeDesc::OnArrowClicked)
-						.ContentPadding(0.f)
+						.ContentPadding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
 						.ForegroundColor(FSlateColor::UseForeground())
 						.IsFocusable(false)
 						[
@@ -400,7 +401,12 @@ namespace
 				vbox->AddSlot()
 					[
 						SNew(SBorder)
+#if (ENGINE_MAJOR_VERSION == 5)
+						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
+						.BorderBackgroundColor(this, &SAttributeDesc::GetOuterBackgroundColor)
+#else
 						.BorderImage(this, &SAttributeDesc::GetBorderImage)
+#endif
 						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
 						[
 							inlineSplitter.ToSharedRef()
@@ -459,7 +465,12 @@ namespace
 				vbox->AddSlot()
 					[
 						SNew(SBorder)
+#if (ENGINE_MAJOR_VERSION == 5)
+						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
+						.BorderBackgroundColor(this, &SAttributeDesc::GetOuterBackgroundColor)
+#else
 						.BorderImage(this, &SAttributeDesc::GetBorderImage)
+#endif
 						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
 						[
 							attrValuesExpanded.ToSharedRef()
@@ -693,12 +704,22 @@ namespace
 			return FCoreStyle::Get().GetBrush(resourceName);
 		}
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	/** Get the background color of the outer part of the row, which contains the edit condition and extension widgets. */
+	FSlateColor	GetOuterBackgroundColor() const
+	{
+		if (IsHovered())
+			return FAppStyle::Get().GetSlateColor("Colors.Header");
+		return FAppStyle::Get().GetSlateColor("Colors.Panel");
+	}
+#else
 		const FSlateBrush	*GetBorderImage() const
 		{
 			if (IsHovered())
 				return FEditorStyle::GetBrush("DetailsView.CategoryMiddle_Hovered");
 			return FEditorStyle::GetBrush("DetailsView.CategoryMiddle");
 		}
+#endif
 
 		TSharedRef<SWidget>		MakeAxis(uint32 dimi)
 		{
@@ -1097,7 +1118,7 @@ namespace
 						.HAlign(HAlign_Center)
 						.ClickMethod(EButtonClickMethod::MouseDown)
 						.OnClicked(this, &SAttributeSamplerDesc::OnArrowClicked)
-						.ContentPadding(0.f)
+						.ContentPadding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
 						.ForegroundColor(FSlateColor::UseForeground())
 						.IsFocusable(false)
 						[
@@ -1160,7 +1181,12 @@ namespace
 				vbox->AddSlot()
 					[
 						SNew(SBorder)
+#if (ENGINE_MAJOR_VERSION == 5)
+						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
+						.BorderBackgroundColor(this, &SAttributeSamplerDesc::GetOuterBackgroundColor)
+#else
 						.BorderImage(this, &SAttributeSamplerDesc::GetBorderImage)
+#endif
 						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
 						[
 							inlineSplitter.ToSharedRef()
@@ -1206,8 +1232,6 @@ namespace
 					[
 						samplerCpntPty->CreatePropertyValueWidget()
 					];
-
-				FillInlineSamplerDetailsIFP();
 
 				TSharedPtr<SVerticalBox>	samplerValueExpanded;
 				SAssignNew(samplerValueExpanded, SVerticalBox)
@@ -1258,44 +1282,18 @@ namespace
 				vbox->AddSlot()
 					[
 						SNew(SBorder)
+#if (ENGINE_MAJOR_VERSION == 5)
+						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
+						.BorderBackgroundColor(this, &SAttributeSamplerDesc::GetOuterBackgroundColor)
+#else
 						.BorderImage(this, &SAttributeSamplerDesc::GetBorderImage)
+#endif
 						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
 						[
 							samplerValueExpanded.ToSharedRef()
 						]
 					];
 			}
-			//
-			//TSharedPtr<SVerticalBox>	iconsVbox;
-			//SAssignNew(iconsVbox, SVerticalBox)
-			//+ SVerticalBox::Slot()
-			//.AutoHeight()
-			//.VAlign(VAlign_Top)
-			//[
-			//	SNew(SImage)
-			//	.Image(FPopcornFXStyle::GetBrush(m_SamplerIcon))
-			//];
-			//if (!m_HasDefaultDescriptor)
-			//{
-			//	static const FName	badIcon = "PopcornFX.BadIcon32";
-			//
-			//	iconsVbox->AddSlot()
-			//	.AutoHeight()
-			//	[
-			//		SNew(SImage)
-			//		.Image(FPopcornFXStyle::GetBrush(badIcon))
-			//	];
-			//}
-			//
-			//TSharedPtr<SHorizontalBox>	hbox;
-			//SAssignNew(hbox, SHorizontalBox)
-			//	+ SHorizontalBox::Slot()
-			//	.AutoWidth()
-			//	.HAlign(HAlign_Left)
-			//	.VAlign(VAlign_Top)
-			//	[
-			//		iconsVbox.ToSharedRef()
-			//	]
 
 			ChildSlot
 				[
@@ -1317,8 +1315,6 @@ namespace
 			const UPopcornFXAttributeList		*attrList = parent->AttrList();
 			check(attrList != null);
 
-			//m_Parent = parent;
-			//m_Index = index;
 			const FPopcornFXSamplerDesc			*desc = attrList->GetSamplerDesc(m_Index);
 			if (desc == null)
 				return false;
@@ -1333,8 +1329,11 @@ namespace
 			UPopcornFXEffect			*effect = ResolveEffect(attrList);
 			if (effect == null)
 				return false;
+
 			// Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
-			const PopcornFX::CParticleNodeSamplerData	*particleSampler = static_cast<const PopcornFX::CParticleNodeSamplerData*>(attrList->GetParticleSampler(effect, m_Index));
+
+			// TODO(Attributes refactor): This should not use 'CParticleNodeSamplerData'
+			const PopcornFX::CParticleAttributeSamplerDeclaration	*particleSampler = static_cast<const PopcornFX::CParticleAttributeSamplerDeclaration*>(attrList->GetParticleSampler(effect, m_Index));
 			if (particleSampler == null)
 				return true;
 			m_HasDefaultDescriptor = particleSampler->GetSamplerDefaultDescriptor() != null;
@@ -1353,27 +1352,6 @@ namespace
 			m_Description = FText::FromString(name + " (default: " + defNode + ")");
 			m_ShortDescription = FText::FromString(defNode);
 			return true;
-		}
-
-		void	FillInlineSamplerDetailsIFP()
-		{
-			//TSharedPtr<TParent>		parent = m_Parent.Pin();
-			//if (!parent.IsValid())
-			//	return;
-			//
-			//UPopcornFXAttributeList	*attrList = parent->AttrList();
-			//check(attrList != null);
-			//const FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(m_Index);
-			//check(desc != null);
-			//
-			//UPopcornFXEmitterComponent	*emitterComponent = Cast<UPopcornFXEmitterComponent>(attrList->GetOuter());
-			//if (!PK_VERIFY(emitterComponent != null))
-			//	return;
-			//UPopcornFXAttributeSampler	*component = desc->ResolveAttributeSampler(emitterComponent, null);
-			//if (component == null)
-			//	return; // Nothing to fill in
-
-			// TODO: Inline customize
 		}
 
 		void	OnLeftColumnResized(float InNewWidth)
@@ -1429,12 +1407,23 @@ namespace
 			return FCoreStyle::Get().GetBrush(resourceName);
 		}
 
+
+#if (ENGINE_MAJOR_VERSION == 5)
+		/** Get the background color of the outer part of the row, which contains the edit condition and extension widgets. */
+		FSlateColor	GetOuterBackgroundColor() const
+		{
+			if (IsHovered())
+				return FAppStyle::Get().GetSlateColor("Colors.Header");
+			return FAppStyle::Get().GetSlateColor("Colors.Panel");
+		}
+#else
 		const FSlateBrush	*GetBorderImage() const
 		{
 			if (IsHovered())
 				return FEditorStyle::GetBrush("DetailsView.CategoryMiddle_Hovered");
 			return FEditorStyle::GetBrush("DetailsView.CategoryMiddle");
 		}
+#endif
 
 	private:
 		TWeakPtr<TParent>	m_Parent;
@@ -1983,6 +1972,7 @@ void	FPopcornFXDetailsAttributeList::CustomizeDetails(IDetailLayoutBuilder &deta
 			.AutoHeight()
 			.VAlign(VAlign_Fill)
 			.HAlign(HAlign_Fill)
+			.Padding(0.0f)
 			[
 				SAssignNew(m_SCategories[iCategory], SPopcornFXAttributeCategory)
 				.CategoryName(FText::FromName(defAttrList->GetCategoryName(iCategory)))
@@ -1995,8 +1985,6 @@ void	FPopcornFXDetailsAttributeList::CustomizeDetails(IDetailLayoutBuilder &deta
 	attrListCategory.AddCustomRow(LOCTEXT("Attributes", "Attributes"), false)
 		.Visibility(attribVisibilityAndRefresh)
 		.WholeRowContent()
-		//.MinDesiredWidth(125.0f * 3.0f)
-		//.MaxDesiredWidth(125.0f * 4.0f)
 		.VAlign(VAlign_Fill)
 		.HAlign(HAlign_Fill)
 		[

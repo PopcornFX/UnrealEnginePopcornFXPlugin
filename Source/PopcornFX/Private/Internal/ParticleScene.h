@@ -33,13 +33,8 @@
 class	UPopcornFXSceneComponent;
 class	FPopcornFXSceneProxy;
 
-#if (ENGINE_MINOR_VERSION >= 26)
-#    define PK_WITH_PHYSX    PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
-#    define PK_WITH_CHAOS    !(PK_WITH_PHYSX) && WITH_CHAOS
-#else
-#    define PK_WITH_PHYSX    WITH_PHYSX
-#    define PK_WITH_CHAOS    0 // Not supported before 4.26
-#endif
+#define PK_WITH_PHYSX    PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
+#define PK_WITH_CHAOS    !(PK_WITH_PHYSX) && WITH_CHAOS
 
 // The plugin doesn't support both being active at the same time.
 #if PK_WITH_PHYSX && PK_WITH_CHAOS
@@ -459,6 +454,7 @@ public:
 		u32												eventID,
 		PopcornFX::CStringId							eventName,
 		u32												count,
+		const PopcornFX::SUpdateTimeArgs				&timeArgs,
 		const TMemoryView<const float>					&spawnDtToEnd,
 		const TMemoryView<const PopcornFX::CEffectID>	&effectIDs,
 		const PopcornFX::SPayloadView					&payloadView);

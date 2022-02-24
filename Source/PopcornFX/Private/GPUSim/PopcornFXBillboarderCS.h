@@ -325,22 +325,12 @@ namespace PopcornFXBillboarder
 		FUAVsClearCS(const ShaderMetaType::CompiledShaderInitializerType &Initializer);
 		FUAVsClearCS();
 
-		void			Dispatch(const SRenderContext &renderContext, FRHICommandList &RHICmdList, const FClearCS_Params &params);
-#if (ENGINE_MINOR_VERSION < 25)
-		virtual bool	Serialize(FArchive &Ar);
-#endif // (ENGINE_MINOR_VERSION < 25)
+		void			Dispatch(const SUERenderContext &renderContext, FRHICommandList &RHICmdList, const FClearCS_Params &params);
 	public:
-#if (ENGINE_MINOR_VERSION >= 25)
 		LAYOUT_FIELD(FShaderParameter, ClearBufferCSParams);
 		LAYOUT_FIELD(FShaderResourceParameter, UAVRaw);
 		LAYOUT_FIELD(FShaderResourceParameter, UAV);
 		LAYOUT_FIELD(FShaderParameter, RawUAV);
-#else
-		FShaderParameter			ClearBufferCSParams;
-		FShaderResourceParameter	UAVRaw;
-		FShaderResourceParameter	UAV;
-		FShaderParameter			RawUAV;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	};
 #endif // (PK_GPU_D3D11 != 0) || (PK_GPU_D3D12 != 0)
 
@@ -398,12 +388,8 @@ namespace PopcornFXBillboarder
 		FBillboarderBillboardCS();
 
 		void			Dispatch(FRHICommandList &RHICmdList, const FBillboarderBillboardCS_Params &params);
-#if (ENGINE_MINOR_VERSION < 25)
-		virtual bool	Serialize(FArchive &Ar);
-#endif // (ENGINE_MINOR_VERSION < 25)
 
 	public:
-#if (ENGINE_MINOR_VERSION >= 25)
 		LAYOUT_FIELD(FShaderParameter, BillboarderType);
 		LAYOUT_FIELD(FShaderParameter, OutputMask);
 		LAYOUT_FIELD(FShaderParameter, InputMask);
@@ -423,27 +409,6 @@ namespace PopcornFXBillboarder
 		LAYOUT_ARRAY(FShaderParameter, InputsDefault, EInput::_Count);
 		LAYOUT_FIELD(FShaderParameter, HasLiveParticleCount);
 		LAYOUT_FIELD(FShaderResourceParameter, LiveParticleCount);
-#else
-		FShaderParameter				BillboarderType;
-		FShaderParameter				OutputMask;
-		FShaderParameter				InputMask;
-		FShaderParameter				InIndicesOffset;
-		FShaderParameter				InputOffset;
-		FShaderParameter				OutputVertexOffset;
-		FShaderParameter				OutputIndexOffset;
-		FShaderParameter				BillboardingMatrix;
-		FShaderParameter				RendererFlags;
-		FShaderParameter				RendererNormalsBendingFactor;
-		FShaderParameter				RendererAtlasRectCount;
-		FShaderResourceParameter		RendererAtlasBuffer;
-		FShaderResourceParameter		Outputs[EOutput::_Count];
-		FShaderResourceParameter		InIndices;
-		FShaderResourceParameter		InSimData;
-		FShaderParameter				InputsOffsets[EInput::_Count];
-		FShaderParameter				InputsDefault[EInput::_Count];
-		FShaderParameter				HasLiveParticleCount;
-		FShaderResourceParameter		LiveParticleCount;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	};
 
 	extern template class FBillboarderBillboardCS<EBillboarderCSBuild::Std>;
@@ -472,12 +437,8 @@ namespace PopcornFXBillboarder
 		FCopyStreamCS();
 
 		void			Dispatch(FRHICommandList &RHICmdList, const FBillboardCS_Params &params);
-#if (ENGINE_MINOR_VERSION < 25)
-		virtual bool	Serialize(FArchive &Ar);
-#endif // (ENGINE_MINOR_VERSION < 25)
 
 	public:
-#if (ENGINE_MINOR_VERSION >= 25)
 		LAYOUT_FIELD(FShaderParameter, OutputMask);
 		LAYOUT_FIELD(FShaderParameter, InputMask);
 		LAYOUT_FIELD(FShaderParameter, InputOffset);
@@ -489,19 +450,6 @@ namespace PopcornFXBillboarder
 		LAYOUT_ARRAY(FShaderParameter, InputsDefault, EInput::_Count);
 		LAYOUT_FIELD(FShaderParameter, HasLiveParticleCount);
 		LAYOUT_FIELD(FShaderResourceParameter, LiveParticleCount);
-#else
-		FShaderParameter				OutputMask;
-		FShaderParameter				InputMask;
-		FShaderParameter				InputOffset;
-		FShaderParameter				OutputVertexOffset;
-		FShaderParameter				IsCapsule;
-		FShaderResourceParameter		Outputs[EOutput::_Count];
-		FShaderResourceParameter		InSimData;
-		FShaderParameter				InputsOffsets[EInput::_Count];
-		FShaderParameter				InputsDefault[EInput::_Count];
-		FShaderParameter				HasLiveParticleCount;
-		FShaderResourceParameter		LiveParticleCount;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	};
 
 	//----------------------------------------------------------------------------
@@ -529,11 +477,7 @@ namespace PopcornFXBillboarder
 		FBillboarderMeshCS();
 
 		void			Dispatch(FRHICommandList& RHICmdList, const FMeshCS_Params &params);
-#if (ENGINE_MINOR_VERSION < 25)
-		virtual bool	Serialize(FArchive& Ar);
-#endif // (ENGINE_MINOR_VERSION < 25)
 	public:
-#if (ENGINE_MINOR_VERSION >= 25)
 		LAYOUT_FIELD(FShaderParameter, OutputMask);
 		LAYOUT_FIELD(FShaderParameter, InputMask);
 		LAYOUT_FIELD(FShaderParameter, InputOffset);
@@ -545,19 +489,6 @@ namespace PopcornFXBillboarder
 		LAYOUT_ARRAY(FShaderParameter, InputsDefault, EInput::_Count);
 		LAYOUT_FIELD(FShaderParameter, HasLiveParticleCount);
 		LAYOUT_FIELD(FShaderResourceParameter, LiveParticleCount);
-#else
-		FShaderParameter				OutputMask;
-		FShaderParameter				InputMask;
-		FShaderParameter				InputOffset;
-		FShaderParameter				OutputVertexOffset;
-		FShaderParameter				PositionsScale;
-		FShaderResourceParameter		Outputs[EOutput::_Count];
-		FShaderResourceParameter		InSimData;
-		FShaderParameter				InputsOffsets[EInput::_Count];
-		FShaderParameter				InputsDefault[EInput::_Count];
-		FShaderParameter				HasLiveParticleCount;
-		FShaderResourceParameter		LiveParticleCount;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	};
 
 	//----------------------------------------------------------------------------
@@ -580,21 +511,11 @@ namespace PopcornFXBillboarder
 		FCopySizeBufferCS();
 
 		void			Dispatch(FRHICommandList &RHICmdList, const FCSCopySizeBuffer_Params &params);
-#if (ENGINE_MINOR_VERSION < 25)
-		virtual bool	Serialize(FArchive &Ar);
-#endif // (ENGINE_MINOR_VERSION < 25)
 	public:
-#if (ENGINE_MINOR_VERSION >= 25)
 		LAYOUT_FIELD(FShaderParameter, InDrawIndirectArgsBufferOffset);
 		LAYOUT_FIELD(FShaderParameter, IndexCountPerInstance);
 		LAYOUT_FIELD(FShaderResourceParameter, DrawIndirectArgsBuffer);
 		LAYOUT_FIELD(FShaderResourceParameter, LiveParticleCount);
-#else
-		FShaderParameter			InDrawIndirectArgsBufferOffset;
-		FShaderParameter			IndexCountPerInstance;
-		FShaderResourceParameter	DrawIndirectArgsBuffer;
-		FShaderResourceParameter	LiveParticleCount;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	};
 
 	//----------------------------------------------------------------------------

@@ -14,7 +14,7 @@ namespace UnrealBuildTool.Rules
 	{
 		bool					IAmDeveloping = false;
 
-		static string			DefaultClientName = "UE4";
+		static string			DefaultClientName = "UnrealEngine";
 		private static char[]	DirSeparators = {'/', '\\'};
 		private string[]		PkLibs = new string[] {
 			"PK-Runtime",
@@ -154,11 +154,7 @@ namespace UnrealBuildTool.Rules
 			if (IAmDeveloping)
 			{
 				// maybe not faster, but we want to make sure there is no missing includes
-#if UE_4_24_OR_LATER
 				bUseUnity = false;
-#else
-				bFasterWithoutUnity = true;
-#endif
 				PrivatePCHHeaderFile = "Private/EmptyPCH.h";
 			}
 
@@ -219,36 +215,37 @@ namespace UnrealBuildTool.Rules
 			bool	isUNKNOWNCompatible = false;
 			bool	isWinUNKNOWN = false;
 			bool	isXboxOneUNKNOWN = false;
-			bool	isUNKNOWN1 = false;
+			bool	isUNKNOWN = false;
 			bool	isUNKNOWN2Compatible = false;
 			bool	isUNKNOWN2 = false;
 
-#if UE_4_25_OR_LATER
-			// Makes sure the plugin is compatible with Vanilla UE4
-			isUNKNOWNCompatible = UnrealTargetPlatform.IsValidName("WinUNKNOWN") || UnrealTargetPlatform.IsValidName("XboxOneUNKNOWN") || UnrealTargetPlatform.IsValidName("UNKNOWN1");
+			// Makes sure the plugin is compatible with Vanilla UnrealEngine
+			isUNKNOWNCompatible = UnrealTargetPlatform.IsValidName("WinUNKNOWN") || UnrealTargetPlatform.IsValidName("XboxOneUNKNOWN") || UnrealTargetPlatform.IsValidName("UNKNOWN");
 
 			isWinUNKNOWN = isUNKNOWNCompatible && (Target.Platform.ToString() == "WinUNKNOWN");
 			isXboxOneUNKNOWN = isUNKNOWNCompatible && (Target.Platform.ToString() == "XboxOneUNKNOWN");
-			isUNKNOWN1 = isUNKNOWNCompatible && (Target.Platform.ToString() == "UNKNOWN1");
+			isUNKNOWN = isUNKNOWNCompatible && (Target.Platform.ToString() == "UNKNOWN");
 			isUNKNOWN2Compatible = UnrealTargetPlatform.IsValidName("UNKNOWN2");
 			isUNKNOWN2 = isUNKNOWN2Compatible && (Target.Platform.ToString() == "UNKNOWN2");
-#endif // UE_4_25_OR_LATER
 
 			if (isUNKNOWNCompatible)
-				Log("Detected UNKNOWN compatible UE4");
+				Log("Detected UNKNOWN compatible Unreal Engine");
 			if (isUNKNOWN2Compatible)
-				Log("Detected UNKNOWN2 compatible UE4");
+				Log("Detected UNKNOWN2 compatible Unreal Engine");
 
 			string		libPrefix = "";
 			string		libExt = "";
 			bool		processLibs = true;
+#if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.Win32)
 			{
 				libPrefix = clientLibDir + "vs" + WindowsPlatform_GetVisualStudioCompilerVersionName_Prefer2015() + "_Win32/";
 				libExt = ".lib";
 			}
-			else if (Target.Platform == UnrealTargetPlatform.Win64 ||
-					 isWinUNKNOWN) // Win32 UNKNOWN (WINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP), just link with the same libs as Win64
+			else
+#endif // !UE_5_0_OR_LATER // Support dropped with UE5
+			if (Target.Platform == UnrealTargetPlatform.Win64 ||
+				isWinUNKNOWN) // Win32 UNKNOWN (WINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP), just link with the same libs as Win64
 			{
 				libPrefix = clientLibDir + "vs" + WindowsPlatform_GetVisualStudioCompilerVersionName_Prefer2015() + "_x64/";
 				libExt = ".lib";
@@ -258,29 +255,31 @@ namespace UnrealBuildTool.Rules
 				libPrefix = clientLibDir + "gmake_macosx_x64/lib";
 				libExt = ".a";
 			}
+#if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.XboxOne)
 			{
 				libPrefix = clientLibDir + "vs2015_Durango/";
-				// "vs" + WindowsPlatform.GetVisualStudioCompilerVersionName(); // error (exception) on >= 4.16
-				// "vs" + XboxOnePlatform.GetVisualStudioCompilerVersionName(); // "XboxOnePlatform" exists on >= 4.16 but not public
 				libExt = ".lib";
 			}
+#endif // !UE_5_0_OR_LATER
 			else if (isXboxOneUNKNOWN)
 			{
-				libPrefix = clientLibDir + "vs2017_UNKNOWN3.x64/";
+				libPrefix = clientLibDir + "vs2017_UNKNOWN.x64/";
 				libExt = ".lib";
 			}
-			else if (isUNKNOWN1)
+			else if (isUNKNOWN)
 			{
 				libPrefix = clientLibDir + "vs2017_Gaming.Xbox.UNKNOWN1.x64/";
 				libExt = ".lib";
 			}
+#if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.PS4)
 			{
 				libPrefix = clientLibDir + "vs2015_ORBIS/";
 				// "vs" + WindowsPlatform.GetVisualStudioCompilerVersionName(); // error (exception) on >= 4.16
 				libExt = ".a";
 			}
+#endif // !UE_5_0_OR_LATER
 			else if (isUNKNOWN2)
 			{
 				libPrefix = clientLibDir + "vs2017_UNKNOWN2/";
@@ -292,17 +291,18 @@ namespace UnrealBuildTool.Rules
 				libPrefix = clientLibDir + "gmake_ios64/lib";
 				libExt = ".a";
 			}
+#if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.Lumin)
 			{
 				libPrefix = clientLibDir + "gmake_android64/lib";
 				libExt = ".a";
 			}
+#endif // !UE_5_0_OR_LATER
 			else if (Target.Platform == UnrealTargetPlatform.Android)
 			{
 				// Multiple Architectures ! (armeabi, arm64)
 				// Using PublicLibraryPaths so ld will "skipping incompatible" libraries
 				// FIXME: UE Build will not watch for lib changes to relink
-#if UE_4_24_OR_LATER
 
 				processLibs = false;
 				foreach (string lib in PkLibs)
@@ -310,10 +310,6 @@ namespace UnrealBuildTool.Rules
 					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android/lib" + lib + "_" + configShort + ".a");     // armv7a (armeabi)
 					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android64/lib" + lib + "_" + configShort + ".a");   // armv8a (arm64)
 				}
-#else
-				PublicLibraryPaths.Add(clientLibDir + "gmake_android");     // armv7a (armeabi)
-				PublicLibraryPaths.Add(clientLibDir + "gmake_android64");   // armv8a (arm64)
-#endif
 				libPrefix = "";
 				libExt = "";
 			}
@@ -322,22 +318,20 @@ namespace UnrealBuildTool.Rules
 				libPrefix = clientLibDir + "gmake_linux_x64/lib";
 				libExt = ".a";
 			}
+#if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.Switch)
 			{
 				libPrefix = clientLibDir + "vs2015_NX64/";
 				libExt = ".a";
 			}
+#endif // !UE_5_0_OR_LATER
 			else
 			{
 				LogError("Target Platform " + Target.Platform.ToString() + " not supported by PopcornFX");
 				Debug.Assert(false, "Platform not supported");
 			}
 
-#if UE_4_24_OR_LATER
 			Log("SDK " + CurrentSDK + " - " +  String.Join(", ", PublicAdditionalLibraries) + "" + libPrefix + " ... _" + configShort + libExt);
-#else
-			Log("SDK " + CurrentSDK + " - " +  String.Join(", ", PublicLibraryPaths) + "" + libPrefix + " ... _" + configShort + libExt);
-#endif
 			if (processLibs)
 			{
 				foreach (string lib in PkLibs)
@@ -365,39 +359,35 @@ namespace UnrealBuildTool.Rules
 
 			bool	d3d12Compat = false;
 			bool	d3d11Compat = false;
-			if (Target.Platform == UnrealTargetPlatform.Win32 ||
-				Target.Platform == UnrealTargetPlatform.Win64 ||
-				isWinUNKNOWN)
+			if (
+#if !UE_5_0_OR_LATER // Support dropped with UE5
+				Target.Platform == UnrealTargetPlatform.Win32 ||
+#endif // !UE_5_0_OR_LATER // Support dropped with UE5
+				Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
 			{
 				if (!isWinUNKNOWN)
 					d3d11Compat = true;
 				d3d12Compat = true;
-#if UE_4_24_OR_LATER
 				PublicSystemLibraries.AddRange(
-#else
-				PublicAdditionalLibraries.AddRange(
-#endif
 					new string[] {
 						"Version.lib",
 						"Psapi.lib",
 					});
 			}
-			else if (Target.Platform == UnrealTargetPlatform.XboxOne ||
-					 isXboxOneUNKNOWN ||
-					 isUNKNOWN1)
+			else if (
+#if !UE_5_0_OR_LATER // Support dropped with UE5
+					Target.Platform == UnrealTargetPlatform.XboxOne ||
+#endif // !UE_5_0_OR_LATER
+					isXboxOneUNKNOWN || isUNKNOWN)
 			{
-				if (isUNKNOWN1)
+				if (isUNKNOWN)
 				{
 					// Missing definitions while PopcornFX SDK includes those headers. To remove once patched in the SDK
 					AddDefinition("DECLARE_UMD_EXPORTS_D3D12X=0");
 					AddDefinition("D3DCOMPILE_NO_DEBUG=0");
 				}
 				// d3d12Compat = true; GPU sim is disabled for now
-#if UE_4_24_OR_LATER
 				PublicSystemLibraries.AddRange(
-#else
-				PublicAdditionalLibraries.AddRange(
-#endif
 					new string[] {
 						"Version.lib",
 						"Psapi.lib",
@@ -428,11 +418,7 @@ namespace UnrealBuildTool.Rules
 
 					// TODO: Is this still required ?
 					// Required when linking with PK-AssetBakerLib
-#if UE_4_24_OR_LATER
 					PublicSystemLibraries.AddRange(new string[]
-#else
-					PublicAdditionalLibraries.AddRange(new string[]
-#endif
 						{
 							"d3dcompiler.lib",
 							"dxguid.lib"
@@ -445,7 +431,7 @@ namespace UnrealBuildTool.Rules
 			Add01DefinitionFromValue("PK_COMPILE_GPU", hasBackend_GPU);
 			Add01DefinitionFromValue("PK_COMPILE_GPU_PC", hasBackend_D3D);
 			Add01DefinitionFromValue("PK_COMPILE_GPU_XBOX_ONE", hasBackend_D3D && isUNKNOWNCompatible && enableConsoleGPUSim);
-			Add01DefinitionFromValue("PK_COMPILE_GPU_UNKNOWN1", hasBackend_D3D && isUNKNOWNCompatible && enableConsoleGPUSim);
+			Add01DefinitionFromValue("PK_COMPILE_GPU_UNKNOWN", hasBackend_D3D && isUNKNOWNCompatible && enableConsoleGPUSim);
 			Add01DefinitionFromValue("PK_COMPILE_GPU_D3D", hasBackend_D3D);
 			Add01DefinitionFromValue("PK_COMPILE_GPU_UNKNOWN2", hasBackend_UNKNOWN2 && isUNKNOWN2Compatible && enableConsoleGPUSim);
 
@@ -461,7 +447,11 @@ namespace UnrealBuildTool.Rules
 			}
 			if (d3d12Compat)
 			{
-				if (Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.Win32 || isWinUNKNOWN)
+				if (
+#if !UE_5_0_OR_LATER // Support dropped with UE5
+					Target.Platform == UnrealTargetPlatform.Win32 ||
+#endif // !UE_5_0_OR_LATER // Support dropped with UE5
+					Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "NVAftermath");
 				else
 					AddDefinition("NV_AFTERMATH=0");
@@ -473,32 +463,33 @@ namespace UnrealBuildTool.Rules
 
 				// Needed for RHI buffers creation from native resources
 				PublicIncludePaths.Add("Runtime/D3D12RHI/Private");
-				if (Target.Platform == UnrealTargetPlatform.XboxOne ||
-					isXboxOneUNKNOWN ||
-					isUNKNOWN1)
+				if (
+#if !UE_5_0_OR_LATER // Support dropped with UE5
+					Target.Platform == UnrealTargetPlatform.XboxOne ||
+#endif // !UE_5_0_OR_LATER
+					isXboxOneUNKNOWN || isUNKNOWN)
 				{
-#if UE_4_25_OR_LATER
 					PublicIncludePaths.Add("../Platforms/XboxCommon/Source/Runtime/D3D12RHI/Private");
 					if (isXboxOneUNKNOWN)
 						PublicIncludePaths.Add("../Platforms/XboxOneUNKNOWN/Source/Runtime/D3D12RHI/Private");
-					else if (isUNKNOWN1)
-						PublicIncludePaths.Add("../Platforms/UNKNOWN1/Source/Runtime/D3D12RHI/Private");
-#endif
+					else if (isUNKNOWN)
+						PublicIncludePaths.Add("../Platforms/UNKNOWN/Source/Runtime/D3D12RHI/Private");
 				}
 				else
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "DX12");
 			}
 
+#if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.PS4)
 			{
 				PrivateDependencyModuleNames.Add("PS4RHI");
-#if !UE_4_24_OR_LATER
-				PublicIncludePaths.Add("Runtime/PS4/PS4RHI/Private");
-#endif
 			}
-			else if (Target.Platform == UnrealTargetPlatform.XboxOne ||
-					 isXboxOneUNKNOWN ||
-					 isUNKNOWN1)
+#endif // !UE_5_0_OR_LATER
+			else if (
+#if !UE_5_0_OR_LATER // Support dropped with UE5
+					Target.Platform == UnrealTargetPlatform.XboxOne ||
+#endif // !UE_5_0_OR_LATER
+					isXboxOneUNKNOWN || isUNKNOWN)
 			{
 				PrivateDependencyModuleNames.Add("D3D12RHI");
 			}
@@ -552,18 +543,21 @@ namespace UnrealBuildTool.Rules
 					"PhysicsCore",
 					"Chaos",
 #endif
-#if UE_4_24_OR_LATER
+
+#if UE_5_0_OR_LATER
+						"RHICore", // D3D12 GPU sim: include D3D12RHIPrivate.h
+#endif // UE_5_0_OR_LATER
+
 					"ClothingSystemRuntimeCommon",
-#else
-					"ClothingSystemRuntime",
-#endif
 					"Projects", // Since 4.21
 				}
 				);
 
 			bool compileWithPhysX = Target.bCompilePhysX;
+#if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.Lumin)
 				compileWithPhysX = false;
+#endif // UE_5_0_OR_LATER
 			if (compileWithPhysX)
 				PrivateDependencyModuleNames.Add("PhysX");
 			if (Target.bBuildEditor)
@@ -595,11 +589,9 @@ namespace UnrealBuildTool.Rules
 					);
 			}
 
-#if UE_4_24_OR_LATER
 			// Raytracing
 			var		engineDir = Path.GetFullPath(Target.RelativeEnginePath);
 			PrivateIncludePaths.Add(Path.Combine(engineDir, "Shaders/Shared"));
-#endif
 
 			// UE4.25: No backward compatible files anymore.. keep this just in case
 			// SetupBackwardCompatFiles();

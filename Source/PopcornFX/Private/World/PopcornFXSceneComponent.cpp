@@ -299,15 +299,9 @@ void	UPopcornFXSceneComponent::SendRenderDynamicData_Concurrent()
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION >= 25)
 void	UPopcornFXSceneComponent::CreateRenderState_Concurrent(FRegisterComponentContext *context)
 {
 	Super::CreateRenderState_Concurrent(context);
-#else
-void	UPopcornFXSceneComponent::CreateRenderState_Concurrent()
-{
-	Super::CreateRenderState_Concurrent();
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	LLM_SCOPE(ELLMTag::Particles);
 	SendRenderDynamicData_Concurrent();

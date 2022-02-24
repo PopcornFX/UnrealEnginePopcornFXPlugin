@@ -75,7 +75,7 @@ void	FPopcornFXDetailsAttributeSamplerShape::CustomizeDetails(IDetailLayoutBuild
 			detailLayout.HideProperty("ShapeSamplingMode");
 			detailLayout.HideProperty("DensityColorChannel");
 			break;
-		case	EPopcornFXAttribSamplerShapeType::ComplexEllipsoid:
+		case	EPopcornFXAttribSamplerShapeType::Ellipsoid:
 		case	EPopcornFXAttribSamplerShapeType::Sphere:
 			detailLayout.HideProperty("BoxDimension");
 			detailLayout.HideProperty("Height");

@@ -420,7 +420,7 @@ namespace
 			if (platformName == "XboxOneUNKNOWN")
 				outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D12X;
 		}
-		else if (platformName == "UNKNOWN1")
+		else if (platformName == "UNKNOWN")
 		{
 			PK_VERIFY(buildTags.PushBack(kConsole).Valid());
 			PK_VERIFY(buildTags.PushBack(kXSeries).Valid());
@@ -482,7 +482,9 @@ namespace
 		EPopcornFXAssetDepType::None,//Caracs_ResourceMaterial				// path to a material
 		EPopcornFXAssetDepType::None,//Caracs_ResourcePackage				// path to a package
 		EPopcornFXAssetDepType::None,//Caracs_Path,							// path to a random file
+		EPopcornFXAssetDepType::None,//Caracs_PathDir,						// path to a random dir
 		EPopcornFXAssetDepType::None,//Caracs_AbsPath,						// path to a random file (absolute path)
+		EPopcornFXAssetDepType::None,//Caracs_AbsPathDir,					// path to a random dir (absolute path)
 		// Others
 		EPopcornFXAssetDepType::None,//Caracs_Color,						// RGB or RGBA color (sRGB-space)
 		EPopcornFXAssetDepType::None,//Caracs_ColorLinear,					// RGB or RGBA color (linear-space)
@@ -686,9 +688,9 @@ namespace
 #if (PK_COMPILE_GPU_XBOX_ONE != 0)
 		PopcornFXPlatform_XboxOne_UNKNOWN_SetupGPUBackendCompilers(fileSourceVirtualPath, backendAndBuildTags.m_BackendTargets, backendCompilerCbCompiles);
 #endif // (PK_COMPILE_GPU_XBOX_ONE != 0)
-#if (PK_COMPILE_GPU_UNKNOWN1 != 0)
+#if (PK_COMPILE_GPU_UNKNOWN != 0)
 		PopcornFXPlatform_UNKNOWN1eries_SetupGPUBackendCompilers(fileSourceVirtualPath, backendAndBuildTags.m_BackendTargets, backendCompilerCbCompiles);
-#endif // (PK_COMPILE_GPU_UNKNOWN1 != 0)
+#endif // (PK_COMPILE_GPU_UNKNOWN != 0)
 #if (PK_COMPILE_GPU_UNKNOWN2 != 0)
 		PopcornFXPlatform_UNKNOWN2_SetupGPUBackendCompilers(fileSourceVirtualPath, backendCompilers);
 #endif // (PK_COMPILE_GPU_UNKNOWN2 != 0)
@@ -746,7 +748,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	for (s32 i = 0; i < qualityLevelCount; ++i)
 		PK_VERIFY(targetBuildVersions.PushBack(PopcornFX::CString::Format("%s:%s%s", kQualityLevelNames[i].Data(), backendAndBuildTags.m_BuildTags.Data(), kQualityLevelNames[i].Data())).Valid());
 
-	const TCHAR		*targetPlatformNameForLog = forEditor ? ANSI_TO_TCHAR("UE4Editor") : *targetPlatformName;
+	const TCHAR		*targetPlatformNameForLog = forEditor ? ANSI_TO_TCHAR("UnrealEditor") : *targetPlatformName;
 
 	UE_LOG(LogPopcornFXEffect, Display, TEXT("Begin effect baking '%s' for '%s'..."), *GetPathName(), targetPlatformNameForLog);
 
@@ -774,7 +776,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	}
 
 	PopcornFX::CCookery				cookery;
-	const PopcornFX::SBakeTarget	defaultTarget("UE4_Generic", TCHAR_TO_ANSI(*bakeDirPath));
+	const PopcornFX::SBakeTarget	defaultTarget("UE_Generic", TCHAR_TO_ANSI(*bakeDirPath));
 
 	if (FPopcornFXPlugin::Get().Settings() == null) // Will trigger a load of settings if necessary
 		return false;
@@ -789,7 +791,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	}
 	else
 	{
-		// Baked effect while cooking: here we want the UE4 hbo context, using UE4's file system
+		// Baked effect while cooking: here we want the UE hbo context, using UE's file system
 		context = PopcornFX::HBO::g_Context;
 	}
 

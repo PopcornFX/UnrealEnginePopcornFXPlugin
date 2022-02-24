@@ -13,9 +13,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/Material.h"
 
-#if (ENGINE_MINOR_VERSION >= 25)
-#	include "MeshMaterialShader.h"
-#endif // (ENGINE_MINOR_VERSION >= 25)
+#include "MeshMaterialShader.h"
 
 IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardVSUniforms, "PopcornFXBillboardVSUniforms");
 IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardCommonUniforms, "PopcornFXBillboardCommonUniforms");
@@ -49,12 +47,15 @@ void	FPopcornFXVertexFactory::_SetupStream(	u32								attributeIndex,
 //
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
+IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXVertexFactory, PKUE_SHADER_PATH("PopcornFXVertexFactory"),
+	EVertexFactoryFlags::UsedWithMaterials | EVertexFactoryFlags::SupportsDynamicLighting); // TODO
+#else
 IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXVertexFactory, PKUE_SHADER_PATH("PopcornFXVertexFactory"), true, false, true, false, false);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
-#if (ENGINE_MINOR_VERSION >= 25)
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXVertexFactory, SF_Vertex, FPopcornFXVertexFactoryShaderParametersVertex);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXVertexFactory, SF_Pixel, FPopcornFXVertexFactoryShaderParametersPixel);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 //----------------------------------------------------------------------------
 
@@ -74,18 +75,13 @@ FPopcornFXVertexFactory::~FPopcornFXVertexFactory()
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION >= 25)
 void	FPopcornFXVertexFactory::ModifyCompilationEnvironment(const FVertexFactoryShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 {
 	FVertexFactory::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-#else
-void	FPopcornFXVertexFactory::ModifyCompilationEnvironment(const FVertexFactoryType* Type, EShaderPlatform Platform, const FMaterial* Material, FShaderCompilerEnvironment& OutEnvironment)
-{
-	FVertexFactory::ModifyCompilationEnvironment(Type, Platform, Material, OutEnvironment);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	// @FIXME: it wont trigger recompilation !!
 	OutEnvironment.SetDefine(TEXT("ENGINE_MINOR_VERSION"), ENGINE_MINOR_VERSION);
+	OutEnvironment.SetDefine(TEXT("ENGINE_MAJOR_VERSION"), ENGINE_MAJOR_VERSION);
 
 	// 4.9: Needed to have DynamicParameters
 	OutEnvironment.SetDefine(TEXT("PARTICLE_FACTORY"),TEXT("1"));
@@ -96,19 +92,11 @@ void	FPopcornFXVertexFactory::ModifyCompilationEnvironment(const FVertexFactoryT
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION >= 25)
 bool	FPopcornFXVertexFactory::ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters)
 {
 	return (Parameters.MaterialParameters.bIsUsedWithParticleSprites || Parameters.MaterialParameters.bIsUsedWithNiagaraSprites || Parameters.MaterialParameters.bIsSpecialEngineMaterial) &&
 			Parameters.MaterialParameters.MaterialDomain == EMaterialDomain::MD_Surface;
 }
-#else
-bool	FPopcornFXVertexFactory::ShouldCompilePermutation(EShaderPlatform platform, const class FMaterial *material, const class FShaderType *shaderType)
-{
-	return	(material->IsUsedWithNiagaraSprites() || material->IsUsedWithParticleSprites() || material->IsSpecialEngineMaterial()) &&
-			material->GetMaterialDomain() == EMaterialDomain::MD_Surface;
-}
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 //----------------------------------------------------------------------------
 
@@ -148,22 +136,3 @@ void	FPopcornFXVertexFactory::InitRHI()
 
 	InitDeclaration(vDeclElements);
 }
-
-//----------------------------------------------------------------------------
-
-#if (ENGINE_MINOR_VERSION < 25)
-FVertexFactoryShaderParameters	*FPopcornFXVertexFactory::ConstructShaderParameters(EShaderFrequency shaderFrequency)
-{
-	// Create the corresponding shader parameters, depending on the shader type
-
-	if (shaderFrequency == SF_Vertex)
-	{
-		return new FPopcornFXVertexFactoryShaderParametersVertex();
-	}
-	else if (shaderFrequency == SF_Pixel)
-	{
-		return new FPopcornFXVertexFactoryShaderParametersPixel();
-	}
-	return null;
-}
-#endif // (ENGINE_MINOR_VERSION < 25)

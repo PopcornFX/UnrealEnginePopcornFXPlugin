@@ -14,18 +14,15 @@
 #if !defined(ENGINE_MAJOR_VERSION)
 #	error no ENGINE_MAJOR_VERSION
 #endif
-#if (ENGINE_MAJOR_VERSION != 4)
+
+#if (ENGINE_MAJOR_VERSION != 4 && ENGINE_MAJOR_VERSION != 5)
 #	error invalid ENGINE_MAJOR_VERSION
 #endif
-#if (ENGINE_MINOR_VERSION < 24)
-#	error PopcornFX Plugin only supported in UE >= 4.24
-#endif
-
-// Can't use preprocessor defines for serialized classes. Define a dummy class for prior versions where this interface does not exist
-// To remove once UE4.25 support is dropped
-#if (ENGINE_MINOR_VERSION < 26)
-class	IMovieSceneTrackTemplateProducer { };
-#endif // (ENGINE_MINOR_VERSION < 26)
+#if (ENGINE_MAJOR_VERSION == 4)
+#	if (ENGINE_MINOR_VERSION < 26)
+#		error PopcornFX Plugin only supported in UE4 >= 4.26
+#	endif
+#endif // (ENGINE_MAJOR_VERSION == 4)
 
 #if PLATFORM_WINDOWS
 #	include "Windows/MinimalWindowsApi.h"
@@ -33,15 +30,9 @@ class	IMovieSceneTrackTemplateProducer { };
 #	include "Windows/MinWindows.h"
 #	include "Windows/PostWindowsApi.h"
 #elif PLATFORM_XBOXONE
-#	if (ENGINE_MINOR_VERSION >= 25)
-#		include "XboxCommonPreApi.h"
-#		include "XboxCommonMinApi.h"
-#		include "XboxCommonPostApi.h"
-#	else
-#		include "XboxOnePreApi.h"
-#		include "XboxOneMinApi.h"
-#		include "XboxOnePostApi.h"
-#	endif // (ENGINE_MINOR_VERSION >= 25)
+#	include "XboxCommonPreApi.h"
+#	include "XboxCommonMinApi.h"
+#	include "XboxCommonPostApi.h"
 #endif
 
 #if PLATFORM_WINDOWS
@@ -50,20 +41,10 @@ class	IMovieSceneTrackTemplateProducer { };
 #	endif
 #	include "Windows/AllowWindowsPlatformTypes.h"
 #elif PLATFORM_XBOXONE
-#	if (ENGINE_MINOR_VERSION >= 25)
-#		ifdef XBOX_PLATFORM_TYPES_GUARD
-#			include "XboxCommonHidePlatformTypes.h"
-#		endif // XBOX_PLATFORM_TYPES_GUARD
-#	else
-#		ifdef XBOXONE_PLATFORM_TYPES_GUARD
-#			include "XboxOneHidePlatformTypes.h"
-#		endif // XBOXONE_PLATFORM_TYPES_GUARD
-#	endif // (ENGINE_MINOR_VERSION >= 25)
-#	if (ENGINE_MINOR_VERSION >= 25)
-#		include "XboxCommonAllowPlatformTypes.h"
-#	else
-#		include "XboxOneAllowPlatformTypes.h"
-#	endif // (ENGINE_MINOR_VERSION >= 25)
+#	ifdef XBOX_PLATFORM_TYPES_GUARD
+#		include "XboxCommonHidePlatformTypes.h"
+#	endif // XBOX_PLATFORM_TYPES_GUARD
+#	include "XboxCommonAllowPlatformTypes.h"
 #endif
 
 // TODO: Fix d3d11 header leak
@@ -83,9 +64,9 @@ class	IMovieSceneTrackTemplateProducer { };
 #undef	PV_MODULE_INIT_NAME
 #undef	PV_MODULE_NAME
 #undef	PV_MODULE_SYM
-#define	PV_MODULE_INIT_NAME	"UE4 PopcornFX Plugin"
-#define	PV_MODULE_NAME		"UE4"
-#define	PV_MODULE_SYM		UE4
+#define	PV_MODULE_INIT_NAME	"UnrealEngine PopcornFX Plugin"
+#define	PV_MODULE_NAME		"UE"
+#define	PV_MODULE_SYM		UE
 
 #include <pkapi/include/pk_precompiled_default.h>
 

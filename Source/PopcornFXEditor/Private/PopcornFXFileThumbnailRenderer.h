@@ -14,9 +14,5 @@ class UPopcornFXFileThumbnailRenderer : public UTextureThumbnailRenderer
 {
 	GENERATED_UCLASS_BODY()
 
-#if (ENGINE_MINOR_VERSION >= 25)
 	virtual void	Draw(UObject *object, int32 x, int32 y, uint32 width, uint32 height, FRenderTarget *renderTarget, FCanvas *canvas, bool bAdditionalViewFamily) override;
-#else
-	virtual void	Draw(UObject *object, int32 x, int32 y, uint32 width, uint32 height, FRenderTarget *renderTarget, FCanvas *canvas) override;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 };

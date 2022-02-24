@@ -100,11 +100,7 @@ FPrimitiveViewRelevance	FPopcornFXSceneProxy::GetViewRelevance(const FSceneView*
 	FPrimitiveViewRelevance	viewRelevance;
 
 	// The primitive has one or more distortion elements.
-#if (ENGINE_MINOR_VERSION >= 25)
 	viewRelevance.bDistortion = true;
-#else
-	viewRelevance.bDistortionRelevance = true;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	// The primitive is drawn.
 	viewRelevance.bDrawRelevance = IsShown(view) && view->Family->EngineShowFlags.Particles;
@@ -128,18 +124,10 @@ FPrimitiveViewRelevance	FPopcornFXSceneProxy::GetViewRelevance(const FSceneView*
 	//viewRelevance.bMaskedRelevance
 
 	// The primitive has one or more elements that have normal translucency.
-#if (ENGINE_MINOR_VERSION >= 25)
 	viewRelevance.bNormalTranslucency = true;
-#else
-	viewRelevance.bNormalTranslucencyRelevance = true;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	// The primitive has one or more opaque or masked elements.
-#if (ENGINE_MINOR_VERSION >= 25)
 	viewRelevance.bOpaque = true;
-#else
-	viewRelevance.bOpaqueRelevance = true;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	// The primitive should render to the custom depth pass.
 	viewRelevance.bRenderCustomDepth = ShouldRenderCustomDepth();
@@ -148,11 +136,7 @@ FPrimitiveViewRelevance	FPopcornFXSceneProxy::GetViewRelevance(const FSceneView*
 	viewRelevance.bRenderInMainPass = true;
 
 	// The primitive has one or more elements that have SeparateTranslucency.
-#if (ENGINE_MINOR_VERSION >= 25)
 	viewRelevance.bSeparateTranslucency = true;
-#else
-	viewRelevance.bSeparateTranslucencyRelevance = true;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	// The primitive is casting a shadow.
 	viewRelevance.bShadowRelevance = true;// IsShadowCast(view);

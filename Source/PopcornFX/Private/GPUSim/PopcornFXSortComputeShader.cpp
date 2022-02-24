@@ -59,26 +59,7 @@ public:
 
 	FPopcornFXSortComputeShader_GenKeys() { }
 
-#if (ENGINE_MINOR_VERSION < 25)
-	virtual bool		Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = Super::Serialize(Ar);
-		Ar << TotalCount;
-		Ar << SortOrigin;
-		Ar << IndexStart;
-		Ar << IndexStep;
-		Ar << InputOffset;
-		Ar << OutputOffset;
-		Ar << InPositions;
-		Ar << InPositionsOffset;
-		Ar << OutKeys;
-		Ar << OutValues;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
-
 public:
-#if (ENGINE_MINOR_VERSION >= 25)
 	LAYOUT_FIELD(FShaderParameter, TotalCount);
 	LAYOUT_FIELD(FShaderParameter, SortOrigin);
 	LAYOUT_FIELD(FShaderParameter, IndexStart);
@@ -89,18 +70,6 @@ public:
 	LAYOUT_FIELD(FShaderParameter, InPositionsOffset);
 	LAYOUT_FIELD(FShaderResourceParameter, OutKeys);
 	LAYOUT_FIELD(FShaderResourceParameter, OutValues);
-#else
-	FShaderParameter				TotalCount;
-	FShaderParameter				SortOrigin;
-	FShaderParameter				IndexStart;
-	FShaderParameter				IndexStep;
-	FShaderParameter				InputOffset;
-	FShaderParameter				OutputOffset;
-	FShaderResourceParameter		InPositions;
-	FShaderParameter				InPositionsOffset;
-	FShaderResourceParameter		OutKeys;
-	FShaderResourceParameter		OutValues;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 };
 
 
@@ -138,27 +107,10 @@ public:
 		OutOffsets.Bind(Initializer.ParameterMap, TEXT("OutOffsets"));
 	}
 	FPopcornFXSortComputeShader_Sort_UpSweep() {}
-
-#if (ENGINE_MINOR_VERSION < 25)
-	virtual bool			Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = Super::Serialize(Ar);
-		Ar << KeyBitOffset;
-		Ar << InKeys;
-		Ar << OutOffsets;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
 public:
-#if (ENGINE_MINOR_VERSION >= 25)
 	LAYOUT_FIELD(FShaderParameter, KeyBitOffset);
 	LAYOUT_FIELD(FShaderResourceParameter, InKeys);
 	LAYOUT_FIELD(FShaderResourceParameter, OutOffsets);
-#else
-	FShaderParameter				KeyBitOffset;
-	FShaderResourceParameter		InKeys;
-	FShaderResourceParameter		OutOffsets;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 };
 
 IMPLEMENT_SHADER_TYPE(, FPopcornFXSortComputeShader_Sort_UpSweep, TEXT(PKUE_GLOBAL_SHADER_PATH("PopcornFXSortComputeShader")), TEXT("SortUpSweep"), SF_Compute);
@@ -194,24 +146,9 @@ public:
 		InOutOffsets.Bind(Initializer.ParameterMap, TEXT("InOutOffsets"));
 	}
 	FPopcornFXSortComputeShader_Sort_UpSweepOffsets() {}
-
-#if (ENGINE_MINOR_VERSION < 25)
-	virtual bool			Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = Super::Serialize(Ar);
-		Ar << GroupCount;
-		Ar << InOutOffsets;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
 public:
-#if (ENGINE_MINOR_VERSION >= 25)
 	LAYOUT_FIELD(FShaderParameter, GroupCount);
 	LAYOUT_FIELD(FShaderResourceParameter, InOutOffsets);
-#else
-	FShaderParameter				GroupCount;
-	FShaderResourceParameter		InOutOffsets;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 };
 
 IMPLEMENT_SHADER_TYPE(, FPopcornFXSortComputeShader_Sort_UpSweepOffsets, TEXT(PKUE_GLOBAL_SHADER_PATH("PopcornFXSortComputeShader")), TEXT("SortUpSweepOffsets"), SF_Compute);
@@ -251,22 +188,7 @@ public:
 		OutValues.Bind(Initializer.ParameterMap, TEXT("OutValues"));
 	}
 	FPopcornFXSortComputeShader_Sort_DownSweep() {}
-#if (ENGINE_MINOR_VERSION < 25)
-	virtual bool			Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = Super::Serialize(Ar);
-		Ar << KeyBitOffset;
-		Ar << GroupCount;
-		Ar << InOffsets;
-		Ar << InKeys;
-		Ar << InValues;
-		Ar << OutKeys;
-		Ar << OutValues;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
 public:
-#if (ENGINE_MINOR_VERSION >= 25)
 	LAYOUT_FIELD(FShaderParameter, KeyBitOffset);
 	LAYOUT_FIELD(FShaderParameter, GroupCount);
 	LAYOUT_FIELD(FShaderResourceParameter, InOffsets);
@@ -274,15 +196,6 @@ public:
 	LAYOUT_FIELD(FShaderResourceParameter, InValues);
 	LAYOUT_FIELD(FShaderResourceParameter, OutKeys);
 	LAYOUT_FIELD(FShaderResourceParameter, OutValues);
-#else
-	FShaderParameter				KeyBitOffset;
-	FShaderParameter				GroupCount;
-	FShaderResourceParameter		InOffsets;
-	FShaderResourceParameter		InKeys;
-	FShaderResourceParameter		InValues;
-	FShaderResourceParameter		OutKeys;
-	FShaderResourceParameter		OutValues;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 };
 
 IMPLEMENT_SHADER_TYPE(, FPopcornFXSortComputeShader_Sort_DownSweep, TEXT(PKUE_GLOBAL_SHADER_PATH("PopcornFXSortComputeShader")), TEXT("SortDownSweep"), SF_Compute);
@@ -341,11 +254,7 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchGenIndiceBatch(FRHICommandList&
 	const ERHIFeatureLevel::Type							featureLevel = ERHIFeatureLevel::SM5; // @FIXME, true feature level ?
 	TShaderMapRef< FPopcornFXSortComputeShader_GenKeys >	genKeys(GetGlobalShaderMap(featureLevel));
 
-#if (ENGINE_MINOR_VERSION >= 25)
 	FCSRHIParamRef			shader = genKeys.GetComputeShader();
-#else
-	FCSRHIParamRef			shader = genKeys->GetComputeShader();
-#endif //(ENGINE_MINOR_VERSION >= 25)
 
 	PK_ASSERT(params.m_Count > 0);
 
@@ -420,15 +329,9 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 	TShaderMapRef< FPopcornFXSortComputeShader_Sort_UpSweepOffsets >	upSweepOffsets(GetGlobalShaderMap(featureLevel));
 	TShaderMapRef< FPopcornFXSortComputeShader_Sort_DownSweep >			downSweep(GetGlobalShaderMap(featureLevel));
 
-#if (ENGINE_MINOR_VERSION >= 25)
 	FCSRHIParamRef	upSweepShader = upSweep.GetComputeShader();
 	FCSRHIParamRef	upSweepOffsetsShader = upSweepOffsets.GetComputeShader();
 	FCSRHIParamRef	downSweepShader = downSweep.GetComputeShader();
-#else
-	FCSRHIParamRef	upSweepShader = upSweep->GetComputeShader();
-	FCSRHIParamRef	upSweepOffsetsShader = upSweepOffsets->GetComputeShader();
-	FCSRHIParamRef	downSweepShader = downSweep->GetComputeShader();
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	const uint32		threadGroupCount = totalAlignedCount / CS_SORT_THREADGROUP_SIZE;
 

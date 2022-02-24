@@ -125,11 +125,7 @@ EReimportResult::Type	UPopcornFXFileReimportFactory::Reimport(UObject *obj)
 					if (ref.Referencer->IsPendingKill())
 						continue;
 
-#if (ENGINE_MINOR_VERSION >= 25)
 					FPropertyChangedEvent	ptyChangedEvent(const_cast<FProperty*>(ref.ReferencingProperties[ptyi]));
-#else
-					FPropertyChangedEvent	ptyChangedEvent(const_cast<UProperty*>(ref.ReferencingProperties[ptyi]));
-#endif // (ENGINE_MINOR_VERSION >= 25)
 					ref.Referencer->PostEditChangeProperty(ptyChangedEvent);
 				}
 			}

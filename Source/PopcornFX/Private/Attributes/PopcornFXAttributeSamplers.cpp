@@ -46,6 +46,7 @@
 #include <pk_kernel/include/kr_containers_array.h>
 #include <pk_kernel/include/kr_containers_onstack.h>
 #include <pk_kernel/include/kr_refcounted_buffer.h>
+#include <pk_kernel/include/kr_mem_utils.h>
 #include <pk_maths/include/pk_maths_interpolable.h>
 #include <pk_geometrics/include/ge_rectangle_list.h>
 #include <pk_geometrics/include/ge_mesh_sampler_accel.h>
@@ -58,6 +59,9 @@
 #if (PK_GPU_D3D12 != 0)
 #	define D3D12_RHI_RAYTRACING 0 // TMP
 #	define DX_MAX_MSAA_COUNT 0 // TMP
+#	if (ENGINE_MAJOR_VERSION == 5)
+		class	FD3D12Device;
+#	endif // (ENGINE_MAJOR_VERSION == 5)
 #	include "D3D12Util.h"
 #endif // (PK_GPU_D3D12 != 0)
 
@@ -448,9 +452,9 @@ namespace
 
 	// ELLIPSOID
 	template <>
-	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_ComplexEllipsoid>(const SNewShapeParams &params)
+	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Ellipsoid>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape				*self = params.self;
+		const UPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Radius >= 0.0f);
 		PK_ASSERT(self->InnerRadius >= 0.0f);
@@ -459,15 +463,15 @@ namespace
 		const float			radius = FGenericPlatformMath::Max(self->Radius, 0.0f) * invGlobalScale;
 		const float			innerRadius = FGenericPlatformMath::Max(self->InnerRadius, 0.0f) * invGlobalScale;
 
-		return PK_NEW(PopcornFX::CShapeDescriptor_ComplexEllipsoid(radius, innerRadius));
+		return PK_NEW(PopcornFX::CShapeDescriptor_Ellipsoid(radius, innerRadius));
 	}
 
 	// ELLIPSOID
 	template <>
-	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_ComplexEllipsoid>(const SUpdateShapeParams &params)
+	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Ellipsoid>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape				*self = params.self;
-		PopcornFX::CShapeDescriptor_ComplexEllipsoid		*shape = static_cast<PopcornFX::CShapeDescriptor_ComplexEllipsoid*>(params.shape);
+		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		PopcornFX::CShapeDescriptor_Ellipsoid	*shape = static_cast<PopcornFX::CShapeDescriptor_Ellipsoid*>(params.shape);
 
 		PK_ASSERT(self->Radius >= 0.0f);
 		PK_ASSERT(self->InnerRadius >= 0.0f);
@@ -484,7 +488,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Cylinder>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape		*self = params.self;
+		const UPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Radius >= 0.0f);
 		PK_ASSERT(self->InnerRadius >= 0.0f);
@@ -502,8 +506,8 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Cylinder>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape		*self = params.self;
-		PopcornFX::CShapeDescriptor_Cylinder		*shape = static_cast<PopcornFX::CShapeDescriptor_Cylinder*>(params.shape);
+		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		PopcornFX::CShapeDescriptor_Cylinder	*shape = static_cast<PopcornFX::CShapeDescriptor_Cylinder*>(params.shape);
 
 		PK_ASSERT(self->Radius >= 0.0f);
 		PK_ASSERT(self->InnerRadius >= 0.0f);
@@ -523,7 +527,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Capsule>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape		*self = params.self;
+		const UPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Radius >= 0.0f);
 		PK_ASSERT(self->InnerRadius >= 0.0f);
@@ -541,8 +545,8 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Capsule>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape		*self = params.self;
-		PopcornFX::CShapeDescriptor_Capsule			*shape = static_cast<PopcornFX::CShapeDescriptor_Capsule*>(params.shape);
+		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		PopcornFX::CShapeDescriptor_Capsule		*shape = static_cast<PopcornFX::CShapeDescriptor_Capsule*>(params.shape);
 
 		PK_ASSERT(self->Radius >= 0.0f);
 		PK_ASSERT(self->InnerRadius >= 0.0f);
@@ -704,13 +708,13 @@ namespace
 #endif
 
 	CbNewDescriptor const		kCbNewDescriptors[] = {
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_Box>,				//Box = 0,
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_Sphere>,			//Sphere,
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_ComplexEllipsoid>,	//ComplexEllipsoid,
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_Cylinder>,			//Cylinder,
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_Capsule>,			//Capsule,
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_Cone>,				//Cone,
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_Mesh>,				//Mesh,
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_Box>,		//Box = 0,
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_Sphere>,	//Sphere,
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_Ellipsoid>,	//Ellipsoid,
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_Cylinder>,	//Cylinder,
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_Capsule>,	//Capsule,
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_Cone>,		//Cone,
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_Mesh>,		//Mesh,
 		//null,		// Spline
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 		&_NewDescriptor<PopcornFX::CShapeDescriptor_Collection>,		//Collection
@@ -718,13 +722,13 @@ namespace
 	};
 
 	CbUpdateShapeDescriptor const	kCbUpdateShapeDescriptors[] = {
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Box>,				//Box = 0,
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Sphere>,			//Sphere,
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_ComplexEllipsoid>,	//ComplexEllipsoid,
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Cylinder>,			//Cylinder,
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Capsule>,			//Capsule,
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Cone>,				//Cone,
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Mesh>,				//Mesh,
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Box>,		//Box = 0,
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Sphere>,	//Sphere,
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Ellipsoid>,	//Ellipsoid,
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Cylinder>,	//Cylinder,
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Capsule>,	//Capsule,
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Cone>,		//Cone,
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Mesh>,		//Mesh,
 		//null,		// Spline
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Collection>,		//Collection
@@ -963,7 +967,7 @@ void	UPopcornFXAttributeSamplerShape::RenderShapeIFP(bool isSelected) const
 		case	EPopcornFXAttribSamplerShapeType::Sphere:
 			DrawDebugSphere(world, location, radius, kSamplerShapesDebugSegmentCount, debugColor);
 			break;
-		//case	EPopcornFXAttribSamplerShapeType::ComplexEllipsoid:
+		//case	EPopcornFXAttribSamplerShapeType::Ellipsoid:
 		case	EPopcornFXAttribSamplerShapeType::Cylinder:
 			DrawDebugCylinder(GetWorld(), location - upVector * height * 0.5f, location + upVector * height * 0.5f, radius, kSamplerShapesDebugSegmentCount, debugColor);
 			break;
@@ -1006,14 +1010,14 @@ void	UPopcornFXAttributeSamplerShape::RenderShapeIFP(bool isSelected) const
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerShape::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerShape::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	check(m_Data != null);
 
 	m_Data->m_SamplerSurface = PopcornFX::CMeshSurfaceSamplerStructuresRandom();
 
-	const PopcornFX::CParticleNodeSamplerData_Shape	*defaultShapeSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Shape>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_Shape	*defaultShapeSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Shape>(defaultSampler);
 	if (!PK_VERIFY(defaultShapeSampler != null))
 		return null;
 	if (!PK_VERIFY(InitShape()))
@@ -1512,12 +1516,12 @@ bool	UPopcornFXAttributeSamplerCurve::RebuildCurvesData()
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurve::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurve::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_TODO("Determine when this should be set to true : has the curve asset changed ?")
-	const PopcornFX::CParticleNodeSamplerData_Curve			*defaultCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Curve>(defaultSampler);
-	const PopcornFX::CParticleNodeSamplerData_DoubleCurve	*defaultDoubleCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_DoubleCurve>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_Curve			*defaultCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Curve>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_DoubleCurve	*defaultDoubleCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_DoubleCurve>(defaultSampler);
 	if (!PK_VERIFY(defaultCurveSampler != null || defaultDoubleCurveSampler != null))
 		return null;
 	PK_ASSERT(defaultCurveSampler == null || defaultDoubleCurveSampler == null);
@@ -1865,12 +1869,12 @@ void	UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_PreUpdate(CParticleS
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_ASSERT(m_Data != null);
-	const PopcornFX::CParticleNodeSamplerData_Curve			*defaultCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Curve>(defaultSampler);
-	const PopcornFX::CParticleNodeSamplerData_DoubleCurve	*defaultDoubleCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_DoubleCurve>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_Curve			*defaultCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Curve>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_DoubleCurve	*defaultDoubleCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_DoubleCurve>(defaultSampler);
 	if (!PK_VERIFY(defaultCurveSampler != null || defaultDoubleCurveSampler != null))
 		return null;
 	PK_ASSERT(defaultCurveSampler == null || defaultDoubleCurveSampler != null);
@@ -1956,10 +1960,10 @@ void	UPopcornFXAttributeSamplerText::PostEditChangeProperty(FPropertyChangedEven
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerText::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerText::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
-	const PopcornFX::CParticleNodeSamplerData_Text	*defaultTextSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Text>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_Text	*defaultTextSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Text>(defaultSampler);
 	if (!PK_VERIFY(defaultTextSampler != null))
 		return null;
 	if (m_Data->m_Desc == null)
@@ -2130,10 +2134,10 @@ void	UPopcornFXAttributeSamplerImage::PostEditChangeProperty(FPropertyChangedEve
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerImage::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerImage::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
-	const PopcornFX::CParticleNodeSamplerData_Texture	*defaultImageSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Texture>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_Image	*defaultImageSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Image>(defaultSampler);
 	if (!PK_VERIFY(defaultImageSampler != null))
 		return null;
 	if (!/*PK_VERIFY*/(RebuildImageSampler()))
@@ -2189,14 +2193,14 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 		// There is no way currently to know if the current sampler descriptor will be used by the CPU or GPU sim, so we'll have to load both, if possible
 		// GPU sim image load is trivial: it will just grab the ref to the native resource
 #if 0//(PK_GPU_D3D11 != 0)
-		if (g_PopcornFXRHIAPI == SRenderContext::D3D11)
+		if (g_PopcornFXRHIAPI == SUERenderContext::D3D11)
 		{
 			m_Data->m_TextureResource_D3D11 = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CImageGPU_D3D11>(fullPath, true);
 			success |= (m_Data->m_TextureResource_D3D11 != null && !m_Data->m_TextureResource_D3D11->Empty());
 		}
 #endif // (PK_GPU_D3D11 != 0)
 #if (PK_GPU_D3D12 != 0)
-		if (g_PopcornFXRHIAPI == SRenderContext::D3D12)
+		if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
 		{
 			m_Data->m_TextureResource_D3D12 = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CImageGPU_D3D12>(fullPath, true);
 			success |= (m_Data->m_TextureResource_D3D12 != null && !m_Data->m_TextureResource_D3D12->Empty());
@@ -2381,7 +2385,7 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 
 struct FAttributeSamplerVectorFieldData
 {
-	PopcornFX::PParticleSamplerDescriptor_Turbulence_VectorField	m_Desc; // We only allow static vector field override for attribute sampler
+	PopcornFX::PParticleSamplerDescriptor_VectorField_Grid	m_Desc; // We only allow static vector field override for attribute sampler
 
 	bool		m_NeedsReload = true;
 #if WITH_EDITOR
@@ -2468,14 +2472,14 @@ void	UPopcornFXAttributeSamplerVectorField::_BuildVectorFieldFlags(uint32 &flags
 {
 	if (WrapMode == EPopcornFXVectorFieldWrapMode::Wrap)
 	{
-		flags |= PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::Wrap_X;
-		flags |= PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::Wrap_Y;
-		flags |= PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::Wrap_Z;
+		flags |= PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::Wrap_X;
+		flags |= PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::Wrap_Y;
+		flags |= PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::Wrap_Z;
 	}
-	PK_STATIC_ASSERT(EPopcornFXVectorFieldSamplingMode::Point == (u32)PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::Interpolation_Point);
-	PK_STATIC_ASSERT(EPopcornFXVectorFieldSamplingMode::Trilinear == (u32)PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::Interpolation_Trilinear);
+	PK_STATIC_ASSERT(EPopcornFXVectorFieldSamplingMode::Point == (u32)PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::Interpolation_Point);
+	PK_STATIC_ASSERT(EPopcornFXVectorFieldSamplingMode::Trilinear == (u32)PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::Interpolation_Trilinear);
 
-	interpolation = static_cast<PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::EInterpolation>(SamplingMode.GetValue());
+	interpolation = static_cast<PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::EInterpolation>(SamplingMode.GetValue());
 }
 
 //----------------------------------------------------------------------------
@@ -2515,7 +2519,7 @@ void	UPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChan
 			u32	interpolation = 0;
 
 			_BuildVectorFieldFlags(flags, interpolation);
-			m_Data->m_Desc->SetFlags(flags, static_cast<PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::EInterpolation>(interpolation));
+			m_Data->m_Desc->SetFlags(flags, static_cast<PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::EInterpolation>(interpolation));
 		}
 	}
 
@@ -2586,13 +2590,13 @@ void	UPopcornFXAttributeSamplerVectorField::RenderVectorFieldShape(const FMatrix
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerVectorField::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerVectorField::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerVectorField::Build Vectorfield", POPCORNFX_UE_PROFILER_COLOR);
 
 	check(m_Data != null);
-	const PopcornFX::CParticleNodeSamplerData_Turbulence	*defaultTurbulenceSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Turbulence>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_VectorField	*defaultTurbulenceSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_VectorField>(defaultSampler);
 	if (!PK_VERIFY(defaultTurbulenceSampler != null))
 		return null;
 	if (VectorField == null)
@@ -2600,7 +2604,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerVectorField::_A
 
 	if (m_Data->m_Desc == null)
 	{
-		m_Data->m_Desc = PK_NEW(PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField()); // Full override
+		m_Data->m_Desc = PK_NEW(PopcornFX::CParticleSamplerDescriptor_VectorField_Grid()); // Full override
 		if (!PK_VERIFY(m_Data->m_Desc != null))
 			return null;
 	}
@@ -2635,9 +2639,9 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerVectorField::_A
 		_BuildVectorFieldFlags(flags, interpolation);
 
 		if (!PK_VERIFY(m_Data->m_Desc->Setup(dimensions, VectorField->Intensity, CFloat4(0.0f), CFloat4(0.0f), gridRawData,
-			PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::DataType_Fp16,
+			PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::DataType_Fp16,
 			Intensity, CFloat4x4::IDENTITY, flags,
-			static_cast<PopcornFX::CParticleSamplerDescriptor_Turbulence_VectorField::EInterpolation>(interpolation))))
+			static_cast<PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::EInterpolation>(interpolation))))
 			return null;
 
 		_SetBounds();
@@ -2714,7 +2718,7 @@ namespace	PopcornFXAttributeSamplers
 }
 
 // UE animtrack attribute sampler: only contains one track
-// Expensive sampling as each particle individually evaluates the UE4 curve.
+// Expensive sampling as each particle individually evaluates the UE curve.
 class	CParticleSamplerDescriptor_AnimTrack_UE : public PopcornFX::CParticleSamplerDescriptor_AnimTrack
 {
 public:
@@ -2753,7 +2757,7 @@ public:
 
 	virtual void	SamplePosition(	const TStridedMemoryView<CFloat3>		&dstValues,
 									const TStridedMemoryView<const float>	&times,
-									const TStridedMemoryView<const s32>	&trackIds) const override
+									const TStridedMemoryView<const s32>		&trackIds) const override
 	{
 		PK_NAMEDSCOPEDPROFILE_C("CParticleSamplerDescriptor_AnimTrack_UE::SamplePosition", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -2816,8 +2820,20 @@ public:
 		_TransformPositions(*m_TrackTransforms, outSamples);
 	}
 
-private:
+	virtual void	GetTrackCount(const TStridedMemoryView<s32> &dstValues) const override
+	{
+		PK_ASSERT(!dstValues.Empty());
+		const u32	trackCount = 1;
+		if (!dstValues.Virtual())
+		{
+			PK_RELEASE_ASSERT(dstValues.Contiguous());
+			PopcornFX::Mem::Fill32(dstValues.Data(), trackCount, dstValues.Count());
+		}
+		else
+			dstValues[0] = trackCount;
+	}
 
+private:
 	template<bool _InverseTransforms>
 	void	_Transform(const TStridedMemoryView<CFloat3>		&outSamples,
 					   const TStridedMemoryView<const CFloat3>	&locations,
@@ -2962,11 +2978,7 @@ USplineComponent	*UPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent(bo
 	USplineComponent	*spline = null;
 	if (SplineComponentName != NAME_None)
 	{
-#if (ENGINE_MINOR_VERSION >= 25)
 		FObjectPropertyBase	*prop = FindFProperty<FObjectPropertyBase>(parent->GetClass(), SplineComponentName);
-#else
-		UObjectPropertyBase	*prop = FindField<UObjectPropertyBase>(parent->GetClass(), SplineComponentName);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 		if (prop != null)
 			spline = Cast<USplineComponent>(prop->GetObjectPropertyValue_InContainer(parent));
@@ -3147,11 +3159,11 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	check(m_Data != null);
-	const PopcornFX::CParticleNodeSamplerData_AnimTrack	*defaultAnimTrackSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_AnimTrack>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_AnimTrack	*defaultAnimTrackSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_AnimTrack>(defaultSampler);
 	if (!PK_VERIFY(defaultAnimTrackSampler != null))
 		return null;
 	if (bFastSampler)

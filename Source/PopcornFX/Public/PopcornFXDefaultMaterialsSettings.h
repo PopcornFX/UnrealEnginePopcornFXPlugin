@@ -8,14 +8,7 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 
-#if (ENGINE_MINOR_VERSION < 18)
-#	error This file shouldn't be present in UE4 <= 17
-#endif	// (ENGINE_MINOR_VERSION < 18)
-
 #include "UObject/SoftObjectPath.h"
-
-// Note: Code specific to keep 4.18 compatible with previous versions
-// To remove once we drop <= UE4.17
 
 #include "PopcornFXDefaultMaterialsSettings.generated.h"
 

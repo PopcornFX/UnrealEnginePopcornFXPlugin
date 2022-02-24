@@ -21,6 +21,10 @@
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
 
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "UnrealWidget.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 #include "PopcornFXSDK.h"
 
 //----------------------------------------------------------------------------
@@ -196,7 +200,12 @@ public:
 		Invalidate();
 	}
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	virtual void	SetWidgetMode(UE::Widget::EWidgetMode NewMode) override { }
+#else
 	virtual void	SetWidgetMode(FWidget::EWidgetMode newMode) override { }
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 private:
 	UStaticMeshComponent	*m_FloorComponent;
 	UStaticMeshComponent	*m_SkyComponent;

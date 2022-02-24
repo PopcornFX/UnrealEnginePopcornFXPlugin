@@ -8,7 +8,7 @@
 
 //----------------------------------------------------------------------------
 
-namespace	UE4RendererProperties
+namespace	UERendererProperties
 {
 	//----------------------------------------------------------------------------
 
@@ -65,6 +65,6 @@ namespace	UE4RendererProperties
 		g_SixWayLightmap_Color.Clear();
 	}
 
-}	// namespace	UE4RendererProperties
+}	// namespace	UERendererProperties
 
 //----------------------------------------------------------------------------

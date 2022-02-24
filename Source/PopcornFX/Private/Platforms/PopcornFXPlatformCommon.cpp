@@ -15,9 +15,7 @@
 #	include "Interfaces/IShaderFormat.h"
 #	include "Interfaces/IShaderFormatModule.h"
 #	include "RHIShaderFormatDefinitions.inl"
-#	if (ENGINE_MINOR_VERSION >= 26)
-#		include "ShaderCompilerCore.h"
-#	endif // (ENGINE_MINOR_VERSION >= 26)
+#	include "ShaderCompilerCore.h"
 #	include "Misc/FileHelper.h"
 
 #	include <pk_engine_utils/include/eu_random.h>

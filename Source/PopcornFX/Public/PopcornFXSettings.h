@@ -239,7 +239,7 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category=Pack)
 	FString				PackMountPoint;
 
-	/** PopcornFX Particles to UE4 Global Scale. ie: GlobalScale = 100 means 1 unit in PopcornFX will become 100 unit in Unreal Engine */
+	/** PopcornFX Particles to UnrealEngine Global Scale. ie: GlobalScale = 100 means 1 unit in PopcornFX will become 100 unit in Unreal Engine */
 	UPROPERTY(Config, EditAnywhere, Category=Pack)
 	float				GlobalScale;
 

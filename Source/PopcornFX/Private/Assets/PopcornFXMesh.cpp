@@ -44,11 +44,11 @@ namespace
 	{
 		if (skeletalMesh == null)
 			return null;
-#if (ENGINE_MINOR_VERSION >= 27)
+#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return skeletalMesh->GetAssetImportData();
 #else
 		return skeletalMesh->AssetImportData;
-#endif // (ENGINE_MINOR_VERSION >= 27)
+#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 #endif // WITH_EDITOR
 
@@ -56,11 +56,11 @@ namespace
 	{
 		if (staticMesh == null)
 			return null;
-#if (ENGINE_MINOR_VERSION >= 27)
+#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return staticMesh->GetRenderData();
 #else
 		return staticMesh->RenderData.Get();
-#endif // (ENGINE_MINOR_VERSION >= 27)
+#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 }
 
@@ -354,23 +354,6 @@ bool	UPopcornFXMesh::BuildMeshFromSource()
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION == 25)
-	// Dirty hack until Epic addresses this issue (case #00168901)
-	template <>
-	void FSkinWeightLookupVertexBuffer::InitRHIForStreaming<168901>(FRHIVertexBuffer* IntermediateBuffer, TRHIResourceUpdateBatcher<168901>& Batcher)
-	{
-		*reinterpret_cast<void**>(IntermediateBuffer) = Data;
-	}
-
-	template <>
-	void FSkinWeightDataVertexBuffer::InitRHIForStreaming<168901>(FRHIVertexBuffer* IntermediateBuffer, TRHIResourceUpdateBatcher<168901>& Batcher)
-	{
-		*reinterpret_cast<void**>(IntermediateBuffer) = Data;
-	}
-#endif // (ENGINE_MINOR_VERSION == 25)
-
-//----------------------------------------------------------------------------
-
 namespace
 {
 	template<typename _IndexType>
@@ -395,20 +378,7 @@ namespace
 		PK_ONLY_IF_ASSERTS(u32 totalVertices = 0);
 
 		const float		invScale = FPopcornFXPlugin::GlobalScaleRcp();
-#if (ENGINE_MINOR_VERSION < 25)
-		const bool		hasExtraBoneInfluences = LODRenderData.SkinWeightVertexBuffer.HasExtraBoneInfluences();
-#endif // (ENGINE_MINOR_VERSION < 25)
-
-#if (ENGINE_MINOR_VERSION == 25) // Dirty hack until Epic addresses this issue (case #00168901)
-		u8									*lookupVBData;
-		u8									*VBData;
-		TRHIResourceUpdateBatcher<168901>	dummy;
-
-		((FSkinWeightLookupVertexBuffer*)LODRenderData.SkinWeightVertexBuffer.GetLookupVertexBuffer())->InitRHIForStreaming<168901>(reinterpret_cast<FRHIVertexBuffer*>(&lookupVBData), dummy);
-		((FSkinWeightDataVertexBuffer*)LODRenderData.SkinWeightVertexBuffer.GetDataVertexBuffer())->InitRHIForStreaming<168901>(reinterpret_cast<FRHIVertexBuffer*>(&VBData), dummy);
-#endif // (ENGINE_MINOR_VERSION == 25)
-
-		const u32	sectionCount = LODRenderData.RenderSections.Num();
+		const u32		sectionCount = LODRenderData.RenderSections.Num();
 		for (u32 iSection = 0; iSection < sectionCount; ++iSection)
 		{
 			PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerSkinnedMesh::FillBuffers (Build section)", POPCORNFX_UE_PROFILER_COLOR);
@@ -438,88 +408,20 @@ namespace
 				for (u32 iUV = 0; iUV < totalUVCount; ++iUV)
 					srcUVsView[iUV][vertexIndex] = ToPk(LODRenderData.StaticVertexBuffers.StaticMeshVertexBuffer.GetVertexUV(vertexIndex, iUV));
 
-#if (ENGINE_MINOR_VERSION < 25)
-				union
-				{
-					const TSkinWeightInfo<false>	*skinWeightPtr_NoExtraInfluences;
-					const TSkinWeightInfo<true>		*skinWeightPtr_ExtraInfluences;
-				};
-
-				if (hasExtraBoneInfluences)
-					skinWeightPtr_ExtraInfluences = LODRenderData.SkinWeightVertexBuffer.GetSkinWeightPtr<true>(vertexIndex);
-				else
-					skinWeightPtr_NoExtraInfluences = LODRenderData.SkinWeightVertexBuffer.GetSkinWeightPtr<false>(vertexIndex);
-#endif
-
 				PK_ONLY_IF_ASSERTS(float	weightsSum = 0.0f);
 				{
 					const u32	offsetInfluences = vertexIndex * maxInfluenceCount;
 					PK_ASSERT(offsetInfluences + maxInfluenceCount <= boneWeights.Count());
 					for (u32 iInfluence = 0; iInfluence < sectionInfluenceCount; ++iInfluence)
 					{
-#if (ENGINE_MINOR_VERSION >= 25)
-#	if (ENGINE_MINOR_VERSION >= 26)
 						const float	localBoneWeight = LODRenderData.SkinWeightVertexBuffer.GetBoneWeight(vertexIndex, iInfluence);
-#	else // Dirty hack until Epic addresses this issue (case #00168901)
-						uint32 VertexWeightOffset = 0;
-						uint32 VertexInfluenceCount = 0;
-
-						if (LODRenderData.SkinWeightVertexBuffer.GetVariableBonesPerVertex())
-						{
-							uint32 Offset = vertexIndex * 4;
-							uint32 DataUInt32 = *((uint32*)(&lookupVBData[Offset])); // Data is private
-							VertexWeightOffset = DataUInt32 >> 8;
-							VertexInfluenceCount = DataUInt32 & 0xff;
-						}
-						else
-						{
-							VertexWeightOffset = LODRenderData.SkinWeightVertexBuffer.GetConstantInfluencesVertexStride() * vertexIndex;
-							VertexInfluenceCount = LODRenderData.SkinWeightVertexBuffer.GetMaxBoneInfluences();
-						}
-
-						u8	_localBoneWeight = 0;
-						if (iInfluence < VertexInfluenceCount) // GetBoneWeight
-						{
-							const uint8* BoneData = VBData + VertexWeightOffset; // Data is private
-							uint32 BoneWeightOffset = LODRenderData.SkinWeightVertexBuffer.GetDataVertexBuffer()->GetBoneIndexByteSize() * VertexInfluenceCount;
-							_localBoneWeight = BoneData[BoneWeightOffset + iInfluence];
-						}
-						const float	localBoneWeight = _localBoneWeight;
-#	endif // (ENGINE_MINOR_VERSION >= 26)
-#else
-						const float	localBoneWeight = hasExtraBoneInfluences ?
-												static_cast<float>(skinWeightPtr_ExtraInfluences->InfluenceWeights[iInfluence]) :
-												static_cast<float>(skinWeightPtr_NoExtraInfluences->InfluenceWeights[iInfluence]);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 						const float	boneWeight = localBoneWeight / 255.0f;
 
 						PK_ONLY_IF_ASSERTS(weightsSum += boneWeight);
 						_boneWeights[offsetInfluences + iInfluence] = boneWeight;
 						PK_ASSERT(_boneWeights[offsetInfluences + iInfluence] >= 0.0f && _boneWeights[offsetInfluences + iInfluence] <= 1.0f);
 
-#if (ENGINE_MINOR_VERSION >= 25)
-#	if (ENGINE_MINOR_VERSION >= 26)
 						const u32	localBoneIndex = LODRenderData.SkinWeightVertexBuffer.GetBoneIndex(vertexIndex, iInfluence);
-#	else // Dirty hack until Epic addresses this issue (case #00168901)
-						u32			_localBoneIndex = 0;
-						if (iInfluence < VertexInfluenceCount)
-						{
-							const uint8* BoneData = VBData + VertexWeightOffset; // Data is private
-							if (LODRenderData.SkinWeightVertexBuffer.GetDataVertexBuffer()->Use16BitBoneIndex())
-							{
-								const FBoneIndex16* BoneIndex16Ptr = (FBoneIndex16*)BoneData;
-								_localBoneIndex = BoneIndex16Ptr[iInfluence];
-							}
-							else
-								_localBoneIndex = BoneData[iInfluence];
-						}
-						const u32	localBoneIndex = _localBoneIndex;
-#	endif // (ENGINE_MINOR_VERSION >= 26)
-#else
-						const u32	localBoneIndex = hasExtraBoneInfluences ?
-													skinWeightPtr_ExtraInfluences->InfluenceBones[iInfluence] :
-													skinWeightPtr_NoExtraInfluences->InfluenceBones[iInfluence];
-#endif // (ENGINE_MINOR_VERSION >= 25)
 						_boneIndices[offsetInfluences + iInfluence] = section.BoneMap[localBoneIndex];
 
 						// We can stop copying data, weights are sorted

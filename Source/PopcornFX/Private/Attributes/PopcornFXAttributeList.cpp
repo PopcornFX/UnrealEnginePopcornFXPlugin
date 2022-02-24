@@ -50,14 +50,14 @@ using PopcornFX::PCShapeDescriptor;
 
 uint32		ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType)
 {
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box					== (u32)CShapeDescriptor::ShapeBox);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere				== (u32)CShapeDescriptor::ShapeSphere);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::ComplexEllipsoid		== (u32)CShapeDescriptor::ShapeComplexEllipsoid);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder				== (u32)CShapeDescriptor::ShapeCylinder);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule				== (u32)CShapeDescriptor::ShapeCapsule);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone					== (u32)CShapeDescriptor::ShapeCone);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh					== (u32)CShapeDescriptor::ShapeMesh);
-	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection			== (u32)CShapeDescriptor::ShapeCollection);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box			== (u32)CShapeDescriptor::ShapeBox);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere		== (u32)CShapeDescriptor::ShapeSphere);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Ellipsoid	== (u32)CShapeDescriptor::ShapeEllipsoid);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder		== (u32)CShapeDescriptor::ShapeCylinder);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule		== (u32)CShapeDescriptor::ShapeCapsule);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone			== (u32)CShapeDescriptor::ShapeCone);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh			== (u32)CShapeDescriptor::ShapeMesh);
+	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeCollection);
 	return static_cast<CShapeDescriptor::EShapeType>(ueShapeType);
 }
 
@@ -71,8 +71,8 @@ namespace
 			return "CShapeDescriptor_Box";
 		case PopcornFX::CShapeDescriptor::ShapeSphere:
 			return "CShapeDescriptor_Sphere";
-		case PopcornFX::CShapeDescriptor::ShapeComplexEllipsoid:
-			return "CShapeDescriptor_ComplexEllipsoid";
+		case PopcornFX::CShapeDescriptor::ShapeEllipsoid:
+			return "CShapeDescriptor_Ellipsoid";
 		case PopcornFX::CShapeDescriptor::ShapeCylinder:
 			return "CShapeDescriptor_Cylinder";
 		case PopcornFX::CShapeDescriptor::ShapeCapsule:
@@ -98,23 +98,27 @@ namespace
 //----------------------------------------------------------------------------
 
 // static
-EPopcornFXAttributeSamplerType::Type	ResolveAttribSamplerType(const PopcornFX::CParticleNodeSamplerData *sampler)
+EPopcornFXAttributeSamplerType::Type	ResolveAttribSamplerType(const PopcornFX::CParticleAttributeSamplerDeclaration *attrSampler)
 {
-	if (PK_VERIFY(sampler != null))
+	if (PK_VERIFY(attrSampler != null))
 	{
-		if (PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Shape>(sampler) != null)
-			return EPopcornFXAttributeSamplerType::Shape;
-		if (PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Curve>(sampler) != null ||
-			PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_DoubleCurve>(sampler) != null)
-			return EPopcornFXAttributeSamplerType::Curve;
-		if (PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Texture>(sampler) != null)
-			return EPopcornFXAttributeSamplerType::Image;
-		if (PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_AnimTrack>(sampler) != null)
+		switch (attrSampler->ExportedType())
+		{
+		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Animtrack:
 			return EPopcornFXAttributeSamplerType::AnimTrack;
-		if (PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Text>(sampler) != null)
+		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Curve:
+			return EPopcornFXAttributeSamplerType::Curve;
+		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Geometry:
+			return EPopcornFXAttributeSamplerType::Shape;
+		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Image:
+			return EPopcornFXAttributeSamplerType::Image;
+		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Text:
 			return EPopcornFXAttributeSamplerType::Text;
-		if (PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Turbulence>(sampler) != null)
+		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_VectorField:
 			return EPopcornFXAttributeSamplerType::Turbulence;
+		default:
+			break;
+		}
 	}
 	PK_ASSERT_NOT_REACHED();
 	return EPopcornFXAttributeSamplerType::None;
@@ -172,7 +176,7 @@ void	ResetAttributeSampler(FPopcornFXSamplerDesc &attribSampler, const PopcornFX
 	if (decl != null)
 	{
 		attribSampler.m_SamplerFName = *FString(ANSI_TO_TCHAR(decl->ExportedName().Data()));
-		attribSampler.m_SamplerType = ResolveAttribSamplerType(decl->DefaultValue());
+		attribSampler.m_SamplerType = ResolveAttribSamplerType(decl);
 
 		attribSampler.m_AttributeCategoryName = *FString((const UTF16CHAR*)decl->CategoryName().MapDefault().Data());
 		if (!attribSampler.m_AttributeCategoryName.IsValid() || attribSampler.m_AttributeCategoryName.IsNone())
@@ -230,11 +234,7 @@ UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveAttributeSampler(UPop
 	UPopcornFXAttributeSampler		*attrib = null;
 	if (validCompProperty)
 	{
-#if (ENGINE_MINOR_VERSION >= 25)
 		FObjectPropertyBase		*prop = FindFProperty<FObjectPropertyBase>(parentActor->GetClass(), m_AttributeSamplerComponentProperty);
-#else
-		UObjectPropertyBase		*prop = FindField<UObjectPropertyBase>(parentActor->GetClass(), m_AttributeSamplerComponentProperty);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 		if (prop != null)
 			attrib = Cast<UPopcornFXAttributeSampler>(prop->GetObjectPropertyValue_InContainer(parentActor));
 	}
@@ -503,9 +503,7 @@ const void	*UPopcornFXAttributeList::GetParticleSampler(UPopcornFXEffect *effect
 		return null;
 	PK_ASSERT(attrList->UniqueSamplerList().Count() == m_Samplers.Num());
 	const PopcornFX::CParticleAttributeSamplerDeclaration	*decl = attrList->UniqueSamplerList()[samplerId];
-	if (decl == null)
-		return null;
-	return decl->DefaultValue();
+	return decl;
 }
 #endif // WITH_EDITOR
 
@@ -1411,7 +1409,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 	for (int32 sampleri = 0; sampleri < m_Samplers.Num(); ++sampleri)
 	{
 		PK_ASSERT(attrListPtr->SamplerList()[sampleri] != null);
-		const PopcornFX::PParticleNodeSamplerData	defaultSampler = attrListPtr->SamplerList()[sampleri]->DefaultValue();
+		const PopcornFX::PResourceDescriptor	defaultSampler = attrListPtr->SamplerList()[sampleri]->AttribSamplerDefaultValue();
 		if (!PK_VERIFY(defaultSampler != null))
 			continue;
 
@@ -1424,7 +1422,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 			continue;
 		}
 
-		PK_ASSERT(desc.SamplerType() == ResolveAttribSamplerType(defaultSampler.Get()));
+		PK_ASSERT(desc.SamplerType() == ResolveAttribSamplerType(attrListPtr->SamplerList()[sampleri].Get()));
 		UPopcornFXAttributeSampler	*attribSampler = desc.ResolveAttributeSampler(emitter, emitter);
 		if (attribSampler == null ||
 			!PK_VERIFY(desc.SamplerType() == attribSampler->SamplerType()))

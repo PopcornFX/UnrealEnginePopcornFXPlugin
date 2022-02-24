@@ -343,11 +343,7 @@ public:
 
 #if WITH_EDITOR
 	// overrides UObject
-#if (ENGINE_MINOR_VERSION >= 25)
 	virtual void		PreEditChange(FProperty *propertyThatWillChange) override;
-#else
-	virtual void		PreEditChange(UProperty *propertyThatWillChange) override;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	virtual void		PostEditChangeChainProperty(struct FPropertyChangedChainEvent & PropertyChangedEvent) override;
 	virtual void		PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void		PostEditUndo();

@@ -35,11 +35,11 @@ namespace
 	{
 		if (staticMesh == null)
 			return null;
-#if (ENGINE_MINOR_VERSION >= 27)
+#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return staticMesh->GetRenderData();
 #else
 		return staticMesh->RenderData.Get();
-#endif // (ENGINE_MINOR_VERSION >= 27)
+#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 }
 
@@ -147,7 +147,7 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 	m_Flags.m_HasAtlasBlending = m_GameThreadDesc.m_HasAtlasBlending;
 	m_Flags.m_NeedSort = m_GameThreadDesc.m_NeedSort;
 	m_Flags.m_HasNormal = m_GameThreadDesc.m_IsLit;
-	m_Flags.m_HasTangent = m_GameThreadDesc.m_IsLit;
+	m_Flags.m_HasTangent = m_GameThreadDesc.m_IsLit; // TODO: we could skip this when flat normal map is provided
 	m_Flags.m_Slicable = false;
 
 	if (renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Billboard ||
@@ -495,12 +495,8 @@ bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &g
 				dstSegment.NumPrimitives = srcSegment.NumPrimitives;
 				dstSegment.bAllowDuplicateAnyHitShaderInvocation = srcSegment.bAllowDuplicateAnyHitShaderInvocation;
 
-#if (ENGINE_MINOR_VERSION >= 25)
 				dstSegment.bForceOpaque = srcSegment.bForceOpaque;
 				dstSegment.bEnabled = srcSegment.bEnabled;
-#else
-				dstSegment.bAllowAnyHitShader = srcSegment.bAllowAnyHitShader; // Doesn't work on UE4.24 anyways..
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 				m_RayTracingGeometries[iSection].SetInitializer(initializer);
 				m_RayTracingGeometries[iSection].InitResource();

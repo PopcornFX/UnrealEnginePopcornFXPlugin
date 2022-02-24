@@ -7,9 +7,7 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 #include "MovieSceneNameableTrack.h"
-#if (ENGINE_MINOR_VERSION >= 26)
 #include "Compilation/IMovieSceneTrackTemplateProducer.h"
-#endif // (ENGINE_MINOR_VERSION >= 26)
 #include "PopcornFXSDK.h"
 #include "PopcornFXPlayTrack.generated.h"
 

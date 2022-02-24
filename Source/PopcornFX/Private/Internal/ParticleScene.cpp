@@ -40,9 +40,11 @@
 #if PK_WITH_CHAOS
 #	include "SQAccelerator.h"
 
+#	if (ENGINE_MAJOR_VERSION == 4)
 #	include "Experimental/ChaosInterfaceWrapper.h"
-
 #	include "SQVerifier.h"
+#	endif // (ENGINE_MAJOR_VERSION == 4)
+
 #	include "PhysTestSerializer.h"
 
 #	include "PBDRigidsSolver.h"
@@ -226,7 +228,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 
 #if (PK_HAS_GPU != 0)
 	const FString				hardwareDetails = FHardwareInfo::GetHardwareDetailsString();
-	SRenderContext::ERHIAPI		API = SRenderContext::_Unsupported;
+	SUERenderContext::ERHIAPI		API = SUERenderContext::_Unsupported;
 
 #define	PK_NEW_UPDATER_IFN(__name) \
 	m_Enable ## __name = FModuleManager::Get().IsModuleLoaded(PK_STRINGIFY(__name) "RHI") && hardwareDetails.Contains(PK_STRINGIFY(__name)); \
@@ -234,7 +236,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	{ \
 		PK_ASSERT(updateManager == null); \
 		updateManager = PopcornFX::CParticleUpdateManager_Auto::New(PopcornFX::EGPUContext::Context ## __name); \
-		API = SRenderContext:: ## __name; \
+		API = SUERenderContext:: ## __name; \
 	} \
 
 #	if (PK_GPU_D3D11 == 1)
@@ -1430,57 +1432,7 @@ void	CParticleScene::RayTracePacket(
 		filterData.word3 |= EPDF_ComplexCollision;
 
 #	define PxSceneQueryFilterFlag		PxQueryFlag
-	PxSceneQueryFilterData		queryFilterData(filterData, PxSceneQueryFilterFlag::eSTATIC | PxSceneQueryFilterFlag::eDYNAMIC | PxSceneQueryFilterFlag::ePREFILTER);
-
-/****
-
-Bench Pk_PhysicsBench.pkfx
-50,000 particles
-speed 5 m/s
-
-// single raycast, 1 worker threads no affinity prio normal
-[INFO][UE4]>                  RayTrace : 3186626    1661.219 cycles/call
-[INFO][UE4]>    RayTrace_PX_Scene_Lock : 3186626       2.744 cycles/call
-[INFO][UE4]>   RayTrace_PX_CreateBatch : 0             0.000 us/call
-[INFO][UE4]>    RayTrace_PX_BuildQuery : 3186626       5.872 cycles/call
-[INFO][UE4]>          RayTrace_PX_Exec : 3185783    1522.972 cycles/call
-[INFO][UE4]>      RayTrace_Results_Hit : 42310       323.567 cycles/call
-[INFO][UE4]> RayTrace_Results_Hit_Comp : 42310       222.571 cycles/call
-[INFO][UE4]>  RayTrace_Results_Hit_Mat : 0             0.000 us/call
-
-// batch query, 1 worker threads no affinity prio normal
-[INFO][UE4]>                  RayTrace : 3188779    2256.339 cycles/call
-[INFO][UE4]>    RayTrace_PX_Scene_Lock : 3188779       3.656 cycles/call
-[INFO][UE4]>   RayTrace_PX_CreateBatch : 3188779      37.641 cycles/call
-[INFO][UE4]>    RayTrace_PX_BuildQuery : 3188779     403.921 cycles/call
-[INFO][UE4]>          RayTrace_PX_Exec : 3188779    1726.117 cycles/call
-[INFO][UE4]>      RayTrace_Results_Hit : 55939       380.799 cycles/call
-[INFO][UE4]> RayTrace_Results_Hit_Comp : 55939       301.805 cycles/call
-[INFO][UE4]>  RayTrace_Results_Hit_Mat : 0             0.000 us/call
-
-
-// single raycast, default 6 worker threads no aff prio normal
-[INFO][UE4]>                  RayTrace : 3188526    5235.209 cycles/call
-[INFO][UE4]>    RayTrace_PX_Scene_Lock : 3188526       7.105 cycles/call
-[INFO][UE4]>   RayTrace_PX_CreateBatch : 0             0.000 us/call
-[INFO][UE4]>    RayTrace_PX_BuildQuery : 3188526      10.969 cycles/call
-[INFO][UE4]>          RayTrace_PX_Exec : 3188183    5022.164 cycles/call
-[INFO][UE4]>      RayTrace_Results_Hit : 24767      1170.227 cycles/call
-[INFO][UE4]> RayTrace_Results_Hit_Comp : 24767      1029.273 cycles/call
-[INFO][UE4]>  RayTrace_Results_Hit_Mat : 0             0.000 us/call
-
-// batch query, default 6 worker threads no aff prio normal
-[INFO][UE4]>                  RayTrace : 3188626    5218.253 cycles/call
-[INFO][UE4]>    RayTrace_PX_Scene_Lock : 3188626       8.677 cycles/call
-[INFO][UE4]>   RayTrace_PX_CreateBatch : 3188626     117.457 cycles/call
-[INFO][UE4]>    RayTrace_PX_BuildQuery : 3188626     565.234 cycles/call
-[INFO][UE4]>          RayTrace_PX_Exec : 3188626    4302.141 cycles/call
-[INFO][UE4]>      RayTrace_Results_Hit : 24651      1208.287 cycles/call
-[INFO][UE4]> RayTrace_Results_Hit_Comp : 24651      1068.593 cycles/call
-[INFO][UE4]>  RayTrace_Results_Hit_Mat : 0             0.000 us/call
-
-****/
-
+	PxSceneQueryFilterData				queryFilterData(filterData, PxSceneQueryFilterFlag::eSTATIC | PxSceneQueryFilterFlag::eDYNAMIC | PxSceneQueryFilterFlag::ePREFILTER);
 	FPopcornFXPxQueryFilterCallback		queryCallback; // PreFilter
 
 	u32			hitResultBufferCurrentIndex = 0;
@@ -2093,13 +2045,11 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		PK_SCOPEDLOCK(m_UpdateLock);
 		PK_SCOPEDLOCK(m_D3D11_Tasks_Lock);
 
-#if (ENGINE_MINOR_VERSION >= 26)
 		// Fake a UAV transition so UE4 is happy, and disables UAV overlap (undefined behavior, generates random artefacts in the D3D11 GPU sim)
 		// This is ugly, but they removed the implementations of FD3D11DynamicRHI::RHIBeginUAVOverlap/RHIEndUAVOverlap in 4.26.
 		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 		RHICmdList.Transition(FRHITransitionInfo((FRHIUnorderedAccessView*)0x1234, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 		RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
-#endif // (ENGINE_MINOR_VERSION >= 26)
 
 		for (u32 i = 0; i < m_Exec_D3D11_Tasks.Count(); ++i)
 		{
@@ -2615,6 +2565,7 @@ void	CParticleScene::BroadcastEvent(
 	u32												eventID,
 	PopcornFX::CStringId							eventName,
 	u32												count,
+	const PopcornFX::SUpdateTimeArgs				&timeArgs,
 	const TMemoryView<const float>					&spawnDtToEnd,
 	const TMemoryView<const PopcornFX::CEffectID>	&effectIDs,
 	const PopcornFX::SPayloadView					&payloadView)

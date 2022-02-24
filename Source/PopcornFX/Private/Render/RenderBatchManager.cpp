@@ -12,6 +12,25 @@
 #include "Materials/MaterialInterface.h"
 #include "Render/RendererSubView.h" // Might change
 
+#include "Render/PopcornFXGPUVertexFactory.h"
+#include "Internal/ParticleScene.h"
+
+// Batch drawers
+#include "Render/BatchDrawer_Billboard_CPU.h"
+#include "Render/BatchDrawer_Billboard_GPU.h"
+#include "Render/BatchDrawer_Ribbon_CPU.h"
+#include "Render/BatchDrawer_Triangle_CPU.h"
+#include "Render/BatchDrawer_Mesh_CPU.h"
+#include "Render/BatchDrawer_Light.h"
+#include "Render/BatchDrawer_Sound.h"
+
+#include "Render/MaterialDesc.h"
+#include "Assets/PopcornFXRendererMaterial.h"
+#include "PopcornFXStats.h"
+
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceConstant.h"
+
 #if POPCORNFX_RENDER_DEBUG
 #	include "PopcornFXSceneComponent.h"
 #	include "World/PopcornFXSceneProxy.h"
@@ -20,11 +39,12 @@
 #endif // POPCORNFX_RENDER_DEBUG
 
 DEFINE_LOG_CATEGORY_STATIC(LogRenderBatchManager, Log, All);
+
 //----------------------------------------------------------------------------
 
-bool	CFrameCollector::LateCull(const PopcornFX::CAABB &bbox) const
+bool	CUEFrameCollector::LateCull(const PopcornFX::CAABB &bbox) const
 {
-	PK_NAMEDSCOPEDPROFILE("CFrameCollector::Cull Page (RenderThread)");
+	PK_NAMEDSCOPEDPROFILE("CUEFrameCollector::Cull Page (RenderThread)");
 
 	if (m_Views == null ||
 		!bbox.IsFinite() ||
@@ -80,16 +100,16 @@ bool	CFrameCollector::LateCull(const PopcornFX::CAABB &bbox) const
 
 //----------------------------------------------------------------------------
 
-void	CFrameCollector::ReleaseRenderedFrameIFP()
+void	CUEFrameCollector::ReleaseRenderedFrameIFP()
 {
-	PK_NAMEDSCOPEDPROFILE_C("CFrameCollector::ReleaseRenderedFrameIFP", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("CUEFrameCollector::ReleaseRenderedFrameIFP", POPCORNFX_UE_PROFILER_COLOR);
 	// Optim:
 	// Try and Release the RenderThread's collected frame
 	// only if we think the RenderThread wont use it anymore
 
-	PopcornFX::SParticleCollectedFrameToRender	*toRelease = null;
+	PopcornFX::SParticleCollectedFrameToRender2	*toRelease = null;
 	{
-		PK_NAMEDSCOPEDPROFILE_C("CFrameCollector::ReleaseRenderedFrameIFP - Try capture frame", POPCORNFX_UE_PROFILER_COLOR);
+		PK_NAMEDSCOPEDPROFILE_C("CUEFrameCollector::ReleaseRenderedFrameIFP - Try capture frame", POPCORNFX_UE_PROFILER_COLOR);
 		if (m_CollectedLock.TryLock())
 		{
 			const u32	expectedDrawCalledCount = PopcornFX::PKMax(1U, m_LastFrameDrawCalledCount);
@@ -118,6 +138,26 @@ void	CFrameCollector::ReleaseRenderedFrameIFP()
 	// Updating this stat at pre-update
 	// Because this is where if there is more than one, they will most probably be copied
 	// INC_DWORD_STAT_BY(STAT_PopcornFX_ActiveCollectedFrame, m_FramePool->m_StatActiveCollectedFrame);
+}
+
+//----------------------------------------------------------------------------
+
+void	CUEFrameCollector::Walk(const PopcornFX::CParticleMedium *medium, const PopcornFX::CRendererDataBase *renderer)
+{
+	PK_NAMEDSCOPEDPROFILE_C("CUEFrameCollector::Walk", POPCORNFX_UE_PROFILER_COLOR);
+
+	// Tmp: Was CRenderDataFactory::UpdateThread_CollectedForRendering()
+	// To rethink with the new caches system
+
+	PK_ASSERT(m_RenderBatchManager != null);
+
+	CRendererCache	*rCache = static_cast<CRendererCache*>(renderer->m_RendererCache.Get());
+	if (!PK_VERIFY(rCache != null))
+		return;
+	if (!rCache->GameThread_Desc().HasMaterial()) // audio, light
+		return;
+
+	m_RenderBatchManager->CollectedForRendering(medium, renderer, rCache);
 }
 
 //----------------------------------------------------------------------------
@@ -153,8 +193,6 @@ CRenderBatchManager::CRenderBatchManager()
 #ifdef	POPCORNFX_ENABLE_POOL_STATS
 	m_VertexBufferPoolStats = new PopcornFX::SBufferPool_Stats();
 #endif // POPCORNFX_ENABLE_POOL_STATS
-
-	m_RenderBatchFactory.m_RenderBatchManager = this;
 }
 
 //----------------------------------------------------------------------------
@@ -196,20 +234,16 @@ void	CRenderBatchManager::Clean()
 	ENQUEUE_RENDER_COMMAND(DestroyBatchesCommand)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			m_FrameCollector_Render.DestroyBillboardingBatches();
+			m_FrameCollector_UE_Render.Destroy();
 		});
 
 	FlushRenderingCommands(); // so we can safely release frames
 
 	if (m_ParticleMediumCollection != null)
 	{
-		m_FrameCollector_Render.UpdateThread_UninstallFromMediumCollection(m_ParticleMediumCollection);
-		m_FrameCollector_Update.UpdateThread_UninstallFromMediumCollection(m_ParticleMediumCollection);
-
-		m_FrameCollector_Render.UpdateThread_Destroy();
-
-		m_FrameCollector_Update.DestroyBillboardingBatches();
-		m_FrameCollector_Update.UpdateThread_Destroy();
+		m_FrameCollector_UE_Render.UninstallFromMediumCollection(m_ParticleMediumCollection);
+		m_FrameCollector_UE_Update.UninstallFromMediumCollection(m_ParticleMediumCollection);
+		m_FrameCollector_UE_Update.Destroy();
 	}
 
 	m_ParticleScene = null;
@@ -226,7 +260,152 @@ void	CRenderBatchManager::Clear()
 
 //----------------------------------------------------------------------------
 
-void	CRenderBatchManager::Setup(const CParticleScene *scene, PopcornFX::CParticleMediumCollection *collection
+PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornFX::ERendererClass rendererType, const PopcornFX::PRendererCacheBase &rendererCache, bool gpuStorage)
+{
+	INC_DWORD_STAT_BY(STAT_PopcornFX_BatchesCount, 1);
+
+	PK_ASSERT(m_ParticleScene != null);
+	PK_ASSERT(m_ParticleScene->SceneComponent() != null);
+	const UPopcornFXSceneComponent	*sceneComponent = m_ParticleScene->SceneComponent();
+	const FPopcornFXRenderSettings	&renderSettings = sceneComponent->ResolvedRenderSettings();
+
+	EPopcornFXBillboardingLocation::Type	bbLocation = renderSettings.BillboardingLocation;
+	const EShaderPlatform					platform = GetFeatureLevelShaderPlatform(GetFeatureLevel());
+
+	bool			hasVolumeMaterial = false;
+	bool			hasValidMaterial = true;
+	CRendererCache	*matCache = static_cast<CRendererCache*>(rendererCache.Get());
+	if (PK_VERIFY(matCache != null))
+	{
+		CMaterialDesc_GameThread	&matDesc = matCache->GameThread_Desc();
+		if (matDesc.HasMaterial() && PK_VERIFY(matDesc.MaterialIsValid()))
+		{
+			const FPopcornFXSubRendererMaterial	*rendererSubMat = matDesc.m_RendererMaterial->GetSubMaterial(0);
+			if (!PK_VERIFY(rendererSubMat != null) ||
+				!PK_VERIFY(rendererSubMat->Material != null))
+				return null;
+
+			UMaterial	*material = rendererSubMat->Material->GetMaterial();
+			if (!PK_VERIFY(material != null))
+			{
+				// Avoid creating a render batch for no reason
+				UE_LOG(LogRenderBatchManager, Warning, TEXT("Couldn't create compatible render policy for material: invalid material."));
+				return null;
+			}
+			hasVolumeMaterial = rendererSubMat->MaterialType == EPopcornFXMaterialType::Billboard_SixWayLightmap ||
+				material->MaterialDomain == MD_Volume;
+
+			switch (rendererType)
+			{
+			case	PopcornFX::Renderer_Billboard:
+				hasValidMaterial = hasVolumeMaterial || material->MaterialDomain == MD_Surface;
+				break;
+			case	PopcornFX::Renderer_Ribbon:
+			case	PopcornFX::Renderer_Mesh:
+			case	PopcornFX::Renderer_Triangle:
+				hasValidMaterial = material->MaterialDomain == MD_Surface;
+				break;
+			default:
+				PK_ASSERT_NOT_REACHED();
+				break;
+			}
+		}
+	}
+
+	const bool		vertexBBSupported = FPopcornFXGPUVertexFactory::PlatformIsSupported(platform);
+
+	if (!hasValidMaterial)
+	{
+		UE_LOG(LogRenderBatchManager, Warning, TEXT("Couldn't create compatible render policy for material: invalid material domain."));
+		return null;
+	}
+	if (hasVolumeMaterial && !vertexBBSupported)
+	{
+		UE_LOG(LogRenderBatchManager, Warning, TEXT("Couldn't create compatible render policy for volume texture: can't fallback on vertex shader billboarding policy."));
+		return null;
+	}
+	if (hasVolumeMaterial)
+		bbLocation = EPopcornFXBillboardingLocation::GPU; // Force billboarding location
+
+	if (!PK_VERIFY(vertexBBSupported) ||
+		!PK_VERIFY(	rendererType == PopcornFX::Renderer_Billboard ||
+					rendererType == PopcornFX::Renderer_Ribbon ||
+					rendererType == PopcornFX::Renderer_Triangle ||
+					rendererType == PopcornFX::Renderer_Light ||
+					rendererType == PopcornFX::Renderer_Mesh ||
+					rendererType == PopcornFX::Renderer_Sound))
+		return null;
+
+	if (!gpuStorage)
+	{
+		if (bbLocation == EPopcornFXBillboardingLocation::CPU ||
+			rendererType != PopcornFX::Renderer_Billboard ||
+			!vertexBBSupported)
+		{
+			switch (rendererType)
+			{
+			case	PopcornFX::Renderer_Billboard:
+				return PK_NEW(CBatchDrawer_Billboard_CPUBB);
+			case	PopcornFX::Renderer_Ribbon:
+				return PK_NEW(CBatchDrawer_Ribbon_CPUBB);
+			case	PopcornFX::Renderer_Triangle:
+				return PK_NEW(CBatchDrawer_Triangle_CPUBB);
+			case	PopcornFX::Renderer_Mesh:
+				return PK_NEW(CBatchDrawer_Mesh_CPUBB);
+			case	PopcornFX::Renderer_Light:
+				return PK_NEW(CBatchDrawer_Light);
+			case	PopcornFX::Renderer_Sound:
+				return PK_NEW(CBatchDrawer_Sound);
+			default:
+				PK_ASSERT_NOT_REACHED();
+				break;
+			}
+		}
+	}
+	// GPU or CPU sim particles, batch drawers below can handle both
+	PK_ASSERT(GSupportsResourceView);
+	switch (rendererType)
+	{
+	case	PopcornFX::Renderer_Billboard:
+		return PK_NEW(CBatchDrawer_Billboard_GPUBB);
+	default:
+		PK_ASSERT_NOT_REACHED();
+		break;
+	}
+	return null;
+}
+
+//----------------------------------------------------------------------------
+
+PopcornFX::PRendererCacheBase	CRenderBatchManager::CreateRendererCache(const PopcornFX::PRendererDataBase &renderer, const PopcornFX::CParticleDescriptor *particleDesc)
+{
+	PK_NAMEDSCOPEDPROFILE("CRenderBatchManager::UpdateThread_CreateRendererCache");
+
+	// We create the renderer cache:
+	PRendererCache	rCache = PK_NEW(CRendererCache);
+	if (!PK_VERIFY(rCache != null))
+		return null;
+
+	if (!rCache->GameThread_ResolveRenderer(renderer, particleDesc))
+		return null;
+	if (!rCache->GameThread_Setup())
+	{
+		UE_LOG(LogRenderBatchManager, Warning, TEXT("Couldn't setup renderer cache for rendering")); // TODO Log name
+		return null;
+	}
+	//if (rCache->GameThread_Desc().HasMaterial()) // we need to setup the material for light renderers
+	{
+		PK_SCOPEDLOCK(m_PendingCachesLock);
+
+		if (!PK_VERIFY(m_PendingCaches.PushBack(rCache).Valid()))
+			return null;
+	}
+	return rCache;
+}
+
+//----------------------------------------------------------------------------
+
+bool	CRenderBatchManager::Setup(const CParticleScene *scene, PopcornFX::CParticleMediumCollection *collection
 #if (PK_HAS_GPU != 0)
 , uint32 API
 #endif // (PK_HAS_GPU != 0)
@@ -235,29 +414,48 @@ void	CRenderBatchManager::Setup(const CParticleScene *scene, PopcornFX::CParticl
 	PK_ASSERT(collection != null);
 	PK_ASSERT(m_ParticleMediumCollection == null);
 
-	const u32	enabledRenderers = (1U << PopcornFX::ERendererClass::Renderer_Billboard) |
-								   (1U << PopcornFX::ERendererClass::Renderer_Ribbon) |
-								   (1U << PopcornFX::ERendererClass::Renderer_Mesh) |
-								   (1U << PopcornFX::ERendererClass::Renderer_Triangle) |
-								   (1U << PopcornFX::ERendererClass::Renderer_Light);
-	CFrameCollector::SFrameCollectorInit	init_RenderThread(&m_RenderBatchFactory, enabledRenderers, false /*releaseOnCull*/, false /*StatelessCollecting*/);
-	m_FrameCollector_Render.UpdateThread_Initialize(init_RenderThread);
-	m_FrameCollector_Render.UpdateThread_InstallToMediumCollection(collection);
-
-	CFrameCollector::SFrameCollectorInit	init_GameThread(&m_RenderBatchFactory, (1U << PopcornFX::ERendererClass::Renderer_Sound), true /*releaseOnCull*/, false /*StatelessCollecting*/);
-	m_FrameCollector_Update.UpdateThread_Initialize(init_GameThread);
-	m_FrameCollector_Update.UpdateThread_InstallToMediumCollection(collection);
+	const u32	enabledRenderers =	(1U << PopcornFX::ERendererClass::Renderer_Billboard) |
+									(1U << PopcornFX::ERendererClass::Renderer_Ribbon) |
+									(1U << PopcornFX::ERendererClass::Renderer_Mesh) |
+									(1U << PopcornFX::ERendererClass::Renderer_Triangle) |
+									(1U << PopcornFX::ERendererClass::Renderer_Light);
+	CUEFrameCollector::SFrameCollectorInit	init_RenderThread_UE(	enabledRenderers,
+																	PopcornFX::CbNewBatchDrawer(this, &CRenderBatchManager::CreateBatchDrawer),
+																	PopcornFX::CbNewRendererCache(this, &CRenderBatchManager::CreateRendererCache),
+																	4 /* maxCollectedFrames */,
+																	false /* releaseOnCull */);
+	if (!m_FrameCollector_UE_Render.Initialize(init_RenderThread_UE))
+		return false;
+	m_FrameCollector_UE_Render.InstallToMediumCollection(collection);
+	
+	CUEFrameCollector::SFrameCollectorInit	init_GameThread_UE(	(1U << PopcornFX::ERendererClass::Renderer_Sound),
+																PopcornFX::CbNewBatchDrawer(this, &CRenderBatchManager::CreateBatchDrawer),
+																PopcornFX::CbNewRendererCache(this, &CRenderBatchManager::CreateRendererCache),
+																4 /* maxCollectedFrames */,
+																false /* releaseOnCull */);
+	if (!m_FrameCollector_UE_Update.Initialize(init_GameThread_UE))
+		return false;
+	m_FrameCollector_UE_Update.InstallToMediumCollection(collection);
 
 	m_RenderThreadRenderContext.m_RenderBatchManager = this;
 	m_UpdateThreadRenderContext.m_RenderBatchManager = this;
+	m_UE_RenderThreadRenderContext.m_RenderBatchManager = this;
+	m_UE_RenderThreadRenderContext.m_CollectedDrawCalls = &m_CollectedDrawCalls;
+	m_UE_UpdateThreadRenderContext.m_RenderBatchManager = this;
+	m_UE_UpdateThreadRenderContext.m_CollectedDrawCalls = &m_CollectedDrawCalls;
+	m_FrameCollector_UE_Render.m_RenderBatchManager = this;
+	m_FrameCollector_UE_Update.m_RenderBatchManager = this;
 
 #if (PK_HAS_GPU != 0)
-	m_RenderThreadRenderContext.m_API = static_cast<SRenderContext::ERHIAPI>(API);
-	m_UpdateThreadRenderContext.m_API = static_cast<SRenderContext::ERHIAPI>(API);
+	m_RenderThreadRenderContext.m_API = static_cast<SUERenderContext::ERHIAPI>(API);
+	m_UpdateThreadRenderContext.m_API = static_cast<SUERenderContext::ERHIAPI>(API);
+	m_UE_RenderThreadRenderContext.m_API = static_cast<SUERenderContext::ERHIAPI>(API);
+	m_UE_UpdateThreadRenderContext.m_API = static_cast<SUERenderContext::ERHIAPI>(API);
 #endif // (PK_HAS_GPU != 0)
 
 	m_ParticleScene = scene;
 	m_ParticleMediumCollection = collection;
+	return true;
 }
 
 //----------------------------------------------------------------------------
@@ -325,6 +523,28 @@ void	CRenderBatchManager::AddCollectedUsedMaterial(UMaterialInterface *materialI
 
 //----------------------------------------------------------------------------
 
+void	CRenderBatchManager::CollectedForRendering(const PopcornFX::CParticleMedium* medium, const PopcornFX::CRendererDataBase* renderer, CRendererCache* rendererCache)
+{
+#if WITH_EDITOR
+	{
+		PK_SCOPEDLOCK(m_PendingCachesLock);
+
+		// Stateless renderer caches, too much editor only actions
+		// Auto/manual reimport, resource remove, ..
+		// We need to catch that here
+		if (!rendererCache->GameThread_Desc().GameThread_Setup())
+			return;
+		if (!PK_VERIFY(m_PendingCaches.PushBack(rendererCache).Valid()))
+			return;
+	}
+#endif
+
+	PK_ASSERT(rendererCache->GameThread_Desc().MaterialIsValid());
+	AddCollectedUsedMaterial(rendererCache->GameThread_Desc().m_RendererMaterial->GetInstance(0, false));
+}
+
+//----------------------------------------------------------------------------
+
 void	CRenderBatchManager::GameThread_PreUpdate(const FPopcornFXRenderSettings &renderSettings)
 {
 	PK_NAMEDSCOPEDPROFILE_C("CRenderBatchManager::GameThread_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
@@ -333,7 +553,9 @@ void	CRenderBatchManager::GameThread_PreUpdate(const FPopcornFXRenderSettings &r
 	m_CollectedUsedMaterialCount = 0;
 
 	if (renderSettings.bEnableEarlyFrameRelease)
-		m_FrameCollector_Render.ReleaseRenderedFrameIFP();
+	{
+		m_FrameCollector_UE_Render.ReleaseRenderedFrameIFP();
+	}
 
 #if WITH_EDITOR
 	m_StatelessCollect = !renderSettings.bDisableStatelessCollecting;
@@ -366,7 +588,7 @@ void	CRenderBatchManager::GameThread_PreUpdate(const FPopcornFXRenderSettings &r
 		break;
 	}
 
-	m_FrameCollector_Update.SetDrawCallsSortMethod(m_DCSortMethod);
+	m_FrameCollector_UE_Update.SetDrawCallsSortMethod(m_DCSortMethod);
 #endif // WITH_EDITOR
 }
 
@@ -380,10 +602,9 @@ void	CRenderBatchManager::GameThread_EndUpdate(PopcornFX::CRendererSubView &upda
 		// Billboards/Ribbons/Meshes/Lights
 		// Lights could be gathered in the update thread pass
 		PK_NAMEDSCOPEDPROFILE_C("CRenderBatchManager::GameThread_EndUpdate - Collect render thread frame", POPCORNFX_UE_PROFILER_COLOR);
-		if (m_FrameCollector_Render.UpdateThread_BeginCollectFrame())
-		{
-			m_FrameCollector_Render.UpdateThread_CollectFrame(m_ParticleMediumCollection);
 
+		if (m_FrameCollector_UE_Render.CollectFrame())
+		{
 			// Note: used for VerifyUsedMaterials, so this cannot be done in SendRenderDynamicData because too late.
 			if (m_LastCollectedUsedMaterials.Num() != m_CollectedUsedMaterialCount)
 			{
@@ -395,31 +616,28 @@ void	CRenderBatchManager::GameThread_EndUpdate(PopcornFX::CRendererSubView &upda
 	{
 		// Sounds
 		PK_NAMEDSCOPEDPROFILE_C("CRenderBatchManager::GameThread_EndUpdate - Collect update thread frame", POPCORNFX_UE_PROFILER_COLOR);
-		if (m_FrameCollector_Update.UpdateThread_BeginCollectFrame())
-			m_FrameCollector_Update.UpdateThread_CollectFrame(m_ParticleMediumCollection);
+		m_FrameCollector_UE_Update.CollectFrame();
 	}
 
-	PopcornFX::SParticleCollectedFrameToRender	*newToRender = m_FrameCollector_Update.UpdateThread_GetLastCollectedFrame();
+	PopcornFX::SParticleCollectedFrameToRender2	*newToRender = m_FrameCollector_UE_Update.GetLastCollectedFrame();
 	if (newToRender != null)
 	{
 		PK_NAMEDSCOPEDPROFILE_C("CRenderBatchManager::GameThread_EndUpdate - Update thread DCs", POPCORNFX_UE_PROFILER_COLOR);
 
-		m_FrameCollector_Update.DestroyBillboardingBatches();
-		m_FrameCollector_Update.BuildNewFrame(newToRender);
+		m_FrameCollector_UE_Update.BuildNewFrame(newToRender);
 
-		m_UpdateThreadRenderContext.m_RendererSubView = &updateView;
-		m_UpdateThreadRenderContext.SetWorld(world);
+		m_UE_UpdateThreadRenderContext.m_RendererSubView = &updateView;
+		m_UE_UpdateThreadRenderContext.SetWorld(world);
 
 		m_CurrentFeatureLevel = world->FeatureLevel;
 
-		PopcornFX::TStaticArray<PopcornFX::TSceneView<CBBView>, 1>	sceneViews;
-
-		sceneViews[0].m_InvViewMatrix = CFloat4x4::IDENTITY;
-		TMemoryView<PopcornFX::TSceneView<CBBView> >	views(sceneViews.Data(), sceneViews.Count());
+		PopcornFX::SSceneView	dummyView;
+		m_UE_UpdateThreadRenderContext.m_Views = TStridedMemoryView<PopcornFX::SSceneView>(dummyView);
 
 		// TODO: Views (would be necessary for doppler), m_CollectedDrawCalls
-		if (m_FrameCollector_Update.BeginCollectingDrawCalls(m_UpdateThreadRenderContext, views))
-			m_FrameCollector_Update.EndCollectingDrawCalls(m_UpdateThreadRenderContext, m_CollectedDrawCalls, true);
+
+		if (m_FrameCollector_UE_Update.BeginRenderBuiltFrame(m_UE_UpdateThreadRenderContext))
+			m_FrameCollector_UE_Update.EndRenderBuiltFrame(m_UE_UpdateThreadRenderContext);
 	}
 }
 
@@ -429,7 +647,8 @@ void	CRenderBatchManager::ConcurrentThread_SendRenderDynamicData()
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleRenderManager::ConcurrentThread_SendRenderDynamicData", POPCORNFX_UE_PROFILER_COLOR);
 
-	PopcornFX::SParticleCollectedFrameToRender	*newToRender = m_FrameCollector_Render.UpdateThread_GetLastCollectedFrame();
+	PopcornFX::SParticleCollectedFrameToRender2	*newToRender2 = m_FrameCollector_UE_Render.GetLastCollectedFrame();
+	PopcornFX::SParticleCollectedFrameToRender	*newToRender = null;
 #if WITH_EDITOR
 	auto			collectedMaterials = m_LastCollectedUsedMaterials;
 #endif // WITH_EDITOR
@@ -446,11 +665,11 @@ void	CRenderBatchManager::ConcurrentThread_SendRenderDynamicData()
 	const bool											statelessCollect = m_StatelessCollect;
 
 	// /!\ ConcurrentThread_SendRenderDynamicData cannot be called while UpdateThread_Endupdate() gets called
-	if (newToRender != null)
+	if (newToRender != null || newToRender2 != null)
 	{
 		// Always set to true right now
 		ENQUEUE_RENDER_COMMAND(PopcornFXRenderBatchManager_SendRenderDynamicData)(
-			[this, newToRender, dcSortMethod, bbLocation, statelessCollect
+			[this, newToRender, newToRender2, dcSortMethod, bbLocation, statelessCollect
 #if WITH_EDITOR
 			, collectedMaterials
 #endif // WITH_EDITOR
@@ -462,8 +681,7 @@ void	CRenderBatchManager::ConcurrentThread_SendRenderDynamicData()
 		{
 			PK_NAMEDSCOPEDPROFILE_C("CParticleRenderManager::Pop Collected Frame", POPCORNFX_UE_PROFILER_COLOR);
 
-			m_FrameCollector_Render.SetDrawCallsSortMethod(dcSortMethod);
-			m_FrameCollector_Render.SetStatelessCollect(statelessCollect);
+			m_FrameCollector_UE_Render.SetDrawCallsSortMethod(dcSortMethod);
 
 			m_RenderThread_BillboardingLocation = bbLocation;
 
@@ -479,19 +697,18 @@ void	CRenderBatchManager::ConcurrentThread_SendRenderDynamicData()
 			PK_ASSERT(IsInRenderingThread());
 			m_CollectedDrawCalls.Clear();
 
+			if (newToRender2 != null)
 			{
-				// Don't do this, find proper way to clean batches
-				//m_FrameCollector_Render.DestroyBillboardingBatches();
-			}
-
-			PopcornFX::SParticleCollectedFrameToRender	*previousFrame = m_FrameCollector_Render.BuildNewFrame(newToRender, false);
-			if (previousFrame != null)
-			{
-				m_FrameCollector_Render.m_LastFrameDrawCalledCount = previousFrame->m_RenderedCount;
-				m_FrameCollector_Render.ReleaseFrame(previousFrame);
+				PopcornFX::SParticleCollectedFrameToRender2	*previousFrame2 = m_FrameCollector_UE_Render.BuildNewFrame(newToRender2, false);
+				if (previousFrame2 != null)
+				{
+					m_FrameCollector_UE_Render.m_LastFrameDrawCalledCount = previousFrame2->m_RenderedCount;
+					m_FrameCollector_UE_Render.ReleaseFrame(previousFrame2);
+				}
 			}
 		});
 	}
+
 }
 
 //----------------------------------------------------------------------------
@@ -553,46 +770,74 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 		return;
 
 	PopcornFX::TArray<PopcornFX::TSceneView<CBBView> >	sceneViews;
+	PopcornFX::TArray<PopcornFX::SSceneView>			sceneViews2;
 	const u32											viewCount = bbViews.Count();
 	for (u32 iView = 0; iView < viewCount; ++iView)
 	{
 		PopcornFX::CGuid	sceneViewId = sceneViews.PushBack();
-		if (!PK_VERIFY(sceneViewId != PopcornFX::CGuid::INVALID))
+		if (!PK_VERIFY(sceneViewId.Valid()))
+			return;
+		PopcornFX::CGuid	sceneViewId2 = sceneViews2.PushBack();
+		if (!PK_VERIFY(sceneViewId2.Valid()))
 			return;
 		PopcornFX::TSceneView<CBBView>	&sceneView = sceneViews[sceneViewId];
+		PopcornFX::SSceneView			&sceneView2 = sceneViews2[sceneViewId2];
 
 		//sceneView.m_UserData.
 		sceneView.m_InvViewMatrix = bbViews[iView].m_BillboardingMatrix;
+		sceneView2.m_InvViewMatrix = bbViews[iView].m_BillboardingMatrix;
 		sceneView.m_NeedsSortedIndices = view.RenderPass() != CRendererSubView::RenderPass_Shadow;
+		sceneView2.m_NeedsSortedIndices = view.RenderPass() != CRendererSubView::RenderPass_Shadow;
 	}
 
 	m_RenderThreadRenderContext.m_RendererSubView = &view;
+	m_UE_RenderThreadRenderContext.m_RendererSubView = &view;
 
 	TMemoryView<PopcornFX::TSceneView<CBBView> >	views(sceneViews.RawDataPointer(), sceneViews.Count());
 
+	m_UE_RenderThreadRenderContext.m_Views = sceneViews2;
+
 	// If any medium has been registered, build their renderer cache on the render thread
-	m_RenderBatchFactory.RenderThread_BuildPendingCaches();
+	{
+		// Tmp: Straight copy from render data factory.
+		PK_NAMEDSCOPEDPROFILE("CRenderBatchManager::RenderThread_BuildPendingCaches");
+		PK_SCOPEDLOCK(m_PendingCachesLock);
 
-	m_FrameCollector_Render.m_Views = &view;
-	m_FrameCollector_Render.m_DisableShadowCulling = false; // TODO
+		const u32	matCount = m_PendingCaches.Count();
+		for (u32 iMat = 0; iMat < matCount; ++iMat)
+		{
+			CRendererCache	*rCache = static_cast<CRendererCache*>(m_PendingCaches[iMat].Get());
 
+			if (!rCache->RenderThread_Setup())
+			{
+				UE_LOG(LogRenderBatchManager, Warning, TEXT("Couldn't build renderer cache")); // TODO Log name
+			}
+		}
+		m_PendingCaches.Clear();
+	}
+
+	m_FrameCollector_UE_Render.m_Views = &view;
+	m_FrameCollector_UE_Render.m_DisableShadowCulling = false; // TODO
+
+	// Special rendering method in UE, in editor only: we want to debug render particles so need to keep the rendering locked until this is done.
 
 #if POPCORNFX_RENDER_DEBUG
 	const u32	endCollectingDrawCallsMask = PopcornFX::kEndCollectingDrawCallsMask & ~PopcornFX::EGenerateDrawCallsMask::Mask_UnlockCollectedFrame; // We'll unlock after debug draw
 	const u32	postDebugDrawMask = PopcornFX::EGenerateDrawCallsMask::Mask_UnlockCollectedFrame;
 	bool		unlockFrame = false;
+	bool		unlockFrame2 = false;
 #else
 	const u32	endCollectingDrawCallsMask = PopcornFX::kEndCollectingDrawCallsMask;
 #endif
 
- 	if (m_FrameCollector_Render.BeginCollectingDrawCalls(m_RenderThreadRenderContext, views))
+	if (m_FrameCollector_UE_Render.Render(m_UE_RenderThreadRenderContext, false /* release frame */, PopcornFX::kBeginCollectingDrawCallsMask))
 	{
 #if POPCORNFX_RENDER_DEBUG
-		unlockFrame = true;
+		unlockFrame2 = true;
 #endif
-		m_FrameCollector_Render.GenerateDrawCalls(&m_RenderThreadRenderContext, null, &m_CollectedDrawCalls, false, endCollectingDrawCallsMask);
+		m_FrameCollector_UE_Render.Render(m_UE_RenderThreadRenderContext, false /* release frame */, endCollectingDrawCallsMask);
 	}
-	m_FrameCollector_Render.m_Views = null;
+	m_FrameCollector_UE_Render.m_Views = null;
 
 #if POPCORNFX_RENDER_DEBUG
 	if (view.RenderPass() == CRendererSubView::RenderPass_Main &&
@@ -618,8 +863,8 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 				DrawHeavyDebug(sceneProxy, view.Collector()->GetPDI(iView), view.SceneViews()[iView].m_SceneView, debugModeMask);
 		}
 	}
-	if (unlockFrame)
-		m_FrameCollector_Render.GenerateDrawCalls(&m_RenderThreadRenderContext, null, &m_CollectedDrawCalls, false, postDebugDrawMask);
+	if (unlockFrame2)
+		m_FrameCollector_UE_Render.Render(m_UE_RenderThreadRenderContext, false /* release frame */, postDebugDrawMask);
 #endif
 }
 
@@ -719,22 +964,24 @@ namespace
 
 void	CRenderBatchManager::DrawHeavyDebug(const FPopcornFXSceneProxy *sceneProxy, FPrimitiveDrawInterface *PDI, const FSceneView *view, uint32 debugModeMask)
 {
-	const PopcornFX::SParticleCollectedFrameToRender	*frame = m_FrameCollector_Render.RenderedFrame();
-	if (frame == null)
-		return;
+#if 0
+	const PopcornFX::SParticleCollectedFrameToRender2	*frame2 = m_FrameCollector_UE_Render.RenderedFrame();
+	if (frame2 != null)
+	{
+		uint32	globalIndex = 0;
+		for (uint32 dri = 0; dri < frame2->m_BillboardDrawRequests.Count(); ++dri)
+			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_BillboardDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+		for (uint32 dri = 0; dri < frame2->m_RibbonDrawRequests.Count(); ++dri)
+			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_RibbonDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+		for (uint32 dri = 0; dri < frame2->m_MeshDrawRequests.Count(); ++dri)
+			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_MeshDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+		for (uint32 dri = 0; dri < frame2->m_LightDrawRequests.Count(); ++dri)
+			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_LightDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
 
-	uint32	globalIndex = 0;
-	for (uint32 dri = 0; dri < frame->m_BillboardDrawRequests.Count(); ++dri)
-		_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame->m_BillboardDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
-	for (uint32 dri = 0; dri < frame->m_RibbonDrawRequests.Count(); ++dri)
-		_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame->m_RibbonDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
-	for (uint32 dri = 0; dri < frame->m_MeshDrawRequests.Count(); ++dri)
-		_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame->m_MeshDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
-	for (uint32 dri = 0; dri < frame->m_LightDrawRequests.Count(); ++dri)
-		_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame->m_LightDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
-
-	// global bounds
-	sceneProxy->RenderBounds(PDI, view->Family->EngineShowFlags, sceneProxy->GetBounds(), true);
+		// global bounds
+		sceneProxy->RenderBounds(PDI, view->Family->EngineShowFlags, sceneProxy->GetBounds(), true);
+	}
+#endif
 }
 
 #endif // POPCORNFX_RENDER_DEBUG

@@ -21,16 +21,6 @@
 //
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION < 25)
-void	FPopcornFXVertexFactoryShaderParametersVertex::Bind(const FShaderParameterMap& ParameterMap)
-{
-}
-
-void	FPopcornFXVertexFactoryShaderParametersVertex::Serialize(FArchive& Ar)
-{
-}
-#endif	// (ENGINE_MINOR_VERSION < 25)
-
 void	FPopcornFXVertexFactoryShaderParametersVertex::GetElementShaderBindings(const FSceneInterface *scene,
 																				const FSceneView *view,
 																				const FMeshMaterialShader *shader,
@@ -52,16 +42,6 @@ void	FPopcornFXVertexFactoryShaderParametersVertex::GetElementShaderBindings(con
 //
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION < 25)
-void	FPopcornFXVertexFactoryShaderParametersPixel::Bind(const FShaderParameterMap& ParameterMap)
-{
-}
-
-void	FPopcornFXVertexFactoryShaderParametersPixel::Serialize(FArchive& Ar)
-{
-}
-#endif	// (ENGINE_MINOR_VERSION < 25)
-
 void	FPopcornFXVertexFactoryShaderParametersPixel::GetElementShaderBindings(const FSceneInterface *scene,
 																				const FSceneView *view,
 																				const FMeshMaterialShader *shader,
@@ -77,3 +57,11 @@ void	FPopcornFXVertexFactoryShaderParametersPixel::GetElementShaderBindings(cons
 }
 
 //----------------------------------------------------------------------------
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersVertex);
+	IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersPixel);
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
+//----------------------------------------------------------------------------
+

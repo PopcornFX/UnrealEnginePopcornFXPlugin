@@ -299,11 +299,7 @@ public:
 	virtual void					ApplyWorldOffset(const FVector &inOffset, bool worldShift) override;
 
 #if WITH_EDITOR
-#if (ENGINE_MINOR_VERSION >= 25)
 	virtual bool					CanEditChange(const FProperty* InProperty) const override;
-#else
-	virtual bool					CanEditChange(const UProperty* Property) const override;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	virtual void					PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 	virtual void					CheckForErrors() override;
 	void							SpawnPreviewSceneIFN(UWorld *world);

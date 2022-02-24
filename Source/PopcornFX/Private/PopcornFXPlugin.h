@@ -60,7 +60,7 @@ private:
 
 	static FString						s_URLDocumentation;
 	static FString						s_URLPluginWiki;
-	static FString						s_URLAnswerHub;
+	static FString						s_URLDiscord;
 
 public:
 	static FPopcornFXPlugin				&Get() { check(s_Self != null); return *s_Self; }
@@ -74,7 +74,7 @@ public:
 
 	static const FString				&DocumentationURL() { return s_URLDocumentation; }
 	static const FString				&PluginWikiURL() { return s_URLPluginWiki; }
-	static const FString				&AnswerHubURL() { return s_URLAnswerHub; }
+	static const FString				&DiscordURL() { return s_URLDiscord; }
 
 	static int32						TotalParticleCount();
 	static void							IncTotalParticleCount(s32 newTotalParticleCount);

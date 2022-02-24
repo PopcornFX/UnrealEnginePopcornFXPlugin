@@ -27,7 +27,6 @@
 #include <pk_imaging/include/im_init.h>
 #include <pk_geometrics/include/ge_init.h>
 #include <pk_geometrics/include/ge_coordinate_frame.h>
-#include <pk_geometrics/include/ge_billboards.h>
 #include <pk_particles/include/ps_init.h>
 #include <pk_particles_toolbox/include/pt_init.h>
 #include <pk_render_helpers/include/rh_init.h>
@@ -278,7 +277,7 @@ namespace
 		{
 			EAppReturnType::Type	msgBoxRes;
 			{
-				// UE4 handles all WinProc messages then wait updates tasks before execute them >>> DEAD LOCK
+				// UE handles all WinProc messages then wait updates tasks before execute them >>> DEAD LOCK
 				// GPumpingMessagesOutsideOfMainLoop = true should enqueue messages
 				TGuardValue<bool>	pumpMessageGuard(GPumpingMessagesOutsideOfMainLoop, true);
 				msgBoxRes = FPlatformMisc::MessageBoxExt(EAppMsgType::CancelRetryContinue, ANSI_TO_TCHAR(perttyMessage), TEXT("PopcornFX Assertion failed"));
@@ -408,9 +407,6 @@ namespace
 		:	m_Pool(pool)
 		,	m_Task(job) { }
 
-#if (ENGINE_MINOR_VERSION < 25)
-		static const TCHAR				*GetTaskName() { return TEXT("PopcornFXTask"); }
-#endif // (ENGINE_MINOR_VERSION < 25)
 		FORCEINLINE static TStatId		GetStatId() { RETURN_QUICK_DECLARE_CYCLE_STAT(FPopcornFXTask, STATGROUP_TaskGraphTasks); }
 		static ENamedThreads::Type		GetDesiredThread() { return ENamedThreads::AnyThread; }
 		static ESubsequentsMode::Type	GetSubsequentsMode() { return ESubsequentsMode::TrackSubsequents; }
@@ -530,7 +526,7 @@ namespace
 		const bool	forceUETaskGraph = false;
 		if (useUETaskGraph || forceUETaskGraph)
 		{
-			// Directly use UE4's task graph system
+			// Directly use UE's task graph system
 			CWorkerThreadPool_UE	*pool = PK_NEW(CWorkerThreadPool_UE);
 			check(pool != null);
 #if (KR_PROFILER_ENABLED != 0)
@@ -654,34 +650,21 @@ namespace
 				const TStatId	&dynamicStatId = ctx->m_StatsMap.At(statId).m_StatId;
 
 #if PK_HAS_CPUPROFILERTRACE
-#	if (ENGINE_MINOR_VERSION >= 26)
 				if (GCycleStatsShouldEmitNamedEvents > 0 && UE_TRACE_CHANNELEXPR_IS_ENABLED(CpuChannel))
 					FCpuProfilerTrace::OutputBeginDynamicEvent(dynamicStatId.GetStatDescriptionANSI());
-#	elif (ENGINE_MINOR_VERSION < 25)
-				if (GCycleStatsShouldEmitNamedEvents > 0)
-					FCpuProfilerTrace::OutputBeginEvent(dynamicStatId.GetTraceCpuProfilerSpecId());
-#	endif // (ENGINE_MINOR_VERSION >= 26)
 #endif // PK_HAS_CPUPROFILERTRACE
 
-#if (ENGINE_MINOR_VERSION < 25)
-				if (FThreadStats::IsCollectingData())
-#endif // (ENGINE_MINOR_VERSION < 25)
 				{
-					if (GCycleStatsShouldEmitNamedEvents > 0)
-					{
 #if	PLATFORM_USES_ANSI_STRING_FOR_EXTERNAL_PROFILING
-						FPlatformMisc::BeginNamedEvent(FColor(0), dynamicStatId.GetStatDescriptionANSI());
+					FPlatformMisc::BeginNamedEvent(FColor(0), dynamicStatId.GetStatDescriptionANSI());
 #else
-						FPlatformMisc::BeginNamedEvent(FColor(0), dynamicStatId.GetStatDescriptionWIDE());
+					FPlatformMisc::BeginNamedEvent(FColor(0), dynamicStatId.GetStatDescriptionWIDE());
 #endif // PLATFORM_USES_ANSI_STRING_FOR_EXTERNAL_PROFILING
-					}
 				}
 
-#if (ENGINE_MINOR_VERSION >= 25)
 				const FMinimalName	statMinimalName = dynamicStatId.GetMinimalName(EMemoryOrder::Relaxed);
 				const FName			statName = MinimalNameToName(statMinimalName);
 				FThreadStats::AddMessage(statName, EStatOperation::CycleScopeStart);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 			}
 		}
 
@@ -711,25 +694,16 @@ namespace
 				if (GCycleStatsShouldEmitNamedEvents > 0)
 				{
 #	if PK_HAS_CPUPROFILERTRACE
-#		if (ENGINE_MINOR_VERSION >= 26)
 					if (UE_TRACE_CHANNELEXPR_IS_ENABLED(CpuChannel))
-#		endif //  (ENGINE_MINOR_VERSION >= 26)
-					FCpuProfilerTrace::OutputEndEvent();
-#	endif // (ENGINE_MINOR_VERSION < 25)
+						FCpuProfilerTrace::OutputEndEvent();
+#	endif // PK_HAS_CPUPROFILERTRACE
 
-#if (ENGINE_MINOR_VERSION < 25)
-					if (FThreadStats::IsCollectingData())
-#endif // (ENGINE_MINOR_VERSION < 25)
-					{
-						FPlatformMisc::EndNamedEvent();
-					}
+					FPlatformMisc::EndNamedEvent();
 				}
-#if (ENGINE_MINOR_VERSION >= 25)
 				const TStatId&		dynamicStatId = ctx->m_StatsMap.At(statId).m_StatId;
 				const FMinimalName	statMinimalName = dynamicStatId.GetMinimalName(EMemoryOrder::Relaxed);
 				const FName			statName = MinimalNameToName(statMinimalName);
 				FThreadStats::AddMessage(statName, EStatOperation::CycleScopeEnd);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 			}
 		}
 	}
@@ -834,7 +808,7 @@ bool	PopcornFXStartup()
 	CResourceHandlerVectorField_UE::Startup();
 
 	VertexAnimationRendererProperties::Startup();
-	UE4RendererProperties::Startup();
+	UERendererProperties::Startup();
 
 #if WITH_EDITOR
 	PopcornFX::COvenBakeConfig_Base::RegisterHandler();
@@ -879,7 +853,7 @@ void	PopcornFXShutdown()
 
 	ShutdownPlugins();
 
-	UE4RendererProperties::Shutdown();
+	UERendererProperties::Shutdown();
 	VertexAnimationRendererProperties::Shutdown();
 
 	CPKRenderHelpers::Shutdown();

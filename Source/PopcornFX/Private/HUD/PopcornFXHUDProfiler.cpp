@@ -41,7 +41,6 @@ namespace
 	public:
 		typedef	PopcornFX::TArray<CParticleScene::SPopcornFXEffectTimings>::Iterator	_TypeIt;
 		PK_FORCEINLINE static bool	Less(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalTime() > it1->TotalTime(); }
-		PK_FORCEINLINE static bool	LessOrEqual(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalTime() >= it1->TotalTime(); }
 		PK_FORCEINLINE static bool	Equal(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalTime() == it1->TotalTime(); }
 	};
 
@@ -50,7 +49,6 @@ namespace
 	public:
 		typedef	PopcornFX::TArray<CParticleScene::SPopcornFXEffectTimings>::Iterator	_TypeIt;
 		PK_FORCEINLINE static bool	Less(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalParticleCount() > it1->TotalParticleCount(); }
-		PK_FORCEINLINE static bool	LessOrEqual(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalParticleCount() >= it1->TotalParticleCount(); }
 		PK_FORCEINLINE static bool	Equal(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalParticleCount() == it1->TotalParticleCount(); }
 	};
 
@@ -59,7 +57,6 @@ namespace
 	public:
 		typedef	PopcornFX::TArray<CParticleScene::SPopcornFXEffectTimings>::Iterator	_TypeIt;
 		PK_FORCEINLINE static bool	Less(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalInstanceCount() > it1->TotalInstanceCount(); }
-		PK_FORCEINLINE static bool	LessOrEqual(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalInstanceCount() >= it1->TotalInstanceCount(); }
 		PK_FORCEINLINE static bool	Equal(const _TypeIt &it0, const _TypeIt &it1) { return it0->TotalInstanceCount() == it1->TotalInstanceCount(); }
 	};
 #endif // (PK_PARTICLES_HAS_STATS != 0)

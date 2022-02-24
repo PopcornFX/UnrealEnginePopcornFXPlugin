@@ -59,9 +59,9 @@ FString							FPopcornFXPlugin::s_PopornFXRuntimeVersionString;
 uint32							FPopcornFXPlugin::s_PopornFXRuntimeRevID = 0;
 uint16							FPopcornFXPlugin::s_PopornFXRuntimeMajMinPatch = 0;
 
-FString							FPopcornFXPlugin::s_URLDocumentation = "http://wiki.popcornfx.com/";
-FString							FPopcornFXPlugin::s_URLPluginWiki = "http://wiki.popcornfx.com/index.php/UE4";
-FString							FPopcornFXPlugin::s_URLAnswerHub = "http://answers.popcornfx.com/";
+FString							FPopcornFXPlugin::s_URLDocumentation = "https://www.popcornfx.com/docs/popcornfx-v2/plugins/ue4-plugin/";
+FString							FPopcornFXPlugin::s_URLPluginWiki = "https://wiki.popcornfx.com/";
+FString							FPopcornFXPlugin::s_URLDiscord = "https://discord.gg/4ka27cVrsf";
 
 namespace
 {
@@ -271,7 +271,7 @@ struct	SBakeContext
 
 //----------------------------------------------------------------------------
 //
-//	Sim interfaces supported by the UE4 plugin
+//	Sim interfaces supported by the UE plugin
 //
 //----------------------------------------------------------------------------
 

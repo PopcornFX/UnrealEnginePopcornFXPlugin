@@ -11,7 +11,7 @@
 
 //----------------------------------------------------------------------------
 
-namespace	UE4RendererProperties
+namespace	UERendererProperties
 {
 
 	extern bool						Startup();
@@ -29,6 +29,6 @@ namespace	UE4RendererProperties
 	extern PopcornFX::CStringId		SID_SixWayLightMap_Color();					// pin - float4 - "SixWayLightmap.Color"
 
 
-}	// namespace	UE4RendererProperties
+}	// namespace	UERendererProperties
 
 //----------------------------------------------------------------------------

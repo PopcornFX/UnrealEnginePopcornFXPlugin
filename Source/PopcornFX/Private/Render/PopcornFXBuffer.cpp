@@ -31,8 +31,8 @@ void	FPopcornFXVertexBuffer::InitRHI()
 	m_SRV = null;
 	if (m_CapacityInBytes > 0)
 	{
-		FRHIResourceCreateInfo	emptyInformations;
-		uint32			usage = 0;
+		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Buffer"));
+		uint32					usage = 0;
 		if (UsedAsUAV() || UsedAsSRV())
 		{
 			usage |= BUF_ShaderResource;
@@ -108,8 +108,11 @@ void	*FPopcornFXVertexBuffer::RawMap(u32 count, u32 stride)
 	void	*map;
 	{
 		PK_NAMEDSCOPEDPROFILE("FPopcornFXVertexBuffer::RawMap RHILockVertexBuffer");
+#if (ENGINE_MAJOR_VERSION == 5)
+		map = RHILockBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+#else
 		map = RHILockVertexBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
-		//map = GDynamicRHI->RHILockVertexBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	}
 	PK_ASSERT(map != null);
 	PK_ASSERT(PopcornFX::Mem::IsAligned<Alignment>(map));
@@ -123,8 +126,11 @@ void	FPopcornFXVertexBuffer::Unmap()
 {
 	if (Mappable() && Mapped())
 	{
+#if (ENGINE_MAJOR_VERSION == 5)
+		RHIUnlockBuffer(VertexBufferRHI);
+#else
 		RHIUnlockVertexBuffer(VertexBufferRHI);
-		//GDynamicRHI->RHIUnlockVertexBuffer(VertexBufferRHI);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		m_CurrentMap = null;
 	}
 }
@@ -187,8 +193,8 @@ void	FPopcornFXIndexBuffer::InitRHI()
 		m_Flags &= ~Flag_Large;
 	if (m_Capacity > 0)
 	{
-		FRHIResourceCreateInfo	emptyInformations;
-		uint32			usage = 0;
+		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Index Buffer"));
+		uint32					usage = 0;
 		if (UsedAsUAV() || UsedAsSRV())
 		{
 			usage |= BUF_ShaderResource;
@@ -266,8 +272,12 @@ void	*FPopcornFXIndexBuffer::RawMap(u32 countToMap)
 		return null;
 	void	*map;
 	{
-		PK_NAMEDSCOPEDPROFILE("FPopcornFXIndexBuffer::RawMap RHILockIndexBuffer");
+		PK_NAMEDSCOPEDPROFILE("FPopcornFXIndexBuffer::RawMap RHILockBuffer");
+#if (ENGINE_MAJOR_VERSION == 5)
+		map = RHILockBuffer(IndexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+#else
 		map = RHILockIndexBuffer(IndexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	}
 	PK_ASSERT(map != null);
 	PK_ASSERT(PopcornFX::Mem::IsAligned<Alignment>(map));
@@ -281,7 +291,11 @@ void	FPopcornFXIndexBuffer::Unmap()
 {
 	if (Mappable() && Mapped())
 	{
+#if (ENGINE_MAJOR_VERSION == 5)
+		RHIUnlockBuffer(IndexBufferRHI);
+#else
 		RHIUnlockIndexBuffer(IndexBufferRHI);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		m_CurrentMap = null;
 	}
 }

@@ -11,14 +11,7 @@
 
 #include "/Engine/Private/VertexFactoryCommon.ush"
 
-#if (ENGINE_MINOR_VERSION >= 25)
-#	define NEEDS_TANGENT_BASIS			1
-#	define HAS_INSTANCE_ID				(ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER)
-#else
-	// We don't compute a tangent basis in ES2 to save shader instructions.
-#	define NEEDS_TANGENT_BASIS			(FEATURE_LEVEL >= FEATURE_LEVEL_SM4)
-#	define HAS_INSTANCE_ID				(FEATURE_LEVEL >= FEATURE_LEVEL_SM4 && ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER)
-#endif // (ENGINE_MINOR_VERSION >= 25)
+#define HAS_INSTANCE_ID				(ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER)
 
 // Must match PopcornFX::ERendererClass !
 #define Renderer_Billboard		0
@@ -208,7 +201,6 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	PixelParameters.Particle.Color = Interpolants.ParticleColor;
 #endif
 
-#if NEEDS_TANGENT_BASIS
 	if (PopcornFXBillboardCommonUniforms.NeedsBTN)
 	{
 		float3		normal = Interpolants.Normal;
@@ -220,7 +212,6 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 		PixelParameters.TangentToWorld[1] = binormal;
 		PixelParameters.TangentToWorld[2] = normal;
 	}
-#endif
 	return PixelParameters;
 }
 
@@ -453,3 +444,7 @@ float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryInte
 {
 	return Input.Normal;
 }
+
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "/Engine/Private/VertexFactoryDefaultInterface.ush"
+#endif // (ENGINE_MAJOR_VERSION == 5)

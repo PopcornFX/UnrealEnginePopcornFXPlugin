@@ -22,7 +22,7 @@ struct	SPopcornFXSoundInstance
 	static SPopcornFXSoundInstance	Invalid; // needed by TChunkedSlotArray
 };
 
-// PopcornFX Default implementation that uses UE4 sound assets
+// PopcornFX Default implementation that uses UE sound assets
 class	FPopcornFXAudioDefault : public IPopcornFXAudio
 {
 public:

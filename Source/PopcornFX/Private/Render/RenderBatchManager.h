@@ -6,10 +6,13 @@
 #pragma once
 
 #include "PopcornFXSDK.h"
-#include "RenderPolicies.h"
 #include "RenderTypesPolicies.h"
 #include "PopcornFXSettings.h"
+#include "SceneManagement.h"
 #include "Materials/MaterialInterface.h"
+
+#include "Render/PopcornFXVertexFactory.h"
+#include "World/PopcornFXSceneProxy.h"
 
 #include <pk_particles/include/ps_mediums.h>
 #include <pk_render_helpers/include/frame_collector/rh_frame_collector.h>
@@ -31,22 +34,46 @@
 class	CParticleScene;
 class	UMaterialInterface;
 
+PK_FORWARD_DECLARE(RendererCache);
+
 //----------------------------------------------------------------------------
 
-class	CFrameCollector : public PopcornFX::TFrameCollector<CPopcornFXRenderTypes>
+class	CUEFrameCollector : public PopcornFX::CFrameCollector
 {
 public:
-	CFrameCollector() : m_Views(null) { }
+	CUEFrameCollector() { }
 
 	void			ReleaseRenderedFrameIFP();
 
 public:
 	PopcornFX::CRendererSubView	*m_Views = null;
+	CRenderBatchManager			*m_RenderBatchManager = null;
 	bool						m_DisableShadowCulling = false;
 	u32							m_LastFrameDrawCalledCount = 0;
 
 private:
+	virtual void	Walk(const PopcornFX::CParticleMedium *medium, const PopcornFX::CRendererDataBase *renderer) override;
 	virtual bool	LateCull(const PopcornFX::CAABB &bbox) const override;
+};
+
+//----------------------------------------------------------------------------
+
+class FPopcornFXBillboardCollector : public FOneFrameResource
+{
+public:
+	FPopcornFXVertexFactory		*m_VertexFactory = null;
+	CPooledIndexBuffer			m_IndexBufferForRefCount;
+
+	FPopcornFXBillboardCollector() { }
+	~FPopcornFXBillboardCollector()
+	{
+		if (PK_VERIFY(m_VertexFactory != null))
+		{
+			m_VertexFactory->ReleaseResource();
+			delete m_VertexFactory;
+			m_VertexFactory = null;
+		}
+	}
 };
 
 //----------------------------------------------------------------------------
@@ -57,7 +84,7 @@ public:
 	CRenderBatchManager();
 	~CRenderBatchManager();
 
-	void	Setup(const CParticleScene *scene, PopcornFX::CParticleMediumCollection *collection
+	bool	Setup(const CParticleScene *scene, PopcornFX::CParticleMediumCollection *collection
 #if (PK_HAS_GPU != 0)
 	, uint32 API
 #endif // (PK_HAS_GPU != 0)
@@ -76,6 +103,7 @@ public:
 	void	ConcurrentThread_SendRenderDynamicData();
 	void	RenderThread_DrawCalls(PopcornFX::CRendererSubView &view);
 
+	void										CollectedForRendering(const PopcornFX::CParticleMedium* medium, const PopcornFX::CRendererDataBase* renderer, CRendererCache* rendererCache);
 	void										AddCollectedUsedMaterial(UMaterialInterface *materialInstance);
 	bool										ShouldMarkRenderStateDirty() const;
 	u32											LastUsedMaterialCount() const { return m_LastCollectedUsedMaterials.Num(); }
@@ -112,12 +140,20 @@ private:
 	void	GarbageBufferPools();
 
 private:
-	CFrameCollector							m_FrameCollector_Render;
-	CFrameCollector							m_FrameCollector_Update;
-	CRenderDataFactory						m_RenderBatchFactory;
-	SRenderContext							m_RenderThreadRenderContext;
-	SRenderContext							m_UpdateThreadRenderContext;
+	PopcornFX::CRendererBatchDrawer		*CreateBatchDrawer(PopcornFX::ERendererClass rendererType, const PopcornFX::PRendererCacheBase &rendererCache, bool gpuStorage);
+	PopcornFX::PRendererCacheBase		CreateRendererCache(const PopcornFX::PRendererDataBase &renderer, const PopcornFX::CParticleDescriptor *particleDesc);
+
+private:
+	CUEFrameCollector						m_FrameCollector_UE_Render;
+	CUEFrameCollector						m_FrameCollector_UE_Update;
+	SUERenderContext						m_RenderThreadRenderContext;
+	SUERenderContext						m_UpdateThreadRenderContext;
+	SUERenderContext						m_UE_RenderThreadRenderContext;
+	SUERenderContext						m_UE_UpdateThreadRenderContext;
 	SCollectedDrawCalls						m_CollectedDrawCalls;
+
+	PopcornFX::Threads::CCriticalSection	m_PendingCachesLock;
+	PopcornFX::TArray<PRendererCache>		m_PendingCaches;
 
 	ERHIFeatureLevel::Type					m_CurrentFeatureLevel;
 

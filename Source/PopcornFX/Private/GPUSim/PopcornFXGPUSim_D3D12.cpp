@@ -21,15 +21,9 @@
 #		include "Windows/HideWindowsPlatformTypes.h"
 #	endif
 #elif PLATFORM_XBOXONE
-#	if (ENGINE_MINOR_VERSION >= 25)
-#		ifdef XBOX_PLATFORM_TYPES_GUARD
-#			include "XboxCommonHidePlatformTypes.h"
-#		endif // XBOX_PLATFORM_TYPES_GUARD
-#	else
-#		ifdef XBOXONE_PLATFORM_TYPES_GUARD
-#			include "XboxOneHidePlatformTypes.h"
-#		endif // XBOXONE_PLATFORM_TYPES_GUARD
-#	endif // (ENGINE_MINOR_VERSION >= 25)
+#	ifdef XBOX_PLATFORM_TYPES_GUARD
+#		include "XboxCommonHidePlatformTypes.h"
+#	endif // XBOX_PLATFORM_TYPES_GUARD
 #endif
 
 #include "D3D12RHIPrivate.h"
@@ -37,11 +31,7 @@
 #if PLATFORM_WINDOWS
 #	include "Windows/AllowWindowsPlatformTypes.h"
 #elif PLATFORM_XBOXONE
-#	if (ENGINE_MINOR_VERSION >= 25)
-#		include "XboxCommonAllowPlatformTypes.h"
-#	else
-#		include "XboxOneAllowPlatformTypes.h"
-#	endif // (ENGINE_MINOR_VERSION >= 25)
+#	include "XboxCommonAllowPlatformTypes.h"
 #endif
 
 #include "RenderUtils.h"
@@ -74,6 +64,25 @@ bool	GEnableResidencyManagement = true;
 //
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
+void UpdateBufferStats(FName Name, int64 RequestedSize)
+{
+	INC_MEMORY_STAT_BY_FName(Name, RequestedSize);
+
+#if PLATFORM_WINDOWS
+	// this is a work-around on Windows. Due to the fact that there is no way
+	// to hook the actual d3d allocations it is very difficult to track memory
+	// in the normal way. The problem is that some buffers are allocated from
+	// the allocators and some are allocated from the device. Ideally this
+	// tracking would be moved to where the actual d3d resource is created and
+	// released and the tracking could be re-enabled in the buddy allocator.
+	// The problem is that the releasing of resources happens in a generic way
+	// (see FD3D12ResourceLocation) 
+	LLM_SCOPED_PAUSE_TRACKING_WITH_ENUM_AND_AMOUNT(ELLMTag::Meshes, RequestedSize, ELLMTracker::Default, ELLMAllocType::None);
+	LLM_SCOPED_PAUSE_TRACKING_WITH_ENUM_AND_AMOUNT(ELLMTag::GraphicsPlatform, RequestedSize, ELLMTracker::Platform, ELLMAllocType::None);
+#endif
+}
+#else
 FD3D12VertexBuffer::~FD3D12VertexBuffer()
 {
 	if (ResourceLocation.GetResource() != nullptr)
@@ -90,6 +99,7 @@ FD3D12VertexBuffer::~FD3D12VertexBuffer()
 #endif
 	}
 }
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 //----------------------------------------------------------------------------
 
@@ -133,11 +143,12 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	FRHIGPUMask VisibleNodes,
 	ID3D12Resource* InResource,
 	D3D12_RESOURCE_STATES InitialState,
-#if (ENGINE_MINOR_VERSION >= 26)
 	ED3D12ResourceStateMode InResourceStateMode,
 	D3D12_RESOURCE_STATES InDefaultResourceState,
-#endif // (ENGINE_MINOR_VERSION >= 26)
 	D3D12_RESOURCE_DESC const& InDesc,
+#if (ENGINE_MAJOR_VERSION == 5)
+	const D3D12_CLEAR_VALUE* InClearValue,
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	FD3D12Heap* InHeap,
 	D3D12_HEAP_TYPE InHeapType)
 	: FD3D12DeviceChild(ParentDevice)
@@ -152,11 +163,9 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	, bRequiresResourceStateTracking(true)
 	, bDepthStencil(false)
 	, bDeferDelete(true)
-#if (ENGINE_MINOR_VERSION >= 26)
 #	if PLATFORM_USE_BACKBUFFER_WRITE_TRANSITION_TRACKING
 	, bBackBuffer(false)
 #	endif // #if PLATFORM_USE_BACKBUFFER_WRITE_TRANSITION_TRACKING
-#endif // (ENGINE_MINOR_VERSION >= 26)
 	, HeapType(InHeapType)
 	, GPUVirtualAddress(0)
 	, ResourceBaseAddress(nullptr)
@@ -164,26 +173,21 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 #if UE_BUILD_DEBUG
 	FPlatformAtomics::InterlockedIncrement(&TotalResourceCount);
 #endif
+#if (ENGINE_MAJOR_VERSION == 5)
+	FPlatformMemory::Memzero(&ClearValue, sizeof(D3D12_CLEAR_VALUE));
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	if (Resource)
 	{
 		GPUVirtualAddress = Resource->GetGPUVirtualAddress();
 	}
 
-#if (ENGINE_MINOR_VERSION >= 26)
 	InitalizeResourceState(InitialState, InResourceStateMode, InDefaultResourceState);
-#else
-	InitalizeResourceState(InitialState);
-#endif // (ENGINE_MINOR_VERSION >= 26)
 }
 
 namespace	D3D12RHI
 {
-#if (ENGINE_MINOR_VERSION >= 25)
 	void VerifyD3D12Result(HRESULT Result, const ANSICHAR* Code, const ANSICHAR* Filename, uint32 Line, ID3D12Device* Device, FString Message)
-#else
-	void VerifyD3D12Result(HRESULT Result, const ANSICHAR* Code, const ANSICHAR* Filename, uint32 Line, ID3D12Device* Device)
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	{
 		check(FAILED(Result));
 	}
@@ -260,7 +264,6 @@ ID3D12Device* FD3D12Device::GetDevice()
 
 FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D12(FVBRHIParamRef VertexBufferRHI, uint8 Format)
 {
-	PK_ASSERT(IsValidRef(VertexBufferRHI));
 	return RHICreateUnorderedAccessView(VertexBufferRHI, Format);
 }
 
@@ -284,12 +287,17 @@ inline FD3D12UnorderedAccessView* CreateUAV(D3D12_UNORDERED_ACCESS_VIEW_DESC& De
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 4)
 //
 // UAV from Index Buffer
 //
-FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D12(FIBRHIParamRef IndexBufferRHI, uint8 Format)
+FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D12(FIBRHIParamRef /*Index*/BufferRHI, uint8 Format)
 {
-	FD3D12IndexBuffer* IndexBuffer = FD3D12DynamicRHI::ResourceCast(IndexBufferRHI);
+#if (ENGINE_MAJOR_VERSION == 5)
+	FD3D12Buffer* IndexBuffer = FD3D12DynamicRHI::ResourceCast(/*Index*/BufferRHI);
+#else
+	FD3D12IndexBuffer* IndexBuffer = FD3D12DynamicRHI::ResourceCast(/*Index*/BufferRHI);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	FD3D12ResourceLocation& Location = IndexBuffer->ResourceLocation;
 
 	const D3D12_RESOURCE_DESC& BufferDesc = Location.GetResource()->GetDesc();
@@ -324,6 +332,7 @@ FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D12(FIBRHIParamRef
 
 	return CreateUAV(UAVDesc, IndexBuffer);
 }
+#endif // (ENGINE_MAJOR_VERSION == 4)
 
 //----------------------------------------------------------------------------
 //
@@ -333,21 +342,26 @@ FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D12(FIBRHIParamRef
 
 FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamBuffer_D3D12 *stream, u32 stride, u8 pixelFormat)
 {
+#if (ENGINE_MAJOR_VERSION == 5)
+	FRHIBuffer			*buffer = StreamBufferResourceToRHI(stream, stride);
+	FD3D12Buffer		*bufferD3D12 = FD3D12DynamicRHI::ResourceCast(buffer);
+#else
 	FRHIVertexBuffer	*buffer = StreamBufferResourceToRHI(stream, stride);
 	FD3D12VertexBuffer	*bufferD3D12 = FD3D12DynamicRHI::ResourceCast(buffer);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	PK_ASSERT(bufferD3D12 != null);
-#if (ENGINE_MINOR_VERSION >= 25)
 	FShaderResourceViewRHIRef	srv = RHICreateShaderResourceView(bufferD3D12, sizeof(uint32), pixelFormat);
-#else
-	FShaderResourceViewRHIRef	srv = RHICreateShaderResourceView(bufferD3D12, sizeof(uint32), 0 /*Typeless because ByteAddressBuffer*/);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 	return srv;
 }
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
+FRHIBuffer			*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D12 *stream, u32 stride)
+#else
 FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D12 *stream, u32 stride)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	D3D12_RESOURCE_DESC	desc = stream->m_Resource->GetDesc();
 	PK_ASSERT(desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER);
@@ -367,25 +381,28 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuff
 	const uint32					bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
 	const D3D12_RESOURCE_STATES		resourceState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-#if (ENGINE_MINOR_VERSION >= 26)
+#if (ENGINE_MAJOR_VERSION == 5)
+	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource, resourceState, ED3D12ResourceStateMode::Default, resourceState, desc, NULL, NULL, D3D12_HEAP_TYPE_DEFAULT);
+#else
 	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource, resourceState, ED3D12ResourceStateMode::Default, resourceState, desc, NULL, D3D12_HEAP_TYPE_DEFAULT);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	FD3D12Adapter			*adapter = device->GetParentAdapter();
+#if (ENGINE_MAJOR_VERSION == 5)
+	FD3D12Buffer			*buffer = adapter->CreateLinkedObject<FD3D12Buffer>(device->GetVisibilityMask(), [&](FD3D12Device* device)
+		{
+			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, stride, stream->m_ByteSize, bufferUsage);
+			return newBuffer;
+		});
+#else
 	FD3D12VertexBuffer		*buffer = adapter->CreateLinkedObject<FD3D12VertexBuffer>(device->GetVisibilityMask(), [&](FD3D12Device* device)
 		{
 			FD3D12VertexBuffer	*newBuffer = new FD3D12VertexBuffer(device, stride, stream->m_ByteSize, bufferUsage);
 			return newBuffer;
 		});
-#else
-	FD3D12VertexBuffer		*buffer = new FD3D12VertexBuffer(device, stride, stream->m_ByteSize, bufferUsage);
-	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource, resourceState, desc, NULL, D3D12_HEAP_TYPE_DEFAULT);
-#endif // (ENGINE_MINOR_VERSION >= 26)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	resource->AddRef();
-#if (ENGINE_MINOR_VERSION >= 26)
 	buffer->ResourceLocation.AsFastAllocation(resource, stream->m_ByteSize, resource->GetGPUVirtualAddress(), NULL, 0 /* resourceOffsetBase */, stream->m_ByteOffset);
-#else
-	buffer->ResourceLocation.AsFastAllocation(resource, stream->m_ByteSize, resource->GetGPUVirtualAddress(), NULL, stream->m_ByteOffset);
-#endif // (ENGINE_MINOR_VERSION >= 26)
 	return buffer;
 }
 

@@ -44,7 +44,6 @@ namespace
 	public:
 		typedef	PopcornFX::TArray<PopcornFX::CMemStatNode>::Iterator	_TypeIt;
 		PK_FORCEINLINE static bool	Less(const _TypeIt &it0, const _TypeIt &it1) { return it0->Footprint() > it1->Footprint(); }
-		PK_FORCEINLINE static bool	LessOrEqual(const _TypeIt &it0, const _TypeIt &it1) { return it0->Footprint() >= it1->Footprint(); }
 		PK_FORCEINLINE static bool	Equal(const _TypeIt &it0, const _TypeIt &it1) { return it0->Footprint() == it1->Footprint(); }
 	};
 #endif

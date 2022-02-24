@@ -80,11 +80,7 @@ void	UPopcornFXSettingsEditor::PostLoad()
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION >= 25)
 void	UPopcornFXSettingsEditor::PreEditChange(FProperty *propertyAboutToChange)
-#else
-void	UPopcornFXSettingsEditor::PreEditChange(UProperty *propertyAboutToChange)
-#endif // (ENGINE_MINOR_VERSION >= 25)
 {
 	Super::PreEditChange(propertyAboutToChange);
 
@@ -133,17 +129,9 @@ namespace
 	{
 		UObject	*loadingSavingSettings = GetMutableDefault<UEditorLoadingSavingSettings>();
 
-#if (ENGINE_MINOR_VERSION >= 25)
 		for (TFieldIterator<FProperty> ptyIt(loadingSavingSettings->GetClass()); ptyIt; ++ptyIt)
-#else
-		for (TFieldIterator<UProperty> ptyIt(loadingSavingSettings->GetClass()); ptyIt; ++ptyIt)
-#endif // (ENGINE_MINOR_VERSION >= 25)
 		{
-#if (ENGINE_MINOR_VERSION >= 25)
 			FProperty	*pty = *ptyIt;
-#else
-			UProperty	*pty = *ptyIt;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 			if (pty != null && pty->GetName() == GET_MEMBER_NAME_STRING_CHECKED(UEditorLoadingSavingSettings, AutoReimportDirectorySettings))
 			{

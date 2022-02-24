@@ -52,31 +52,31 @@ namespace
 	const TArray<FMatrix>	&SkeletalMeshRefBasesInvMatrices(const USkeletalMesh *skeletalMesh)
 	{
 		check(skeletalMesh != null);
-#if (ENGINE_MINOR_VERSION >= 27)
+#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return skeletalMesh->GetRefBasesInvMatrix();
 #else
 		return skeletalMesh->RefBasesInvMatrix;
-#endif // (ENGINE_MINOR_VERSION >= 27)
+#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 
 	const FReferenceSkeleton	&SkeletalMeshRefSkeleton(const USkeletalMesh *skeletalMesh)
 	{
 		check(skeletalMesh != null);
-#if (ENGINE_MINOR_VERSION >= 27)
+#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return skeletalMesh->GetRefSkeleton();
 #else
 		return skeletalMesh->RefSkeleton;
-#endif // (ENGINE_MINOR_VERSION >= 27)
+#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 
 	const TArray<UClothingAssetBase*>	&SkeletalMeshClothingAssets(const USkeletalMesh* skeletalMesh)
 	{
 		check(skeletalMesh != null);
-#if (ENGINE_MINOR_VERSION >= 27)
+#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return skeletalMesh->GetMeshClothingAssets();
 #else
 		return skeletalMesh->MeshClothingAssets;
-#endif // (ENGINE_MINOR_VERSION >= 27)
+#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 }
 
@@ -470,12 +470,12 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::PostEditChangeProperty(FPropertyChan
 #endif // WITH_EDITOR
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerSkinnedMesh::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CParticleNodeSamplerData *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerSkinnedMesh::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	check(m_Data != null);
 
-	const PopcornFX::CParticleNodeSamplerData_Shape	*defaultShapeSampler = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_Shape>(defaultSampler);
+	const PopcornFX::CResourceDescriptor_Shape	*defaultShapeSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Shape>(defaultSampler);
 	if (!PK_VERIFY(defaultShapeSampler != null))
 		return null;
 	bPauseSkinning = false;
@@ -524,11 +524,7 @@ USkinnedMeshComponent	*UPopcornFXAttributeSamplerSkinnedMesh::ResolveSkinnedMesh
 	USkinnedMeshComponent	*skinnedMesh = null;
 	if (SkinnedMeshComponentName != NAME_None)
 	{
-#if (ENGINE_MINOR_VERSION >= 25)
 		FObjectPropertyBase	*prop = FindFProperty<FObjectPropertyBase>(parent->GetClass(), SkinnedMeshComponentName);
-#else
-		UObjectPropertyBase	*prop = FindField<UObjectPropertyBase>(parent->GetClass(), SkinnedMeshComponentName);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 		if (prop != null)
 			skinnedMesh = Cast<USkinnedMeshComponent>(prop->GetObjectPropertyValue_InContainer(parent));
@@ -773,23 +769,12 @@ namespace
 				const s32	clothingAssetIndex = buildDesc.m_SkeletalMesh->GetClothingAssetIndex(section.ClothingData.AssetGuid);
 				if (PK_VERIFY(clothingAssetIndex != INDEX_NONE))
 				{
-#if (ENGINE_MINOR_VERSION >= 25)
 					UClothingAssetCommon	*clothAsset = Cast<UClothingAssetCommon>(SkeletalMeshClothingAssets(buildDesc.m_SkeletalMesh)[clothingAssetIndex]);
 
 					if (clothAsset != null && clothAsset->LodData.Num() > 0)
 					{
 						const FClothLODDataCommon			&lodData = clothAsset->LodData[0];
 						const FClothPhysicalMeshData		&physMeshData = lodData.PhysicalMeshData;
-#else
-					UClothingAssetCommon	*clothAsset = Cast<UClothingAssetCommon>(buildDesc.m_SkeletalMesh->MeshClothingAssets[clothingAssetIndex]);
-
-					if (clothAsset != null && clothAsset->ClothLodData.Num() > 0)
-					{
-						check(clothAsset->ClothLodData[0] != null);
-						check(clothAsset->ClothLodData[0]->PhysicalMeshData != null);
-						const UClothLODDataBase				*lodData = clothAsset->ClothLodData[0];
-						const UClothPhysicalMeshDataBase	&physMeshData = *lodData->PhysicalMeshData;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 						clothVertices = TMemoryView<const FVector>(physMeshData.Vertices.GetData(), physMeshData.Vertices.Num());
 
@@ -894,13 +879,11 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::BuildInitialPose()
 	if (!buildDesc.Initialize(ResolveSkinnedMeshComponent()))
 		return false;
 
-#if (ENGINE_MINOR_VERSION >= 25)
 	if (buildDesc.m_LODRenderData->SkinWeightVertexBuffer.GetBoneInfluenceType() == UnlimitedBoneInfluence)
 	{
 		UE_LOG(LogPopcornFXAttributeSamplerSkinned, Warning, TEXT("Cannot build mesh '%s' for sampling: Unlimited bone influences not supported for sampling"), *buildDesc.m_SkinnedMeshComponent->SkeletalMesh->GetName());
 		return false;
 	}
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	UPopcornFXMesh		*pkMesh = UPopcornFXMesh::FindSkeletalMesh(buildDesc.m_SkeletalMesh);
 	if (!PK_VERIFY(pkMesh != null))

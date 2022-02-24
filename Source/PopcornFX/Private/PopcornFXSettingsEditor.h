@@ -142,11 +142,7 @@ public:
 
 private:
 	virtual void		PostLoad() override;
-#if (ENGINE_MINOR_VERSION >= 25)
 	virtual void		PreEditChange(FProperty *propertyAboutToChange) override;
-#else
-	virtual void		PreEditChange(UProperty *propertyAboutToChange) override;
-#endif //  (ENGINE_MINOR_VERSION >= 25)
 	virtual void		PostEditChangeProperty(struct FPropertyChangedEvent& propertyChangedEvent) override;
 
 	void				CheckEditorPathValidity();

@@ -177,7 +177,11 @@ FReply		FPopcornFXCustomizationAssetDep::OnResetClicked()
 	if (!PK_VERIFY(self != null))
 		return FReply::Handled();
 	self->SetAsset(self->ParentPopcornFXFile(), self->FindDefaultAsset());
+#if (ENGINE_MAJOR_VERSION == 5)
+	m_AssetPty->NotifyPostChange(EPropertyChangeType::ValueSet);
+#else
 	m_AssetPty->NotifyPostChange();
+#endif
 	return FReply::Handled();
 }
 
@@ -203,7 +207,11 @@ FReply	FPopcornFXCustomizationAssetDep::OnImportDefaultClicked()
 
 	self->ReimportAndResetDefaultAsset(self->ParentPopcornFXFile(), true);
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	m_AssetPty->NotifyPostChange(EPropertyChangeType::ValueSet);
+#else
 	m_AssetPty->NotifyPostChange();
+#endif
 
 	return FReply::Handled();
 }

@@ -25,11 +25,11 @@ struct FPopcornFXAttributePreAnimatedToken : IMovieScenePreAnimatedToken
 	FPopcornFXAttributePreAnimatedToken(FPopcornFXAttributePreAnimatedToken&&) = default;
 	FPopcornFXAttributePreAnimatedToken& operator=(FPopcornFXAttributePreAnimatedToken&&) = default;
 
-#if (ENGINE_MINOR_VERSION >= 27)
+#if (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27)
 	virtual void	RestoreState(UObject &object, const UE::MovieScene::FRestoreStateParams &params) override
 #else
 	virtual void	RestoreState(UObject &object, IMovieScenePlayer &player) override
-#endif // (ENGINE_MINOR_VERSION >= 27)
+#endif // (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27)
 	{
 		UPopcornFXEmitterComponent	*emitterComponent = CastChecked<UPopcornFXEmitterComponent>(&object);
 		PK_ASSERT(emitterComponent->Effect != null);

@@ -12,13 +12,6 @@
 
 #include "PopcornFXGPUBillboard.ush"
 
-#if (ENGINE_MINOR_VERSION >= 25)
-#	define NEEDS_TANGENT_BASIS			1
-#else
-	// We don't compute a tangent basis in ES2 to save shader instructions.
-#	define NEEDS_TANGENT_BASIS			(FEATURE_LEVEL >= FEATURE_LEVEL_SM4)
-#endif // (ENGINE_MINOR_VERSION >= 25)
-
 //----------------------------------------------------------------------------
 // VS Inputs
 //----------------------------------------------------------------------------
@@ -362,7 +355,6 @@ FMaterialPixelParameters	GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	PixelParameters.Particle.DynamicParameter3 = Interpolants.DynamicParameter3;
 #endif
 
-#if NEEDS_TANGENT_BASIS
 	{
 		float3		normal = Interpolants.Normal;
 		float3		tangent = Interpolants.Tangent.xyz;
@@ -373,7 +365,6 @@ FMaterialPixelParameters	GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 		PixelParameters.TangentToWorld[1] = binormal;
 		PixelParameters.TangentToWorld[2] = normal;
 	}
-#endif
 
 	return PixelParameters;
 }
@@ -516,3 +507,7 @@ FVertexFactoryInterpolantsVSToPS	VertexFactoryAssignInterpolants(FVertexFactoryI
 	return Input.InterpolantsVSToPS;
 }
 #endif // RAYHITGROUPSHADER
+
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "/Engine/Private/VertexFactoryDefaultInterface.ush"
+#endif // (ENGINE_MAJOR_VERSION == 5)

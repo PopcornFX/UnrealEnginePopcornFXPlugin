@@ -229,12 +229,7 @@ namespace PopcornFXBillboarder
 	{
 		const bool		isVPP = (_Build == EBillboarderCSBuild::VertexPP);
 
-#if (ENGINE_MINOR_VERSION >= 25)
 		FCSRHIParamRef	shader = RHICmdList.GetBoundComputeShader();
-#else
-		FCSRHIParamRef	shader = GetComputeShader();
-		RHICmdList.SetComputeShader(shader);
-#endif //(ENGINE_MINOR_VERSION >= 25)
 
 		uint32				outputMask = 0;
 		uint32				inputMask = 0;
@@ -257,11 +252,7 @@ namespace PopcornFXBillboarder
 					// TODO: Investigate into output vertex offset to aligned stride (cache lines ?)
 					// if (params.m_OutputVertexOffset == 0)
 					{
-#if (ENGINE_MINOR_VERSION >= 26)
 						RHICmdList.Transition(FRHITransitionInfo(params.m_Outputs[i], ERHIAccess::VertexOrIndexBuffer, ERHIAccess::UAVCompute));
-#else
-						RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, params.m_Outputs[i]);
-#endif // (ENGINE_MINOR_VERSION >= 26)
 						RHICmdList.SetUAVParameter(shader, Outputs[i].GetBaseIndex(), params.m_Outputs[i]);
 					}
 				}
@@ -327,51 +318,13 @@ namespace PopcornFXBillboarder
 		{
 			if (IsValidRef(params.m_Outputs[i]) && Outputs[i].IsBound())
 			{
-#if (ENGINE_MINOR_VERSION >= 26)
 				RHICmdList.Transition(FRHITransitionInfo(params.m_Outputs[i], ERHIAccess::UAVCompute, ERHIAccess::VertexOrIndexBuffer));
-#else
-				//RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, params.m_Outputs[i]);
-#endif // (ENGINE_MINOR_VERSION >= 26)
 				RHICmdList.SetUAVParameter(shader, Outputs[i].GetBaseIndex(), nullUAV);
 			}
 		}
 		RHICmdList.SetShaderResourceViewParameter(shader, InIndices.GetBaseIndex(), nullSRV);
 		RHICmdList.SetShaderResourceViewParameter(shader, InSimData.GetBaseIndex(), nullSRV);
 	}
-
-	//----------------------------------------------------------------------------
-
-#if (ENGINE_MINOR_VERSION < 25)
-	template <EBillboarderCSBuild::Type _Build>
-	bool	FBillboarderBillboardCS<_Build>::Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << BillboarderType;
-		Ar << OutputMask;
-		Ar << InputMask;
-		Ar << InIndicesOffset;
-		Ar << InputOffset;
-		Ar << OutputVertexOffset;
-		Ar << OutputIndexOffset;
-		Ar << BillboardingMatrix;
-		Ar << RendererFlags;
-		Ar << RendererNormalsBendingFactor;
-		Ar << RendererAtlasRectCount;
-		Ar << RendererAtlasBuffer;
-		for (u32 i = 0; i < EOutput::_Count; ++i)
-			Ar << Outputs[i];
-		Ar << InIndices;
-		Ar << InSimData;
-		for (u32 i = 0; i < EInput::_Count; ++i)
-		{
-			Ar << InputsOffsets[i];
-			Ar << InputsDefault[i];
-		}
-		Ar << HasLiveParticleCount;
-		Ar << LiveParticleCount;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
 
 	//----------------------------------------------------------------------------
 
@@ -433,12 +386,7 @@ namespace PopcornFXBillboarder
 
 	void	FCopyStreamCS::Dispatch(FRHICommandList& RHICmdList, const FBillboardCS_Params &params)
 	{
-#if (ENGINE_MINOR_VERSION >= 25)
 		FCSRHIParamRef	shader = RHICmdList.GetBoundComputeShader();
-#else
-		FCSRHIParamRef	shader = GetComputeShader();
-		RHICmdList.SetComputeShader(shader);
-#endif //(ENGINE_MINOR_VERSION >= 25)
 
 		uint32	outputMask = 0;
 		uint32	inputMask = 0;
@@ -454,11 +402,7 @@ namespace PopcornFXBillboarder
 					// TODO: Investigate into output vertex offset to aligned stride (cache lines ?)
 					// if (params.m_OutputVertexOffset == 0)
 					{
-#if (ENGINE_MINOR_VERSION >= 26)
 						RHICmdList.Transition(FRHITransitionInfo(params.m_Outputs[i], ERHIAccess::VertexOrIndexBuffer, ERHIAccess::UAVCompute));
-#else
-						RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, params.m_Outputs[i]);
-#endif // (ENGINE_MINOR_VERSION >= 26)
 						RHICmdList.SetUAVParameter(shader, Outputs[i].GetBaseIndex(), params.m_Outputs[i]);
 					}
 				}
@@ -503,42 +447,12 @@ namespace PopcornFXBillboarder
 		{
 			if (IsValidRef(params.m_Outputs[i]) && Outputs[i].IsBound())
 			{
-#if (ENGINE_MINOR_VERSION >= 26)
 				RHICmdList.Transition(FRHITransitionInfo(params.m_Outputs[i], ERHIAccess::UAVCompute, ERHIAccess::VertexOrIndexBuffer));
-#else
-				//RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, params.m_Outputs[i]);
-#endif // (ENGINE_MINOR_VERSION >= 26)
-
 				RHICmdList.SetUAVParameter(shader, Outputs[i].GetBaseIndex(), nullUAV);
 			}
 		}
 		RHICmdList.SetShaderResourceViewParameter(shader, InSimData.GetBaseIndex(), nullSRV);
 	}
-
-	//----------------------------------------------------------------------------
-
-#if (ENGINE_MINOR_VERSION < 25)
-	bool	FCopyStreamCS::Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << OutputMask;
-		Ar << InputMask;
-		Ar << InputOffset;
-		Ar << OutputVertexOffset;
-		Ar << IsCapsule;
-		for (u32 i = 0; i < EOutput::_Count; ++i)
-			Ar << Outputs[i];
-		Ar << InSimData;
-		for (u32 i = 0; i < EInput::_Count; ++i)
-		{
-			Ar << InputsOffsets[i];
-			Ar << InputsDefault[i];
-		}
-		Ar << HasLiveParticleCount;
-		Ar << LiveParticleCount;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
 
 	//----------------------------------------------------------------------------
 
@@ -578,7 +492,7 @@ namespace PopcornFXBillboarder
 
 	//----------------------------------------------------------------------------
 
-	void	FUAVsClearCS::Dispatch(const SRenderContext &renderContext, FRHICommandList& RHICmdList, const FClearCS_Params &params)
+	void	FUAVsClearCS::Dispatch(const SUERenderContext &renderContext, FRHICommandList& RHICmdList, const FClearCS_Params &params)
 	{
 		// Right now, one dispatch per UAV to clear
 		// But we could do a two dispatchs for all UAVs -- Vertex declaration doesn't change
@@ -587,17 +501,12 @@ namespace PopcornFXBillboarder
 		{
 			if (IsValidRef(params.m_UAVs[i]))
 			{
-#if (ENGINE_MINOR_VERSION >= 25)
 				FCSRHIParamRef	shader = RHICmdList.GetBoundComputeShader();
-#else
-				FCSRHIParamRef	shader = GetComputeShader();
-				RHICmdList.SetComputeShader(shader);
-#endif //(ENGINE_MINOR_VERSION >= 25)
 
 				// TODO: We can have the clear count without doing this
 				u32	byteSize = 0;
 #if (PK_GPU_D3D11 != 0)
-				if (renderContext.m_API == SRenderContext::D3D11)
+				if (renderContext.m_API == SUERenderContext::D3D11)
 				{
 					const FD3D11UnorderedAccessView		*view = (FD3D11UnorderedAccessView*)params.m_UAVs[i].GetReference();
 					D3D11_UNORDERED_ACCESS_VIEW_DESC	desc;
@@ -610,7 +519,7 @@ namespace PopcornFXBillboarder
 				}
 #endif // (PK_GPU_D3D11 != 0)
 #if (PK_GPU_D3D12 != 0)
-				if (renderContext.m_API == SRenderContext::D3D12)
+				if (renderContext.m_API == SUERenderContext::D3D12)
 				{
 					const FD3D12UnorderedAccessView			*view = (FD3D12UnorderedAccessView*)params.m_UAVs[i].GetReference();
 					const D3D12_UNORDERED_ACCESS_VIEW_DESC	&desc = view->GetDesc();
@@ -635,20 +544,6 @@ namespace PopcornFXBillboarder
 			}
 		}
 	}
-
-	//----------------------------------------------------------------------------
-
-#	if (ENGINE_MINOR_VERSION < 25)
-	bool	FUAVsClearCS::Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << ClearBufferCSParams;
-		Ar << UAVRaw;
-		Ar << UAV;
-		Ar << RawUAV;
-		return bShaderHasOutdatedParameters;
-	}
-#	endif //(ENGINE_MINOR_VERSION < 25)
 #endif // (PK_GPU_D3D11 != 0) || (PK_GPU_D3D12 != 0)
 
 	//----------------------------------------------------------------------------
@@ -708,12 +603,7 @@ namespace PopcornFXBillboarder
 	{
 		SCOPED_DRAW_EVENT(RHICmdList, PopcornFXBillboarderMesh_Dispatch);
 
-#if (ENGINE_MINOR_VERSION >= 25)
 		FCSRHIParamRef	shader = RHICmdList.GetBoundComputeShader();
-#else
-		FCSRHIParamRef	shader = GetComputeShader();
-		RHICmdList.SetComputeShader(shader);
-#endif //(ENGINE_MINOR_VERSION >= 25)
 
 		uint32	outputMask = 0;
 		uint32	inputMask = 0;
@@ -771,31 +661,6 @@ namespace PopcornFXBillboarder
 
 	//----------------------------------------------------------------------------
 
-#if (ENGINE_MINOR_VERSION < 25)
-	bool	FBillboarderMeshCS::Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << OutputMask;
-		Ar << InputMask;
-		Ar << InputOffset;
-		Ar << OutputVertexOffset;
-		Ar << PositionsScale;
-		for (u32 i = 0; i < EOutput::_Count; ++i)
-			Ar << Outputs[i];
-		Ar << InSimData;
-		for (u32 i = 0; i < EInput::_Count; ++i)
-		{
-			Ar << InputsOffsets[i];
-			Ar << InputsDefault[i];
-		}
-		Ar << HasLiveParticleCount;
-		Ar << LiveParticleCount;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
-
-	//----------------------------------------------------------------------------
-
 	// static
 	bool	FCopySizeBufferCS::ShouldCompilePermutation(const FGlobalShaderPermutationParameters &Parameters)
 	{
@@ -832,12 +697,7 @@ namespace PopcornFXBillboarder
 
 	void	FCopySizeBufferCS::Dispatch(FRHICommandList& RHICmdList, const FCSCopySizeBuffer_Params &params)
 	{
-#if (ENGINE_MINOR_VERSION >= 25)
 		FCSRHIParamRef	shader = RHICmdList.GetBoundComputeShader();
-#else
-		FCSRHIParamRef	shader = GetComputeShader();
-		RHICmdList.SetComputeShader(shader);
-#endif //(ENGINE_MINOR_VERSION >= 25)
 
 		SetShaderValue(RHICmdList, shader, InDrawIndirectArgsBufferOffset, params.m_DrawIndirectArgsOffset);
 		SetShaderValue(RHICmdList, shader, IndexCountPerInstance, params.m_IsCapsule ? 12 : 6);
@@ -855,20 +715,6 @@ namespace PopcornFXBillboarder
 		RHICmdList.SetUAVParameter(shader, DrawIndirectArgsBuffer.GetBaseIndex(), nullUAV);
 		RHICmdList.SetShaderResourceViewParameter(shader, LiveParticleCount.GetBaseIndex(), nullSRV);
 	}
-
-	//----------------------------------------------------------------------------
-
-#if (ENGINE_MINOR_VERSION < 25)
-	bool	FCopySizeBufferCS::Serialize(FArchive& Ar)
-	{
-		bool bShaderHasOutdatedParameters = FGlobalShader::Serialize(Ar);
-		Ar << InDrawIndirectArgsBufferOffset;
-		Ar << IndexCountPerInstance;
-		Ar << DrawIndirectArgsBuffer;
-		Ar << LiveParticleCount;
-		return bShaderHasOutdatedParameters;
-	}
-#endif // (ENGINE_MINOR_VERSION < 25)
 
 } // namespace PopcornFXBillboarder
 

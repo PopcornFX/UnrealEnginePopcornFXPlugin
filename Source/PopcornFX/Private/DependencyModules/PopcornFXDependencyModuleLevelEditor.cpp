@@ -120,10 +120,10 @@ void	FPopcornFXDependencyModuleLevelEditor::FillPopcornFXMenu(FMenuBuilder &menu
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenDocumentationURL, *FPopcornFXPlugin::PluginWikiURL())));
 
 		menuBuilder.AddMenuEntry(
-			LOCTEXT("AnswerHubTitle", "AnswerHub"),
-			LOCTEXT("AnswerHubTooltip", "Opens the PopcornFX Answerhub"),
+			LOCTEXT("DiscordTitle", "Discord"),
+			LOCTEXT("DiscordTooltip", "Join PopcornFX Discord server"),
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
-			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenDocumentationURL, *FPopcornFXPlugin::AnswerHubURL())));
+			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenDocumentationURL, *FPopcornFXPlugin::DiscordURL())));
 	}
 	menuBuilder.EndSection();
 

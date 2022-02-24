@@ -80,11 +80,11 @@ void	PopcornFXPlatform_XboxOne_UNKNOWN_SetupGPUBackendCompilers(	const PopcornFX
 
 //----------------------------------------------------------------------------
 
-#if (PK_COMPILE_GPU_UNKNOWN1 != 0)
+#if (PK_COMPILE_GPU_UNKNOWN != 0)
 void	PopcornFXPlatform_UNKNOWN1eries_SetupGPUBackendCompilers(	const PopcornFX::CString		&fileSourceVirtualPath,
 																u32								backendTargets, // PopcornFX::EBackendTarget
 																PopcornFXCbBuildBytecodeArray	&outCbCompiles);
-#endif // (PK_COMPILE_GPU_UNKNOWN1 != 0)
+#endif // (PK_COMPILE_GPU_UNKNOWN != 0)
 
 //----------------------------------------------------------------------------
 

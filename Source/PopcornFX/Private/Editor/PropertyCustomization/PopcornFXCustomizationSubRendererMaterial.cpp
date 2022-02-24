@@ -277,7 +277,11 @@ FReply	FPopcornFXCustomizationSubRendererMaterial::OnResetClicked()
 	if (!PK_VERIFY(self != null))
 		return FReply::Handled();
 	self->_ResetDefaultMaterial_NoReload();
+#if (ENGINE_MAJOR_VERSION == 5)
+	m_MaterialPty->NotifyPostChange(EPropertyChangeType::ValueSet); // TODO: Is this correct
+#else
 	m_MaterialPty->NotifyPostChange(); // should reload
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	return FReply::Handled();
 }
 

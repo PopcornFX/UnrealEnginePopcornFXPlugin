@@ -141,11 +141,7 @@ class POPCORNFX_API UPopcornFXSceneComponent : public UPrimitiveComponent
 	virtual void						TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
 	virtual void						ApplyWorldOffset(const FVector &inOffset, bool worldShift) override;
 	virtual void						SendRenderDynamicData_Concurrent() override;
-#if (ENGINE_MINOR_VERSION >= 25)
 	virtual void						CreateRenderState_Concurrent(FRegisterComponentContext *context) override;
-#else
-	virtual void						CreateRenderState_Concurrent() override;
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	// overrides USceneComponent
 	virtual FBoxSphereBounds			CalcBounds(const FTransform & LocalToWorld) const override;

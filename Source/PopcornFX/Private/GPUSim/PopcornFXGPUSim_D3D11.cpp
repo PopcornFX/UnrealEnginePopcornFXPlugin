@@ -101,10 +101,13 @@ inline static DXGI_FORMAT My_FindShaderResourceDXGIFormat(DXGI_FORMAT InFormat, 
 //
 // Creates a ***Raw Byte Address*** SRV
 //
-FShaderResourceViewRHIRef		My_RHICreateShaderResourceView_D3D11(FVBRHIParamRef VertexBufferRHI, u32 Stride, u8 Format)
+FShaderResourceViewRHIRef		My_RHICreateShaderResourceView_D3D11(FVBRHIParamRef /*Vertex*/BufferRHI, u32 Stride, u8 Format)
 {
-	//DYNAMIC_CAST_D3D11RESOURCE(VertexBuffer, VertexBuffer);
-	FD3D11VertexBuffer			*VertexBuffer = (FD3D11VertexBuffer*)VertexBufferRHI;
+#if (ENGINE_MAJOR_VERSION == 5)
+	FD3D11Buffer				*VertexBuffer = (FD3D11Buffer*)/*Vertex*/BufferRHI;
+#else
+	FD3D11VertexBuffer			*VertexBuffer = (FD3D11VertexBuffer*)/*Vertex*/BufferRHI;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	check(VertexBuffer);
 	check(VertexBuffer->Resource);
 
@@ -174,23 +177,27 @@ inline static DXGI_FORMAT My_FindUnorderedAccessDXGIFormat(DXGI_FORMAT InFormat)
 
 //----------------------------------------------------------------------------
 
-FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D11(FVBRHIParamRef VertexBufferRHI, u8 Format)
+FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D11(FVBRHIParamRef /*Vertex*/BufferRHI, u8 Format)
 {
-	PK_ASSERT(IsValidRef(VertexBufferRHI));
-	return RHICreateUnorderedAccessView(VertexBufferRHI, Format);
+	return RHICreateUnorderedAccessView(BufferRHI, Format);
 }
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 4)
 // Source/Runtime/Windows/D3D11RHI/Private/D3D11UAV.cpp
 //
 // UAV from Index Buffer
 //
-FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D11(FIBRHIParamRef IndexBufferRHI, u8 Format)
+FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D11(FIBRHIParamRef /*Index*/BufferRHI, u8 Format)
 {
-	PK_ASSERT(IsValidRef(IndexBufferRHI));
+	PK_ASSERT(IsValidRef(/*Index*/BufferRHI));
 
-	FD3D11IndexBuffer			*IndexBuffer = (FD3D11IndexBuffer*)IndexBufferRHI;
+#if (ENGINE_MAJOR_VERSION == 5)
+	FD3D11Buffer				*IndexBuffer = (FD3D11Buffer*)/*Index*/BufferRHI;
+#else
+	FD3D11IndexBuffer			*IndexBuffer = (FD3D11IndexBuffer*)/*Index*/BufferRHI;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	D3D11_BUFFER_DESC BufferDesc;
 	IndexBuffer->Resource->GetDesc(&BufferDesc);
@@ -228,6 +235,7 @@ FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D11(FIBRHIParamRef
 
 	return new FD3D11UnorderedAccessView(UnorderedAccessView, IndexBuffer);
 }
+#endif // (ENGINE_MAJOR_VERSION == 4)
 
 //----------------------------------------------------------------------------
 //
@@ -237,7 +245,11 @@ FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D11(FIBRHIParamRef
 
 FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 bytes, u32 stride, u8 pixelFormat)
 {
-	FD3D11VertexBuffer	*buffer = static_cast<FD3D11VertexBuffer*>(StreamBufferResourceToRHI(stream, bytes));
+#if (ENGINE_MAJOR_VERSION == 5)
+	FD3D11Buffer				*buffer = static_cast<FD3D11Buffer*>(StreamBufferResourceToRHI(stream, bytes, stride));
+#else
+	FD3D11VertexBuffer			*buffer = static_cast<FD3D11VertexBuffer*>(StreamBufferResourceToRHI(stream, bytes, stride));
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	if (pixelFormat == PF_Unknown)
 	{
@@ -255,7 +267,11 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamB
 
 //----------------------------------------------------------------------------
 
-FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 bytes)
+#if (ENGINE_MAJOR_VERSION == 5)
+FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 bytes, u32 stride)
+#else
+FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 bytes, u32 stride)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	D3D11_BUFFER_DESC	desc;
 	stream->m_Buffer->GetDesc(&desc);
@@ -266,8 +282,12 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuff
 	PK_ASSERT((desc.Usage & D3D11_USAGE_DYNAMIC) == 0); // no BUF_AnyDynamic
 	PK_ASSERT((desc.CPUAccessFlags) == 0); // no BUF_AnyDynamic
 
-	u32						bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
-	FD3D11VertexBuffer		*buffer = new FD3D11VertexBuffer(stream->m_Buffer, bytes, bufferUsage);
+	u32							bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
+#if (ENGINE_MAJOR_VERSION == 5)
+	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, bytes, bufferUsage, stride);
+#else
+	FD3D11VertexBuffer			*buffer = new FD3D11VertexBuffer(stream->m_Buffer, bytes, bufferUsage);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	PK_ASSERT(_PopcornFXD3DGetRefCount(*(buffer->Resource)) > 1); // Referenced here and by PopcornFX
 
 	return buffer;

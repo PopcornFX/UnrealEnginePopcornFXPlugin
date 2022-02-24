@@ -203,11 +203,7 @@ PopcornFX::CParticleEffectInstance	*UPopcornFXEmitterComponent::_GetEffectInstan
 //----------------------------------------------------------------------------
 #if WITH_EDITOR
 
-#if (ENGINE_MINOR_VERSION >= 25)
 bool	UPopcornFXEmitterComponent::CanEditChange(const FProperty* InProperty) const
-#else
-bool	UPopcornFXEmitterComponent::CanEditChange(const UProperty* InProperty) const
-#endif // (ENGINE_MINOR_VERSION >= 25)
 {
 	if (InProperty)
 	{

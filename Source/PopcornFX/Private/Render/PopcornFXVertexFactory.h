@@ -70,17 +70,9 @@ public:
 	FPopcornFXVertexBufferView		m_UVScalesAndOffsets;
 	FPopcornFXVertexBufferView		m_AtlasIDs; // This should be an additional input
 
-#if (ENGINE_MINOR_VERSION >= 25)
 	static bool			ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters);
-#else
-	static bool			ShouldCompilePermutation(EShaderPlatform Platform, const class FMaterial* Material, const class FShaderType* ShaderType);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
-#if (ENGINE_MINOR_VERSION >= 25)
 	static void			ModifyCompilationEnvironment(const FVertexFactoryShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
-#else
-	static void			ModifyCompilationEnvironment(const FVertexFactoryType* Type, EShaderPlatform Platform, const FMaterial* Material, FShaderCompilerEnvironment& OutEnvironment);
-#endif // (ENGINE_MINOR_VERSION >= 25)
 
 	static bool			IsCompatible(UMaterialInterface *material);
 
@@ -89,11 +81,6 @@ public:
 
 	/** Does the vertex factory supports tesselation shaders */
 	static bool								SupportsTessellationShaders() { return false; }
-
-#if (ENGINE_MINOR_VERSION < 25)
-	/** Construct the corresponding shader parameters */
-	static FVertexFactoryShaderParameters	*ConstructShaderParameters(EShaderFrequency shaderFrequency);
-#endif // (ENGINE_MINOR_VERSION < 25)
 
 	FRHIUniformBuffer						*GetVSUniformBuffer() { return m_VSUniformBuffer; }
 	FRHIUniformBuffer						*GetCommonUniformBuffer() { return m_CommonUniformBuffer; }
