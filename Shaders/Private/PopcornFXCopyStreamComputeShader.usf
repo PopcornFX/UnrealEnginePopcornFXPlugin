@@ -1,0 +1,176 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "/Engine/Public/Platform.ush"
+
+/*=============================================================================
+PopcornFXCopyStreamComputeShader.usf: Copies various streams (assumes billboard renderer, 4 or 6 vertices per particle)
+=============================================================================*/
+
+#if COMPILER_HLSL
+
+RWByteAddressBuffer		OutColors;
+RWByteAddressBuffer		OutAlphaCursors;
+RWByteAddressBuffer		OutDynamicParameter1s;
+RWByteAddressBuffer		OutDynamicParameter2s;
+RWByteAddressBuffer		OutDynamicParameter3s;
+
+ByteAddressBuffer		InSimData;
+
+uint					InColorsOffset;
+uint					InAlphaCursorsOffset;
+uint					InDynamicParameter1sOffset;
+uint					InDynamicParameter2sOffset;
+uint					InDynamicParameter3sOffset;
+
+float4		DefaultInColors;
+float4		DefaultInAlphaCursors;
+float4		DefaultInDynamicParameter1s;
+float4		DefaultInDynamicParameter2s;
+float4		DefaultInDynamicParameter3s;
+
+uint		InputMask;
+uint		OutputMask;
+uint		InputOffset;
+uint		OutputVertexOffset;
+int			IsCapsule;
+
+uint					HasLiveParticleCount;
+ByteAddressBuffer		LiveParticleCount;
+
+[numthreads(PK_GPU_THREADGROUP_SIZE, 1, 1)]
+void		Copy(uint3 DTid : SV_DispatchThreadID)
+{
+	const uint		globali = DTid.x;
+	const uint		inputi = InputOffset + globali;
+	
+	if (HasLiveParticleCount != 0)
+	{
+		const uint		particleCount = asint(LiveParticleCount.Load(0));
+		if (inputi < particleCount)
+		{
+			const uint		vpp = (IsCapsule ? 6 : 4);
+			const uint		vstart = globali * vpp + OutputVertexOffset;
+
+			if (OutputMask & MASK_OutAlphaCursors)
+			{
+				float	cursor;
+				if (InputMask & MASK_InAlphaCursors)
+					cursor = asfloat(InSimData.Load(InAlphaCursorsOffset + inputi * 4));
+				else
+					cursor = DefaultInAlphaCursors.x;
+
+				const uint		addr = vstart * 4;
+				OutAlphaCursors.Store(addr + 0 * 4, asint(cursor));
+				OutAlphaCursors.Store(addr + 1 * 4, asint(cursor));
+				OutAlphaCursors.Store(addr + 2 * 4, asint(cursor));
+				OutAlphaCursors.Store(addr + 3 * 4, asint(cursor));
+				if (IsCapsule)
+				{
+					OutAlphaCursors.Store(addr + 4 * 4, asint(cursor));
+					OutAlphaCursors.Store(addr + 4 * 4, asint(cursor));
+				}
+			}
+
+			if (OutputMask & MASK_OutColors)
+			{
+				float4			color;
+				if (InputMask & MASK_InColors)
+					color = asfloat(InSimData.Load4(InColorsOffset + globali * 16));
+				else
+					color = DefaultInColors;
+
+#if PK_BILLBOARDER_CS_OUTPUT_PACK_COLOR_F16
+				const uint		addr = vstart * 8;
+				uint4			colori4 = f32tof16(color);
+				uint2			colorPacked = uint2(
+					colori4.x | (colori4.y << 16),
+					colori4.z | (colori4.w << 16)
+				);
+				OutColors.Store2(addr + 0 * 8, asint(colorPacked));
+				OutColors.Store2(addr + 1 * 8, asint(colorPacked));
+				OutColors.Store2(addr + 2 * 8, asint(colorPacked));
+				OutColors.Store2(addr + 3 * 8, asint(colorPacked));
+				if (IsCapsule)
+				{
+					OutColors.Store2(addr + 4 * 8, asint(colorPacked));
+					OutColors.Store2(addr + 5 * 8, asint(colorPacked));
+				}
+#else
+				const uint		addr = vstart * 16;
+				OutColors.Store4(addr + 0 * 16, asint(color));
+				OutColors.Store4(addr + 1 * 16, asint(color));
+				OutColors.Store4(addr + 2 * 16, asint(color));
+				OutColors.Store4(addr + 3 * 16, asint(color));
+				if (IsCapsule)
+				{
+					OutColors.Store4(addr + 4 * 16, asint(color));
+					OutColors.Store4(addr + 5 * 16, asint(color));
+				}
+#endif
+			}
+
+			if (OutputMask & MASK_OutDynamicParameter1s)
+			{
+				float4			param;
+				if (InputMask & MASK_InDynamicParameter1s)
+					param = asfloat(InSimData.Load4(InDynamicParameter1sOffset + globali * 16));
+				else
+					param = DefaultInDynamicParameter1s;
+
+				const uint		addr = vstart * 16;
+				OutDynamicParameter1s.Store4(addr + 0 * 16, asint(param));
+				OutDynamicParameter1s.Store4(addr + 1 * 16, asint(param));
+				OutDynamicParameter1s.Store4(addr + 2 * 16, asint(param));
+				OutDynamicParameter1s.Store4(addr + 3 * 16, asint(param));
+				if (IsCapsule)
+				{
+					OutDynamicParameter1s.Store4(addr + 4 * 16, asint(param));
+					OutDynamicParameter1s.Store4(addr + 5 * 16, asint(param));
+				}
+			}
+			if (OutputMask & MASK_OutDynamicParameter2s)
+			{
+				float4			param;
+				if (InputMask & MASK_InDynamicParameter2s)
+					param = asfloat(InSimData.Load4(InDynamicParameter2sOffset + globali * 16));
+				else
+					param = DefaultInDynamicParameter2s;
+
+				const uint		addr = vstart * 16;
+				OutDynamicParameter2s.Store4(addr + 0 * 16, asint(param));
+				OutDynamicParameter2s.Store4(addr + 1 * 16, asint(param));
+				OutDynamicParameter2s.Store4(addr + 2 * 16, asint(param));
+				OutDynamicParameter2s.Store4(addr + 3 * 16, asint(param));
+				if (IsCapsule)
+				{
+					OutDynamicParameter2s.Store4(addr + 4 * 16, asint(param));
+					OutDynamicParameter2s.Store4(addr + 5 * 16, asint(param));
+				}
+			}
+			if (OutputMask & MASK_OutDynamicParameter3s)
+			{
+				float4			param;
+				if (InputMask & MASK_InDynamicParameter3s)
+					param = asfloat(InSimData.Load4(InDynamicParameter3sOffset + globali * 16));
+				else
+					param = DefaultInDynamicParameter3s;
+
+				const uint		addr = vstart * 16;
+				OutDynamicParameter3s.Store4(addr + 0 * 16, asint(param));
+				OutDynamicParameter3s.Store4(addr + 1 * 16, asint(param));
+				OutDynamicParameter3s.Store4(addr + 2 * 16, asint(param));
+				OutDynamicParameter3s.Store4(addr + 3 * 16, asint(param));
+				if (IsCapsule)
+				{
+					OutDynamicParameter3s.Store4(addr + 4 * 16, asint(param));
+					OutDynamicParameter3s.Store4(addr + 5 * 16, asint(param));
+				}
+			}
+		}
+	}
+}
+
+#endif // COMPILER_HLSL

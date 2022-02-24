@@ -1,0 +1,322 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "/Engine/Public/Platform.ush"
+
+#if COMPILER_HLSL
+
+#if DO_GenKeysCS
+
+ByteAddressBuffer		InPositions;
+
+uint					InPositionsOffset;
+
+RWByteAddressBuffer		OutKeys;
+RWByteAddressBuffer		OutValues;
+
+uint		TotalCount;
+uint		InputOffset;
+uint		OutputOffset;
+float4		SortOrigin;
+uint		IndexStart;
+uint		IndexStep;
+
+[numthreads(PK_GPU_THREADGROUP_SIZE, 1, 1)]
+void	GenKeysCS(uint3 DTid : SV_DispatchThreadID)
+{
+	const uint			globali = DTid.x;
+	const uint			inputi = InputOffset + globali;
+	const uint			outputi = OutputOffset + globali;
+
+	const float3		pos = asfloat(InPositions.Load3(InPositionsOffset + inputi * 12));
+
+	float		dist = length(pos - SortOrigin.xyz);
+	uint		key = ~asuint(f32tof16(dist));
+	if (globali >= TotalCount)
+		key = ~uint(0);
+
+	OutKeys.Store(outputi * 4, key);
+	OutValues.Store(outputi * 4, IndexStart + globali * IndexStep);
+	//OutValues.Store(outputi * 4, 0);
+}
+
+#endif // DO_GEN_INDICES
+
+#if DO_SortUpSweep
+
+#define GROUP_SIZE		PK_GPU_THREADGROUP_SIZE
+
+ByteAddressBuffer		InKeys;
+RWByteAddressBuffer		OutOffsets;
+
+uint	KeyBitOffset;
+
+#define NUM_BANKS					32
+#define LOG2_NUM_BANKS				5
+#define CONFLICT_FREE_OFFSET(__i)		((__i) >> NUM_BANKS + (__i) >> (2 * LOG2_NUM_BANKS))
+
+groupshared uint		GroupTotals[GROUP_SIZE];
+
+[numthreads(GROUP_SIZE / 2, 1, 1)]
+void	SortUpSweep(
+	uint3 Gid : SV_GroupId,
+	uint3 Tid : SV_GroupThreadId,
+	uint3 DTid : SV_DispatchThreadId)
+{
+	const uint			groupi = Gid.x;
+	const uint			threadi = Tid.x;
+	const uint			globali = DTid.x; // groupi * THREAD_COUNT + threadi
+
+#if 0
+	const uint4			fullKeys = InKeys.Load4(globali * 4 * 4);
+	const uint4			keyBits = (fullKeys >> KeyBitOffset) & 1;
+	const uint4			startValues = 1 - keyBits;
+	GroupTotals[threadi * 4 + 0] = startValues.x;
+	GroupTotals[threadi * 4 + 1] = startValues.y;
+	GroupTotals[threadi * 4 + 2] = startValues.z;
+	GroupTotals[threadi * 4 + 3] = startValues.w;
+	uint		stride = 1;
+	for (uint d = GROUP_SIZE / 4; d > 0; d /= 4)
+	{
+		GroupMemoryBarrierWithGroupSync();
+		if (threadi < d)
+		{
+			const uint		ai = (threadi * 4 + 1) * stride - 1;
+			const uint		bi = (threadi * 4 + 2) * stride - 1;
+			const uint		ci = (threadi * 4 + 3) * stride - 1;
+			const uint		di = (threadi * 4 + 4) * stride - 1;
+			GroupTotals[di] += GroupTotals[ai] + GroupTotals[bi] + GroupTotals[ci];
+		}
+		stride *= 4;
+	}
+	if (0)//uint(log2(GROUP_SIZE)) % 2 == 1)
+	{
+		if (threadi == 0)
+		{
+			const uint		ai = (threadi * 4 + 1) * stride - 1;
+			const uint		bi = (threadi * 4 + 2) * stride - 1;
+			GroupTotals[bi] += GroupTotals[ai];
+		}
+	}
+
+#else
+	const uint2			fullKeys = InKeys.Load2(globali * 2 * 4);
+	const uint2			keyBits = (fullKeys >> KeyBitOffset) & 1;
+	const uint2			startValues = 1 - keyBits;
+	const uint2			k01 = {0, 1};
+	{
+		uint2			i = threadi * 2 + k01;
+		//i += CONFLICT_FREE_OFFSET(i);
+		GroupTotals[i.x] = startValues.x;
+		GroupTotals[i.y] = startValues.y;
+	}
+	uint		stride = 1;
+	for (uint d = GROUP_SIZE / 2; d > 0; d /= 2)
+	{
+		GroupMemoryBarrierWithGroupSync();
+		if (threadi < d)
+		{
+			uint		ai = (threadi * 2 + 1) * stride - 1;
+			uint		bi = (threadi * 2 + 2) * stride - 1;
+			//ai += CONFLICT_FREE_OFFSET(ai);
+			//bi += CONFLICT_FREE_OFFSET(bi);
+			GroupTotals[bi] += GroupTotals[ai];
+		}
+		stride *= 2;
+	}
+#endif
+	GroupMemoryBarrierWithGroupSync();
+
+	if (threadi == 0)
+	{
+		//const uint		total = GroupTotals[GROUP_SIZE - 1 + CONFLICT_FREE_OFFSET(GROUP_SIZE - 1)];
+		const uint		total = GroupTotals[GROUP_SIZE - 1];
+		OutOffsets.Store(groupi * 4, total);
+	}
+}
+
+#endif // DO_SortUpSweep
+
+#if DO_SortUpSweepOffsets
+
+#define GROUP_SIZE		PK_GPU_THREADGROUP_SIZE
+
+RWByteAddressBuffer		InOutOffsets;
+
+uint	GroupCount;
+
+groupshared uint		GroupTotals[GROUP_SIZE];
+
+[numthreads(GROUP_SIZE / 2, 1, 1)]
+void	SortUpSweepOffsets(
+	uint3 Gid : SV_GroupId,
+	uint3 Tid : SV_GroupThreadId,
+	uint3 DTid : SV_DispatchThreadId)
+{
+	const uint			groupi = Gid.x;
+	const uint			threadi = Tid.x;
+	const uint			globali = DTid.x; // groupi * (GROUP_SIZE / 2) + threadi
+
+	uint				lastTotal = 0;
+
+	for (uint offseti = 0; offseti < GroupCount; offseti += GROUP_SIZE)
+	{
+		const uint2		inOffsets = InOutOffsets.Load2((offseti + threadi * 2) * 4);
+		GroupTotals[threadi * 2 + 0] = inOffsets.x;
+		GroupTotals[threadi * 2 + 1] = inOffsets.y;
+
+		uint			stride = 1;
+		for (uint d = GROUP_SIZE / 2; d > 0; d /= 2)
+		{
+			GroupMemoryBarrierWithGroupSync();
+			if (threadi < d)
+			{
+				const uint		ai = (threadi * 2 + 1) * stride - 1;
+				const uint		bi = (threadi * 2 + 2) * stride - 1;
+				GroupTotals[bi] += GroupTotals[ai];
+			}
+			stride *= 2;
+		}
+
+		GroupMemoryBarrierWithGroupSync();
+
+		const uint	total = GroupTotals[GROUP_SIZE - 1];
+
+		for (uint d = 1; d < GROUP_SIZE; d *= 2)
+		{
+			stride /= 2;
+			GroupMemoryBarrierWithGroupSync();
+			if (threadi > 0 && threadi < d)
+			{
+				const uint		ai = (threadi * 2 + 0) * stride - 1;
+				const uint		bi = (threadi * 2 + 1) * stride - 1;
+				GroupTotals[bi] += GroupTotals[ai];
+			}
+		}
+
+		GroupMemoryBarrierWithGroupSync();
+
+		const uint2		outOffsets = uint2(GroupTotals[threadi * 2 + 0], GroupTotals[threadi * 2 + 1]) + lastTotal;
+		InOutOffsets.Store2((offseti + threadi * 2) * 4, outOffsets);
+
+		lastTotal += total;
+
+	}
+}
+#endif // DO_SortUpSweepOffsets
+
+#if DO_SortDownSweep
+
+#define GROUP_SIZE		PK_GPU_THREADGROUP_SIZE
+
+ByteAddressBuffer		InOffsets;
+
+ByteAddressBuffer		InKeys;
+ByteAddressBuffer		InValues;
+
+RWByteAddressBuffer		OutKeys;
+RWByteAddressBuffer		OutValues;
+
+uint		KeyBitOffset;
+uint		GroupCount;
+
+groupshared uint		GroupTotals[GROUP_SIZE];
+
+[numthreads(GROUP_SIZE / 2, 1, 1)]
+void	SortDownSweep(
+	uint3 Gid : SV_GroupId,
+	uint3 Tid : SV_GroupThreadId,
+	uint3 DTid : SV_DispatchThreadId)
+{
+	const uint			groupi = Gid.x;
+	const uint			threadi = Tid.x;
+	const uint			globali = DTid.x; // groupi * (GROUP_SIZE / 2) + threadi
+
+	const uint2			fullKeys = InKeys.Load2((globali * 2) * 4);
+	const uint2			keyBits = (fullKeys >> KeyBitOffset) & 1;
+
+	const uint2			startValues = 1 - keyBits;
+	GroupTotals[threadi * 2 + 0] = startValues.x;
+	GroupTotals[threadi * 2 + 1] = startValues.y;
+
+	uint				stride = 1;
+	for (uint d = GROUP_SIZE / 2; d > 0; d /= 2)
+	{
+		GroupMemoryBarrierWithGroupSync();
+		if (threadi < d)
+		{
+			const uint		ai = (threadi * 2 + 1) * stride - 1;
+			const uint		bi = (threadi * 2 + 2) * stride - 1;
+			GroupTotals[bi] += GroupTotals[ai];
+		}
+		stride *= 2;
+	}
+
+	GroupMemoryBarrierWithGroupSync();
+
+	if (threadi == 0)
+	{
+		GroupTotals[GROUP_SIZE - 1] = 0;
+	}
+	
+	for (uint d = 1; d < GROUP_SIZE; d *= 2)
+	{
+		stride /= 2;
+		GroupMemoryBarrierWithGroupSync();
+		if (threadi < d)
+		{
+			const uint		ai = (threadi * 2 + 1) * stride - 1;
+			const uint		bi = (threadi * 2 + 2) * stride - 1;
+			const uint		t = GroupTotals[ai];
+			GroupTotals[ai] = GroupTotals[bi];
+			GroupTotals[bi] += t;
+		}
+	}
+
+	GroupMemoryBarrierWithGroupSync();
+
+	const uint		globalTotalSum = InOffsets.Load((GroupCount - 1) * 4); // Does it broadcast ?
+
+	uint			lastTotal;
+	if (groupi == 0)
+		lastTotal = 0;
+	else
+		lastTotal = InOffsets.Load((groupi - 1) * 4); // Does it broadcast ?
+
+	const uint2		sums = uint2(GroupTotals[threadi * 2 + 0], GroupTotals[threadi * 2 + 1]) + lastTotal;
+	const uint2		k01 = uint2(0, 1);
+	const uint2		dstIf1 = (globali * 2 + k01) - sums + globalTotalSum;
+	const uint2		mask = uint2(keyBits.x != 0 ? ~0 : 0, keyBits.y != 0 ? ~0 : 0);
+	//const uint		dst0 = keyBits.x != 0 ? dstIf1.x : sums.x;
+	//const uint		dst1 = keyBits.y != 0 ? dstIf1.y : sums.y;
+	const uint2		dsts = (mask & dstIf1) | (~mask & sums);
+	const uint2		dstsAddr = dsts * 4;
+
+	OutKeys.Store(dstsAddr.x, fullKeys.x);
+	OutKeys.Store(dstsAddr.y, fullKeys.y);
+
+	const uint2		inValues = InValues.Load2((globali * 2) * 4);
+
+	OutValues.Store(dstsAddr.x, inValues.x);
+	OutValues.Store(dstsAddr.y, inValues.y);
+
+	//OutValues.Store(src0 * 4, InOffsets.Load((GroupCount - 1) * 4) * 4 - 4);
+	//OutValues.Store(src1 * 4, InOffsets.Load((GroupCount - 1) * 4) * 4 - 4);
+	//OutValues.Store(src0 * 4, dst0 * 4 - 4);
+	//OutValues.Store(src1 * 4, dst1 * 4 - 4);
+	//OutValues.Store(dst0 * 4, 0);
+	//OutValues.Store(dst1 * 4, 4);
+	//OutValues.Store(src0 * 4, keyBit0 * 4);
+	//OutValues.Store(src1 * 4, keyBit1 * 4);
+
+	//OutValues.Store(src0 * 4, (GroupCount * GROUP_SIZE - globali * 2) * 4);
+	//OutValues.Store(src1 * 4, (GroupCount * GROUP_SIZE - globali * 2) * 4 + 4);
+	//OutValues.Store((globali * 2 + 0) * 4, abs((int)src0 - (int)dst0) * 4);
+	//OutValues.Store((globali * 2 + 1) * 4, abs((int)src1 - (int)dst1) * 4);
+}
+
+#endif // DO_SortDownSweep
+
+#endif // COMPILER_HLSL

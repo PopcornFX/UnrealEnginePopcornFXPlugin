@@ -1,0 +1,318 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "PopcornFXBuffer.h"
+
+#include <pk_kernel/include/kr_profiler.h>
+
+#include "GPUSim/PopcornFXGPUSim.h"
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXVertexBuffer
+//
+//----------------------------------------------------------------------------
+
+void	FPopcornFXVertexBuffer::ReleaseRHI()
+{
+	PK_ASSERT(!Mapped());
+	m_CapacityInBytes = 0;
+	m_AllocatedCount = 0;
+	FVertexBuffer::ReleaseRHI();
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXVertexBuffer::InitRHI()
+{
+	m_UAV = null;
+	m_SRV = null;
+	if (m_CapacityInBytes > 0)
+	{
+		FRHIResourceCreateInfo	emptyInformations;
+		uint32			usage = 0;
+		if (UsedAsUAV() || UsedAsSRV())
+		{
+			usage |= BUF_ShaderResource;
+			if (UsedAsByteAddressBuffer())
+				usage |= BUF_ByteAddressBuffer;
+			if (UsedAsUAV())
+				usage |= BUF_UnorderedAccess;
+			else
+				usage |= BUF_Dynamic;
+		}
+		else
+			usage |= BUF_Dynamic;
+		VertexBufferRHI = RHICreateVertexBuffer(m_CapacityInBytes, usage, emptyInformations);
+		if (!PK_VERIFY(IsValidRef(VertexBufferRHI)))
+			m_CapacityInBytes = 0;
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXVertexBuffer::SetResourceUsage(bool uav, bool srv, bool byteAddressBuffer)
+{
+	if (uav)
+		m_Flags |= Flag_UAV;
+	else
+		m_Flags &= ~Flag_UAV;
+
+	if (srv)
+		m_Flags |= Flag_SRV;
+	else
+		m_Flags &= ~Flag_SRV;
+
+	if (byteAddressBuffer)
+		m_Flags |= Flag_ByteAddressBuffer;
+	else
+		m_Flags &= ~Flag_ByteAddressBuffer;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXVertexBuffer::HardResize(u32 sizeInBytes)
+{
+	if (!PK_VERIFY(!Mapped()))
+		return false;
+	PK_ASSERT(m_CapacityInBytes == 0);
+	const u32		capacity = PopcornFX::Mem::Align<Alignment>(sizeInBytes);
+	m_CapacityInBytes = capacity;
+	if (!IsInitialized())
+		InitResource();
+	else
+		UpdateRHI();
+	return m_CapacityInBytes == capacity;
+}
+
+//----------------------------------------------------------------------------
+
+void	*FPopcornFXVertexBuffer::RawMap(u32 count, u32 stride)
+{
+	PK_ASSERT((m_Flags & Flag_StrideMask) == stride);
+	PK_ASSERT(count <= m_AllocatedCount);
+
+	if (!PK_VERIFY(Mappable()))
+		return null;
+	if (!PK_VERIFY(!Mapped()))
+		return null;
+
+	const u32		sizeInBytes = count * stride;
+	const u32		sizeToMap = PopcornFX::Mem::Align<Alignment>(sizeInBytes);
+	if (!PK_VERIFY(sizeToMap > 0 && sizeToMap <= m_CapacityInBytes))
+		return null;
+	if (!PK_VERIFY(IsValidRef(VertexBufferRHI)))
+		return null;
+	void	*map;
+	{
+		PK_NAMEDSCOPEDPROFILE("FPopcornFXVertexBuffer::RawMap RHILockVertexBuffer");
+		map = RHILockVertexBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+		//map = GDynamicRHI->RHILockVertexBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+	}
+	PK_ASSERT(map != null);
+	PK_ASSERT(PopcornFX::Mem::IsAligned<Alignment>(map));
+	m_CurrentMap = map;
+	return map;
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXVertexBuffer::Unmap()
+{
+	if (Mappable() && Mapped())
+	{
+		RHIUnlockVertexBuffer(VertexBufferRHI);
+		//GDynamicRHI->RHIUnlockVertexBuffer(VertexBufferRHI);
+		m_CurrentMap = null;
+	}
+}
+
+//----------------------------------------------------------------------------
+
+const FUnorderedAccessViewRHIRef	&FPopcornFXVertexBuffer::UAV()
+{
+#if (PK_HAS_GPU != 0)
+	PK_ASSERT(UsedAsUAV());
+	if (!IsValidRef(m_UAV))
+	{
+		m_UAV = /*My_*/RHICreateUnorderedAccessView(VertexBufferRHI, PF_R32_UINT);
+	}
+	PK_ASSERT(IsValidRef(m_UAV));
+#else
+	PK_ASSERT_NOT_REACHED();
+#endif
+	return m_UAV;
+}
+
+//----------------------------------------------------------------------------
+
+const FShaderResourceViewRHIRef		&FPopcornFXVertexBuffer::SRV()
+{
+	PK_ASSERT(UsedAsSRV());
+	if (!IsValidRef(m_SRV))
+	{
+		m_SRV = /*My_*/RHICreateShaderResourceView(VertexBufferRHI, sizeof(u32), PF_R32_UINT);
+	}
+	PK_ASSERT(IsValidRef(m_SRV));
+	return m_SRV;
+}
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXIndexBuffer
+//
+//----------------------------------------------------------------------------
+
+void	FPopcornFXIndexBuffer::ReleaseRHI()
+{
+	PK_ASSERT(!Mapped());
+	m_Capacity = 0;
+	m_Flags &= ~Flag_Large;
+	m_AllocatedCount = 0;
+	FIndexBuffer::ReleaseRHI();
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXIndexBuffer::InitRHI()
+{
+	m_UAV = null;
+	m_SRV = null;
+	PK_TODO("u16 indices for GPU");
+	if (UsedAsUAV() || m_Capacity > 0xFFFF)
+		m_Flags |= Flag_Large;
+	else
+		m_Flags &= ~Flag_Large;
+	if (m_Capacity > 0)
+	{
+		FRHIResourceCreateInfo	emptyInformations;
+		uint32			usage = 0;
+		if (UsedAsUAV() || UsedAsSRV())
+		{
+			usage |= BUF_ShaderResource;
+			if (UsedAsByteAddressBuffer())
+				usage |= BUF_ByteAddressBuffer;
+			if (UsedAsUAV())
+				usage |= BUF_UnorderedAccess;
+			else
+				usage |= BUF_Dynamic;
+		}
+		else
+			usage |= BUF_Dynamic;
+		IndexBufferRHI = RHICreateIndexBuffer(Stride(), m_Capacity * Stride(), usage, emptyInformations);
+		if (!PK_VERIFY(IsValidRef(IndexBufferRHI)))
+		{
+			m_Capacity = 0;
+			m_Flags &= ~Flag_Large;
+		}
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXIndexBuffer::SetResourceUsage(bool uav, bool srv, bool byteAddressBuffer)
+{
+	if (uav)
+		m_Flags |= Flag_UAV;
+	else
+		m_Flags &= ~Flag_UAV;
+
+	if (srv)
+		m_Flags |= Flag_SRV;
+	else
+		m_Flags &= ~Flag_SRV;
+
+	if (byteAddressBuffer)
+		m_Flags |= Flag_ByteAddressBuffer;
+	else
+		m_Flags &= ~Flag_ByteAddressBuffer;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXIndexBuffer::HardResize(u32 count)
+{
+	if (IsInitialized() && !PK_VERIFY(Mappable()))
+		return false;
+
+	if (!PK_VERIFY(!Mapped()))
+		return false;
+	const u32		capacity = PopcornFX::Mem::Align<Alignment>(count);
+	m_Capacity = capacity;
+	if (!IsInitialized())
+		InitResource();
+	else
+		UpdateRHI();
+	return m_Capacity == capacity;
+}
+
+//----------------------------------------------------------------------------
+
+void	*FPopcornFXIndexBuffer::RawMap(u32 countToMap)
+{
+	PK_ASSERT(countToMap <= m_AllocatedCount);
+
+	if (!PK_VERIFY(Mappable()))
+		return null;
+
+	if (!PK_VERIFY(!Mapped()))
+		return null;
+	const u32		sizeToMap = PopcornFX::Mem::Align<Alignment>(countToMap * Stride());
+	if (!PK_VERIFY(sizeToMap > 0 && sizeToMap <= m_Capacity * Stride()))
+		return null;
+	if (!PK_VERIFY(IsValidRef(IndexBufferRHI)))
+		return null;
+	void	*map;
+	{
+		PK_NAMEDSCOPEDPROFILE("FPopcornFXIndexBuffer::RawMap RHILockIndexBuffer");
+		map = RHILockIndexBuffer(IndexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+	}
+	PK_ASSERT(map != null);
+	PK_ASSERT(PopcornFX::Mem::IsAligned<Alignment>(map));
+	m_CurrentMap = map;
+	return map;
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXIndexBuffer::Unmap()
+{
+	if (Mappable() && Mapped())
+	{
+		RHIUnlockIndexBuffer(IndexBufferRHI);
+		m_CurrentMap = null;
+	}
+}
+
+//----------------------------------------------------------------------------
+
+const FUnorderedAccessViewRHIRef	&FPopcornFXIndexBuffer::UAV()
+{
+#if (PK_HAS_GPU != 0)
+	PK_ASSERT(UsedAsUAV());
+	if (!IsValidRef(m_UAV))
+		m_UAV = /*My_*/RHICreateUnorderedAccessView(IndexBufferRHI, PF_R32_UINT);
+	PK_ASSERT(IsValidRef(m_UAV));
+#else
+	PK_ASSERT_NOT_REACHED();
+#endif
+	return m_UAV;
+}
+
+//----------------------------------------------------------------------------
+
+const FShaderResourceViewRHIRef		&FPopcornFXIndexBuffer::SRV()
+{
+	PK_ASSERT(UsedAsSRV());
+	if (!IsValidRef(m_SRV))
+	{
+		// Not supported
+		//m_SRV = /*My_*/RHICreateShaderResourceView(IndexBufferRHI, PF_R32_UINT);
+	}
+	PK_ASSERT(IsValidRef(m_SRV));
+	return m_SRV;
+}
+
+//----------------------------------------------------------------------------

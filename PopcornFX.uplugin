@@ -1,0 +1,32 @@
+{
+	"FileVersion": 3,
+	"Version": 20920,
+	"VersionName": "2.9.20",
+	"FriendlyName": "PopcornFX",
+	"Description": "PopcornFX Realtime Particle Solution integration into Unreal Engine 4",
+	"Category": "PopcornFX",
+	"CreatedBy": "PopcornFX",
+	"CreatedByURL": "https://www.popcornfx.com/ue4-plugin/",
+	"DocsURL": "https://www.popcornfx.com/docs/popcornfx-v2/plugins/ue4-plugin/",
+	"MarketplaceURL": "",
+	"SupportURL": "https://discord.gg/4ka27cVrsf",
+	"Modules": [
+		{
+			"Name": "PopcornFX",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "PopcornFXOnDefault",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "PopcornFXEditor",
+			"Type": "UncookedOnly",
+			"LoadingPhase": "PreDefault"
+		}
+	],
+	"EnabledByDefault": true,
+	"CanContainContent": true
+}

@@ -1,0 +1,77 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------
+//
+//		Epic games functions
+//
+//----------------------------------------------------------------------------
+
+// also see ConvertToDeviceZ()
+// @param DeviceZ value that is stored in the depth buffer (Z/W)
+// @return SceneDepth (linear in world units, W)
+float ConvertFromDeviceZ(float DeviceZ)
+{
+	// Supports ortho and perspective, see CreateInvDeviceZToWorldZTransform()
+	return DeviceZ * InvDeviceZToWorldZTransform[0] + InvDeviceZToWorldZTransform[1] + 1.0f / (DeviceZ * InvDeviceZToWorldZTransform[2] - InvDeviceZToWorldZTransform[3]);
+}
+
+// inverse operation of ConvertFromDeviceZ()
+// @param SceneDepth (linear in world units, W)
+// @return DeviceZ (Z/W)
+float ConvertToDeviceZ(float SceneDepth)
+{
+	// Perspective
+	return 1.0f / ((SceneDepth + InvDeviceZToWorldZTransform[3]) * InvDeviceZToWorldZTransform[2]);
+}
+
+float3 WorldPositionFromSceneDepth(float2 ScreenPosition, float SceneDepth)
+{
+	float3 WorldPosition = mul(float4(ScreenPosition * SceneDepth, SceneDepth, 1), transpose(ScreenToWorld)).xyz;
+	return WorldPosition;
+}
+
+//----------------------------------------------------------------------------
+//
+//		Sim interface implementation
+//
+//----------------------------------------------------------------------------
+
+// float4 output: collisionNormal.xyz, collisionDistance (infinity if no collision)
+float4	Ext__pksi_IntersectScene_f32x3_f32x3_f32x1_f32x1_b1x1_s32x1_CX(float3 position, float3 rayDir, float rayLen, float sweepRadius, bool mask, int collisionFilter, inout int4 ctx)
+{
+	float	sweepRadiusUE = 0.0f;//sweepRadius * 100.0f;
+	float3	srcPosWS = position * 100.0f;
+	float3	targetPosWS = (position + rayDir * rayLen) * 100.0f;
+	float4	targetPosViewTranslated = float4(targetPosWS + PreViewTranslation.xyz, 1);
+	float4	targetPosClipPosition = mul(targetPosViewTranslated, transpose(TranslatedWorldToClip));
+	float2	targetPosScreenPosition = targetPosClipPosition.xy / targetPosClipPosition.w;
+
+	float	kInfinity = asfloat(0x7F800000);
+	float4	outHit = float4(0, 0, 0, kInfinity);
+	// Don't try to collide if the particle falls outside the view.
+	if (all(abs(targetPosScreenPosition.xy) <= float2(1, 1)))
+	{
+		float2 	targetPosScreenUV = targetPosScreenPosition * ScreenPositionScaleBias.xy + ScreenPositionScaleBias.wz;
+		float	targetPosSampledDepth = ConvertFromDeviceZ(UE_SceneDepth.SampleLevel(UE_SceneTexturesSampler, targetPosScreenUV, 0).r);
+
+		float3	worldNormal = UE_SceneNormal.SampleLevel(UE_SceneTexturesSampler, targetPosScreenUV, 0).xyz * 2.0f - 1.0f;
+		float3	hitWorldPos = WorldPositionFromSceneDepth(targetPosScreenPosition, targetPosSampledDepth);
+
+		// Derived from Epic's/Bungie's hit detection
+		float	dotRef = dot(hitWorldPos, worldNormal);
+		float	dotFront = dot(worldNormal, srcPosWS) + sweepRadiusUE - dotRef;
+		float	dotBack = dot(worldNormal, targetPosWS) - sweepRadiusUE - dotRef;
+		
+		float3	traceVec = targetPosWS - srcPosWS;
+		float	dotVel = dot(worldNormal, traceVec);
+
+		bool	hasCollided = dotFront >= 0.0f && dotBack <= 0.0f && dotVel < 0.0f;
+		float	hitDistance = length(srcPosWS - hitWorldPos) * 0.01f;
+
+		outHit = float4(worldNormal, hasCollided ? hitDistance : kInfinity);
+	}
+	return outHit;
+}

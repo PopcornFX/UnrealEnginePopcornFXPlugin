@@ -1,0 +1,28 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "/Engine/Public/Platform.ush"
+
+/*=============================================================================
+PopcornFXCopySizeBufferComputeShader.usf: Fill draw indirect args
+=============================================================================*/
+
+#include "/Engine/Private/Common.ush"
+
+uint			InDrawIndirectArgsBufferOffset;
+uint			IndexCountPerInstance;
+
+Buffer<uint> 	LiveParticleCount;
+RWBuffer<uint>	DrawIndirectArgsBuffer;
+
+[numthreads(1, 1, 1)]
+void	Copy(uint i : SV_DispatchThreadID)
+{
+	DrawIndirectArgsBuffer[InDrawIndirectArgsBufferOffset + 0] = IndexCountPerInstance; // IndexCountPerInstance
+	DrawIndirectArgsBuffer[InDrawIndirectArgsBufferOffset + 1] = LiveParticleCount[0]; // InstanceCount
+	DrawIndirectArgsBuffer[InDrawIndirectArgsBufferOffset + 2] = 0; // StartIndexLocation
+	DrawIndirectArgsBuffer[InDrawIndirectArgsBufferOffset + 3] = 0; // BaseVertexLocation
+	DrawIndirectArgsBuffer[InDrawIndirectArgsBufferOffset + 4] = 0; // StartInstanceLocation
+}

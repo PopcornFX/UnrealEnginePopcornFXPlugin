@@ -1,0 +1,41 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+/*=============================================================================
+PopcornFXUAVsClearComputeShader.usf: Generic clear compute shader - Derived from Epic's ClearReplacementCS.usf
+=============================================================================*/
+
+#include "/Engine/Public/Platform.ush"
+
+#if COMPILER_HLSL
+
+#if FEATURE_LEVEL >= FEATURE_LEVEL_SM5
+
+// x: clear value, y: number of uint's to clear, z: unused, w: unused
+uint4					ClearBufferCSParams;
+RWByteAddressBuffer 	UAVRaw;
+RWBuffer<uint>			UAV;
+int						RawUAV;
+
+[numthreads(64, 1, 1)]
+void Clear(uint Position : SV_DispatchThreadID)
+{
+	if (Position < ClearBufferCSParams.y)
+	{
+		if (RawUAV == 1)
+		{
+			uint4 m0 = ClearBufferCSParams.x;
+			UAVRaw.Store4(Position * 16, asint(m0));
+		}
+		else
+		{
+			UAV[Position] = ClearBufferCSParams.x;
+		}
+	}
+}
+
+#endif
+
+#endif // COMPILER_HLSL

@@ -1,0 +1,447 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+/*=============================================================================
+PopcornFXGPUBillboard.ush: GPU billboarder code
+=============================================================================*/
+
+#if (ENGINE_MINOR_VERSION >= 25)
+//#	define USE_PARTICLE_LIGHTING_OFFSET (!MATERIAL_SHADINGMODEL_UNLIT)
+#	define USE_PARTICLE_POSITION (NEEDS_PARTICLE_POSITION)
+#	define USE_PARTICLE_VELOCITY (NEEDS_PARTICLE_VELOCITY)
+#	define USE_PARTICLE_TIME (NEEDS_PARTICLE_TIME)
+#	define USE_PARTICLE_SIZE (NEEDS_PARTICLE_SIZE)
+#	define USE_PARTICLE_RANDOM (NEEDS_PARTICLE_RANDOM)
+#else
+//#	define USE_PARTICLE_LIGHTING_OFFSET ((FEATURE_LEVEL >= FEATURE_LEVEL_SM5 || FEATURE_LEVEL == FEATURE_LEVEL_ES3_1) && !MATERIAL_SHADINGMODEL_UNLIT)
+#	define USE_PARTICLE_POSITION ((FEATURE_LEVEL >= FEATURE_LEVEL_SM5 || FEATURE_LEVEL == FEATURE_LEVEL_ES3_1) && NEEDS_PARTICLE_POSITION)
+#	define USE_PARTICLE_VELOCITY ((FEATURE_LEVEL >= FEATURE_LEVEL_SM5 || FEATURE_LEVEL == FEATURE_LEVEL_ES3_1) && NEEDS_PARTICLE_VELOCITY)
+#	define USE_PARTICLE_TIME ((FEATURE_LEVEL >= FEATURE_LEVEL_SM5 || FEATURE_LEVEL == FEATURE_LEVEL_ES3_1) && NEEDS_PARTICLE_TIME)
+#	define USE_PARTICLE_SIZE ((FEATURE_LEVEL >= FEATURE_LEVEL_SM5 || FEATURE_LEVEL == FEATURE_LEVEL_ES3_1) && NEEDS_PARTICLE_SIZE)
+#	define USE_PARTICLE_RANDOM ((FEATURE_LEVEL >= FEATURE_LEVEL_SM5 || FEATURE_LEVEL == FEATURE_LEVEL_ES3_1) && NEEDS_PARTICLE_RANDOM)
+#endif // (ENGINE_MINOR_VERSION >= 25)
+
+#if (COMPUTESHADER || RAYHITGROUPSHADER) && !MATERIAL_TWOSIDED
+#	define	FLIP_BILLBOARDING_AXIS	0
+#endif
+
+#ifndef FLIP_BILLBOARDING_AXIS
+#	define FLIP_BILLBOARDING_AXIS	1
+#endif
+
+// TODO: Make this an uniform (configurable in UE settings)
+#define GLOBAL_SCALE	100.0f
+
+struct	FVertexFactoryIntermediates
+{
+	float3		ParticleWorldPosition; // UE units
+	float3		VertexWorldPosition; // UE units
+	float4		VertexTexCoords;
+
+	//float		ParticleLifeRatio; TODO
+	//float3		ParticleVelocity; TODO
+
+#if USE_PARTICLE_POSITION
+	float4		TranslatedWorldPositionAndSize; // UE units
+#endif
+
+#if USE_PARTICLE_SIZE
+	float2		ParticleSize; // UE units
+#endif
+	float4		ParticleColor;
+	float3		ParticleEmissiveColor;
+
+	float3		VertexWorldNormal;
+	float4		VertexWorldTangent;
+
+	float3x3	TangentToLocal;
+
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	float4	DynamicParameter;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	float4	DynamicParameter1;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	float4	DynamicParameter2;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	float4	DynamicParameter3;
+#endif
+};
+
+//----------------------------------------------------------------------------
+
+// LeftHanded:
+#define		myCross(a, b)	cross(b, a)
+
+//----------------------------------------------------------------------------
+// Draw request data
+//----------------------------------------------------------------------------
+
+#define NORMALIZER_EPSILON			1.0e-8f
+#define	BB_Flag_BillboardMask		7U	// 3 firsts bytes
+#define	BB_Flag_VFlipUVs			8U	// 4th byte
+
+//----------------------------------------------------------------------------
+// Billboarding modes
+//----------------------------------------------------------------------------
+
+#define BILLBOARD_ScreenAligned			1U
+#define BILLBOARD_ViewposAligned		2U
+#define BILLBOARD_AxisAligned			3U
+#define BILLBOARD_AxisAlignedSpheroid	4U
+#define BILLBOARD_AxisAlignedCapsule	5U
+#define BILLBOARD_PlaneAligned			6U
+
+//----------------------------------------------------------------------------
+// Load functions
+//----------------------------------------------------------------------------
+
+float	PKSimData_Loadf(uint id, uint offset)
+{
+	return asfloat(PopcornFXVSUniforms.InSimData[offset + id]);
+}
+
+//----------------------------------------------------------------------------
+
+float2	PKSimData_Load2f(uint id, uint offset)
+{
+	return float2(asfloat(PopcornFXVSUniforms.InSimData[offset + id * 2 + 0]),
+				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 2 + 1]));
+}
+
+//----------------------------------------------------------------------------
+
+float3	PKSimData_Load3f(uint id, uint offset)
+{
+	return float3(asfloat(PopcornFXVSUniforms.InSimData[offset + id * 3 + 0]),
+				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 3 + 1]),
+				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 3 + 2]));
+}
+
+//----------------------------------------------------------------------------
+
+float4	PKSimData_Load4f(uint id, uint offset)
+{
+	return float4(asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 0]),
+				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 1]),
+				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 2]),
+				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 3]));
+}
+
+//----------------------------------------------------------------------------
+
+float3	PopcornFXSideAxisFromNrmUp(float3 nrm, float3 upAxis)
+{
+	float3	sideAxis = myCross(nrm, upAxis);
+	if (dot(sideAxis, sideAxis) > NORMALIZER_EPSILON)
+		sideAxis = normalize(sideAxis);
+	else
+	{
+		const float3	v = float3(-nrm.y, nrm.x + 0.01f, 0.0f);
+		sideAxis = normalize(myCross(nrm, v));
+	}
+	return sideAxis;
+}
+
+//----------------------------------------------------------------------------
+
+void	RotateTangents(uint particleID, inout float3 xAxis, inout float3 yAxis)
+{
+	const float	rotation = PKSimData_Loadf(particleID, PopcornFXVSUniforms.InRotationsOffset);
+	float		rotCos;
+	float		rotSin;
+
+	sincos(rotation, rotSin, rotCos);
+
+	const float3	sideVec = xAxis;
+	xAxis = yAxis * rotSin + xAxis * rotCos;
+	yAxis = yAxis * rotCos - sideVec * rotSin;
+}
+
+//----------------------------------------------------------------------------
+
+void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactoryIntermediates intermediates)
+{
+	uint	particleID = instanceID;
+
+	BRANCH
+	if (PopcornFXVSUniforms.HasSortedIndices)
+		particleID = asuint(PopcornFXVSUniforms.InSortedIndices[PopcornFXVSUniforms.InIndicesOffset + particleID]);
+
+	float3	worldPos;
+	float4	currentDr;
+	BRANCH
+	if (PopcornFXVSUniforms.DrawRequestID == -1)
+	{
+		float4		worldPosDrId = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InPositionsOffset);
+		const uint	drId = asuint(worldPosDrId.w);
+
+		worldPos = worldPosDrId.xyz;
+		currentDr = PopcornFXVSUniforms.DrawRequests[drId];
+	}
+	else
+	{
+		worldPos = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InPositionsOffset);
+		currentDr = PopcornFXVSUniforms.DrawRequest;
+	}
+
+	float2		radius = float2(0.0f, 0.0f);
+
+	BRANCH
+	if (PopcornFXVSUniforms.InSizesOffset != -1)
+		radius = (float2)PKSimData_Loadf(particleID, PopcornFXVSUniforms.InSizesOffset);
+	else
+		radius = PKSimData_Load2f(particleID, PopcornFXVSUniforms.InSize2sOffset);
+
+	float3			xAxis = float3(0.0f, 0.0f, 0.0f);
+	float3			yAxis = float3(0.0f, 0.0f, 0.0f);
+	float3			planeNormal = float3(0.0f, 0.0f, 0.0f);
+
+	const uint		flags = asuint(currentDr.x);
+	const uint		billboarderType = flags & BB_Flag_BillboardMask;
+	const float		normalBendingFactor = currentDr.y;
+	const int		flipUVs = (flags & BB_Flag_VFlipUVs) != 0U;
+
+	const float2	cornerCoords = texCoords;
+	const float3	worldCameraOrigin = ResolvedView.WorldViewOrigin.xyz * 0.01f; // PKFX positions are 1unit = 1meter. UE4 1unit = 1centimeter
+
+	switch (billboarderType)
+	{
+	case	BILLBOARD_ScreenAligned:
+	{
+		xAxis = ResolvedView.ViewRight;
+		yAxis = ResolvedView.ViewUp;
+		planeNormal = -ResolvedView.ViewForward;
+
+		RotateTangents(particleID, xAxis, yAxis);
+
+		// Apply radius after rotation, otherwise float2 sizes are incorrect
+		xAxis *= radius.x;
+		yAxis *= radius.y;
+		break;
+	}
+	case	BILLBOARD_ViewposAligned:
+	{
+		const float3	camToParticle = normalize(worldPos - worldCameraOrigin);
+		const float3	upAxis = float3(0.0f, camToParticle.z * 0.01f, 1.0f);
+
+		xAxis = normalize(myCross(camToParticle, upAxis));
+		yAxis = myCross(xAxis, camToParticle);
+		planeNormal = -camToParticle;
+
+		RotateTangents(particleID, xAxis, yAxis);
+
+		// Apply radius after rotation, otherwise float2 sizes are incorrect
+		xAxis *= radius.x;
+		yAxis *= radius.y;
+		break;
+	}
+	case	BILLBOARD_AxisAligned:
+	{
+		const float3	camToParticle = worldPos - worldCameraOrigin;
+		const float3	axis = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
+
+		xAxis = PopcornFXSideAxisFromNrmUp(camToParticle, axis) * radius.x;
+		yAxis = axis * 0.5f;
+		planeNormal = -camToParticle;
+		break;
+	}
+	case	BILLBOARD_AxisAlignedSpheroid:
+	{
+		const float3	camToParticle = normalize(worldPos - worldCameraOrigin);
+		const float3	axis = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
+
+		xAxis = PopcornFXSideAxisFromNrmUp(camToParticle, axis) * radius.x;
+		const float3	upVec = myCross(xAxis, camToParticle);
+		yAxis = axis * 0.5f + upVec;
+		planeNormal = -camToParticle;
+		break;
+	}
+	case	BILLBOARD_AxisAlignedCapsule:
+	{
+		const float3	camToParticle = normalize(worldPos - worldCameraOrigin);
+		const float3	axis = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
+
+		xAxis = PopcornFXSideAxisFromNrmUp(camToParticle, axis) * radius.x * sqrt(2.f);
+		yAxis = axis * 0.5f;
+
+		const float	upAxisStretch = abs(texCoords.y) - 1.0f;
+		yAxis += myCross(xAxis, camToParticle) * upAxisStretch;
+
+		texCoords.y = clamp(texCoords.y, -1.0f, 1.0f);
+		planeNormal = normalize(myCross(xAxis, yAxis));
+		break;
+	}
+	case	BILLBOARD_PlaneAligned:
+	{
+		const float3	axisUp = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
+		const float3	axisNrm = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis1sOffset);
+
+		xAxis = PopcornFXSideAxisFromNrmUp(axisNrm, axisUp);
+		yAxis = myCross(xAxis, axisNrm);
+		planeNormal = axisNrm;
+
+		RotateTangents(particleID, xAxis, yAxis);
+
+		// Apply radius after rotation, otherwise float2 sizes are incorrect
+		xAxis *= radius.x;
+		yAxis *= radius.y;
+		xAxis = -xAxis; // Specific to planar aligned quads, flip X
+		break;
+	}
+	};
+
+#if FLIP_BILLBOARDING_AXIS
+	yAxis = -yAxis; // We need to flip the y axis to get the same result as the CPU billboarders
+#endif
+
+	const float3	bbCorner = xAxis * texCoords.x + yAxis * texCoords.y;
+
+	intermediates.ParticleWorldPosition = worldPos * GLOBAL_SCALE;
+
+	intermediates.VertexWorldPosition = (worldPos + bbCorner) * GLOBAL_SCALE;
+	intermediates.VertexWorldPosition += ResolvedView.PreViewTranslation;
+
+#if USE_PARTICLE_POSITION
+	const float		particleRadius = min(radius.x, radius.y) * GLOBAL_SCALE;
+	const float3	particleTranslatedWorldPosition = (worldPos * GLOBAL_SCALE) + ResolvedView.PreViewTranslation.xyz;
+	intermediates.TranslatedWorldPositionAndSize = float4(particleTranslatedWorldPosition, particleRadius);
+#endif
+#if USE_PARTICLE_SIZE
+	intermediates.ParticleSize = radius * 2.0f * GLOBAL_SCALE;
+#endif
+
+	BRANCH
+	if (PopcornFXVSUniforms.CapsulesDC)
+	{
+		const float		xMax = max(cornerCoords.x, 0.0f);
+		texCoords = float2(xMax + max(cornerCoords.y - 1.0f, 0.0f), xMax + max(-cornerCoords.y - 1.0f, 0.0f));
+	}
+	else
+		texCoords = texCoords * 0.5f + 0.5f; // Remap corners from -1,1 to 0,1
+
+	FLATTEN
+	if (flipUVs)
+		texCoords.y = 1.0f - texCoords.y;
+
+	// Texcoords
+	float	alphaCursor = 0.0f;
+	float	atlasID = 0.0f;
+	intermediates.VertexTexCoords = texCoords.xyxy;
+	BRANCH
+	if (PopcornFXVSUniforms.InTextureIDsOffset != -1)
+	{
+		// Resolve UVs from rectangle list
+		const float		textureID = PKSimData_Loadf(particleID, PopcornFXVSUniforms.InTextureIDsOffset);
+		const uint		atlasID0 = min((uint)abs(textureID), PopcornFXVSUniforms.AtlasRectCount - 1);
+		const float4	rect0 = PopcornFXVSUniforms.AtlasBuffer[atlasID0];
+
+		intermediates.VertexTexCoords.xy = texCoords * rect0.xy + rect0.zw;
+		BRANCH
+		if (PopcornFXVSUniforms.HasSecondUVSet)
+		{
+			const uint		atlasID1 = min(atlasID0 + 1, PopcornFXVSUniforms.AtlasRectCount - 1);
+			const float4	rect1 = PopcornFXVSUniforms.AtlasBuffer[atlasID1];
+
+			intermediates.VertexTexCoords.zw = texCoords * rect1.xy + rect1.zw;
+		}
+		else
+			intermediates.VertexTexCoords.zw = intermediates.VertexTexCoords.xy;
+
+		atlasID = frac(textureID);
+	}
+
+	// TODO: Capsule normals/tangents
+	BRANCH
+	if (normalBendingFactor > 0.0f)
+	{
+		const float3	xAxisNorm = normalize(xAxis);
+		const float3	yAxisNorm = normalize(yAxis);
+		const float		normalWeight = (1.0f - normalBendingFactor);
+
+		// TODO: Rething those ifs
+		BRANCH
+		if (PopcornFXVSUniforms.CapsulesDC)
+		{
+			const float		nNormalizer = rsqrt(normalWeight * normalWeight + normalBendingFactor * normalBendingFactor);
+			const float		upAxisStretch = abs(cornerCoords.y) - 1.0f;
+			const float3	bentNormal = (xAxisNorm * cornerCoords.x * (1.0f - upAxisStretch) + yAxisNorm * sign(cornerCoords.y) * upAxisStretch) * normalBendingFactor * nNormalizer;
+
+			intermediates.VertexWorldNormal = (planeNormal * normalWeight * nNormalizer) + bentNormal;
+
+			const float		tNormalizer = rsqrt(normalWeight * normalWeight + 2.0f * normalBendingFactor * normalBendingFactor);
+			const float2	tangentTexCoords = float2(-cornerCoords.x, cornerCoords.y * sign(-cornerCoords.x));
+			const float3	planeNormalForTangent = planeNormal * tangentTexCoords.x * normalBendingFactor * tNormalizer;
+			const float3	bentTangent = planeNormalForTangent + (xAxisNorm + yAxisNorm * tangentTexCoords.y) * normalBendingFactor * tNormalizer;
+			
+			const float3	planeTangentWeighted = xAxisNorm * normalWeight * tNormalizer;
+			intermediates.VertexWorldTangent = float4(planeTangentWeighted + bentTangent, 1.0f);
+		}
+		else
+		{
+			const float		nNormalizer = rsqrt(normalWeight * normalWeight + 2.0f * normalBendingFactor * normalBendingFactor);
+			const float3	bentNormal = (xAxisNorm * cornerCoords.x + yAxisNorm * cornerCoords.y) * normalBendingFactor * nNormalizer;
+
+			intermediates.VertexWorldNormal = (planeNormal * normalWeight * nNormalizer) + bentNormal;
+
+			const float		tNormalizer = rsqrt(normalWeight * normalWeight + 3.0f * normalBendingFactor * normalBendingFactor);
+			const float2	tangentTexCoords = float2(-cornerCoords.x, cornerCoords.y * sign(-cornerCoords.x));
+			const float3	planeNormalForTangent = planeNormal * tangentTexCoords.x * normalBendingFactor * tNormalizer;
+			const float3	bentTangent = planeNormalForTangent + (xAxisNorm + yAxisNorm * tangentTexCoords.y) * normalBendingFactor * tNormalizer;
+
+			const float3	planeTangentWeighted = xAxisNorm * normalWeight * tNormalizer;
+			intermediates.VertexWorldTangent = float4(planeTangentWeighted + bentTangent, 1.0f);
+		}
+	}
+	else
+	{
+		intermediates.VertexWorldNormal = planeNormal;
+		intermediates.VertexWorldTangent = float4(normalize(xAxis), 1.0f);
+	}
+
+	// Construct TangentToLocal
+	{
+		float3		normal = intermediates.VertexWorldNormal;
+		float3		tangent = intermediates.VertexWorldTangent.xyz;
+		float3		binormal = normalize(cross(normal, tangent));
+		tangent = cross(binormal, normal);
+
+		intermediates.TangentToLocal[0] = tangent;
+		intermediates.TangentToLocal[1] = binormal;
+		intermediates.TangentToLocal[2] = normal;
+	}
+
+	// Copies
+	BRANCH
+	if (PopcornFXVSUniforms.InColorsOffset != -1)
+		intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InColorsOffset);
+	BRANCH
+	if (PopcornFXVSUniforms.InEmissiveColorsOffset != -1)
+		intermediates.ParticleEmissiveColor = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InEmissiveColorsOffset);
+	BRANCH
+	if (PopcornFXVSUniforms.InAlphaCursorsOffset != -1)
+		alphaCursor = PKSimData_Loadf(particleID, PopcornFXVSUniforms.InAlphaCursorsOffset);
+
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	intermediates.DynamicParameter = float4(atlasID, alphaCursor, 0.0f, 0.0f);
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	BRANCH
+	if (PopcornFXVSUniforms.InDynamicParameter1sOffset != -1)
+		intermediates.DynamicParameter1 = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InDynamicParameter1sOffset);
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	BRANCH
+	if (PopcornFXVSUniforms.InDynamicParameter2sOffset != -1)
+		intermediates.DynamicParameter2 = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InDynamicParameter2sOffset);
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	BRANCH
+	if (PopcornFXVSUniforms.InDynamicParameter3sOffset != -1)
+		intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InDynamicParameter3sOffset);
+#endif
+}
