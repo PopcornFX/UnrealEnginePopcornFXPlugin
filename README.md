@@ -13,7 +13,13 @@ The plugin can only be installed in Code projects (Blueprint-only projects are n
 
 On windows, it is required to install **[Visual studio](https://docs.unrealengine.com/4.27/en-US/ProductionPipelines/DevelopmentSetup/VisualStudioSetup/)** to compile the plugin as we do not provide compiled PopcornFX plugin binaries yet.
 
-Check out the **[Installation steps](https://www.popcornfx.com/docs/popcornfx-v2/plugins/ue4-plugin/installation-and-setup/)** to install the plugin and start using PopcornFX!
+Currently, you will need to download & install **[7-zip](https://www.7-zip.org/download.html)** and add it to your PATH environment variable (this is a requirement we want to remove in future updates): we currently use 7zip as it produces smaller archives of the PopcornFX Runtime SDK.
+
+Once Visual studio and 7-zip are installed, you can launch `Download_SDK_All.bat` to download PopcornFX Runtime SDK. `Download_SDK_Desktop.bat` and `Download_SDK_Mobile.bat` can be used separately if you only need Desktop or Mobile platforms.
+
+Once PopcornFX Runtime SDK is downloaded and placed in `PopcornFX_Runtime_SDK/` folder, the plugin is ready to be compiled.
+
+Check out the **[General installation steps](https://www.popcornfx.com/docs/popcornfx-v2/plugins/ue4-plugin/installation-and-setup/)** to see how to compile the plugin!
 
 ## Quick Links: Documentation and Support
 
