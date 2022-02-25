@@ -33,7 +33,7 @@ echo "---------- Unzipping _PopcornFX_Runtime_SDK_Mobile.7z ----------"
 
 echo "---------- Copying PopcornFX Runtime SDK ----------"
 
-xcopy _PopcornFX_Runtime_SDK_Mobile\UE4PopcornFXPlugin\PopcornFX\PopcornFX_Runtime_SDK %~dp0\PopcornFX_Runtime_SDK /S /F /Y
+robocopy _PopcornFX_Runtime_SDK_Mobile\UE4PopcornFXPlugin\PopcornFX\PopcornFX_Runtime_SDK %~dp0\PopcornFX_Runtime_SDK /s
 
 echo "---------- Removing temp files ----------"
 
