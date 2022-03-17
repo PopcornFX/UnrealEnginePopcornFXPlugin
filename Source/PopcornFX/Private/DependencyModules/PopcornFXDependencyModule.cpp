@@ -20,7 +20,7 @@ FPopcornFXDependencyModule::FPopcornFXDependencyModule()
 FPopcornFXDependencyModule::~FPopcornFXDependencyModule()
 {
 	PK_ASSERT(!Loaded());
-	// Unload(); // vtable if fucked up here, cannot call the virtual function
+	// Unload(); // vtable destroyed here, don't call Unload()
 }
 
 //----------------------------------------------------------------------------

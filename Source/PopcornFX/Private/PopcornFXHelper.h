@@ -33,36 +33,52 @@ PK_FORCEINLINE const _OutType		&_Reinterpret(const _InType &vec)
 	return *reinterpret_cast<const _OutType*>(&vec);
 }
 
-PK_FORCEINLINE const FVector		&ToUE(const CFloat3 &vec) { return _Reinterpret<FVector>(vec); }
-PK_FORCEINLINE const FVector4		&ToUE(const CFloat4 &vec) { return _Reinterpret<FVector4>(vec); }
-
-PK_FORCEINLINE const CFloat3		&ToPk(const FVector &vec) { return _Reinterpret<CFloat3>(vec); }
-PK_FORCEINLINE const CFloat2		&ToPk(const FVector2D &vec) { return _Reinterpret<CFloat2>(vec); }
-PK_FORCEINLINE const CFloat4x4		&ToPk(const FMatrix &mat) { return _Reinterpret<CFloat4x4>(mat); }
 PK_FORCEINLINE const CFloat4		&ToPk(const FLinearColor &vec) { return _Reinterpret<CFloat4>(vec); }
-PK_FORCEINLINE const CFloat4		&ToPk(const FVector4 &vec) { return _Reinterpret<CFloat4>(vec); }
-
 PK_FORCEINLINE const CInt2			&ToPk(const FIntPoint& point) { return _Reinterpret<CInt2>(point); }
 
-PK_FORCEINLINE const FQuat			&ToUE(const CQuaternion& quat) { return *reinterpret_cast<const FQuat*>(&quat); }
-PK_FORCEINLINE const CQuaternion	&ToPk(const FQuat &quat) { return *reinterpret_cast<const CQuaternion*>(&quat); }
+// UE5 LWC: Keep reinterpret casts whenever possible
+PK_FORCEINLINE const FVector3f		&ToUE(const CFloat3 &vec) { return _Reinterpret<FVector3f>(vec); }
+PK_FORCEINLINE const FVector4f		&ToUE(const CFloat4 &vec) { return _Reinterpret<FVector4f>(vec); }
 
-PK_FORCEINLINE FBox					ToUE(const PopcornFX::CAABB &bounds)
+PK_FORCEINLINE const CFloat3		&ToPk(const FVector3f &vec) { return _Reinterpret<CFloat3>(vec); }
+PK_FORCEINLINE const CFloat2		&ToPk(const FVector2f &vec) { return _Reinterpret<CFloat2>(vec); }
+PK_FORCEINLINE const CFloat4x4		&ToPk(const FMatrix44f &mat) { return _Reinterpret<CFloat4x4>(mat); }
+PK_FORCEINLINE const CFloat4		&ToPk(const FVector4f &vec) { return _Reinterpret<CFloat4>(vec); }
+
+PK_FORCEINLINE const FQuat4f		&ToUE(const CQuaternion& quat) { return *reinterpret_cast<const FQuat4f*>(&quat); }
+PK_FORCEINLINE const CQuaternion	&ToPk(const FQuat4f &quat) { return *reinterpret_cast<const CQuaternion*>(&quat); }
+
+#if (ENGINE_MAJOR_VERSION == 5)
+// Copies when double types are provided
+PK_FORCEINLINE FBox				ToUE(const PopcornFX::CAABB &bounds)
 {
 	return FBox(ToUE(bounds.Min()), ToUE(bounds.Max()));
 }
 
-PK_FORCEINLINE const FMatrix		&ToUE(const CFloat4x4 &mat) { return _Reinterpret<FMatrix>(mat); }
+PK_FORCEINLINE CFloat3			ToPk(const FVector &vec) { return _Reinterpret<CFloat3>(FVector3f(vec)); }
+PK_FORCEINLINE CFloat2			ToPk(const FVector2D &vec) { return _Reinterpret<CFloat2>(FVector2f(vec)); }
+PK_FORCEINLINE CFloat4x4		ToPk(const FMatrix &mat) { return _Reinterpret<CFloat4x4>(FMatrix44f(mat)); }
+PK_FORCEINLINE CFloat4			ToPk(const FVector4 &vec) { return _Reinterpret<CFloat4>(FVector4f(vec)); }
 
-PK_FORCEINLINE CFloat4x4	&ToPkRef(FMatrix &matrix)
+PK_FORCEINLINE CQuaternion		ToPk(const FQuat &quat) { return _Reinterpret<CQuaternion>(FQuat4f(quat)); }
+#else
+PK_FORCEINLINE FBox3f				ToUE(const PopcornFX::CAABB &bounds)
 {
-	PK_STATIC_ASSERT(sizeof(FMatrix) == sizeof(CFloat4x4));
+	return FBox3f(ToUE(bounds.Min()), ToUE(bounds.Max()));
+}
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
+PK_FORCEINLINE const FMatrix44f		&ToUE(const CFloat4x4 &mat) { return _Reinterpret<FMatrix44f>(mat); }
+
+PK_FORCEINLINE CFloat4x4	&ToPkRef(FMatrix44f &matrix)
+{
+	PK_STATIC_ASSERT(sizeof(FMatrix44f) == sizeof(CFloat4x4));
 	return *reinterpret_cast<CFloat4x4*>(&matrix);
 }
 
-PK_FORCEINLINE CFloat3		&ToPkRef(FVector &vec)
+PK_FORCEINLINE CFloat3		&ToPkRef(FVector3f &vec)
 {
-	PK_STATIC_ASSERT(sizeof(FVector) == sizeof(CFloat3));
+	PK_STATIC_ASSERT(sizeof(FVector3f) == sizeof(CFloat3));
 	return *reinterpret_cast<CFloat3*>(&vec);
 }
 

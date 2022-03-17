@@ -14,6 +14,10 @@
 #include "PopcornFXCustomVersion.h"
 #include "Assets/PopcornFXEffectPriv.h"
 
+#if (ENGINE_MAJOR_VERSION == 5)
+#include "UObject/ObjectSaveContext.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 #include "PopcornFXSDK.h"
 #include <pk_particles/include/ps_descriptor.h>
 #include <pk_particles/include/ps_samplers_classes.h>
@@ -998,14 +1002,22 @@ void	UPopcornFXAttributeList::PostInitProperties()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
+void	UPopcornFXAttributeList::PreSave(FObjectPreSaveContext SaveContext)
+#else
 void	UPopcornFXAttributeList::PreSave(const class ITargetPlatform* TargetPlatform)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	DBG_HERE();
 	PK_ASSERT(CheckDataIntegrity());
 	// make sure m_AttributesContainer up to date
 	PK_ASSERT(CheckDataIntegrity());
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	Super::PreSave(SaveContext);
+#else
 	Super::PreSave(TargetPlatform);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------

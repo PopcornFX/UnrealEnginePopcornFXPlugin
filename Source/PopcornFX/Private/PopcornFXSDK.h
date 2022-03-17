@@ -126,7 +126,6 @@ using PopcornFX:: CBool2;
 using PopcornFX:: CBool3;
 using PopcornFX:: CBool4;
 
-using PopcornFX:: TMemoryView;
 using PopcornFX:: TStridedMemoryView;
 using PopcornFX:: TStridedMemoryViewWithFootprint;
 

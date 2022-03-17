@@ -199,7 +199,12 @@ public:
 		FRHIResourceCreateInfo	info(TEXT("PopcornFX Texcoords buffer"));
 
 		void	*data = null;
+#if (ENGINE_MAJOR_VERSION == 5)
+		VertexBufferRHI = RHICreateBuffer(sizeInBytes, BUF_Static | BUF_VertexBuffer, sizeof(CFloat2), ERHIAccess::VertexOrIndexBuffer, info);
+		data = RHILockBuffer(VertexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
+#else
 		VertexBufferRHI = RHICreateAndLockVertexBuffer(sizeInBytes, BUF_Static, info, data);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 		CFloat2	*vertices = (CFloat2*)data;
 

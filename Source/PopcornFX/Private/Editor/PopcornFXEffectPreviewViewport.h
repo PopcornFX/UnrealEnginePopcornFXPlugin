@@ -30,6 +30,12 @@ public:
 	void	OnAddedToTab(const TSharedRef<SDockTab> &ownerTab);
 
 	virtual void	AddReferencedObjects(FReferenceCollector& Collector) override;
+#if (ENGINE_MAJOR_VERSION == 5)
+	virtual FString	GetReferencerName() const
+	{
+		return TEXT("SPopcornFXEffectPreviewViewport");
+	}
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	virtual TSharedRef<class SEditorViewport>	GetViewportWidget() override;
 	virtual TSharedPtr<FExtender>				GetExtenders() const override;

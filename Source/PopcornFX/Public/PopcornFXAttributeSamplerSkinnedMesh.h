@@ -154,8 +154,8 @@ private:
 	FAttributeSamplerSkinnedMeshData	*m_Data;
 
 	uint64		m_LastFrameUpdate;
-	FMatrix		m_WorldTr_Current;
-	FMatrix		m_WorldTr_Previous;
-	FVector		m_Angular_Velocity;
-	FVector		m_Linear_Velocity;
+	FMatrix44f	m_WorldTr_Current;
+	FMatrix44f	m_WorldTr_Previous;
+	FVector3f	m_Angular_Velocity;
+	FVector3f	m_Linear_Velocity;
 };

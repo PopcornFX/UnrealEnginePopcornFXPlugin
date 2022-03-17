@@ -246,7 +246,11 @@ public:
 	virtual void	PostLoad() override;
 	virtual void	PostInitProperties() override;
 	virtual void	BeginDestroy() override;
+#if (ENGINE_MAJOR_VERSION == 5)
+	virtual void	PreSave(FObjectPreSaveContext SaveContext) override;
+#else
 	virtual void	PreSave(const class ITargetPlatform* TargetPlatform) override;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	virtual void	Serialize(FArchive& Ar) override;
 #if WITH_EDITOR
 	virtual void	PostEditUndo() override;

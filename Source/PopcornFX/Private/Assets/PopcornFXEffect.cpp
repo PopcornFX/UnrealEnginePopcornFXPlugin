@@ -29,6 +29,7 @@
 #include <pk_base_object/include/hbo_details.h>
 
 #if WITH_EDITOR
+#	include "Materials/MaterialInstanceConstant.h"
 #	include "HardwareInfo.h"
 #	include "Misc/FeedbackContext.h"
 #	include "Misc/FileHelper.h"
@@ -115,6 +116,7 @@ UPopcornFXEffect::UPopcornFXEffect(const FObjectInitializer& PCIP)
 	, EditorLoopDelay(2.0f)
 #endif // WITH_EDITORONLY_DATA
 	, m_Loaded(false)
+	, m_Cooked(false) // TMP: Until proper implementation of platform cached data
 {
 	m_Private = PK_NEW(CPopcornFXEffect(this));
 	DefaultAttributeList = CreateDefaultSubobject<UPopcornFXAttributeList>(TEXT("DefaultAttributeList"));
@@ -173,50 +175,50 @@ void	UPopcornFXEffect::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) 
 
 //----------------------------------------------------------------------------
 
-#endif // WITH_EDITOR
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEffect::Serialize(FArchive& Ar)
+void	UPopcornFXEffect::BeginCacheForCookedPlatformData(const ITargetPlatform *targetPlatform)
 {
-	Super::Serialize(Ar);
+	if (IsTemplate() || IsGarbageCollecting() || GIsSavingPackage)
+		return;
+	if (m_Cooked) // TMP: Until proper implementation of platform cached data
+		return;
 
-#if WITH_EDITOR
-	if (Ar.IsCooking() && !IsTemplate())
+	const FString	path = GetPathName();
+	if (!path.IsEmpty())
 	{
-		if (!IsGarbageCollecting() && !GIsSavingPackage)
+		// Rebake self for target platform
+
+		// For debugging purposes only, helps inspect content of baked effects
+		if (FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects)
 		{
-			const FString	path = GetPathName();
-			if (!path.IsEmpty())
+			const FString	kPopcornCookedPath = TEXT("Saved/PopcornFX/Cooked/");
+			const FString	cookedFilePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / kPopcornCookedPath / FileSourceVirtualPath + "_Pre");
+
+			FFileHelper::SaveArrayToFile(m_FileData, *cookedFilePath);
+		}
+
+		FString		bakedFilePath;
+		if (_BakeFile(path, bakedFilePath, false, TCHAR_TO_ANSI(*targetPlatform->PlatformName())))
+		{
+			// For debugging purposes only, helps inspect content of baked effects
+			if (FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects)
 			{
-				// Rebake self for target platform
+				const FString	kPopcornCookedPath = TEXT("Saved/PopcornFX/Cooked/");
+				const FString	cookedFilePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / kPopcornCookedPath / FileSourceVirtualPath);
 
-				// For debugging purposes only, helps inspect content of baked effects
-				if (FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects)
-				{
-					const FString	kPopcornCookedPath = TEXT("Saved/PopcornFX/Cooked/");
-					const FString	cookedFilePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / kPopcornCookedPath / FileSourceVirtualPath + "_Pre");
-
-					FFileHelper::SaveArrayToFile(m_FileData, *cookedFilePath);
-				}
-
-				FString					bakedFilePath;
-				const ITargetPlatform* targetPlatform = Ar.CookingTarget();
-				if (_BakeFile(path, bakedFilePath, false, TCHAR_TO_ANSI(*targetPlatform->PlatformName())))
-				{
-					// For debugging purposes only, helps inspect content of baked effects
-					if (FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects)
-					{
-						const FString	kPopcornCookedPath = TEXT("Saved/PopcornFX/Cooked/");
-						const FString	cookedFilePath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / kPopcornCookedPath / FileSourceVirtualPath);
-
-						FFileHelper::SaveArrayToFile(m_FileData, *cookedFilePath);
-					}
-				}
+				FFileHelper::SaveArrayToFile(m_FileData, *cookedFilePath);
 			}
+
+			// Make sure to re-create serialized renderer materials, if necessary:
+			// Effect re-baked for a different platform can end up with different renderers, materials, textures..
+			ReloadRendererMaterials();
+
+			m_Cooked = true; // TMP: Until proper implementation of platform cached data
 		}
 	}
-#endif
+
+	Super::BeginCacheForCookedPlatformData(targetPlatform);
 }
+#endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
 
@@ -974,8 +976,8 @@ void	UPopcornFXEffect::ReloadRendererMaterials()
 			const PopcornFX::PParticleDescriptor	desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
 			if (!PK_VERIFY(desc != null))
 				return;
-			TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
-			const u32										rendererCount = renderers.Count();
+			PopcornFX::TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
+			const u32													rendererCount = renderers.Count();
 			for (u32 iRenderer = 0; iRenderer < rendererCount; ++iRenderer)
 			{
 				globalRendererIndex++;

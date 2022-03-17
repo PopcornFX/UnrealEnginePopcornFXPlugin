@@ -40,10 +40,10 @@ struct	FPopcornFXAtlasRectsVertexBuffer
 		m_AtlasRectsCount = 0;
 		m_AtlasBufferCapacity = 0;
 	}
-	bool		LoadRects(const TMemoryView<const CFloat4> &rects);
+	bool		LoadRects(const PopcornFX::TMemoryView<const CFloat4> &rects);
 
 private:
-	bool		_LoadRects(const TMemoryView<const CFloat4> &rects);
+	bool		_LoadRects(const PopcornFX::TMemoryView<const CFloat4> &rects);
 };
 
 //----------------------------------------------------------------------------
@@ -63,7 +63,7 @@ struct	FPopcornFXDrawRequestsBuffer
 	}
 
 	bool	LoadIFN();
-	bool	Map(TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest> &outView, u32 elementCount);
+	bool	Map(PopcornFX::TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest> &outView, u32 elementCount);
 	void	Unmap();
 
 private:
@@ -139,6 +139,7 @@ private:
 	void		_IssueDrawCall_Billboard(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc);
 	void		_ClearStreamOffsets();
 	void		_Clear();
+	void		_CleanRWBuffers();
 	bool		_IsAdditionalInputSupported(const PopcornFX::CStringId &fieldName, PopcornFX::EBaseTypeID type, EPopcornFXAdditionalStreamOffsets &outStreamOffsetType);
 	bool		_FillDrawCallUniforms_CPU(FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc);
 	bool		_FillDrawCallUniforms_GPU(u32 drId, const SUERenderContext &renderContext, FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc);

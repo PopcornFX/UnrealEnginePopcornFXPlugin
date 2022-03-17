@@ -12,7 +12,6 @@
 
 class	UMaterialInterface;
 class	UMaterialInstanceConstant;
-class	UMaterialInstanceDynamic;
 class	UStaticMesh;
 class	UTexture;
 class	UTexture2D;
@@ -348,7 +347,12 @@ public:
 	virtual void		PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void		PostEditUndo();
 #endif // WITH_EDITOR
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	virtual void		PreSave(FObjectPreSaveContext SaveContext) override;
+#else
 	virtual void		PreSave(const class ITargetPlatform* TargetPlatform) override;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if WITH_EDITOR
 	void				TriggerParticleRenderersModification();
@@ -366,7 +370,6 @@ public:
 	const FPopcornFXSubRendererMaterial	*GetSubMaterial(uint32 index) const { if (index >= uint32(SubMaterials.Num())) return nullptr; return &(SubMaterials[index]); }
 	uint32								SubMaterialCount() const { return SubMaterials.Num(); }
 
-	UMaterialInstanceDynamic				*CreateInstance(uint32 subMatId);
 	UMaterialInstanceConstant				*GetInstance(uint32 subMatId, bool forRenderThread) const;
 
 private:

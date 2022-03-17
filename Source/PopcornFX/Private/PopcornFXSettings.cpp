@@ -53,7 +53,7 @@ UPopcornFXSettings::UPopcornFXSettings(const FObjectInitializer& PCIP)
 ,	HUD_HideNodesBelowPercent(5)
 ,	HUD_UpdateTimeFrameCount(25)
 {
-	if (!IsRunningCommandlet())
+	//if (!IsRunningCommandlet())
 	{
 #	define	X_POPCORNFX_MATERIAL_TYPE(__name)	DefaultMaterials.Material_ ## __name = FSoftObjectPath(DEFAULT_MATERIAL_PATH(__name));
 			EXEC_X_POPCORNFX_MATERIAL_TYPE()

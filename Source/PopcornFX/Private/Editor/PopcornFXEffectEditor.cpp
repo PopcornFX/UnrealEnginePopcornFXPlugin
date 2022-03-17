@@ -27,6 +27,7 @@
 
 #define LOCTEXT_NAMESPACE "FPopcornFXEffectEditor"
 
+const FName			FPopcornFXEffectEditor::ToolbarTabId(TEXT("PopcornFXEffectEditor_Tab"));
 const FName			FPopcornFXEffectEditor::PropertiesTabId(TEXT("PopcornFXEffectEditor_Properties"));
 const FName			FPopcornFXEffectEditor::EffectPreviewTabId(TEXT("PopcornFXEffectEditor_Preview"));
 const FName			FPopcornFXEffectEditor::EffectAttributesTabId(TEXT("PopcornFXEffectEditor_Attributes"));
@@ -271,7 +272,7 @@ void	FPopcornFXEffectEditor::InitEffectEditor(const EToolkitMode::Type Mode, con
 			FTabManager::NewStack()
 			->SetSizeCoefficient(0.1f)
 			->SetHideTabWell(true)
-			->AddTab(GetToolbarTabId(), ETabState::OpenedTab)
+			->AddTab(ToolbarTabId, ETabState::OpenedTab)
 		)
 		->Split
 		(

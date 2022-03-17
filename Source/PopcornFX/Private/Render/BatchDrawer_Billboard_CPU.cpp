@@ -482,7 +482,7 @@ bool	CBatchDrawer_Billboard_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 	if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
 	{
 		PK_ASSERT(m_SimData.Valid());
-		TMemoryView<float>	simData;
+		PopcornFX::TMemoryView<float>	simData;
 		{
 			PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_CPUBB::MapBuffers_Billboard (particle data buffer)");
 			const u32	elementCount = m_SimDataBufferSizeInBytes / sizeof(float);

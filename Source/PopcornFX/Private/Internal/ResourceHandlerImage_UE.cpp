@@ -246,6 +246,11 @@ PopcornFX::CImage	*CResourceHandlerImage_UE::NewFromPath(const PopcornFX::CStrin
 	// We need the LOD Group to be ColorLookupTable otherwise the texture's data is not available on CPU
 	if (texture->LODGroup != TEXTUREGROUP_ColorLookupTable)
 	{
+		// Too late: don't allow modifying the resource from a worker thread when an effect is baked.
+		// This should occur on the game thread prior, not now.
+		if (IsRunningCommandlet() && !IsInGameThread())
+			return null;
+
 		const FText		title = FText::FromString(FString("PopcornFX: Texture used for sampling"));
 		const FText		message = FText::Format(FText::FromString(FString("Texture \"{0}\" is used for CPU sampling so its LOD Group will be set to 'ColorLookupTable'.\n")), FText::FromString(texture->GetPathName()));
 		FMessageDialog::Open(EAppMsgType::Ok, message, &title);

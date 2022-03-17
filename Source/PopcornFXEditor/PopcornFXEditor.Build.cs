@@ -11,11 +11,7 @@ namespace UnrealBuildTool.Rules
 	{
 		bool					IAmDeveloping = false;
 
-#if WITH_FORWARDED_MODULE_RULES_CTOR
 		public PopcornFXEditor(ReadOnlyTargetRules Target) : base(Target)
-#else
-		public PopcornFXEditor(TargetInfo Target)
-#endif // WITH_FORWARDED_MODULE_RULES_CTOR
 		{
 			PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
@@ -28,11 +24,7 @@ namespace UnrealBuildTool.Rules
 			if (IAmDeveloping)
 			{
 				// maybe not faster, but we want to make sure there is no missing includes
-#if UE_4_24_OR_LATER
 				bUseUnity = false;
-#else
-				bFasterWithoutUnity = true;
-#endif
 				PrivatePCHHeaderFile = "Private/EmptyPCH.h";
 			}
 

@@ -29,7 +29,7 @@ void	PopcornFX::GatherDependencies(const PopcornFX::CString &path, const Popcorn
 	if (srcFile == null)
 		return;	// FAIL !
 
-	const TMemoryView<const PopcornFX::PBaseObject>		objectList = srcFile->ObjectList();
+	const PopcornFX::TMemoryView<const PopcornFX::PBaseObject>		objectList = srcFile->ObjectList();
 	for (u32 i = 0; i < objectList.Count(); i++)
 	{
 		const PopcornFX::CBaseObject	*hbo = objectList[i].Get();

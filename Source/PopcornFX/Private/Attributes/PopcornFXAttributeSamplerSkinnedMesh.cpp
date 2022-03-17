@@ -49,7 +49,7 @@
 
 namespace
 {
-	const TArray<FMatrix>	&SkeletalMeshRefBasesInvMatrices(const USkeletalMesh *skeletalMesh)
+	const TArray<FMatrix44f>	&SkeletalMeshRefBasesInvMatrices(const USkeletalMesh *skeletalMesh)
 	{
 		check(skeletalMesh != null);
 #if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
@@ -119,7 +119,7 @@ struct FAttributeSamplerSkinnedMeshData
 
 	PopcornFX::TArray<FPopcornFXClothSection>	m_ClothSections;
 	TMap<int32, FClothSimulData>				m_ClothSimDataCopy;
-	FMatrix										m_InverseTransforms;
+	FMatrix44f										m_InverseTransforms;
 
 	PopcornFX::CBaseSkinningStreams				*m_SkinningStreamsProxy = null;
 	PopcornFX::SSkinContext						m_SkinContext;
@@ -285,15 +285,15 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::Skin_PostProcess(uint32 vertexStart,
 	PK_ASSERT(PopcornFX::Mem::IsAligned<0x10>(oldPosPtr));
 
 	const float				invDt = 1.0f / m_Data->m_AccumulatedDts;
-	const VectorRegister	iDt = MakeVectorRegister(invDt, invDt, invDt, invDt);
+	const VectorRegister4f	iDt = MakeVectorRegister(invDt, invDt, invDt, invDt);
 
 	for (u32 iVertex = 0; iVertex < vertexCount; ++iVertex)
 	{
-		const VectorRegister	curPos = VectorLoad(curPosPtr);
-		const VectorRegister	oldPos = VectorLoad(oldPosPtr);
-		const VectorRegister	v = VectorMultiply(VectorSubtract(curPos, oldPos), iDt);
+		const VectorRegister4f	curPos = VectorLoad(reinterpret_cast<const FVector4f*>(curPosPtr));
+		const VectorRegister4f	oldPos = VectorLoad(reinterpret_cast<const FVector4f*>(oldPosPtr));
+		const VectorRegister4f	v = VectorMultiply(VectorSubtract(curPos, oldPos), iDt);
 
-		VectorStore(v, dstVelPtr);
+		VectorStore(v, reinterpret_cast<FVector4f*>(dstVelPtr));
 
 		dstVelPtr = PopcornFX::Mem::AdvanceRawPointer(dstVelPtr, 0x10);
 		curPosPtr = PopcornFX::Mem::AdvanceRawPointer(curPosPtr, 0x10);
@@ -338,10 +338,10 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::Skin_Finish(const PopcornFX::SSkinCo
 namespace	PopcornFXAttributeSamplers
 {
 	// Simpler solution to VectorTransformVector (assumes W == 1)
-	VectorRegister	_TransformVector(VectorRegister &v, const FMatrix *m)
+	VectorRegister4f	_TransformVector(VectorRegister4f &v, const FMatrix44f *m)
 	{
-		const VectorRegister	*M = (const VectorRegister*)m;
-		VectorRegister			x, y, z;
+		const VectorRegister4f	*M = (const VectorRegister4f*)m;
+		VectorRegister4f		x, y, z;
 
 		x = VectorReplicate(v, 0);
 		y = VectorReplicate(v, 1);
@@ -371,7 +371,7 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::FetchClothData(uint32 vertexStart, u
 		return;
 
 	const float			invScale = FPopcornFXPlugin::GlobalScaleRcp();
-	const FMatrix		localM = m_Data->m_InverseTransforms * invScale;
+	const FMatrix44f	localM = m_Data->m_InverseTransforms * invScale;
 	for (u32 iSection = 0; iSection < m_Data->m_ClothSections.Count(); ++iSection)
 	{
 		const FPopcornFXClothSection	&section = m_Data->m_ClothSections[iSection];
@@ -395,8 +395,8 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::FetchClothData(uint32 vertexStart, u
 			const u32	realVertexCount = realVertexEnd - realVertexStart;
 			const u32	indicesStart = realVertexStart - baseVertexOffset;
 
-			const FVector	*srcPositions = data.Positions.GetData();
-			const FVector	*srcNormals = data.Normals.GetData();
+			const FVector3f	*srcPositions = data.Positions.GetData();
+			const FVector3f	*srcNormals = data.Normals.GetData();
 			const u32		*srcIndices = section.m_Indices.RawDataPointer() + indicesStart;
 
 			CFloat4		_dummyNormal[1];
@@ -409,13 +409,13 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::FetchClothData(uint32 vertexStart, u
 			{
 				const u32	simIndex = srcIndices[iVertex];
 
-				VectorRegister			srcPos = VectorLoadFloat3(srcPositions + simIndex);
-				const VectorRegister	srcNormal = VectorLoadFloat3(srcNormals + simIndex);
+				VectorRegister4f		srcPos = VectorLoadFloat3(srcPositions + simIndex);
+				const VectorRegister4f	srcNormal = VectorLoadFloat3(srcNormals + simIndex);
 
 				srcPos = PopcornFXAttributeSamplers::_TransformVector(srcPos, &localM);
 
-				VectorStore(srcPos, dstPositions);
-				VectorStore(srcNormal, dstNormals);
+				VectorStore(srcPos, reinterpret_cast<FVector4f*>(dstPositions));
+				VectorStore(srcNormal, reinterpret_cast<FVector4f*>(dstNormals));
 
 				dstPositions = PopcornFX::Mem::AdvanceRawPointer(dstPositions, 0x10);
 				dstNormals = PopcornFX::Mem::AdvanceRawPointer(dstNormals, dstStride);
@@ -499,10 +499,10 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerSkinnedMesh::_A
 	descMesh->SetMesh(m_Data->m_Mesh, &(m_Data->m_Override));
 
 	shapeDesc->m_Shape = descMesh;
-	shapeDesc->m_WorldTr_Current = reinterpret_cast<const CFloat4x4*>(&(m_WorldTr_Current));
-	shapeDesc->m_WorldTr_Previous = reinterpret_cast<CFloat4x4*>(&(m_WorldTr_Previous));
-	shapeDesc->m_Angular_Velocity = reinterpret_cast<const CFloat3*>(&(m_Angular_Velocity));
-	shapeDesc->m_Linear_Velocity = reinterpret_cast<CFloat3*>(&(m_Linear_Velocity));
+	shapeDesc->m_WorldTr_Current =	&_Reinterpret<const CFloat4x4>(m_WorldTr_Current);
+	shapeDesc->m_WorldTr_Previous = &_Reinterpret<CFloat4x4>(m_WorldTr_Previous);
+	shapeDesc->m_Angular_Velocity = &_Reinterpret<const CFloat3>(m_Angular_Velocity);
+	shapeDesc->m_Linear_Velocity =	&_Reinterpret<CFloat3>(m_Linear_Velocity);
 
 	UpdateTransforms();
 
@@ -553,8 +553,8 @@ USkinnedMeshComponent	*UPopcornFXAttributeSamplerSkinnedMesh::ResolveSkinnedMesh
 
 static CFloat3	ToPk(const FPackedNormal &packedNormal)
 {
-	FVector	unpackedVector;
-	VectorRegister	normal = packedNormal.GetVectorRegister();
+	FVector3f			unpackedVector;
+	VectorRegister4f	normal = packedNormal.GetVectorRegister();
 	VectorStoreFloat3(normal, &unpackedVector);
 	return ToPk(unpackedVector);
 }
@@ -697,8 +697,8 @@ namespace
 
 		const TStridedMemoryView<CFloat3>	srcPositionsView = vstream.Positions();
 
-		const TMemoryView<const _IndexType>	srcBoneIndices(skinningStreams->IndexStream<_IndexType>(), skinningStreams->Count());
-		const TMemoryView<const float>		srcBoneWeights(skinningStreams->WeightStream(), skinningStreams->Count());
+		const PopcornFX::TMemoryView<const _IndexType>	srcBoneIndices(skinningStreams->IndexStream<_IndexType>(), skinningStreams->Count());
+		const PopcornFX::TMemoryView<const float>		srcBoneWeights(skinningStreams->WeightStream(), skinningStreams->Count());
 
 		_IndexType							* __restrict boneIndices = reinterpret_cast<_IndexType*>(data->m_BoneIndices.RawDataPointer());
 
@@ -761,8 +761,8 @@ namespace
 			FPopcornFXClothSection		clothSection;
 			const bool					validClothSection = (buildDesc.m_BuildFlags & Build_Cloth) && section.HasClothingData() && skin;
 
-			bool						buildClothIndices = false;
-			TMemoryView<const FVector>	clothVertices;
+			bool									buildClothIndices = false;
+			PopcornFX::TMemoryView<const FVector3f>	clothVertices;
 			if (validClothSection)
 			{
 				PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerSkinnedMesh::Section - cloth", POPCORNFX_UE_PROFILER_COLOR);
@@ -776,7 +776,7 @@ namespace
 						const FClothLODDataCommon			&lodData = clothAsset->LodData[0];
 						const FClothPhysicalMeshData		&physMeshData = lodData.PhysicalMeshData;
 
-						clothVertices = TMemoryView<const FVector>(physMeshData.Vertices.GetData(), physMeshData.Vertices.Num());
+						clothVertices = PopcornFX::TMemoryView<const FVector3f>(physMeshData.Vertices.GetData(), physMeshData.Vertices.Num());
 
 						if (PK_VERIFY(clothSection.m_Indices.Resize(numVertices)))
 						{
@@ -807,7 +807,7 @@ namespace
 						// Expensive step, but necessary to have less runtime overhead
 						s32				index = INDEX_NONE;
 						const u32		clothVertexCount = clothVertices.Count();
-						const FVector	pos = ToUE(srcPositionsView[offsetNoInfluences]) * scale;
+						const FVector3f	pos = ToUE(srcPositionsView[offsetNoInfluences]) * scale;
 						for (u32 iClothVertex = 0; iClothVertex < clothVertexCount; ++iClothVertex)
 						{
 							if ((clothVertices[iClothVertex] - pos).SizeSquared() <= eSq)
@@ -909,7 +909,7 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::BuildInitialPose()
 	PopcornFX::CMeshVStream			&vstream = triBatch.m_VStream;
 	PopcornFX::CMeshIStream			&istream = triBatch.m_IStream;
 
-	TMemoryView<const float>		srcBoneWeights(skinningStreams->WeightStream(), skinningStreams->Count());
+	PopcornFX::TMemoryView<const float>		srcBoneWeights(skinningStreams->WeightStream(), skinningStreams->Count());
 	PK_ASSERT(skinningStreams->VertexCount() == buildDesc.m_TotalVertexCount);
 
 	// TODO: We have to make sure those streams remain valid while this attr sampler is active: Reset when src .uasset is removed?
@@ -1037,7 +1037,7 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::BuildInitialPose()
 				PopcornFX::TBaseSkinningStreamsProxy<u16>	*proxy = PK_NEW(PopcornFX::TBaseSkinningStreamsProxy<u16>);
 				if (!PK_VERIFY(proxy != null))
 					return false;
-				if (!PK_VERIFY(proxy->Setup(buildDesc.m_TotalVertexCount, srcBoneWeights, TMemoryView<const u16>(reinterpret_cast<const u16*>(m_Data->m_BoneIndices.RawDataPointer()), m_Data->m_BoneIndices.Count() / 2))))
+				if (!PK_VERIFY(proxy->Setup(buildDesc.m_TotalVertexCount, srcBoneWeights, PopcornFX::TMemoryView<const u16>(reinterpret_cast<const u16*>(m_Data->m_BoneIndices.RawDataPointer()), m_Data->m_BoneIndices.Count() / 2))))
 				{
 					PK_DELETE(proxy);
 					return false;
@@ -1096,7 +1096,7 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::UpdateSkinning()
 	const USkeletalMesh			*mesh = skinnedMesh->SkeletalMesh;
 	const TArray<FTransform>	&spaceBases = GetComponentSpaceTransforms(baseComponent);
 
-	const TArray<FMatrix>		&refBasesInvMatrix=  SkeletalMeshRefBasesInvMatrices(mesh);
+	const TArray<FMatrix44f>	&refBasesInvMatrix=  SkeletalMeshRefBasesInvMatrices(mesh);
 	PK_ASSERT(boneCount <= (u32)boneVisibilityStates.Num());
 	m_Data->m_BoneVisibilityChanged = false;
 	for (u32 iBone = 0; iBone < boneCount; ++iBone)
@@ -1106,7 +1106,7 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::UpdateSkinning()
 		const bool	wasBoneVisible = m_Data->m_BoneInverseMatrices[iBone] != CFloat4x4::ZERO;
 		if (isBoneVisible)
 		{
-			FMatrix	matrix = refBasesInvMatrix[iBone] * spaceBases[iBone].ToMatrixWithScale();
+			FMatrix44f	matrix = refBasesInvMatrix[iBone] * (FMatrix44f)spaceBases[iBone].ToMatrixWithScale();
 
 			matrix.ScaleTranslation(invScale);
 			m_Data->m_BoneInverseMatrices[iBone] = ToPk(matrix);
@@ -1125,7 +1125,7 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::UpdateSkinning()
 			SCOPE_CYCLE_COUNTER(STAT_PopcornFX_FetchClothData); // Time cloth data copy
 
 			const TMap<int32, FClothSimulData>	&simData = skelMesh->GetCurrentClothingData_GameThread();
-			const FMatrix						&inverseTr = skelMesh->GetComponentToWorld().Inverse().ToMatrixWithScale();
+			const FMatrix44f					&inverseTr = (FMatrix44f)skelMesh->GetComponentToWorld().Inverse().ToMatrixWithScale();
 
 			m_Data->m_InverseTransforms = inverseTr;
 			m_Data->m_ClothSimDataCopy = simData;
@@ -1207,27 +1207,27 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::UpdateTransforms()
 	{
 		case	EPopcornFXSkinnedTransforms::SkinnedComponentRelativeTr:
 			if (bApplyScale)
-				m_WorldTr_Current = m_Data->m_CurrentSkinnedMeshComponent->GetRelativeTransform().ToMatrixWithScale();
+				m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetRelativeTransform().ToMatrixWithScale();
 			else
-				m_WorldTr_Current = m_Data->m_CurrentSkinnedMeshComponent->GetRelativeTransform().ToMatrixNoScale();
+				m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetRelativeTransform().ToMatrixNoScale();
 			break;
 		case	EPopcornFXSkinnedTransforms::SkinnedComponentWorldTr:
 			if (bApplyScale)
-				m_WorldTr_Current = m_Data->m_CurrentSkinnedMeshComponent->GetComponentTransform().ToMatrixWithScale();
+				m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetComponentTransform().ToMatrixWithScale();
 			else
-				m_WorldTr_Current = m_Data->m_CurrentSkinnedMeshComponent->GetComponentTransform().ToMatrixNoScale();
+				m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetComponentTransform().ToMatrixNoScale();
 			break;
 		case	EPopcornFXSkinnedTransforms::AttrSamplerRelativeTr:
 			if (bApplyScale)
-				m_WorldTr_Current = GetRelativeTransform().ToMatrixWithScale();
+				m_WorldTr_Current = (FMatrix44f)GetRelativeTransform().ToMatrixWithScale();
 			else
-				m_WorldTr_Current = GetRelativeTransform().ToMatrixNoScale();
+				m_WorldTr_Current = (FMatrix44f)GetRelativeTransform().ToMatrixNoScale();
 			break;
 		case	EPopcornFXSkinnedTransforms::AttrSamplerWorldTr:
 			if (bApplyScale)
-				m_WorldTr_Current = GetComponentTransform().ToMatrixWithScale();
+				m_WorldTr_Current = (FMatrix44f)GetComponentTransform().ToMatrixWithScale();
 			else
-				m_WorldTr_Current = GetComponentTransform().ToMatrixNoScale();
+				m_WorldTr_Current = (FMatrix44f)GetComponentTransform().ToMatrixNoScale();
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();

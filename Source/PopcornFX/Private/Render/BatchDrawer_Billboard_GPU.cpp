@@ -36,7 +36,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogVertexBillboardingPolicy, Log, All);
 //
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAtlasRectsVertexBuffer::LoadRects(const TMemoryView<const CFloat4> &rects)
+bool	FPopcornFXAtlasRectsVertexBuffer::LoadRects(const PopcornFX::TMemoryView<const CFloat4> &rects)
 {
 	if (rects.Empty())
 	{
@@ -53,7 +53,7 @@ bool	FPopcornFXAtlasRectsVertexBuffer::LoadRects(const TMemoryView<const CFloat4
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const TMemoryView<const CFloat4> &rects)
+bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<const CFloat4> &rects)
 {
 	const u32		bytes = rects.CoveredBytes();
 	const bool		empty = m_AtlasBuffer_Raw == null;
@@ -67,7 +67,7 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const TMemoryView<const CFloat
 #else
 		FRHIResourceCreateInfo	info;
 #endif // (ENGINE_MAJOR_VERSION == 5)
-		const uint32	usage = BUF_Static | BUF_ShaderResource;
+		const EBufferUsageFlags	usage = BUF_Static | BUF_ShaderResource;
 
 		m_AtlasBuffer_Raw = RHICreateVertexBuffer(m_AtlasBufferCapacity, usage, info);
 		if (!PK_VERIFY(IsValidRef(m_AtlasBuffer_Raw)))
@@ -116,7 +116,7 @@ bool	FPopcornFXDrawRequestsBuffer::LoadIFN()
 #else
 		FRHIResourceCreateInfo	info;
 #endif // (ENGINE_MAJOR_VERSION == 5)
-		const uint32	usage = BUF_Dynamic | BUF_ShaderResource;
+		const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
 
 		m_DrawRequestsBuffer = RHICreateVertexBuffer(totalByteCount, usage, info);
 		if (!PK_VERIFY(IsValidRef(m_DrawRequestsBuffer)))
@@ -141,7 +141,7 @@ bool	FPopcornFXDrawRequestsBuffer::LoadIFN()
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXDrawRequestsBuffer::Map(TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest> &outView, u32 elementCount)
+bool	FPopcornFXDrawRequestsBuffer::Map(PopcornFX::TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest> &outView, u32 elementCount)
 {
 	if (!PK_VERIFY(m_DrawRequestsBuffer != null) ||
 		!PK_VERIFY(!m_Mapped))
@@ -167,7 +167,7 @@ bool	FPopcornFXDrawRequestsBuffer::Map(TMemoryView<PopcornFX::Drawers::SBillboar
 		UE_LOG(LogVertexBillboardingPolicy, Error, TEXT("Couldn't map draw requests structured buffer"));
 		return false;
 	}
-	outView = TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest>(reinterpret_cast<PopcornFX::Drawers::SBillboardDrawRequest*>(mappedBuffer), elementCount);
+	outView = PopcornFX::TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest>(reinterpret_cast<PopcornFX::Drawers::SBillboardDrawRequest*>(mappedBuffer), elementCount);
 	return true;
 }
 
@@ -226,7 +226,13 @@ public:
 		FRHIResourceCreateInfo	info(TEXT("PopcornFXGPUParticlesIndexBuffer"));
 
 		void	*data = null;
+#if (ENGINE_MAJOR_VERSION == 5)
+		IndexBufferRHI = RHICreateBuffer(sizeInBytes, BUF_Static | BUF_IndexBuffer, stride, ERHIAccess::VertexOrIndexBuffer, info);
+		data = RHILockBuffer(IndexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
+#else
 		IndexBufferRHI = RHICreateAndLockIndexBuffer(stride, sizeInBytes, BUF_Static, info, data);
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 		u16*	indices = (u16*)data;
 
 		indices[0] = 1;
@@ -292,6 +298,29 @@ CBatchDrawer_Billboard_GPUBB::~CBatchDrawer_Billboard_GPUBB()
 	for (u32 iView = 0; iView < m_ViewDependents.Count(); ++iView)
 		PK_ASSERT(!m_ViewDependents[iView].m_Indices.Valid());
 
+	// Render resources cannot be released on the game thread.
+	// When re-importing an effect, render medium gets destroyed on the main thread (expected scenario)
+	// When unloading a scene, render mediums are destroyed on the render thread (RenderBatchManager.cpp::Clean())
+	if (IsInGameThread())
+	{
+		ENQUEUE_RENDER_COMMAND(ReleaseRenderResourcesCommand)(
+			[this](FRHICommandListImmediate &RHICmdList)
+			{
+				_CleanRWBuffers();
+			});
+
+		FlushRenderingCommands(); // so we can safely release frames
+	}
+	else
+	{
+		_CleanRWBuffers();
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	CBatchDrawer_Billboard_GPUBB::_CleanRWBuffers()
+{
 #if RHI_RAYTRACING
 	if (IsRayTracingEnabled())
 	{
@@ -299,6 +328,8 @@ CBatchDrawer_Billboard_GPUBB::~CBatchDrawer_Billboard_GPUBB()
 		m_RayTracingDynamicVertexBuffer.Release();
 	}
 #endif // RHI_RAYTRACING
+
+	m_DrawIndirectBuffer.Release();
 }
 
 //----------------------------------------------------------------------------
@@ -708,7 +739,7 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 		if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_Indices)
 		{
 			PK_ASSERT(m_Indices.Valid());
-			TMemoryView<u32>	indices;
+			PopcornFX::TMemoryView<u32>	indices;
 
 			PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::MapBuffers_Billboard (view independent indices)");
 			if (!m_Indices->Map(indices, totalParticleCount) ||
@@ -722,7 +753,7 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 		if (drawPass.m_ToGenerate.m_GeneratedInputs != 0) // Do we have any view independent streams (& isNewFrame)
 		{
 			PK_ASSERT(m_SimData.Valid());
-			TMemoryView<float>	simData;
+			PopcornFX::TMemoryView<float>	simData;
 			{
 				PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::MapBuffers_Billboard (sim data buffer)");
 				const u32	elementCount = m_TotalGPUBufferSize / sizeof(float);
@@ -735,22 +766,22 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 			float* _data = simData.Data();
 			{
 				if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_ParticlePosition)
-					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_PositionsDrIds = TMemoryView<PopcornFX::Drawers::SVertex_PositionDrId/*CFloat3*/>(reinterpret_cast<PopcornFX::Drawers::SVertex_PositionDrId*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Positions])), totalParticleCount);
+					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_PositionsDrIds = PopcornFX::TMemoryView<PopcornFX::Drawers::SVertex_PositionDrId/*CFloat3*/>(reinterpret_cast<PopcornFX::Drawers::SVertex_PositionDrId*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Positions])), totalParticleCount);
 				if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_ParticleSize)
-					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Sizes = TMemoryView<float>(reinterpret_cast<float*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Sizes])), totalParticleCount);
+					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Sizes = PopcornFX::TMemoryView<float>(reinterpret_cast<float*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Sizes])), totalParticleCount);
 				if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_ParticleSize2)
-					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Sizes2 = TMemoryView<CFloat2>(reinterpret_cast<CFloat2*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Size2s])), totalParticleCount);
+					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Sizes2 = PopcornFX::TMemoryView<CFloat2>(reinterpret_cast<CFloat2*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Size2s])), totalParticleCount);
 				if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_ParticleRotation)
-					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Rotations = TMemoryView<float>(reinterpret_cast<float*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Rotations])), totalParticleCount);
+					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Rotations = PopcornFX::TMemoryView<float>(reinterpret_cast<float*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Rotations])), totalParticleCount);
 				if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_ParticleAxis0)
-					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Axis0 = TMemoryView<CFloat3>(reinterpret_cast<CFloat3*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Axis0s])), totalParticleCount);
+					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Axis0 = PopcornFX::TMemoryView<CFloat3>(reinterpret_cast<CFloat3*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Axis0s])), totalParticleCount);
 				if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_ParticleAxis1)
-					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Axis1 = TMemoryView<CFloat3>(reinterpret_cast<CFloat3*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Axis1s])), totalParticleCount);
+					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_Axis1 = PopcornFX::TMemoryView<CFloat3>(reinterpret_cast<CFloat3*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Axis1s])), totalParticleCount);
 			}
 			{
 				// Draw requests
 				PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::MapBuffers_Billboard (draw requests buffer)");
-				TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest>	drawRequests;
+				PopcornFX::TMemoryView<PopcornFX::Drawers::SBillboardDrawRequest>	drawRequests;
 				if (!m_DrawRequests.Map(drawRequests, drawPass.m_DrawRequests.Count()))
 				{
 					UE_LOG(LogVertexBillboardingPolicy, Error, TEXT("GPUBB: Couldn't map draw requests buffer"));
@@ -799,7 +830,7 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 			PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::MapBuffers_Billboard (view dependent indices)");
 
 			PK_ASSERT(viewDep.m_Indices.Valid());
-			TMemoryView<u32>	indices;
+			PopcornFX::TMemoryView<u32>	indices;
 
 			if (!viewDep.m_Indices->Map(indices, totalParticleCount) ||
 				!dstView.m_Exec_Indices.m_IndexStream.Setup(indices.Data(), totalParticleCount, true))
@@ -946,7 +977,7 @@ bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_CPU(FPopcornFXGPUVertex
 	vsUniforms.HasSortedIndices = 1; // By default we always generate indices, even when not required. TODO: Fix that to save perf/mem
 	vsUniforms.InIndicesOffset = desc.m_IndexOffset;
 	vsUniforms.InSortedIndices = viewIndependentIndices ? m_Indices.Buffer()->SRV() : viewDep->m_Indices.Buffer()->SRV();
-	vsUniforms.DrawRequest = FVector4(ForceInitToZero);
+	vsUniforms.DrawRequest = FVector4f(ForceInitToZero);
 	return true;
 }
 
@@ -1010,7 +1041,7 @@ bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_GPU(u32 drId, const SUE
 	// GPU particles draw requests are not currently batched
 	PopcornFX::Drawers::SBillboardDrawRequest	drDesc;
 	drDesc.Setup(br);
-	vsUniforms.DrawRequest = *reinterpret_cast<FVector4*>(&drDesc);
+	vsUniforms.DrawRequest = *reinterpret_cast<FVector4f*>(&drDesc);
 	vsUniforms.DrawRequestID = drId;
 
 	vsUniforms.HasSortedIndices = 0; // TODO: Sorting
@@ -1205,7 +1236,11 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 					}
 				);
 
+#if (ENGINE_MAJOR_VERSION == 5)
+				rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
+#else
 				rayTracingInstance.BuildInstanceMaskAndFlags();
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				view->OutRayTracingInstances()->Add(rayTracingInstance);
 			}
 			else

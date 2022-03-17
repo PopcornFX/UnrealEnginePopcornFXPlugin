@@ -13,6 +13,8 @@
 #include "RenderResource.h"
 #include "VertexFactory.h"
 
+#include "PopcornFXHelper.h"
+
 class UMaterialInterface;
 
 //----------------------------------------------------------------------------
@@ -38,7 +40,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, POPCORNFX
 	SHADER_PARAMETER(int32, DrawRequestID)
 	SHADER_PARAMETER(uint32, InIndicesOffset) // >= 0
 	SHADER_PARAMETER(uint32, AtlasRectCount)
-	SHADER_PARAMETER(FVector4, DrawRequest) // Unbatched, GPU
+	SHADER_PARAMETER(FVector4f, DrawRequest) // Unbatched, GPU
 	SHADER_PARAMETER_SRV(Buffer<uint>, InSimData)
 	SHADER_PARAMETER_SRV(Buffer<uint>, InSortedIndices)
 	SHADER_PARAMETER_SRV(Buffer<float4>, AtlasBuffer)

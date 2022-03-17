@@ -80,8 +80,8 @@ namespace
 				const PopcornFX::PParticleDescriptor	desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
 				if (!PK_VERIFY(desc != null))
 					return null;
-				TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
-				const u32										rendererCount = renderers.Count();
+				PopcornFX::TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
+				const u32													rendererCount = renderers.Count();
 				for (u32 iRenderer = 0; iRenderer < rendererCount; ++iRenderer)
 				{
 					const PopcornFX::CRendererDataBase	*rBase = renderers[iRenderer].Get();

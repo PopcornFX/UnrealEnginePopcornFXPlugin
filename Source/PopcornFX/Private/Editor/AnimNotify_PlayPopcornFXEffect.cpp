@@ -28,9 +28,18 @@ UAnimNotify_PlayPopcornFXEffect::UAnimNotify_PlayPopcornFXEffect()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
+void	UAnimNotify_PlayPopcornFXEffect::Notify(class USkeletalMeshComponent *meshComp, class UAnimSequenceBase *animation, const FAnimNotifyEventReference &eventReference)
+#else
 void	UAnimNotify_PlayPopcornFXEffect::Notify(class USkeletalMeshComponent *meshComp, class UAnimSequenceBase *animation)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
+#if (ENGINE_MAJOR_VERSION == 5)
+	Super::Notify(meshComp, animation, eventReference);
+#else
 	Super::Notify(meshComp, animation);
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 	if (Effect == null)
 	{
 		UE_LOG(LogPopcornFXAnimNotify, Warning, TEXT("PopcornFX Notify: Particle system is null for notify '%s' in anim: '%s'"), *GetNotifyName(), *GetPathNameSafe(animation));
