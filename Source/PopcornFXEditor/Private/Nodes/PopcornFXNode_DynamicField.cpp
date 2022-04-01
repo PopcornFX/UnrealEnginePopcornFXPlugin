@@ -91,7 +91,11 @@ namespace	PopcornFXPinDataType
 		case EPopcornFXPinDataType::Float2:
 		case EPopcornFXPinDataType::Float3:
 		case EPopcornFXPinDataType::Float4:
+#if (ENGINE_MAJOR_VERSION == 5)
+			outPinType.PinCategory = UEdGraphSchema_K2::PC_Real;
+#else
 			outPinType.PinCategory = UEdGraphSchema_K2::PC_Float;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 			return true;
 		case EPopcornFXPinDataType::Int:
 		case EPopcornFXPinDataType::Int2:

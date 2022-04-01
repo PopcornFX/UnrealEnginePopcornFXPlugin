@@ -357,7 +357,11 @@ bool	UPopcornFXMesh::BuildMeshFromSource()
 namespace
 {
 	template<typename _IndexType>
-	void	_FillSkelMeshBuffers(const FSkeletalMeshLODRenderData &LODRenderData, PopcornFX::CMeshVStream &vstream, TMemoryView<float> boneWeights, TMemoryView<u8> boneIndices, u32 maxInfluenceCount)
+	void	_FillSkelMeshBuffers(	const FSkeletalMeshLODRenderData	&LODRenderData,
+									PopcornFX::CMeshVStream				&vstream,
+									PopcornFX::TMemoryView<float>		boneWeights,
+									PopcornFX::TMemoryView<u8>			boneIndices,
+									u32									maxInfluenceCount)
 	{
 		float		* __restrict _boneWeights = boneWeights.Data();
 		_IndexType	* __restrict _boneIndices = reinterpret_cast<_IndexType*>(boneIndices.Data());
@@ -399,7 +403,7 @@ namespace
 				srcNormalsView[vertexIndex] = ToPk(LODRenderData.StaticVertexBuffers.StaticMeshVertexBuffer.VertexTangentZ(vertexIndex)).xyz();
 
 				{
-					const FVector	tangent = LODRenderData.StaticVertexBuffers.StaticMeshVertexBuffer.VertexTangentX(vertexIndex);
+					const FVector3f	tangent = LODRenderData.StaticVertexBuffers.StaticMeshVertexBuffer.VertexTangentX(vertexIndex);
 					srcTangentsView[vertexIndex] = ToPk(tangent);
 				}
 				PK_RELEASE_ASSERT(!hasColors || vertexIndex < LODRenderData.StaticVertexBuffers.ColorVertexBuffer.GetNumVertices());
@@ -584,26 +588,26 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::NewResourceMesh(UStaticMesh *staticMesh
 			const u32	srci = i;
 			const u32	dsti = i;
 
-			const FVector	&pos = srcPositions.VertexPosition(srci);
+			const FVector3f	&pos = srcPositions.VertexPosition(srci);
 			dstPositions[dsti] = ToPk(pos) * scale;
 
-			const FVector	&normal = srcVertices.VertexTangentZ(srci);
-			const FVector	&tagent = srcVertices.VertexTangentX(srci);
+			const FVector3f	&normal = srcVertices.VertexTangentZ(srci);
+			const FVector3f	&tangent = srcVertices.VertexTangentX(srci);
 
 			PK_TODO("Optim: get the TangentZ.w to put in our tangent.w");
 			// Ugly recontruct binormal sign to put in tangent.w
 			// New 4.12 tangent basis precision hides TangetZ.w behind more stuff
 			// Should use: if (GetUseHighPrecisionTangentBasis()) { ... TangentZ.w ... } else { .... TangentZ.w .... }
-			const FVector	&finalBinormal = srcVertices.VertexTangentY(srci);
-			const FVector	baseBinormal = normal ^ tagent;
+			const FVector3f	&finalBinormal = srcVertices.VertexTangentY(srci);
+			const FVector3f	baseBinormal = normal ^ tangent;
 			const float		biNormalSign =  FVector::DotProduct(baseBinormal, finalBinormal) < 0.0 ? -1.0f : 1.0f;
 
 			dstNormals[dsti] = ToPk(normal);
-			dstTangents[dsti] = CFloat4(ToPk(tagent), biNormalSign);
+			dstTangents[dsti] = CFloat4(ToPk(tangent), biNormalSign);
 
 			for (u32 uvi = 0; uvi < uvCount; ++uvi)
 			{
-				const FVector2D		&uv = srcVertices.GetVertexUV(srci, uvi);
+				const FVector2f		&uv = srcVertices.GetVertexUV(srci, uvi);
 				dstUvs[uvi][dsti] = ToPk(uv);
 			}
 
@@ -689,26 +693,26 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::NewResourceMesh(UStaticMesh *staticMesh
 					const u32	srci = srcVertex;
 					const u32	dsti = dstVertexCount;
 
-					const FVector	&pos = srcPositions.VertexPosition(srci);
+					const FVector3f	&pos = srcPositions.VertexPosition(srci);
 					dstPositions[dsti] = ToPk(pos) * scale;
 
-					const FVector	&normal = srcVertices.VertexTangentZ(srci);
-					const FVector	&tagent = srcVertices.VertexTangentX(srci);
+					const FVector3f	&normal = srcVertices.VertexTangentZ(srci);
+					const FVector3f	&tangent = srcVertices.VertexTangentX(srci);
 
 					PK_TODO("Optim: get the TangentZ.w to put in our tangent.w");
 					// Ugly recontruct binormal sign to put in tangent.w
 					// New 4.12 tangent basis precision hides TangetZ.w behind more stuff
 					// Should use: if (GetUseHighPrecisionTangentBasis()) { ... TangentZ.w ... } else { .... TangentZ.w .... }
-					const FVector	&finalBinormal = srcVertices.VertexTangentY(srci);
-					const FVector	baseBinormal = normal ^ tagent;
+					const FVector3f	&finalBinormal = srcVertices.VertexTangentY(srci);
+					const FVector3f	baseBinormal = normal ^ tangent;
 					const float		biNormalSign =  FVector::DotProduct(baseBinormal, finalBinormal) < 0.0 ? -1.0f : 1.0f;
 
 					dstNormals[dsti] = ToPk(normal);
-					dstTangents[dsti] = CFloat4(ToPk(tagent), biNormalSign);
+					dstTangents[dsti] = CFloat4(ToPk(tangent), biNormalSign);
 
 					for (u32 uvi = 0; uvi < uvCount; ++uvi)
 					{
-						const FVector2D		&uv = srcVertices.GetVertexUV(srci, uvi);
+						const FVector2f		&uv = srcVertices.GetVertexUV(srci, uvi);
 						dstUvs[uvi][dsti] = ToPk(uv);
 					}
 
@@ -857,7 +861,7 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::NewResourceMesh(USkeletalMesh *skeletal
 	{
 		_FillSkelMeshBuffers<u16>(LODRenderData, vstream, boneWeights, boneIndices, maxInfluenceCount);
 
-		TMemoryView<const u16>	view = TMemoryView<const u16>(reinterpret_cast<const u16*>(boneIndices.RawDataPointer()), boneIndices.Count() / 2);
+		PopcornFX::TMemoryView<const u16>	view(reinterpret_cast<const u16*>(boneIndices.RawDataPointer()), boneIndices.Count() / 2);
 		skinningStreams = PopcornFX::CBaseSkinningStreams::BuildFromUnpackedStreams(totalVertexCount, boneWeights, view);
 	}
 

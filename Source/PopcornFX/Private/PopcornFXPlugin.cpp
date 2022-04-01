@@ -447,10 +447,12 @@ void	FPopcornFXPlugin::StartupModule()
 	}
 
 #if WITH_EDITOR
-	// Global On Object Modified
 
-	// Use on save for now
+#if (ENGINE_MAJOR_VERSION == 5)
+	m_OnObjectSavedDelegateHandle = FCoreUObjectDelegates::OnObjectPreSave.AddRaw(this, &FPopcornFXPlugin::_OnObjectSaved);
+#else
 	m_OnObjectSavedDelegateHandle = FCoreUObjectDelegates::OnObjectSaved.AddRaw(this, &FPopcornFXPlugin::_OnObjectSaved);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #endif
 
@@ -502,8 +504,13 @@ void	FPopcornFXPlugin::ShutdownModule()
 	FCoreDelegates::OnPostEngineInit.RemoveAll(this);
 
 #if WITH_EDITOR
-	// Global On Object Modified
-	FCoreUObjectDelegates::OnObjectModified.Remove(m_OnObjectSavedDelegateHandle);
+
+#	if (ENGINE_MAJOR_VERSION == 5)
+	FCoreUObjectDelegates::OnObjectPreSave.Remove(m_OnObjectSavedDelegateHandle);
+#	else
+	FCoreUObjectDelegates::OnObjectSaved.Remove(m_OnObjectSavedDelegateHandle);
+#	endif // (ENGINE_MAJOR_VERSION == 5)
+
 	m_OnObjectSavedDelegateHandle.Reset();
 #endif
 
@@ -982,7 +989,11 @@ bool	FPopcornFXPlugin::AskBuildMeshData_YesAll() { return g_SetAskBuildMeshData_
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
+#if (ENGINE_MAJOR_VERSION == 5)
+void	FPopcornFXPlugin::_OnObjectSaved(UObject *object, FObjectPreSaveContext context)
+#else
 void	FPopcornFXPlugin::_OnObjectSaved(UObject *object)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	NotifyObjectChanged(object);
 }

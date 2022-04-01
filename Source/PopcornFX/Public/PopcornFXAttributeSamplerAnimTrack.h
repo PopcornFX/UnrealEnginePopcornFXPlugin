@@ -107,6 +107,6 @@ private:
 private:
 	FAttributeSamplerAnimTrackData	*m_Data;
 
-	FMatrix							m_TrackTransforms;
-	FMatrix							m_TrackTransformsUnscaled;
+	FMatrix44f						m_TrackTransforms;
+	FMatrix44f						m_TrackTransformsUnscaled;
 };

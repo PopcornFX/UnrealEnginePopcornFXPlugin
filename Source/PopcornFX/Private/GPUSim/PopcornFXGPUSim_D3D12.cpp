@@ -65,22 +65,25 @@ bool	GEnableResidencyManagement = true;
 //----------------------------------------------------------------------------
 
 #if (ENGINE_MAJOR_VERSION == 5)
-void UpdateBufferStats(FName Name, int64 RequestedSize)
+FD3D12Buffer::~FD3D12Buffer()
 {
-	INC_MEMORY_STAT_BY_FName(Name, RequestedSize);
+	if (EnumHasAnyFlags(GetUsage(), EBufferUsageFlags::VertexBuffer) && GetParentDevice())
+	{
+		FD3D12CommandContext& DefaultContext = GetParentDevice()->GetDefaultCommandContext();
+		DefaultContext.StateCache.ClearVertexBuffer(&ResourceLocation);
+	}
 
-#if PLATFORM_WINDOWS
-	// this is a work-around on Windows. Due to the fact that there is no way
-	// to hook the actual d3d allocations it is very difficult to track memory
-	// in the normal way. The problem is that some buffers are allocated from
-	// the allocators and some are allocated from the device. Ideally this
-	// tracking would be moved to where the actual d3d resource is created and
-	// released and the tracking could be re-enabled in the buddy allocator.
-	// The problem is that the releasing of resources happens in a generic way
-	// (see FD3D12ResourceLocation) 
-	LLM_SCOPED_PAUSE_TRACKING_WITH_ENUM_AND_AMOUNT(ELLMTag::Meshes, RequestedSize, ELLMTracker::Default, ELLMAllocType::None);
-	LLM_SCOPED_PAUSE_TRACKING_WITH_ENUM_AND_AMOUNT(ELLMTag::GraphicsPlatform, RequestedSize, ELLMTracker::Platform, ELLMAllocType::None);
-#endif
+	//int64 BufferSize = ResourceLocation.GetSize();
+	//bool bTransient = ResourceLocation.IsTransient();
+	//if (!bTransient)
+	//{
+	//	UpdateBufferStats((EBufferUsageFlags)GetUsage(), -BufferSize);
+	//}
+}
+
+uint32 FD3D12Buffer::GetParentGPUIndex() const
+{
+	return Parent->GetGPUIndex();
 }
 #else
 FD3D12VertexBuffer::~FD3D12VertexBuffer()
@@ -105,6 +108,9 @@ FD3D12VertexBuffer::~FD3D12VertexBuffer()
 
 FD3D12ResourceLocation::FD3D12ResourceLocation(FD3D12Device* Parent)
 	: FD3D12DeviceChild(Parent)
+#if (ENGINE_MAJOR_VERSION == 5)
+	, Allocator(nullptr)
+#else
 	, Type(ResourceLocationType::eUndefined)
 	, UnderlyingResource(nullptr)
 	, ResidencyHandle(nullptr)
@@ -114,6 +120,7 @@ FD3D12ResourceLocation::FD3D12ResourceLocation(FD3D12Device* Parent)
 	, OffsetFromBaseOfResource(0)
 	, Size(0)
 	, bTransient(false)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	FMemory::Memzero(AllocatorData);
 }
@@ -145,9 +152,10 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	D3D12_RESOURCE_STATES InitialState,
 	ED3D12ResourceStateMode InResourceStateMode,
 	D3D12_RESOURCE_STATES InDefaultResourceState,
-	D3D12_RESOURCE_DESC const& InDesc,
 #if (ENGINE_MAJOR_VERSION == 5)
-	const D3D12_CLEAR_VALUE* InClearValue,
+	const FD3D12ResourceDesc& InDesc,
+#else
+	D3D12_RESOURCE_DESC const& InDesc,
 #endif // (ENGINE_MAJOR_VERSION == 5)
 	FD3D12Heap* InHeap,
 	D3D12_HEAP_TYPE InHeapType)
@@ -155,6 +163,15 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	, FD3D12MultiNodeGPUObject(ParentDevice->GetGPUMask(), VisibleNodes)
 	, Resource(InResource)
 	, Heap(InHeap)
+#if (ENGINE_MAJOR_VERSION == 5)
+	, Desc(InDesc)
+	, HeapType(InHeapType)
+	, PlaneCount(::GetPlaneCount(Desc.Format))
+	, bRequiresResourceStateTracking(true)
+	, bDepthStencil(false)
+	, bDeferDelete(true)
+	, bBackBuffer(false)
+#else
 	, ResidencyHandle()
 	, Desc(InDesc)
 	, PlaneCount(::GetPlaneCount(Desc.Format))
@@ -169,13 +186,11 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	, HeapType(InHeapType)
 	, GPUVirtualAddress(0)
 	, ResourceBaseAddress(nullptr)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 #if UE_BUILD_DEBUG
 	FPlatformAtomics::InterlockedIncrement(&TotalResourceCount);
 #endif
-#if (ENGINE_MAJOR_VERSION == 5)
-	FPlatformMemory::Memzero(&ClearValue, sizeof(D3D12_CLEAR_VALUE));
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	if (Resource)
 	{
@@ -378,19 +393,15 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuff
 	FD3D12DynamicRHI	*dynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
 	FD3D12Device		*device = dynamicRHI->GetAdapter().GetDevice(0);
 
-	const uint32					bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
+	const EBufferUsageFlags			bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
 	const D3D12_RESOURCE_STATES		resourceState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-#if (ENGINE_MAJOR_VERSION == 5)
-	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource, resourceState, ED3D12ResourceStateMode::Default, resourceState, desc, NULL, NULL, D3D12_HEAP_TYPE_DEFAULT);
-#else
 	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource, resourceState, ED3D12ResourceStateMode::Default, resourceState, desc, NULL, D3D12_HEAP_TYPE_DEFAULT);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	FD3D12Adapter			*adapter = device->GetParentAdapter();
 #if (ENGINE_MAJOR_VERSION == 5)
 	FD3D12Buffer			*buffer = adapter->CreateLinkedObject<FD3D12Buffer>(device->GetVisibilityMask(), [&](FD3D12Device* device)
 		{
-			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, stride, stream->m_ByteSize, bufferUsage);
+			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, stream->m_ByteSize, bufferUsage, stride);
 			return newBuffer;
 		});
 #else

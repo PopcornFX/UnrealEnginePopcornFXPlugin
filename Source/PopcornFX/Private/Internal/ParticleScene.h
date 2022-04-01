@@ -262,8 +262,8 @@ private:
 	FChaosScene			*m_CurrentChaosScene = null;
 #endif
 
-	virtual	TMemoryView<const float * const>	GetAudioSpectrum(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const override;
-	virtual	TMemoryView<const float * const>	GetAudioWaveform(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const override;
+	virtual	PopcornFX::TMemoryView<const float * const>	GetAudioSpectrum(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const override;
+	virtual	PopcornFX::TMemoryView<const float * const>	GetAudioWaveform(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const override;
 
 public:
 	void								SetAudioInterface(class IPopcornFXAudio *audioInterface);
@@ -449,15 +449,15 @@ public:
 
 public:
 	void	BroadcastEvent(
-		PopcornFX::Threads::SThreadContext				*threadCtx,
-		PopcornFX::CParticleMedium						*parentMedium,
-		u32												eventID,
-		PopcornFX::CStringId							eventName,
-		u32												count,
-		const PopcornFX::SUpdateTimeArgs				&timeArgs,
-		const TMemoryView<const float>					&spawnDtToEnd,
-		const TMemoryView<const PopcornFX::CEffectID>	&effectIDs,
-		const PopcornFX::SPayloadView					&payloadView);
+		PopcornFX::Threads::SThreadContext							*threadCtx,
+		PopcornFX::CParticleMedium									*parentMedium,
+		u32															eventID,
+		PopcornFX::CStringId										eventName,
+		u32															count,
+		const PopcornFX::SUpdateTimeArgs							&timeArgs,
+		const PopcornFX::TMemoryView<const float>					&spawnDtToEnd,
+		const PopcornFX::TMemoryView<const PopcornFX::CEffectID>	&effectIDs,
+		const PopcornFX::SPayloadView								&payloadView);
 
 private:
 	void	ClearPendingEvents_NoLock();

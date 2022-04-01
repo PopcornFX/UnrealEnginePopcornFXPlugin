@@ -24,6 +24,8 @@ PopcornFXGPUBillboard.ush: GPU billboarder code
 // TODO: Make this an uniform (configurable in UE settings)
 #define GLOBAL_SCALE	100.0f
 
+//----------------------------------------------------------------------------
+
 struct	FVertexFactoryIntermediates
 {
 	float3		ParticleWorldPosition; // UE units
@@ -60,6 +62,11 @@ struct	FVertexFactoryIntermediates
 #if (DYNAMIC_PARAMETERS_MASK & 8)
 	float4	DynamicParameter3;
 #endif
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	/** Cached primitive and instance data */
+	FSceneDataIntermediates SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 };
 
 //----------------------------------------------------------------------------
@@ -156,6 +163,8 @@ void	RotateTangents(uint particleID, inout float3 xAxis, inout float3 yAxis)
 
 void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactoryIntermediates intermediates)
 {
+	intermediates = (FVertexFactoryIntermediates)0;
+	
 	uint	particleID = instanceID;
 
 	BRANCH
@@ -197,7 +206,12 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	const int		flipUVs = (flags & BB_Flag_VFlipUVs) != 0U;
 
 	const float2	cornerCoords = texCoords;
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	const float3	worldCameraOrigin = LWCToFloat(ResolvedView.WorldViewOrigin).xyz * 0.01f; // PKFX positions are 1unit = 1meter. UE 1unit = 1centimeter
+#else
 	const float3	worldCameraOrigin = ResolvedView.WorldViewOrigin.xyz * 0.01f; // PKFX positions are 1unit = 1meter. UE 1unit = 1centimeter
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	switch (billboarderType)
 	{
@@ -294,11 +308,19 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	intermediates.ParticleWorldPosition = worldPos * GLOBAL_SCALE;
 
 	intermediates.VertexWorldPosition = (worldPos + bbCorner) * GLOBAL_SCALE;
+#if (ENGINE_MAJOR_VERSION == 5)
+	intermediates.VertexWorldPosition += LWCToFloat(ResolvedView.PreViewTranslation);
+#else
 	intermediates.VertexWorldPosition += ResolvedView.PreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if USE_PARTICLE_POSITION
 	const float		particleRadius = min(radius.x, radius.y) * GLOBAL_SCALE;
+#	if (ENGINE_MAJOR_VERSION == 5)
+	const float3	particleTranslatedWorldPosition = (worldPos * GLOBAL_SCALE) + LWCToFloat(ResolvedView.PreViewTranslation).xyz;
+#	else
 	const float3	particleTranslatedWorldPosition = (worldPos * GLOBAL_SCALE) + ResolvedView.PreViewTranslation.xyz;
+#	endif // (ENGINE_MAJOR_VERSION == 5)
 	intermediates.TranslatedWorldPositionAndSize = float4(particleTranslatedWorldPosition, particleRadius);
 #endif
 #if USE_PARTICLE_SIZE

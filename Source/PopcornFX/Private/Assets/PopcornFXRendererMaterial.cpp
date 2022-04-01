@@ -32,6 +32,10 @@
 #	include "Factories/ReimportFbxStaticMeshFactory.h"
 #endif
 
+#if (ENGINE_MAJOR_VERSION == 5)
+#include "UObject/ObjectSaveContext.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 #define LOCTEXT_NAMESPACE "PopcornFXRendererMaterial"
 
 // Helpers
@@ -1174,12 +1178,20 @@ void	UPopcornFXRendererMaterial::PostLoad()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
+void	UPopcornFXRendererMaterial::PreSave(FObjectPreSaveContext SaveContext)
+#else
 void	UPopcornFXRendererMaterial::PreSave(const class ITargetPlatform* TargetPlatform)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	// Flush rendering commands to ensure the rendering thread do not touch us
 	FlushRenderingCommands();
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	Super::PreSave(SaveContext);
+#else
 	Super::PreSave(TargetPlatform);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------

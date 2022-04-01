@@ -21,6 +21,11 @@ FPopcornFXSceneProxy::FPopcornFXSceneProxy(UPopcornFXSceneComponent *component)
 	m_SceneComponent = component;
 
 	bVerifyUsedMaterials = true;
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	// Motion blur not supported anyways right now
+	bAlwaysHasVelocity = false;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
@@ -128,6 +133,7 @@ FPrimitiveViewRelevance	FPopcornFXSceneProxy::GetViewRelevance(const FSceneView*
 
 	// The primitive has one or more opaque or masked elements.
 	viewRelevance.bOpaque = true;
+	viewRelevance.bMasked = true;
 
 	// The primitive should render to the custom depth pass.
 	viewRelevance.bRenderCustomDepth = ShouldRenderCustomDepth();

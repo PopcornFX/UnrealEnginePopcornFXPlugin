@@ -32,7 +32,11 @@ void	FPopcornFXVertexBuffer::InitRHI()
 	if (m_CapacityInBytes > 0)
 	{
 		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Buffer"));
-		uint32					usage = 0;
+#if (ENGINE_MAJOR_VERSION == 5)
+		EBufferUsageFlags		usage = EBufferUsageFlags::None;
+#else
+		EBufferUsageFlags		usage = EBufferUsageFlags::BUF_None;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		if (UsedAsUAV() || UsedAsSRV())
 		{
 			usage |= BUF_ShaderResource;
@@ -194,7 +198,11 @@ void	FPopcornFXIndexBuffer::InitRHI()
 	if (m_Capacity > 0)
 	{
 		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Index Buffer"));
-		uint32					usage = 0;
+#if (ENGINE_MAJOR_VERSION == 5)
+		EBufferUsageFlags		usage = EBufferUsageFlags::None;
+#else
+		EBufferUsageFlags		usage = EBufferUsageFlags::BUF_None;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		if (UsedAsUAV() || UsedAsSRV())
 		{
 			usage |= BUF_ShaderResource;

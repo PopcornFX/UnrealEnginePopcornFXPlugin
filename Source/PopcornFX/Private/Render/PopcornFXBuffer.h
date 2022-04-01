@@ -50,7 +50,7 @@ public:
 	u32				AllocatedSize() const { return AllocatedCount() * AllocatedStride(); }
 
 	template <typename _Type>
-	bool			Map(TMemoryView<_Type> &outMap, u32 count)
+	bool			Map(PopcornFX::TMemoryView<_Type> &outMap, u32 count)
 	{
 		void	*map = RawMap(count, outMap.Stride());
 		if (map == null)
@@ -58,7 +58,7 @@ public:
 			outMap.Clear();
 			return false;
 		}
-		outMap = TMemoryView<_Type>(reinterpret_cast<_Type*>(map), count);
+		outMap = PopcornFX::TMemoryView<_Type>(reinterpret_cast<_Type*>(map), count);
 		return true;
 	}
 
@@ -152,7 +152,7 @@ public:
 		return true;
 	}
 
-	bool			Map(TMemoryView<u32> &outMap, u32 count)
+	bool			Map(PopcornFX::TMemoryView<u32> &outMap, u32 count)
 	{
 		PK_ASSERT(Large());
 		void	*map = RawMap(count);
@@ -161,10 +161,10 @@ public:
 			outMap.Clear();
 			return false;
 		}
-		outMap = TMemoryView<u32>(reinterpret_cast<u32*>(map), count);
+		outMap = PopcornFX::TMemoryView<u32>(reinterpret_cast<u32*>(map), count);
 		return true;
 	}
-	bool			Map(TMemoryView<u16> &outMap, u32 count)
+	bool			Map(PopcornFX::TMemoryView<u16> &outMap, u32 count)
 	{
 		PK_ASSERT(!Large());
 		void	*map = RawMap(count);
@@ -173,7 +173,7 @@ public:
 			outMap.Clear();
 			return false;
 		}
-		outMap = TMemoryView<u16>(reinterpret_cast<u16*>(map), count);
+		outMap = PopcornFX::TMemoryView<u16>(reinterpret_cast<u16*>(map), count);
 		return true;
 	}
 

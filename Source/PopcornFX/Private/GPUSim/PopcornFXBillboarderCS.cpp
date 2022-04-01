@@ -269,7 +269,7 @@ namespace PopcornFXBillboarder
 				inputMask |= (1 << i); // if buffer is provided, always set the mask, even if not used (not bound)
 
 			SetShaderValue(RHICmdList, shader, InputsOffsets[i], params.m_InputsOffsets[i]);
-			SetShaderValue(RHICmdList, shader, InputsDefault[i], _Reinterpret<FVector4>(params.m_InputsDefault[i]));
+			SetShaderValue(RHICmdList, shader, InputsDefault[i], _Reinterpret<FVector4f>(params.m_InputsDefault[i]));
 		}
 
 		PK_ONLY_IF_ASSERTS(const u32		mustHaveInputMask = BillboarderTypeMaskMustHaveInputMask(1 << params.m_BillboarderType));
@@ -418,7 +418,7 @@ namespace PopcornFXBillboarder
 				inputMask |= (1 << i); // if buffer is provided, always set the mask, even if not used (not bound)
 
 			SetShaderValue(RHICmdList, shader, InputsOffsets[i], params.m_InputsOffsets[i]);
-			SetShaderValue(RHICmdList, shader, InputsDefault[i], _Reinterpret<FVector4>(params.m_InputsDefault[i]));
+			SetShaderValue(RHICmdList, shader, InputsDefault[i], _Reinterpret<FVector4f>(params.m_InputsDefault[i]));
 		}
 
 		const bool	isCapsule = params.m_BillboarderType == EBillboarder::AxisAlignedCapsule;
@@ -627,7 +627,7 @@ namespace PopcornFXBillboarder
 				inputMask |= (1 << i); // if buffer is provided, always set the mask, even if not used (not bound)
 
 			SetShaderValue(RHICmdList, shader, InputsOffsets[i], params.m_InputsOffsets[i]);
-			SetShaderValue(RHICmdList, shader, InputsDefault[i], _Reinterpret<FVector4>(params.m_InputsDefault[i]));
+			SetShaderValue(RHICmdList, shader, InputsDefault[i], _Reinterpret<FVector4f>(params.m_InputsDefault[i]));
 		}
 
 		SetShaderValue(RHICmdList, shader, OutputMask, outputMask);

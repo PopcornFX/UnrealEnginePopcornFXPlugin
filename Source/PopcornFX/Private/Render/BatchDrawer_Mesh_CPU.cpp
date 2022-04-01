@@ -690,7 +690,11 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUERenderCo
 
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices + buffersOffset), sectionPCount);
+#if (ENGINE_MAJOR_VERSION == 5)
+			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
+#else
 			rayTracingInstance.BuildInstanceMaskAndFlags();
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 
@@ -726,7 +730,11 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUERenderCo
 		{
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices), m_TotalParticleCount);
+#if (ENGINE_MAJOR_VERSION == 5)
+			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
+#else
 			rayTracingInstance.BuildInstanceMaskAndFlags();
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 		}

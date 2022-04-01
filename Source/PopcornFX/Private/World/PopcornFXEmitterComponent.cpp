@@ -1373,7 +1373,14 @@ void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float de
 	PK_ASSERT(SelfSceneIsRegistered());
 	PK_ASSERT(m_CurrentScene == scene);
 
-	if (IsPendingKill() || m_DiedThisFrame)
+#if (ENGINE_MAJOR_VERSION == 5)
+	if (!IsValid(this))
+		return;
+#else
+	if (IsPendingKill())
+		return;
+#endif // (ENGINE_MAJOR_VERSION == 5)
+	if (m_DiedThisFrame)
 		return;
 	// we should be ticking only if alive (kind-of optim purpose only)
 	PK_ASSERT(IsEmitterAlive());

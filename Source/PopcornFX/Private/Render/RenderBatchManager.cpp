@@ -71,8 +71,8 @@ bool	CUEFrameCollector::LateCull(const PopcornFX::CAABB &bbox) const
 	const CFloat3		origin = bbox.Center();
 	const CFloat3		extent = bbox.Extent();
 	const float			scale = FPopcornFXPlugin::GlobalScale();
-	const FVector		ueOrigin = _Reinterpret<FVector>(origin) * scale;
-	const FVector		ueExtent = _Reinterpret<FVector>(extent) * scale;
+	const FVector		ueOrigin = _Reinterpret<FVector3f>(origin) * scale; // LWC
+	const FVector		ueExtent = _Reinterpret<FVector3f>(extent) * scale; // LWC
 	const auto			&sceneViews = m_Views->SceneViews();
 	for (u32 viewi = 0; viewi < sceneViews.Count(); ++viewi)
 	{
@@ -363,7 +363,9 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 		}
 	}
 	// GPU or CPU sim particles, batch drawers below can handle both
+#if (ENGINE_MAJOR_VERSION == 4)
 	PK_ASSERT(GSupportsResourceView);
+#endif // (ENGINOR_MAJOR_VERSION == 4)
 	switch (rendererType)
 	{
 	case	PopcornFX::Renderer_Billboard:
@@ -793,7 +795,7 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 	m_RenderThreadRenderContext.m_RendererSubView = &view;
 	m_UE_RenderThreadRenderContext.m_RendererSubView = &view;
 
-	TMemoryView<PopcornFX::TSceneView<CBBView> >	views(sceneViews.RawDataPointer(), sceneViews.Count());
+	PopcornFX::TMemoryView<PopcornFX::TSceneView<CBBView> >	views(sceneViews.RawDataPointer(), sceneViews.Count());
 
 	m_UE_RenderThreadRenderContext.m_Views = sceneViews2;
 

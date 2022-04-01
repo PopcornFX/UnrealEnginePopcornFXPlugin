@@ -360,11 +360,11 @@ private:
 	FDelegateHandle					m_OnPopcornFXFileLoadedHandle;
 #endif
 
-	FMatrix							m_CurrentWorldTransforms;
-	FMatrix							m_PreviousWorldTransforms;
-	FVector							m_PreviousWorldPosition;
-	FVector							m_CurrentWorldVelocity;
-	FVector							m_PreviousWorldVelocity;
+	FMatrix44f						m_CurrentWorldTransforms;
+	FMatrix44f						m_PreviousWorldTransforms;
+	FVector3f						m_PreviousWorldPosition;
+	FVector3f						m_CurrentWorldVelocity;
+	FVector3f						m_PreviousWorldVelocity;
 
 	uint64							m_LastFrameUpdate;
 };

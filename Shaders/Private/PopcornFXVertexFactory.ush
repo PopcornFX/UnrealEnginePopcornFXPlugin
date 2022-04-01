@@ -6,7 +6,7 @@
 #include "/Engine/Public/Platform.ush"
 
 /*=============================================================================
-	PopcornFXVertexFactory.usf: PopcornFX Vertex factory shader code.
+	PopcornFXVertexFactory.ush: PopcornFX Vertex factory shader code (CPU billboarded Billboards/Ribbons/Triangles)
 =============================================================================*/
 
 #include "/Engine/Private/VertexFactoryCommon.ush"
@@ -103,6 +103,11 @@ struct FVertexFactoryIntermediates
 #if (DYNAMIC_PARAMETERS_MASK & 8)
 	float4	DynamicParameter3;
 #endif
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	/** Cached primitive and instance data */
+	FSceneDataIntermediates SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 };
 
 //----------------------------------------------------------------------------
@@ -245,6 +250,9 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	
 #endif // NUM_MATERIAL_TEXCOORDS_VERTEX
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	VertexParameters.SceneData = Intermediates.SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	VertexParameters.WorldPosition = WorldPosition;
 	VertexParameters.VertexColor = float4(Intermediates.ParticleEmissiveColor, 1);
 	VertexParameters.PreSkinnedPosition = Input.Position.xyz;
@@ -282,6 +290,9 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
 {
 	FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
+#if (ENGINE_MAJOR_VERSION == 5)
+	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	uint	vertexID = Input.VertexId;
 	uint	particleID = 0;
@@ -311,8 +322,13 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 
 	float3	vertexPosition = Input.Position;
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	float3	worldVertexPosition = mul(float4(vertexPosition,1), LWCToFloat(GetPrimitiveDataFromUniformBuffer().LocalToWorld)).xyz;
+	worldVertexPosition += LWCToFloat(ResolvedView.PreViewTranslation);
+#else
 	float3	worldVertexPosition = mul(float4(vertexPosition,1), Primitive.LocalToWorld).xyz;
 	worldVertexPosition += ResolvedView.PreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Intermediates.Position = worldVertexPosition;
 

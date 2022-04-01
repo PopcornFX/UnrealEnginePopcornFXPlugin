@@ -51,11 +51,11 @@ struct FPopcornFXPlayPreAnimatedToken : IMovieScenePreAnimatedToken
 			m_CachedIsAlive = emitterComponent->IsEmitterAlive();
 	}
 
-#if (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27)
+#if (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || (ENGINE_MAJOR_VERSION == 5)
 	virtual void	RestoreState(UObject &object, const UE::MovieScene::FRestoreStateParams &params) override
 #else
 	virtual void	RestoreState(UObject &object, IMovieScenePlayer &player) override
-#endif // (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27)
+#endif // (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || (ENGINE_MAJOR_VERSION == 5)
 	{
 		UPopcornFXEmitterComponent	*emitterComponent = TryGetEmitterComponent(&object);
 

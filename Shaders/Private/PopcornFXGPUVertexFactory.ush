@@ -4,7 +4,7 @@
 //----------------------------------------------------------------------------
 
 /*=============================================================================
-	PopcornFXGPUVertexFactory.usf: PopcornFX Vertex factory shader code, implementing vertex shader billboarding.
+	PopcornFXGPUVertexFactory.ush: PopcornFX Vertex factory shader code (Vertex billboarded Billboards)
 =============================================================================*/
 
 #include "/Engine/Public/Platform.ush"
@@ -122,10 +122,14 @@ struct	FVertexFactoryInterpolantsVSToPS
 // Construct the vertex factory intermediates
 FVertexFactoryIntermediates		GetVertexFactoryIntermediates(FVertexFactoryInput Input)
 {
-	FVertexFactoryIntermediates		Intermediates = (FVertexFactoryIntermediates)0;
+	FVertexFactoryIntermediates		Intermediates;
 
 	uint	particleId = GetInstanceId(Input.InstanceId); // Necessary for VR Instanced Stereo rendering (returns Input.InstanceId / 2)
 	PopcornFXGPUBillboard(particleId, Input.TexCoord, Intermediates);
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	return Intermediates;
 }
@@ -158,6 +162,9 @@ FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input,
 	#endif	// > 3
 #endif // NUM_MATERIAL_TEXCOORDS_VERTEX
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	VertexParameters.SceneData = Intermediates.SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	VertexParameters.WorldPosition = WorldPosition;
 	VertexParameters.VertexColor = float4(Intermediates.ParticleEmissiveColor, 1.0);
 	VertexParameters.TangentToWorld = mul(TangentToLocal, GetLocalToWorld3x3());
@@ -168,7 +175,11 @@ FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input,
 
 	VertexParameters.PreSkinnedPosition = Intermediates.ParticleWorldPosition.xyz;
 	VertexParameters.PreSkinnedNormal = TangentToLocal[2].xyz;
+#if (ENGINE_MAJOR_VERSION == 5)
+	VertexParameters.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().LocalToWorld; // No velocity
+#else
 	VertexParameters.PrevFrameLocalToWorld = Primitive.LocalToWorld; // No velocity
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
 	VertexParameters.Particle.DynamicParameterValidMask = 0x1 | 0x2 | 0x4 | 0x8; // Add them all, we don't have that info yet. TODO

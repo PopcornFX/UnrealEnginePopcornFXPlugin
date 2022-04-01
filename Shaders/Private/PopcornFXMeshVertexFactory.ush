@@ -6,7 +6,7 @@
 #include "/Engine/Public/Platform.ush"
 
 /*=============================================================================
-	MeshParticleVertexFactory.usf: Mesh particle vertex factory shader code.
+	PopcornFXMeshVertexFactory.ush: PopcornFX Vertex factory shader code (CPU billboarded Meshes)
 =============================================================================*/
 
 #include "/Engine/Private/VertexFactoryCommon.ush"
@@ -15,10 +15,8 @@
 #define USE_PARTICLE_POSITION ((NEEDS_PARTICLE_POSITION || PASS_NEEDS_PRIMITIVE_VOLUME_BOUNDS))
 #define USE_PARTICLE_TIME (NEEDS_PARTICLE_TIME)
 
-#define HAS_INSTANCE_ID (ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER)
-
-#define USE_PARTICLE_LOCAL_TO_WORLD (NEEDS_PARTICLE_LOCAL_TO_WORLD)
-#define USE_PARTICLE_WORLD_TO_LOCAL (NEEDS_PARTICLE_WORLD_TO_LOCAL)
+#define USE_PARTICLE_LOCAL_TO_WORLD (NEEDS_PARTICLE_LOCAL_TO_WORLD || NEEDS_INSTANCE_LOCAL_TO_WORLD_PS)
+#define USE_PARTICLE_WORLD_TO_LOCAL (NEEDS_PARTICLE_WORLD_TO_LOCAL || NEEDS_INSTANCE_WORLD_TO_LOCAL_PS)
 
 struct FVertexFactoryInput
 {
@@ -149,6 +147,11 @@ struct FVertexFactoryIntermediates
 
 	float4x4	ParticleToWorld;
 	float4x4	WorldToParticle;
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	/** Cached primitive and instance data */
+	FSceneDataIntermediates SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 };
 
 float4x4 GetParticleTransform(FVertexFactoryInput Input)
@@ -219,28 +222,45 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	Result.Particle.TranslatedWorldPositionAndSize.w = 1;
 #endif
 
-#if NEEDS_PARTICLE_TRANSFORM
+#if (ENGINE_MAJOR_VERSION == 5)
+#	if USE_PARTICLE_LOCAL_TO_WORLD
+	Result.Particle.ParticleToWorld = LWCPromote(transpose(float4x4(Interpolants.ParticleToWorld[0], Interpolants.ParticleToWorld[1], Interpolants.ParticleToWorld[2], float4(0.0f, 0.0f, 0.0f, 1.0f))));
+#		if NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
+	Result.InstanceLocalToWorld = Result.Particle.ParticleToWorld;
+#		endif // NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
+#	endif // USE_PARTICLE_LOCAL_TO_WORLD
+
+#	if USE_PARTICLE_WORLD_TO_LOCAL
+	Result.Particle.WorldToParticle = LWCPromoteInverse(transpose(float4x4(Interpolants.WorldToParticle[0], Interpolants.WorldToParticle[1], Interpolants.WorldToParticle[2], float4(0.0f, 0.0f, 0.0f, 1.0f))));
+#		if NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
+	Result.InstanceWorldtoLocal = Result.Particle.WorldToParticle;
+#		endif // NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
+#	endif // USE_PARTICLE_WORLD_TO_LOCAL
+#else
+
+#	if NEEDS_PARTICLE_TRANSFORM
 	Result.Particle.LocalToWorld[0] = Interpolants.LocalToWorld[0];
 	Result.Particle.LocalToWorld[1] = Interpolants.LocalToWorld[1];
 	Result.Particle.LocalToWorld[2] = Interpolants.LocalToWorld[2];
 	Result.Particle.LocalToWorld[3] = Interpolants.LocalToWorld[3];
-#endif
+#	endif // NEEDS_PARTICLE_TRANSFORM
 
-#if USE_PARTICLE_LOCAL_TO_WORLD
+#	if USE_PARTICLE_LOCAL_TO_WORLD
 	Result.Particle.ParticleToWorld = transpose(float4x4(
 		Interpolants.ParticleToWorld[0],
 		Interpolants.ParticleToWorld[1],
 		Interpolants.ParticleToWorld[2],
 		float4(0.0f, 0.0f, 0.0f, 1.0f)));
-#endif
+#	endif // USE_PARTICLE_LOCAL_TO_WORLD
 
-#if USE_PARTICLE_WORLD_TO_LOCAL
+#	if USE_PARTICLE_WORLD_TO_LOCAL
 	Result.Particle.WorldToParticle = transpose(float4x4(
 		Interpolants.WorldToParticle[0],
 		Interpolants.WorldToParticle[1],
 		Interpolants.WorldToParticle[2],
 		float4(0.0f, 0.0f, 0.0f, 1.0f)));
-#endif
+#	endif // USE_PARTICLE_WORLD_TO_LOCAL
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Result.Particle.MotionBlurFade = 1.0f;
 	Result.TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
@@ -282,6 +302,9 @@ float4x4 InverseTransform(float4x4 InTransform)
 FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal)
 {
 	FMaterialVertexParameters Result = (FMaterialVertexParameters)0;
+#if (ENGINE_MAJOR_VERSION == 5)
+	Result.SceneData = Intermediates.SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	Result.WorldPosition = WorldPosition;
 	Result.VertexColor = Intermediates.VertexColor;
 	Result.PreSkinnedPosition = Input.Position.xyz;
@@ -309,16 +332,30 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.TranslatedWorldPositionAndSize.xyz = Intermediates.ParticleTranslatedWorldPosition.xyz;
 	Result.Particle.TranslatedWorldPositionAndSize.w = 1;
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	float4x4	_transform = GetParticleTransform(Input);
+	FLWCMatrix	Transform = LWCPromote(_transform);
+#else
 	float4x4 Transform = GetParticleTransform(Input);
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 	Result.InstanceLocalToWorld = Transform;
-#if NEEDS_PARTICLE_TRANSFORM
+#if (ENGINE_MAJOR_VERSION == 5)
+	Result.InstanceWorldToLocal = LWCPromoteInverse(InverseTransform(_transform));
+#else
+#	if NEEDS_PARTICLE_TRANSFORM
 	Result.Particle.LocalToWorld[0] = Transform[0];
 	Result.Particle.LocalToWorld[1] = Transform[1];
 	Result.Particle.LocalToWorld[2] = Transform[2];
 	Result.Particle.LocalToWorld[3] = Transform[3];
-#endif
+#	endif // NEEDS_PARTICLE_TRANSFORM
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	Result.TangentToWorld = mul(TangentToLocal, (float3x3)_transform);
+#else
 	Result.TangentToWorld = mul(TangentToLocal, (float3x3)Transform);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if NUM_MATERIAL_TEXCOORDS_VERTEX
 	for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
@@ -328,20 +365,31 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 #endif
 
 	Result.Particle.ParticleToWorld = Transform;
+#if (ENGINE_MAJOR_VERSION == 5)
+	Result.Particle.WorldToParticle = Result.InstanceWorldToLocal;
+#else
 	Result.Particle.WorldToParticle = InverseTransform(Transform);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	return Result;
 }
 
 float4 CalcWorldPosition(FVertexFactoryInput Input)
 {
 	float4x4 Transform = GetParticleTransform(Input);
+#if (ENGINE_MAJOR_VERSION == 5)
+	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.PreViewTranslation);
+#else
 	float3 WorldPosition = mul(Input.Position, Transform).xyz + ResolvedView.PreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	return float4(WorldPosition, Input.Position.w);
 }
 
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
 {
 	FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
+#if (ENGINE_MAJOR_VERSION == 5)
+	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	// Swizzle vertex color.
 	Intermediates.VertexColor = Input.VertexColor FCOLOR_COMPONENT_SWIZZLE;
 
@@ -355,7 +403,11 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	Intermediates.LocalToWorld[3] = LocalToWorldMat[3];
 #endif
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	Intermediates.ParticleTranslatedWorldPosition = ParticleWorldPosition + LWCHackToFloat(ResolvedView.PreViewTranslation).xyz;
+#else
 	Intermediates.ParticleTranslatedWorldPosition = ParticleWorldPosition + ResolvedView.PreViewTranslation.xyz;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Intermediates.ParticleColor = Input.ParticleColor;
 	Intermediates.VATCursor = Input.VATCursor;
@@ -442,7 +494,11 @@ void CalcTangentToWorld(FVertexFactoryInput Input, FVertexFactoryIntermediates I
 
 	// Normalize to remove scaling. Incorrect but faster than computing the inverse-transpose.
 	TangentToWorld0 = normalize(TangentToWorld[0]);
-	TangentToWorld2 = normalize(float4(TangentToWorld[2], TangentBias(Input.TangentZ.w) * Primitive.InvNonUniformScaleAndDeterminantSign.w));
+#if (ENGINE_MAJOR_VERSION == 5)
+	TangentToWorld2 = float4(normalize(TangentToWorld[2]), TangentBias(Input.TangentZ.w) * GetPrimitive_DeterminantSign_FromFlags(Primitive.Flags));
+#else
+	TangentToWorld2 = float4(normalize(TangentToWorld[2]), TangentBias(Input.TangentZ.w) * Primitive.InvNonUniformScaleAndDeterminantSign.w);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, FMaterialVertexParameters VertexParameters)

@@ -57,11 +57,8 @@
 #include <pk_particles/include/ps_font_metrics.h>
 
 #if (PK_GPU_D3D12 != 0)
-#	define D3D12_RHI_RAYTRACING 0 // TMP
-#	define DX_MAX_MSAA_COUNT 0 // TMP
-#	if (ENGINE_MAJOR_VERSION == 5)
-		class	FD3D12Device;
-#	endif // (ENGINE_MAJOR_VERSION == 5)
+#include "Windows/HideWindowsPlatformTypes.h"
+#	include "D3D12RHIPrivate.h"
 #	include "D3D12Util.h"
 #endif // (PK_GPU_D3D12 != 0)
 
@@ -397,7 +394,7 @@ namespace
 		const UPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->BoxDimension.GetMin() >= 0.0f);
-		const FVector	safeBoxDimension = self->BoxDimension;
+		const FVector3f	safeBoxDimension = self->BoxDimension;
 		const CFloat3	dim = ToPk(safeBoxDimension) * FPopcornFXPlugin::GlobalScaleRcp();
 		return PK_NEW(PopcornFX::CShapeDescriptor_Box(dim));
 	}
@@ -410,7 +407,7 @@ namespace
 		PopcornFX::CShapeDescriptor_Box			*shape = static_cast<PopcornFX::CShapeDescriptor_Box*>(params.shape);
 
 		PK_ASSERT(self->BoxDimension.GetMin() >= 0.0f);
-		const FVector	safeBoxDimension = self->BoxDimension;
+		const FVector3f	safeBoxDimension = self->BoxDimension;
 		const CFloat3	dim = ToPk(safeBoxDimension) * FPopcornFXPlugin::GlobalScaleRcp();
 
 		shape->SetDimensions(dim);
@@ -763,7 +760,7 @@ UPopcornFXAttributeSamplerShape::UPopcornFXAttributeSamplerShape(const FObjectIn
 	m_SamplerType = EPopcornFXAttributeSamplerType::Shape;
 
 	ShapeType = EPopcornFXAttribSamplerShapeType::Sphere;
-	BoxDimension = FVector(100.f);
+	BoxDimension = FVector3f(100.f);
 	Radius = 100.f;
 	InnerRadius = 0.f;
 	Height = 100.f;
@@ -1112,11 +1109,11 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(CParticleScene *s
 
 	if (bUseRelativeTransform)
 	{
-		m_WorldTr_Current = GetRelativeTransform().ToMatrixNoScale();
+		m_WorldTr_Current = (FMatrix44f)GetRelativeTransform().ToMatrixNoScale();
 	}
 	else
 	{
-		m_WorldTr_Current = GetComponentTransform().ToMatrixNoScale();
+		m_WorldTr_Current = (FMatrix44f)GetComponentTransform().ToMatrixNoScale();
 	}
 
 	const float	invGlobalScale = FPopcornFXPlugin::GlobalScaleRcp();
@@ -1171,7 +1168,7 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(CParticleScene *s
 	m_WorldTr_Current.M[3][2] *= invGlobalScale;
 
 	PK_TODO("attribute angular linear velocity");
-	m_Angular_Velocity = FVector(0);
+	m_Angular_Velocity = FVector3f(0);
 	m_Linear_Velocity = ComponentVelocity;
 }
 
@@ -2714,7 +2711,7 @@ void	UPopcornFXAttributeSamplerVectorField::_AttribSampler_PreUpdate(CParticleSc
 
 namespace	PopcornFXAttributeSamplers
 {
-	extern VectorRegister _TransformVector(VectorRegister &v, const FMatrix *m);
+	extern VectorRegister4f _TransformVector(VectorRegister4f &v, const FMatrix44f *m);
 }
 
 // UE animtrack attribute sampler: only contains one track
@@ -2722,7 +2719,7 @@ namespace	PopcornFXAttributeSamplers
 class	CParticleSamplerDescriptor_AnimTrack_UE : public PopcornFX::CParticleSamplerDescriptor_AnimTrack
 {
 public:
-	CParticleSamplerDescriptor_AnimTrack_UE(const FMatrix *trackTransforms)
+	CParticleSamplerDescriptor_AnimTrack_UE(const FMatrix44f *trackTransforms)
 	:	m_TransformFlags(0)
 	,	m_TrackTransforms(trackTransforms)
 	{
@@ -2884,19 +2881,19 @@ private:
 		}
 	}
 
-	void	_TransformPositions(const FMatrix &transforms, const TStridedMemoryView<CFloat3> &outSamples) const
+	void	_TransformPositions(const FMatrix44f &transforms, const TStridedMemoryView<CFloat3> &outSamples) const
 	{
-		if (transforms.Equals(FMatrix::Identity, 1.0e-6f))
+		if (transforms.Equals(FMatrix44f::Identity, 1.0e-6f))
 			return;
 		const u32	sampleCount = outSamples.Count();
 		const u32	stride = outSamples.Stride();
 		CFloat3		*positions = outSamples.Data();
 		for (u32 iSample = 0; iSample < sampleCount; ++iSample)
 		{
-			VectorRegister	srcPos = VectorLoadFloat3(positions);
+			VectorRegister4f	srcPos = VectorLoadFloat3(reinterpret_cast<FVector3f*>(positions));
 
 			srcPos = PopcornFXAttributeSamplers::_TransformVector(srcPos, &transforms);
-			VectorStoreFloat3(srcPos, positions);
+			VectorStoreFloat3(srcPos, reinterpret_cast<FVector3f*>(positions));
 			positions = PopcornFX::Mem::AdvanceRawPointer(positions, stride);
 		}
 	}
@@ -2910,7 +2907,7 @@ private:
 
 	u32						m_TransformFlags;
 	float					m_SplineLength;
-	const FMatrix			*m_TrackTransforms;
+	const FMatrix44f		*m_TrackTransforms;
 };
 PK_DECLARE_REFPTRCLASS(ParticleSamplerDescriptor_AnimTrack_UE);
 
@@ -3023,6 +3020,10 @@ void	UPopcornFXAttributeSamplerAnimTrack::PostEditChangeProperty(FPropertyChange
 
 bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 {
+#if (ENGINE_MAJOR_VERSION == 5)
+	// Not implemented for now, see if UE5.0 keeps LWC when it comes out of preview for spline positions when shipping or if this is a miss.
+	return false;
+#else
 	USplineComponent	*splineComponent = ResolveSplineComponent(true);
 	if (splineComponent == null)
 		return false;
@@ -3155,6 +3156,7 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 	if (bScale)
 		transformFlags |= PopcornFX::CParticleSamplerDescriptor_AnimTrack::Transform_Scale;
 	return m_Data->m_Desc->Setup(splineComponent, transformFlags);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
@@ -3251,23 +3253,23 @@ void	UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(CParticleScen
 	{
 		case	EPopcornFXSplineTransforms::SplineComponentRelativeTr:
 			if (bScale || bFastSampler)
-				m_TrackTransforms = m_Data->m_CurrentSplineComponent->GetRelativeTransform().ToMatrixWithScale();
-			m_TrackTransformsUnscaled = m_Data->m_CurrentSplineComponent->GetRelativeTransform().ToMatrixNoScale();
+				m_TrackTransforms = (FMatrix44f)m_Data->m_CurrentSplineComponent->GetRelativeTransform().ToMatrixWithScale();
+			m_TrackTransformsUnscaled = (FMatrix44f)m_Data->m_CurrentSplineComponent->GetRelativeTransform().ToMatrixNoScale();
 			break;
 		case	EPopcornFXSplineTransforms::SplineComponentWorldTr:
 			if (bScale || bFastSampler)
-				m_TrackTransforms = m_Data->m_CurrentSplineComponent->GetComponentTransform().ToMatrixWithScale();
-			m_TrackTransformsUnscaled = m_Data->m_CurrentSplineComponent->GetComponentTransform().ToMatrixNoScale();
+				m_TrackTransforms = (FMatrix44f)m_Data->m_CurrentSplineComponent->GetComponentTransform().ToMatrixWithScale();
+			m_TrackTransformsUnscaled = (FMatrix44f)m_Data->m_CurrentSplineComponent->GetComponentTransform().ToMatrixNoScale();
 			break;
 		case	EPopcornFXSplineTransforms::AttrSamplerRelativeTr:
 			if (bScale || bFastSampler)
-				m_TrackTransforms = GetRelativeTransform().ToMatrixWithScale();
-			m_TrackTransformsUnscaled = GetRelativeTransform().ToMatrixNoScale();
+				m_TrackTransforms = (FMatrix44f)GetRelativeTransform().ToMatrixWithScale();
+			m_TrackTransformsUnscaled = (FMatrix44f)GetRelativeTransform().ToMatrixNoScale();
 			break;
 		case	EPopcornFXSplineTransforms::AttrSamplerWorldTr:
 			if (bScale || bFastSampler)
-				m_TrackTransforms = GetComponentTransform().ToMatrixWithScale();
-			m_TrackTransformsUnscaled = GetComponentTransform().ToMatrixNoScale();
+				m_TrackTransforms = (FMatrix44f)GetComponentTransform().ToMatrixWithScale();
+			m_TrackTransformsUnscaled = (FMatrix44f)GetComponentTransform().ToMatrixNoScale();
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();

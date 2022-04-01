@@ -854,7 +854,6 @@ bool	CParticleScene::Emitter_PreInitUnregister(class UPopcornFXEmitterComponent 
 		if (emitterId.Valid())
 		{
 			PK_ASSERT(emitterId < m_PreInitEmitters.Count());
-			PK_ASSERT(emitter->IsPendingKillOrUnreachable() || m_PreInitEmitters.IndexOf(emitter) == emitterId);
 			PK_ASSERT(m_PreInitEmitters[emitterId] == emitter);
 			if (emitterId < m_PreInitEmitters.Count() && m_PreInitEmitters[emitterId] == emitter)
 			{
@@ -1067,7 +1066,11 @@ void	CParticleScene::_PreUpdate_Views()
 					PK_NAMEDSCOPEDPROFILE_C("CParticleScene::_PreUpdate_Views BuildProjectionMatrix", POPCORNFX_UE_PROFILER_COLOR);
 
 					FSceneViewProjectionData	projectionData;
+#if (ENGINE_MAJOR_VERSION == 5)
+					if (localPlayer->GetProjectionData(viewport, projectionData, INDEX_NONE)) // Returns false if viewport or player is invalid
+#else
 					if (localPlayer->GetProjectionData(viewport, eSSP_FULL, projectionData)) // Returns false if viewport or player is invalid
+#endif // (ENGINE_MAJOR_VERSION == 5)
 					{
 						const CFloat4x4	worldToView = ToPk(FTranslationMatrix(-projectionData.ViewOrigin * scaleUEToPk) * projectionData.ViewRotationMatrix);
 
@@ -1331,7 +1334,11 @@ class FBlockQueryCallbackChaos : public ICollisionQueryFilterCallbackBase
 public:
 	virtual ~FBlockQueryCallbackChaos() {}
 	virtual ECollisionQueryHitType PostFilter(const FCollisionFilterData &filterData, const ChaosInterface::FQueryHit &hit) override { return ECollisionQueryHitType::Block; }
+#if (ENGINE_MAJOR_VERSION == 5)
+	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticle &actor) override
+#else
 	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::TGeometryParticle<float, 3> &actor) override
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	{
 		const FCollisionFilterData	&shapeData = shape.GetQueryData();
 		const ECollisionChannel		shapeChannel = GetCollisionChannel(shapeData.Word3);
@@ -1640,7 +1647,7 @@ void	CParticleScene::RayTracePacket(
 						if (emptySphereSweeps || packet.m_RaySweepRadii_Aligned16[rayi] == 0.0f)
 						{
 							FSingleHitBuffer<FHitRaycast>	hitBuffer;
-							sqAccelerator.Raycast(_Reinterpret<FVector>(start), _Reinterpret<FVector>(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+							sqAccelerator.Raycast(ToUE(start), ToUE(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
 							if (hitBuffer.HasBlockingHit())
 							{
 								resultBufferAndIndex.m_HitLocation = *hitBuffer.GetBlock();
@@ -1649,10 +1656,14 @@ void	CParticleScene::RayTracePacket(
 						}
 						else
 						{
-							const FTransform StartTM = FTransform(_Reinterpret<FVector>(start));
+							const FTransform	startTM = FTransform(ToUE(start));
 
 							FSingleHitBuffer<FHitSweep>		hitBuffer;
-							sqAccelerator.Sweep(Chaos::TSphere<float, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), StartTM, _Reinterpret<FVector>(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+#if (ENGINE_MAJOR_VERSION == 5)
+							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, ToUE(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+#else
+							sqAccelerator.Sweep(Chaos::TSphere<float, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, _Reinterpret<FVector>(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 							if (hitBuffer.HasBlockingHit())
 							{
 								resultBufferAndIndex.m_HitLocation = *hitBuffer.GetBlock();
@@ -1681,18 +1692,24 @@ void	CParticleScene::RayTracePacket(
 
 		results.m_HitTimes_Aligned16[rayi] = hitTime;
 
+		// It seems there are odd instabilities output from Chaos ? Length(rayOrigin + rayDir * rayLength) - hit.Distance is > 0.1f in some cases
+		// 0.1 is 10cm
+#	if 0
 		PK_ONLY_IF_ASSERTS(
-			const CFloat3	hitPos = _Reinterpret<CFloat3>(hit.WorldPosition) * scaleUEToPk;
+			const CFloat3	hitPos = ToPk(hit.WorldPosition) * scaleUEToPk;
 			const float		computedTime = (hitPos - packet.m_RayOrigins_Aligned16[rayi].xyz()).Length();
 			if (emptySphereSweeps)
-				PK_ASSERT(PopcornFX::PKAbs(computedTime - hitTime) < 1.0e-3f);
+			{
+				// PK_ASSERT(PopcornFX::PKAbs(computedTime - hitTime) < 1.0e-3f);
+			}
 			else
 			{
 				const float		radius = packet.m_RaySweepRadii_Aligned16[rayi];
-				PK_ASSERT(PopcornFX::PKAbs(computedTime - hitTime) < radius);
+				PK_ASSERT(PopcornFX::PKAbs(computedTime - hitTime - radius) < 1.0e-2f);
 			}
 			)
-		CFloat3			normal = _Reinterpret<CFloat3>(hit.WorldNormal);
+#	endif
+		CFloat3			normal = ToPk(hit.WorldNormal);
 		results.m_ContactNormals_Aligned16[rayi].xyz() = normal;
 	}
 #endif
@@ -1760,34 +1777,34 @@ void	CParticleScene::SetAudioInterface(IPopcornFXAudio *audioInterface)
 
 //----------------------------------------------------------------------------
 
-TMemoryView<const float * const>	CParticleScene::GetAudioSpectrum(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const
+PopcornFX::TMemoryView<const float * const>	CParticleScene::GetAudioSpectrum(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const
 {
 	if (channelGroup.Empty() || m_FillAudioBuffers == null)
-		return TMemoryView<const float * const>();
+		return PopcornFX::TMemoryView<const float * const>();
 
 	const FName			channelName(ANSI_TO_TCHAR(channelGroup.ToString().Data()));
 	const float * const	*rawSpectrumData = m_FillAudioBuffers->AsyncGetAudioSpectrum(channelName, outBaseCount);
 	if (rawSpectrumData == null || outBaseCount == 0)
-		return TMemoryView<const float * const>();
+		return PopcornFX::TMemoryView<const float * const>();
 
 	const u32		pyramidSize = PopcornFX::IntegerTools::Log2(outBaseCount) + 1;
-	return TMemoryView<const float * const>(rawSpectrumData, pyramidSize);
+	return PopcornFX::TMemoryView<const float * const>(rawSpectrumData, pyramidSize);
 }
 
 //----------------------------------------------------------------------------
 
-TMemoryView<const float * const>	CParticleScene::GetAudioWaveform(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const
+PopcornFX::TMemoryView<const float * const>	CParticleScene::GetAudioWaveform(PopcornFX::CStringId channelGroup, u32 &outBaseCount) const
 {
 	if (channelGroup.Empty() || m_FillAudioBuffers == null)
-		return TMemoryView<const float * const>();
+		return PopcornFX::TMemoryView<const float * const>();
 
 	const FName			channelName(ANSI_TO_TCHAR(channelGroup.ToString().Data()));
 	const float * const	*rawWaveformData = m_FillAudioBuffers->AsyncGetAudioWaveform(channelName, outBaseCount);
 	if (rawWaveformData == null || outBaseCount == 0)
-		return TMemoryView<const float * const>();
+		return PopcornFX::TMemoryView<const float * const>();
 
 	const u32		pyramidSize = PopcornFX::IntegerTools::Log2(outBaseCount) + 1;
-	return TMemoryView<const float * const>(rawWaveformData, pyramidSize);
+	return PopcornFX::TMemoryView<const float * const>(rawWaveformData, pyramidSize);
 }
 
 //----------------------------------------------------------------------------
@@ -2560,15 +2577,15 @@ void	CParticleScene::_PostUpdate_Events()
 //----------------------------------------------------------------------------
 
 void	CParticleScene::BroadcastEvent(
-	PopcornFX::Threads::SThreadContext				*threadCtx,
-	PopcornFX::CParticleMedium						*parentMedium,
-	u32												eventID,
-	PopcornFX::CStringId							eventName,
-	u32												count,
-	const PopcornFX::SUpdateTimeArgs				&timeArgs,
-	const TMemoryView<const float>					&spawnDtToEnd,
-	const TMemoryView<const PopcornFX::CEffectID>	&effectIDs,
-	const PopcornFX::SPayloadView					&payloadView)
+	PopcornFX::Threads::SThreadContext							*threadCtx,
+	PopcornFX::CParticleMedium									*parentMedium,
+	u32															eventID,
+	PopcornFX::CStringId										eventName,
+	u32															count,
+	const PopcornFX::SUpdateTimeArgs							&timeArgs,
+	const PopcornFX::TMemoryView<const float>					&spawnDtToEnd,
+	const PopcornFX::TMemoryView<const PopcornFX::CEffectID>	&effectIDs,
+	const PopcornFX::SPayloadView								&payloadView)
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::BroadcastEvent", POPCORNFX_UE_PROFILER_COLOR);
 	SCOPE_CYCLE_COUNTER(STAT_PopcornFX_RaiseEventTime);

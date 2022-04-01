@@ -282,7 +282,7 @@ FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamB
 	PK_ASSERT((desc.Usage & D3D11_USAGE_DYNAMIC) == 0); // no BUF_AnyDynamic
 	PK_ASSERT((desc.CPUAccessFlags) == 0); // no BUF_AnyDynamic
 
-	u32							bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
+	const EBufferUsageFlags		bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
 #if (ENGINE_MAJOR_VERSION == 5)
 	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, bytes, bufferUsage, stride);
 #else

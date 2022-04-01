@@ -89,6 +89,7 @@ private:
 	FDelegateHandle		m_OnFileChangedHandle;
 
 	/**	The tab ids for all the tabs used */
+	static const FName	ToolbarTabId;
 	static const FName	PropertiesTabId;
 	static const FName	EffectPreviewTabId;
 	static const FName	EffectAttributesTabId;

@@ -41,7 +41,11 @@ void	FPopcornFXDependencyModuleAssetTools::Load()
 
 	m_PopcornFXAssetCategoryBit = assetTools.RegisterAdvancedAssetCategory(FName(TEXT("PopcornFX")), LOCTEXT("PopcornFXAssetCategory", "PopcornFX"));
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	FColor			pkColor = FPopcornFXPlugin::Color_PopcornFX().QuantizeRound();
+#else
 	FColor			pkColor = FPopcornFXPlugin::Color_PopcornFX().Quantize();
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	m_EffectActions = MakeShareable(new FPopcornFXFileTypeActions(m_PopcornFXAssetCategoryBit));
 	m_EffectActions->m_SupportedClass = UPopcornFXEffect::StaticClass();

@@ -348,7 +348,12 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat2(const UPopcornFXEmitterCompone
 
 bool	UPopcornFXFunctions::GetEventPayloadAsVector2D(const UPopcornFXEmitterComponent *InSelf, FName PayloadName, FVector2D &OutValue, bool InApplyGlobalScale)
 {
-	return GetEventPayloadAsFloat2(InSelf, PayloadName, OutValue.X, OutValue.Y, InApplyGlobalScale);
+	float	outValues[2];
+	if (!GetEventPayloadAsFloat2(InSelf, PayloadName, outValues[0], outValues[1], InApplyGlobalScale))
+		return false;
+	OutValue.X = outValues[0];
+	OutValue.Y = outValues[1];
+	return true;
 }
 
 //----------------------------------------------------------------------------
@@ -383,7 +388,13 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat3(const UPopcornFXEmitterCompone
 
 bool	UPopcornFXFunctions::GetEventPayloadAsVector(const UPopcornFXEmitterComponent *InSelf, FName PayloadName, FVector &OutValue, bool InApplyGlobalScale)
 {
-	return GetEventPayloadAsFloat3(InSelf, PayloadName, OutValue.X, OutValue.Y, OutValue.Z, InApplyGlobalScale);
+	float	outValues[3];
+	if (!GetEventPayloadAsFloat3(InSelf, PayloadName, outValues[0], outValues[1], outValues[2], InApplyGlobalScale))
+		return false;
+	OutValue.X = outValues[0];
+	OutValue.Y = outValues[1];
+	OutValue.Z = outValues[2];
+	return true;
 }
 
 //----------------------------------------------------------------------------

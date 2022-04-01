@@ -305,7 +305,12 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				input.EntryPointName = "main";
 				input.bSkipPreprocessedCache = true;
 
+#if (ENGINE_MAJOR_VERSION == 5)
+				for (u32 compilerFlag : compilerFlags)
+					input.Environment.CompilerFlags.Append(compilerFlag);
+#else
 				input.Environment.CompilerFlags = compilerFlags;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 			}
 
 			FShaderCompilerOutput	output;

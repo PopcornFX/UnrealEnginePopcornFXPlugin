@@ -348,7 +348,12 @@ public:
 	virtual void		PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual void		PostEditUndo();
 #endif // WITH_EDITOR
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	virtual void		PreSave(FObjectPreSaveContext SaveContext) override;
+#else
 	virtual void		PreSave(const class ITargetPlatform* TargetPlatform) override;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if WITH_EDITOR
 	void				TriggerParticleRenderersModification();

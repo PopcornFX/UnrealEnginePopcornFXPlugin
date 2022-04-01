@@ -277,7 +277,12 @@ bool	UPopcornFXAttributeFunctions::GetAttributeAsFloat2(UPopcornFXEmitterCompone
 
 bool	UPopcornFXAttributeFunctions::GetAttributeAsVector2D(UPopcornFXEmitterComponent *InSelf, int32 InAttributeIndex, FVector2D &OutValue, bool InApplyGlobalScale)
 {
-	return GetAttributeAsFloat2(InSelf, InAttributeIndex, OutValue.X, OutValue.Y, InApplyGlobalScale);
+	float	outValues[2];
+	if (!GetAttributeAsFloat2(InSelf, InAttributeIndex, outValues[0], outValues[1], InApplyGlobalScale))
+		return false;
+	OutValue.X = outValues[0];
+	OutValue.Y = outValues[1];
+	return true;
 }
 
 bool	UPopcornFXAttributeFunctions::SetAttributeAsFloat3(UPopcornFXEmitterComponent *InSelf, int32 InAttributeIndex, float InValueX, float InValueY, float InValueZ, bool InApplyGlobalScale)
@@ -311,7 +316,13 @@ bool	UPopcornFXAttributeFunctions::GetAttributeAsFloat3(UPopcornFXEmitterCompone
 
 bool	UPopcornFXAttributeFunctions::GetAttributeAsVector(UPopcornFXEmitterComponent *InSelf, int32 InAttributeIndex, FVector &OutValue, bool InApplyGlobalScale)
 {
-	return GetAttributeAsFloat3(InSelf, InAttributeIndex, OutValue.X, OutValue.Y, OutValue.Z, InApplyGlobalScale);
+	float	outValues[3];
+	if (!GetAttributeAsFloat3(InSelf, InAttributeIndex, outValues[0], outValues[1], outValues[2], InApplyGlobalScale))
+		return false;
+	OutValue.X = outValues[0];
+	OutValue.Y = outValues[1];
+	OutValue.Z = outValues[2];
+	return true;
 }
 
 bool	UPopcornFXAttributeFunctions::SetAttributeAsFloat4(UPopcornFXEmitterComponent *InSelf, int32 InAttributeIndex, float InValueX, float InValueY, float InValueZ, float InValueW, bool InApplyGlobalScale)
