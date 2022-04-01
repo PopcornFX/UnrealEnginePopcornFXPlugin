@@ -618,6 +618,8 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 #endif //	(PK_PARTICLES_HAS_STATS != 0)
 
 	}
+
+	_PostUpdate_Events();
 }
 
 //----------------------------------------------------------------------------
@@ -676,6 +678,7 @@ void	CParticleScene::_Clear()
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::_Clear", POPCORNFX_UE_PROFILER_COLOR);
 
 	_Clear_Emitters();
+	_Clear_Events();
 }
 
 //----------------------------------------------------------------------------
@@ -1516,6 +1519,7 @@ void	CParticleScene::RayTracePacket(
 		}
 	}
 
+
 	void			** contactObjects = results.m_ContactObjects_Aligned16;
 	void			** contactSurfaces = queryPhysicalMaterial ? results.m_ContactSurfaces_Aligned16 : null;
 
@@ -1599,6 +1603,8 @@ void	CParticleScene::RayTracePacket(
 		u32				m_RayIndex;
 	};
 	PK_STACKMEMORYVIEW(FRaycastBufferAndIndex, hitResultBuffers, resCount);
+
+	// TODO: Contact objects / surfaces with physics
 
 	EHitFlags						outFlags = PK_ONLY_IF_ASSERTS(EHitFlags::Position | ) EHitFlags::Distance | EHitFlags::Normal;
 	FBlockQueryCallbackChaos		callBack;
@@ -1723,6 +1729,65 @@ void	CParticleScene::RayTracePacketTemporal(
 	const PopcornFX::Colliders::STracePacket &results)
 {
 	RayTracePacket(traceFilter, packet, results);
+}
+
+//----------------------------------------------------------------------------
+
+void	CParticleScene::ResolveContactMaterials(const PopcornFX::TMemoryView<void * const>									&contactObjects,
+												const PopcornFX::TMemoryView<void * const>									&contactSurfaces,
+												const PopcornFX::TMemoryView<PopcornFX::Colliders::SSurfaceProperties>		&outSurfaceProperties) const
+{
+	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::ResolveContactMaterials", POPCORNFX_UE_PROFILER_COLOR);
+
+	const bool		queryPhysicalMaterial = m_SceneComponent->ResolvedSimulationSettings().bEnablePhysicalMaterials;
+	if (!queryPhysicalMaterial)
+		return; // no need to use kDefaultSurface, everyone returns or no one.
+
+	PK_ASSERT(contactObjects.Count() == contactSurfaces.Count());
+	PK_ASSERT(contactObjects.Count() == outSurfaceProperties.Count());
+
+	static const PopcornFX::Colliders::SSurfaceProperties		kDefaultSurface;
+
+	const u32		materialCount = contactSurfaces.Count();
+	for (u32 iMaterial = 0; iMaterial < materialCount; ++iMaterial)
+	{
+		PopcornFX::Colliders::SSurfaceProperties	&surface = outSurfaceProperties[iMaterial];
+		surface = kDefaultSurface;
+
+		const UPhysicalMaterial		*pMat = reinterpret_cast<const UPhysicalMaterial*>(contactSurfaces[iMaterial]);
+		if (pMat == null)
+			continue;
+
+		surface.m_Restitution = pMat->Restitution;
+		surface.m_StaticFriction = pMat->Friction;
+		surface.m_DynamicFriction = surface.m_StaticFriction;
+		surface.m_SurfaceType = pMat->SurfaceType.GetValue();
+
+#define REMAP_COMBINE_MODE(__member, __val) \
+		switch (__val) \
+		{ \
+			case	EFrictionCombineMode::Average: \
+				surface.__member = PopcornFX::Colliders::ECombineMode::Combine_Average; \
+				break; \
+			case	EFrictionCombineMode::Min: \
+				surface.__member = PopcornFX::Colliders::ECombineMode::Combine_Min; \
+				break; \
+			case	EFrictionCombineMode::Multiply: \
+				surface.__member = PopcornFX::Colliders::ECombineMode::Combine_Multiply; \
+				break; \
+			case	EFrictionCombineMode::Max: \
+				surface.__member = PopcornFX::Colliders::ECombineMode::Combine_Max; \
+				break; \
+			default: \
+				PK_ASSERT_NOT_REACHED(); \
+				break; \
+		}
+
+		REMAP_COMBINE_MODE(m_FrictionCombineMode, pMat->FrictionCombineMode.GetValue());
+		REMAP_COMBINE_MODE(m_RestitutionCombineMode, pMat->RestitutionCombineMode.GetValue());
+
+#undef REMAP_COMBINE_MODE
+	}
 }
 
 //----------------------------------------------------------------------------

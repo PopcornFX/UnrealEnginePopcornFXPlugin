@@ -139,6 +139,7 @@ private:
 	void		_IssueDrawCall_Billboard(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc);
 	void		_ClearStreamOffsets();
 	void		_Clear();
+	void		_CleanRWBuffers();
 	bool		_IsAdditionalInputSupported(const PopcornFX::CStringId &fieldName, PopcornFX::EBaseTypeID type, EPopcornFXAdditionalStreamOffsets &outStreamOffsetType);
 	bool		_FillDrawCallUniforms_CPU(FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc);
 	bool		_FillDrawCallUniforms_GPU(u32 drId, const SUERenderContext &renderContext, FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc);

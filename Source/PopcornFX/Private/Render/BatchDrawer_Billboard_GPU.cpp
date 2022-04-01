@@ -298,6 +298,29 @@ CBatchDrawer_Billboard_GPUBB::~CBatchDrawer_Billboard_GPUBB()
 	for (u32 iView = 0; iView < m_ViewDependents.Count(); ++iView)
 		PK_ASSERT(!m_ViewDependents[iView].m_Indices.Valid());
 
+	// Render resources cannot be released on the game thread.
+	// When re-importing an effect, render medium gets destroyed on the main thread (expected scenario)
+	// When unloading a scene, render mediums are destroyed on the render thread (RenderBatchManager.cpp::Clean())
+	if (IsInGameThread())
+	{
+		ENQUEUE_RENDER_COMMAND(ReleaseRenderResourcesCommand)(
+			[this](FRHICommandListImmediate &RHICmdList)
+			{
+				_CleanRWBuffers();
+			});
+
+		FlushRenderingCommands(); // so we can safely release frames
+	}
+	else
+	{
+		_CleanRWBuffers();
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	CBatchDrawer_Billboard_GPUBB::_CleanRWBuffers()
+{
 #if RHI_RAYTRACING
 	if (IsRayTracingEnabled())
 	{
@@ -305,6 +328,8 @@ CBatchDrawer_Billboard_GPUBB::~CBatchDrawer_Billboard_GPUBB()
 		m_RayTracingDynamicVertexBuffer.Release();
 	}
 #endif // RHI_RAYTRACING
+
+	m_DrawIndirectBuffer.Release();
 }
 
 //----------------------------------------------------------------------------

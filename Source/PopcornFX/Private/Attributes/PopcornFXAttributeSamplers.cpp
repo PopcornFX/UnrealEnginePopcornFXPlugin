@@ -57,7 +57,8 @@
 #include <pk_particles/include/ps_font_metrics.h>
 
 #if (PK_GPU_D3D12 != 0)
-#include "Windows/HideWindowsPlatformTypes.h"
+#	include <pk_particles/include/Samplers/D3D12/rectangle_list_gpu_d3d12.h>
+#	include "Windows/HideWindowsPlatformTypes.h"
 #	include "D3D12RHIPrivate.h"
 #	include "D3D12Util.h"
 #endif // (PK_GPU_D3D12 != 0)
@@ -1993,13 +1994,11 @@ struct FAttributeSamplerImageData
 	PopcornFX::PParticleSamplerDescriptor_Image_Default	m_Desc;
 	PopcornFX::CImageSampler							*m_ImageSampler = null;
 	PopcornFX::TResourcePtr<PopcornFX::CImage>			m_TextureResource;
-#if 0//(PK_GPU_D3D11 != 0)
-	PopcornFX::TResourcePtr<PopcornFX::CImageGPU_D3D11>	m_TextureResource_D3D11;
-#endif // (PK_GPU_D3D11 != 0)
+	PopcornFX::TResourcePtr<PopcornFX::CRectangleList>			m_TextureAtlasResource;
 #if (PK_GPU_D3D12 != 0)
 	PopcornFX::TResourcePtr<PopcornFX::CImageGPU_D3D12>	m_TextureResource_D3D12;
+	PopcornFX::TResourcePtr<PopcornFX::CRectangleListGPU_D3D12>	m_TextureAtlasResource_D3D12;
 #endif // (PK_GPU_D3D12 != 0)
-	PopcornFX::TResourcePtr<PopcornFX::CRectangleList>	m_TextureAtlasResource;
 	PopcornFX::SDensitySamplerData					*	m_DensityData = null;
 
 	bool		m_ReloadTexture = true;
@@ -2010,11 +2009,9 @@ struct FAttributeSamplerImageData
 	{
 		m_Desc = null;
 		m_TextureResource.Clear();
-#if 0//(PK_GPU_D3D11 != 0)
-		m_TextureResource_D3D11.Clear();
-#endif // (PK_GPU_D3D11 != 0)
 #if (PK_GPU_D3D12 != 0)
 		m_TextureResource_D3D12.Clear();
+		m_TextureAtlasResource_D3D12.Clear();
 #endif // (PK_GPU_D3D12 != 0)
 		m_TextureAtlasResource.Clear();
 		if (m_DensityData != null)
@@ -2189,13 +2186,6 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 		// Try loading the image with GPU sim resource handlers:
 		// There is no way currently to know if the current sampler descriptor will be used by the CPU or GPU sim, so we'll have to load both, if possible
 		// GPU sim image load is trivial: it will just grab the ref to the native resource
-#if 0//(PK_GPU_D3D11 != 0)
-		if (g_PopcornFXRHIAPI == SUERenderContext::D3D11)
-		{
-			m_Data->m_TextureResource_D3D11 = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CImageGPU_D3D11>(fullPath, true);
-			success |= (m_Data->m_TextureResource_D3D11 != null && !m_Data->m_TextureResource_D3D11->Empty());
-		}
-#endif // (PK_GPU_D3D11 != 0)
 #if (PK_GPU_D3D12 != 0)
 		if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
 		{
@@ -2211,12 +2201,34 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 		}
 		m_Data->m_ReloadTexture = false;
 	}
-	if (m_Data->m_ReloadTextureAtlas && TextureAtlas != null)
+	const bool	reloadImageAtlas = m_Data->m_ReloadTextureAtlas;
+	if (reloadImageAtlas)
 	{
+		if (TextureAtlas != null)
+		{
+			bool						success = false;
 		const PopcornFX::CString	fullPath = TCHAR_TO_ANSI(*TextureAtlas->GetPathName());
 		m_Data->m_TextureAtlasResource = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CRectangleList>(fullPath, true);
-		if (m_Data->m_TextureAtlasResource == null || m_Data->m_TextureAtlasResource->Empty())
+			success |= (m_Data->m_TextureAtlasResource != null && !m_Data->m_TextureAtlasResource->Empty());
+
+			// Try loading the image atlas with GPU sim resource handlers:
+			// There is no way currently to know if the current sampler descriptor will be used by the CPU or GPU sim, so we'll have to load both, if possible
+#if (PK_GPU_D3D12 != 0)
+			if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
+			{
+				m_Data->m_TextureAtlasResource_D3D12 = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CRectangleListGPU_D3D12>(fullPath, true);
+				success |= (m_Data->m_TextureAtlasResource_D3D12 != null && !m_Data->m_TextureAtlasResource_D3D12->Empty());
+			}
+#endif // (PK_GPU_D3D12 != 0)
+
+			if (!success) // Couldn't load any of the resources (CPU/GPU)
+			{
+				UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("AttrSamplerImage: couldn't load texture atlas '%s' for CPU/GPU sim sampling"), fullPath.Data());
 			return false;
+			}
+		}
+		else
+			m_Data->m_TextureAtlasResource.Clear();
 
 		m_Data->m_ReloadTextureAtlas = false;
 	}
@@ -2228,18 +2240,31 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 	}
 
 #if (PK_GPU_D3D12 != 0)
-	if (rebuildImage) // We only want to reload bindings when m_Data->m_ReloadTexture is true (or if m_Data->m_ReloadTextureAtlas is true)
+	if (rebuildImage || reloadImageAtlas) // We only want to reload bindings when m_Data->m_ReloadTexture is true (or if m_Data->m_ReloadTextureAtlas is true)
 	{
-		if (m_Data->m_TextureResource_D3D12 != null)
+		if (m_Data->m_TextureResource_D3D12 != null && !m_Data->m_TextureResource_D3D12->Empty()) // Don't bind the atlas by itself, clear everything if the texture is invalid
 		{
 			ID3D12Resource	*imageResource = m_Data->m_TextureResource_D3D12->Texture();
+
+			ID3D12Resource	*imageAtlasResource = null;
+			u32				atlasRectCount = 0;
+			if (m_Data->m_TextureAtlasResource != null)
+			{
+				if (m_Data->m_TextureAtlasResource_D3D12 != null && !m_Data->m_TextureAtlasResource_D3D12->Empty())
+				{
+					imageAtlasResource = m_Data->m_TextureAtlasResource_D3D12->Buffer();
+					atlasRectCount = m_Data->m_TextureAtlasResource->AtlasRectCount();
+				}
+			}
 			const bool		sRGB = PopcornFX::CImage::IsFormatGammaCorrected(m_Data->m_TextureResource_D3D12->StorageFormat());
 
 			PK_ASSERT(imageResource != null);
 
 			m_Data->m_Desc->SetupD3D12Resources(imageResource,
 												m_Data->m_TextureResource_D3D12->Dimensions(),
-												FindShaderResourceDXGIFormat(imageResource->GetDesc().Format, sRGB));
+												FindShaderResourceDXGIFormat(imageResource->GetDesc().Format, sRGB),
+												imageAtlasResource,
+												atlasRectCount);
 		}
 		else
 			m_Data->m_Desc->ClearD3D12Resources();

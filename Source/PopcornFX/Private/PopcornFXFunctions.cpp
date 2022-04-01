@@ -313,7 +313,7 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat(const UPopcornFXEmitterComponen
 	}
 
 	if (InApplyGlobalScale)
-		OutValue *= FPopcornFXPlugin::GlobalScaleRcp();
+		OutValue *= FPopcornFXPlugin::GlobalScale();
 
 	return InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float, &OutValue);
 }
@@ -335,7 +335,7 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat2(const UPopcornFXEmitterCompone
 
 	if (InApplyGlobalScale)
 	{
-		const float globalScale = FPopcornFXPlugin::GlobalScaleRcp();
+		const float globalScale = FPopcornFXPlugin::GlobalScale();
 
 		OutValueX *= globalScale;
 		OutValueY *= globalScale;
@@ -374,7 +374,7 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat3(const UPopcornFXEmitterCompone
 
 	if (InApplyGlobalScale)
 	{
-		const float globalScale = FPopcornFXPlugin::GlobalScaleRcp();
+		const float globalScale = FPopcornFXPlugin::GlobalScale();
 
 		OutValueX *= globalScale;
 		OutValueY *= globalScale;
@@ -416,7 +416,7 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat4(const UPopcornFXEmitterCompone
 
 	if (InApplyGlobalScale)
 	{
-		const float globalScale = FPopcornFXPlugin::GlobalScaleRcp();
+		const float globalScale = FPopcornFXPlugin::GlobalScale();
 
 		OutValueX *= globalScale;
 		OutValueY *= globalScale;

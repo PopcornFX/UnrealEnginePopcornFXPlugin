@@ -253,6 +253,10 @@ private:
 		const PopcornFX::Colliders::SRayPacket &packet,
 		const PopcornFX::Colliders::STracePacket &results) override;
 
+	virtual void			ResolveContactMaterials(const PopcornFX::TMemoryView<void * const>									&contactObjects,
+													const PopcornFX::TMemoryView<void * const>									&contactSurfaces,
+													const PopcornFX::TMemoryView<PopcornFX::Colliders::SSurfaceProperties>		&outSurfaceProperties) const override;
+
 	PopcornFX::Threads::CCriticalSection		m_RaytraceLock;
 
 	void					_PreUpdate_Collisions();

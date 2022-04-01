@@ -46,7 +46,6 @@ public:
 	CPopcornFXEffect						*Effect() { return m_Private; }
 
 	// overrides UObject
-	virtual void			Serialize(FArchive& Ar) override;
 	virtual void			BeginDestroy() override;
 	virtual FString			GetDesc() override;
 
@@ -57,6 +56,7 @@ public:
 	// overrides FPopcornFXFile
 	virtual void			PreReimport_Clean() override;
 
+	virtual void			BeginCacheForCookedPlatformData(const ITargetPlatform *targetPlatform) override;
 #endif
 
 private:
@@ -84,4 +84,5 @@ protected:
 private:
 	CPopcornFXEffect		*m_Private;
 	bool					m_Loaded;
+	bool					m_Cooked; // TMP: Until proper implementation of platform cached data
 };

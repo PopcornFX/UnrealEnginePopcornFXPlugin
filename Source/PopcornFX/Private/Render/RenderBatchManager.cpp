@@ -771,33 +771,24 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 	if (bbViews.Count() == 0)
 		return;
 
-	PopcornFX::TArray<PopcornFX::TSceneView<CBBView> >	sceneViews;
-	PopcornFX::TArray<PopcornFX::SSceneView>			sceneViews2;
+	PopcornFX::TArray<PopcornFX::SSceneView>	sceneViews;
 	const u32											viewCount = bbViews.Count();
 	for (u32 iView = 0; iView < viewCount; ++iView)
 	{
 		PopcornFX::CGuid	sceneViewId = sceneViews.PushBack();
 		if (!PK_VERIFY(sceneViewId.Valid()))
 			return;
-		PopcornFX::CGuid	sceneViewId2 = sceneViews2.PushBack();
-		if (!PK_VERIFY(sceneViewId2.Valid()))
-			return;
-		PopcornFX::TSceneView<CBBView>	&sceneView = sceneViews[sceneViewId];
-		PopcornFX::SSceneView			&sceneView2 = sceneViews2[sceneViewId2];
+		PopcornFX::SSceneView	&sceneView = sceneViews[sceneViewId];
 
 		//sceneView.m_UserData.
 		sceneView.m_InvViewMatrix = bbViews[iView].m_BillboardingMatrix;
-		sceneView2.m_InvViewMatrix = bbViews[iView].m_BillboardingMatrix;
 		sceneView.m_NeedsSortedIndices = view.RenderPass() != CRendererSubView::RenderPass_Shadow;
-		sceneView2.m_NeedsSortedIndices = view.RenderPass() != CRendererSubView::RenderPass_Shadow;
 	}
 
 	m_RenderThreadRenderContext.m_RendererSubView = &view;
 	m_UE_RenderThreadRenderContext.m_RendererSubView = &view;
 
-	PopcornFX::TMemoryView<PopcornFX::TSceneView<CBBView> >	views(sceneViews.RawDataPointer(), sceneViews.Count());
-
-	m_UE_RenderThreadRenderContext.m_Views = sceneViews2;
+	m_UE_RenderThreadRenderContext.m_Views = sceneViews;
 
 	// If any medium has been registered, build their renderer cache on the render thread
 	{

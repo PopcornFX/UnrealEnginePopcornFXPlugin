@@ -1371,14 +1371,8 @@ bool	UPopcornFXRendererMaterial::_ReloadInstance(uint32 subMatId)
 	FMaterialUpdateContext			materialUpdateContext;
 
 	UMaterialInstanceConstant		*newInstance = NewObject<UMaterialInstanceConstant>(this);
-	newInstance->SetFlags(RF_NeedPostLoad | RF_NeedPostLoadSubobjects | RF_Public);
-
+	newInstance->SetFlags(RF_Public);
 	newInstance->SetParentEditorOnly(subMat.Material);
-
-	// UE4.25: crashes in UMaterialInstance::CacheShadersForResources
-	// 	check(!HasAnyFlags(RF_NeedPostLoad));
-	// during UpdateStaticPermutation if mat instance is not loaded
-	newInstance->ConditionalPostLoad();
 
 	kRendererMaterialFuncs[subMat.m_RMId].m_ParamsConstFunc(this, newInstance, subMatId);
 
@@ -1406,23 +1400,6 @@ void	UPopcornFXRendererMaterial::RenameDependenciesIFN(UObject* oldAsset, UObjec
 }
 
 #endif // WITH_EDITOR
-
-//----------------------------------------------------------------------------
-
-UMaterialInstanceDynamic	*UPopcornFXRendererMaterial::CreateInstance(uint32 subMatId)
-{
-	if (!PK_VERIFY(subMatId < uint32(SubMaterials.Num())))
-		return null;
-
-	UMaterialInstanceDynamic	*material = UMaterialInstanceDynamic::Create(SubMaterials[subMatId].MaterialInstance, this);
-	if (material != null)
-		material->CopyParameterOverrides(SubMaterials[subMatId].MaterialInstance);
-	else
-	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Couldn't create decal dynamic material instance"));
-	}
-	return material;
-}
 
 //----------------------------------------------------------------------------
 
