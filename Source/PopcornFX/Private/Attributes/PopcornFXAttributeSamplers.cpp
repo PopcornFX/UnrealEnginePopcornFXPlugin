@@ -395,7 +395,7 @@ namespace
 		const UPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->BoxDimension.GetMin() >= 0.0f);
-		const FVector3f	safeBoxDimension = self->BoxDimension;
+		const FVector3f	safeBoxDimension = FVector3f(self->BoxDimension);
 		const CFloat3	dim = ToPk(safeBoxDimension) * FPopcornFXPlugin::GlobalScaleRcp();
 		return PK_NEW(PopcornFX::CShapeDescriptor_Box(dim));
 	}
@@ -408,7 +408,7 @@ namespace
 		PopcornFX::CShapeDescriptor_Box			*shape = static_cast<PopcornFX::CShapeDescriptor_Box*>(params.shape);
 
 		PK_ASSERT(self->BoxDimension.GetMin() >= 0.0f);
-		const FVector3f	safeBoxDimension = self->BoxDimension;
+		const FVector3f	safeBoxDimension = FVector3f(self->BoxDimension);
 		const CFloat3	dim = ToPk(safeBoxDimension) * FPopcornFXPlugin::GlobalScaleRcp();
 
 		shape->SetDimensions(dim);
@@ -761,7 +761,7 @@ UPopcornFXAttributeSamplerShape::UPopcornFXAttributeSamplerShape(const FObjectIn
 	m_SamplerType = EPopcornFXAttributeSamplerType::Shape;
 
 	ShapeType = EPopcornFXAttribSamplerShapeType::Sphere;
-	BoxDimension = FVector3f(100.f);
+	BoxDimension = FVector(100.f);
 	Radius = 100.f;
 	InnerRadius = 0.f;
 	Height = 100.f;
@@ -960,7 +960,7 @@ void	UPopcornFXAttributeSamplerShape::RenderShapeIFP(bool isSelected) const
 	switch (ShapeType)
 	{
 		case	EPopcornFXAttribSamplerShapeType::Box:
-			DrawDebugBox(world, location, BoxDimension * 0.5f, GetComponentTransform().GetRotation(), debugColor);
+			DrawDebugBox(world, location, FVector(BoxDimension * 0.5f), GetComponentTransform().GetRotation(), debugColor);
 			break;
 		case	EPopcornFXAttribSamplerShapeType::Sphere:
 			DrawDebugSphere(world, location, radius, kSamplerShapesDebugSegmentCount, debugColor);
@@ -1170,7 +1170,7 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(CParticleScene *s
 
 	PK_TODO("attribute angular linear velocity");
 	m_Angular_Velocity = FVector3f(0);
-	m_Linear_Velocity = ComponentVelocity;
+	m_Linear_Velocity = FVector3f(ComponentVelocity);
 }
 
 //----------------------------------------------------------------------------
@@ -2411,7 +2411,7 @@ struct FAttributeSamplerVectorFieldData
 
 	bool		m_NeedsReload = true;
 #if WITH_EDITOR
-	FVector		m_RealExtentUnscaled = FVector::ZeroVector;
+	FVector3f	m_RealExtentUnscaled = FVector3f::ZeroVector;
 #endif // WITH_EDITOR
 };
 
@@ -2521,7 +2521,7 @@ void	UPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChan
 				m_Data->m_Desc->Clear();
 				// Disable debug rendering, we don't have that info
 				if (BoundsSource == EPopcornFXVectorFieldBounds::Source)
-					m_Data->m_RealExtentUnscaled = FVector::ZeroVector;
+					m_Data->m_RealExtentUnscaled = FVector3f::ZeroVector;
 			}
 		}
 		if (propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerVectorField, Intensity))
@@ -2552,12 +2552,12 @@ void	UPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChan
 
 void	UPopcornFXAttributeSamplerVectorField::RenderVectorFieldShape(const FMatrix &transforms, const FQuat &rotation, bool isSelected)
 {
-	if (m_Data->m_RealExtentUnscaled == FVector::ZeroVector)
+	if (m_Data->m_RealExtentUnscaled == FVector3f::ZeroVector)
 		return;
 	const UWorld	*world = GetWorld();
 	const FColor	debugColor = isSelected ? kSamplerShapesDebugColorSelected : kSamplerShapesDebugColor;
 
-	const FVector	boxDims = m_Data->m_RealExtentUnscaled * GetComponentTransform().GetScale3D() * 0.5f;
+	const FVector	boxDims = FVector(m_Data->m_RealExtentUnscaled) * GetComponentTransform().GetScale3D() * 0.5f;
 	DrawDebugBox(world, transforms.GetOrigin(), boxDims, rotation, debugColor);
 #if 0
 	if (!bDrawCells)
@@ -2794,6 +2794,7 @@ public:
 
 			dstValues[idxTime] = ToPk(m_Positions.Eval(currentTime)) * invGlobalScale;
 		}
+		_TransformValues(*m_TrackTransforms, dstValues);
 	}
 
 	virtual void	SampleOrientation(	const TStridedMemoryView<CQuaternion>	&dstValues,
@@ -2812,6 +2813,7 @@ public:
 
 			dstValues[idxTime] = ToPk(m_Rotations.Eval(currentTime));
 		}
+		_TransformValues(*m_TrackTransforms, dstValues);
 	}
 
 	virtual void	SampleScale(	const TStridedMemoryView<CFloat3>		&dstValues,
@@ -2830,6 +2832,7 @@ public:
 
 			dstValues[idxTime] = ToPk(m_Scales.Eval(currentTime));
 		}
+		_TransformValues(*m_TrackTransforms, dstValues);
 	}
 
 	virtual void	Transform(	const TStridedMemoryView<CFloat3>		&outSamples,
@@ -2839,7 +2842,7 @@ public:
 								u32										transformFlags) const override
 	{
 		_Transform<false>(outSamples, locations, times, transformFlags);
-		_TransformPositions(*m_TrackTransforms, outSamples);
+		_TransformValues(*m_TrackTransforms, outSamples);
 	}
 
 	virtual void	GetTrackCount(const TStridedMemoryView<s32> &dstValues) const override
@@ -2889,7 +2892,7 @@ private:
 					if (scale)
 						outSamples[iCursor] *= ToPk(m_Scales.Eval(time));
 					if (rotate)
-						outSamples[iCursor] = ToPk(m_Rotations.Eval(time).RotateVector(ToUE(outSamples[iCursor])));
+						outSamples[iCursor] = ToPk(m_Rotations.Eval(time).RotateVector(FVector(ToUE(outSamples[iCursor]))));
 					if (translate)
 						outSamples[iCursor] += ToPk(m_Positions.Eval(time)) * invGlobalScale;
 				}
@@ -2898,7 +2901,7 @@ private:
 					if (translate)
 						outSamples[iCursor] -= ToPk(m_Positions.Eval(time)) * invGlobalScale;
 					if (rotate)
-						outSamples[iCursor] = ToPk(m_Rotations.Eval(time).Inverse().RotateVector(ToUE(outSamples[iCursor])));
+						outSamples[iCursor] = ToPk(m_Rotations.Eval(time).Inverse().RotateVector(FVector(ToUE(outSamples[iCursor]))));
 					if (scale)
 						outSamples[iCursor] /= ToPk(m_Scales.Eval(time));
 				}
@@ -2906,7 +2909,7 @@ private:
 		}
 	}
 
-	void	_TransformPositions(const FMatrix44f &transforms, const TStridedMemoryView<CFloat3> &outSamples) const
+	void	_TransformValues(const FMatrix44f &transforms, const TStridedMemoryView<CFloat3> &outSamples) const
 	{
 		if (transforms.Equals(FMatrix44f::Identity, 1.0e-6f))
 			return;
@@ -2921,6 +2924,11 @@ private:
 			VectorStoreFloat3(srcPos, reinterpret_cast<FVector3f*>(positions));
 			positions = PopcornFX::Mem::AdvanceRawPointer(positions, stride);
 		}
+	}
+
+	void	_TransformValues(const FMatrix44f &transforms, const TStridedMemoryView<CQuaternion> &outSamples) const
+	{
+		// TODO
 	}
 
 private:
@@ -3130,6 +3138,10 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 				PopcornFX::Mem::Copy(dstPos, dstPos - 1, sizeof(float) * 3);
 				PopcornFX::Mem::Copy(dstTangents, dstTangents - 2, sizeof(float) * 6);
 			}
+
+			m_Data->m_Positions->RecomputeParametricDomain();
+			if (!PK_VERIFY(m_Data->m_Positions->IsCoherent()))
+				return false;
 		}
 
 		// Scales curve
@@ -3152,6 +3164,10 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 				PopcornFX::Mem::Copy(dstPos, dstPos - 1, sizeof(float) * 3);
 				PopcornFX::Mem::Copy(dstTangents, dstTangents - 2, sizeof(float) * 6);
 			}
+
+			m_Data->m_Scales->RecomputeParametricDomain();
+			if (!PK_VERIFY(m_Data->m_Scales->IsCoherent()))
+				return false;
 		}
 
 		// Rotations curve
@@ -3165,7 +3181,7 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 
 		// (Re)setup the descriptor
 		m_Data->m_DescFast->m_Tracks.Clear();
-		PopcornFX::CGuid	id = m_Data->m_DescFast->m_Tracks.PushBack(PopcornFX::CParticleSamplerDescriptor_AnimTrack_Default::SPathDefinition(m_Data->m_Positions, null, m_Data->m_Scales));
+		const PopcornFX::CGuid	id = m_Data->m_DescFast->m_Tracks.PushBack(PopcornFX::CParticleSamplerDescriptor_AnimTrack_Default::SPathDefinition(m_Data->m_Positions, null, m_Data->m_Scales));
 		PK_ASSERT(id.Valid());
 		return id.Valid();
 	}
@@ -3302,12 +3318,13 @@ void	UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(CParticleScen
 	}
 
 	const float	invGlobalScale = FPopcornFXPlugin::GlobalScaleRcp();
-	m_TrackTransforms.M[3][0] *= invGlobalScale;
-	m_TrackTransforms.M[3][1] *= invGlobalScale;
-	m_TrackTransforms.M[3][2] *= invGlobalScale;
 
 	if (!bScale && !bFastSampler)
 		m_TrackTransforms = m_TrackTransformsUnscaled;
+
+	m_TrackTransforms.M[3][0] *= invGlobalScale;
+	m_TrackTransforms.M[3][1] *= invGlobalScale;
+	m_TrackTransforms.M[3][2] *= invGlobalScale;
 }
 
 //----------------------------------------------------------------------------

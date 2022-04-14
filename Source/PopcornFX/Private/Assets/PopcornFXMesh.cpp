@@ -600,7 +600,7 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::NewResourceMesh(UStaticMesh *staticMesh
 			// Should use: if (GetUseHighPrecisionTangentBasis()) { ... TangentZ.w ... } else { .... TangentZ.w .... }
 			const FVector3f	&finalBinormal = srcVertices.VertexTangentY(srci);
 			const FVector3f	baseBinormal = normal ^ tangent;
-			const float		biNormalSign =  FVector::DotProduct(baseBinormal, finalBinormal) < 0.0 ? -1.0f : 1.0f;
+			const float		biNormalSign =  FVector3f::DotProduct(baseBinormal, finalBinormal) < 0.0 ? -1.0f : 1.0f;
 
 			dstNormals[dsti] = ToPk(normal);
 			dstTangents[dsti] = CFloat4(ToPk(tangent), biNormalSign);
@@ -705,7 +705,7 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::NewResourceMesh(UStaticMesh *staticMesh
 					// Should use: if (GetUseHighPrecisionTangentBasis()) { ... TangentZ.w ... } else { .... TangentZ.w .... }
 					const FVector3f	&finalBinormal = srcVertices.VertexTangentY(srci);
 					const FVector3f	baseBinormal = normal ^ tangent;
-					const float		biNormalSign =  FVector::DotProduct(baseBinormal, finalBinormal) < 0.0 ? -1.0f : 1.0f;
+					const float		biNormalSign =  FVector3f::DotProduct(baseBinormal, finalBinormal) < 0.0 ? -1.0f : 1.0f;
 
 					dstNormals[dsti] = ToPk(normal);
 					dstTangents[dsti] = CFloat4(ToPk(tangent), biNormalSign);

@@ -203,7 +203,7 @@ void	CBatchDrawer_Sound::_IssueDrawCall_Sound(const SUERenderContext &renderCont
 
 				const float		volume = volumes[iParticle];
 
-				const FVector	pos = ToUE(positions[iParticle] * globalScale);
+				const FVector	pos = FVector(ToUE(positions[iParticle] * globalScale));
 				const float		radius = radii[iParticle] * globalScale;
 
 #if (PLATFORM_PS4)
@@ -220,7 +220,7 @@ void	CBatchDrawer_Sound::_IssueDrawCall_Sound(const SUERenderContext &renderCont
 				SSoundInsertDesc	sDesc;
 				sDesc.m_SelfID = selfIDs[iParticle];
 				sDesc.m_Position = pos;
-				sDesc.m_Velocity = ToUE(velocities[iParticle] * globalScale);
+				sDesc.m_Velocity = FVector(ToUE(velocities[iParticle] * globalScale));
 				sDesc.m_Radius = radius;
 				sDesc.m_DopplerLevel = dopplerFactor;
 				sDesc.m_Age = lifeRatios[iParticle] / invLives[iParticle];

@@ -71,8 +71,8 @@ bool	CUEFrameCollector::LateCull(const PopcornFX::CAABB &bbox) const
 	const CFloat3		origin = bbox.Center();
 	const CFloat3		extent = bbox.Extent();
 	const float			scale = FPopcornFXPlugin::GlobalScale();
-	const FVector		ueOrigin = _Reinterpret<FVector3f>(origin) * scale; // LWC
-	const FVector		ueExtent = _Reinterpret<FVector3f>(extent) * scale; // LWC
+	const FVector		ueOrigin = FVector(_Reinterpret<FVector3f>(origin) * scale);
+	const FVector		ueExtent = FVector(_Reinterpret<FVector3f>(extent) * scale);
 	const auto			&sceneViews = m_Views->SceneViews();
 	for (u32 viewi = 0; viewi < sceneViews.Count(); ++viewi)
 	{
@@ -948,7 +948,7 @@ namespace
 				{
 					TStridedMemoryView<const CFloat3>	positions = page->StreamForReading<CFloat3>(positionStreamId);
 					for (uint32 parti = 0; parti < positions.Count(); ++parti)
-						PDI->DrawPoint(ToUE(positions[parti] * scale), color, particlePointsize, depthPrio);
+						PDI->DrawPoint(FVector(ToUE(positions[parti] * scale)), color, particlePointsize, depthPrio);
 				}
 			}
 		}

@@ -1082,7 +1082,7 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::UpdateSkinning()
 	const u32	boneCount = m_Data->m_BoneInverseMatrices.Count();
 	if (!PK_VERIFY(boneCount > 0))
 		return false;
-	const FVector	invScale(FPopcornFXPlugin::GlobalScaleRcp());
+	const FVector3f	invScale(FPopcornFXPlugin::GlobalScaleRcp());
 
 	const USkinnedMeshComponent	*baseComponent = skinnedMesh->MasterPoseComponent.IsValid() ? skinnedMesh->MasterPoseComponent.Get() : skinnedMesh;
 	if (!PK_VERIFY(boneCount <= (u32)GetComponentSpaceTransforms(baseComponent).Num()) || // <= boneCount will be greater if virtual bones are present in the skeleton
@@ -1192,8 +1192,8 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::TickComponent(float deltaTime, enum 
 void	UPopcornFXAttributeSamplerSkinnedMesh::UpdateTransforms()
 {
 	m_WorldTr_Previous = m_WorldTr_Current;
-	m_Angular_Velocity = FVector(0);
-	m_Linear_Velocity = ComponentVelocity;
+	m_Angular_Velocity = FVector3f(0);
+	m_Linear_Velocity = FVector3f(ComponentVelocity);
 
 	if (!m_Data->m_CurrentSkinnedMeshComponent.IsValid() &&
 		(Transforms == EPopcornFXSkinnedTransforms::SkinnedComponentRelativeTr ||

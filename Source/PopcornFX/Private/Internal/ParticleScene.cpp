@@ -1653,7 +1653,7 @@ void	CParticleScene::RayTracePacket(
 						if (emptySphereSweeps || packet.m_RaySweepRadii_Aligned16[rayi] == 0.0f)
 						{
 							FSingleHitBuffer<FHitRaycast>	hitBuffer;
-							sqAccelerator.Raycast(ToUE(start), ToUE(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+							sqAccelerator.Raycast(FVector(ToUE(start)), FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
 							if (hitBuffer.HasBlockingHit())
 							{
 								resultBufferAndIndex.m_HitLocation = *hitBuffer.GetBlock();
@@ -1662,11 +1662,11 @@ void	CParticleScene::RayTracePacket(
 						}
 						else
 						{
-							const FTransform	startTM = FTransform(ToUE(start));
+							const FTransform	startTM = FTransform(FVector(ToUE(start)));
 
 							FSingleHitBuffer<FHitSweep>		hitBuffer;
 #if (ENGINE_MAJOR_VERSION == 5)
-							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, ToUE(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
 #else
 							sqAccelerator.Sweep(Chaos::TSphere<float, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, _Reinterpret<FVector>(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
 #endif // (ENGINE_MAJOR_VERSION == 5)
