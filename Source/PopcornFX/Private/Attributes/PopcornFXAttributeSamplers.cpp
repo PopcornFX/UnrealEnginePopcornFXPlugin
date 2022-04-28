@@ -3053,10 +3053,6 @@ void	UPopcornFXAttributeSamplerAnimTrack::PostEditChangeProperty(FPropertyChange
 
 bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 {
-#if (ENGINE_MAJOR_VERSION == 5)
-	// Not implemented for now, see if UE5.0 keeps LWC when it comes out of preview for spline positions when shipping or if this is a miss.
-	return false;
-#else
 	USplineComponent	*splineComponent = ResolveSplineComponent(true);
 	if (splineComponent == null)
 		return false;
@@ -3119,6 +3115,15 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 			const FInterpCurvePoint<FVector>	*srcPoints = positions.Points.GetData();
 			for (u32 iPoint = 0; iPoint < keyCount; ++iPoint)
 			{
+#if (ENGINE_MAJOR_VERSION == 5)
+				const CFloat3	pos = ToPk(srcPoints->OutVal) * invGlobalScale;
+				const CFloat3	srcArriveTan = ToPk(srcPoints->ArriveTangent) * invGlobalScale;
+				const CFloat3	srcLeaveTan = ToPk(srcPoints->LeaveTangent) * invGlobalScale;
+
+				*dstPos++ = pos;
+				*dstTangents++ = srcArriveTan;
+				*dstTangents++ = srcLeaveTan;
+#else
 				VectorRegister	srcPos = VectorLoadFloat3(&srcPoints->OutVal);
 				VectorRegister	srcArriveTan = VectorLoadFloat3(&srcPoints->ArriveTangent);
 				VectorRegister	srcLeaveTan = VectorLoadFloat3(&srcPoints->LeaveTangent);
@@ -3130,6 +3135,7 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 				VectorStore(pos, dstPos++);
 				VectorStore(arriveTangent, dstTangents++);
 				VectorStore(leaveTangent, dstTangents++);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				++srcPoints;
 			}
 			// Duplicate first and last values
@@ -3197,7 +3203,6 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 	if (bScale)
 		transformFlags |= PopcornFX::CParticleSamplerDescriptor_AnimTrack::Transform_Scale;
 	return m_Data->m_Desc->Setup(splineComponent, transformFlags);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
