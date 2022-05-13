@@ -197,6 +197,7 @@ bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const
 	const PopcornFX::SRendererBatchDrawPass_Mesh_CPUBB		&drawPassCPU = static_cast<const PopcornFX::SRendererBatchDrawPass_Mesh_CPUBB&>(drawPass);
 	const SUERenderContext									&renderContext = static_cast<SUERenderContext&>(ctx);
 
+	const bool	resizeBuffers = m_TotalParticleCount != drawPassCPU.m_TotalParticleCount;
 	m_TotalParticleCount = drawPassCPU.m_TotalParticleCount;
 	m_PerMeshParticleCount = drawPassCPU.m_PerMeshParticleCount;
 	m_HasMeshIDs = drawPassCPU.m_HasMeshIDs;
@@ -241,7 +242,8 @@ bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const
 				return false;
 	}
 
-	if (drawPass.m_IsNewFrame)
+	if (drawPass.m_IsNewFrame ||
+		resizeBuffers) // m_TotalParticleCount can differ between passes, realloc buffers if that's the case
 	{
 		PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::AllocBuffers_AdditionalInputs");
 

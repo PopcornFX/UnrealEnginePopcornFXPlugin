@@ -192,6 +192,7 @@ bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, c
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Triangle_CPUBB::AllocBuffers");
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
 
+	const bool	resizeBuffers = m_TotalParticleCount != drawPass.m_TotalParticleCount;
 	m_TotalParticleCount = drawPass.m_TotalParticleCount;
 
 	PK_ASSERT(renderContext.m_RendererSubView != null);
@@ -244,7 +245,8 @@ bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, c
 			return false;
 	}
 
-	if (drawPass.m_IsNewFrame)
+	if (drawPass.m_IsNewFrame ||
+		resizeBuffers) // m_TotalParticleCount can differ between passes, realloc buffers if that's the case
 	{
 		PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Triangle_CPUBB::AllocBuffers_AdditionalInputs");
 

@@ -154,6 +154,7 @@ private:
 
 	bool							m_HasAtlasBlending = false;
 	bool							m_CapsulesDC = false;
+	bool							m_ProcessViewIndependentData = false;
 	ERHIFeatureLevel::Type			m_FeatureLevel = ERHIFeatureLevel::Num;
 
 	FShaderResourceViewRHIRef		m_SimDataSRVRef;

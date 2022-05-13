@@ -211,6 +211,7 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, con
 	const PopcornFX::SRendererBatchDrawPass_Ribbon_CPUBB	&drawPassCPU = static_cast<const PopcornFX::SRendererBatchDrawPass_Ribbon_CPUBB&>(drawPass);
 	const SUERenderContext									&renderContext = static_cast<SUERenderContext&>(ctx);
 
+	const bool	resizeBuffers = m_TotalParticleCount != drawPassCPU.m_TotalParticleCount;
 	m_TotalParticleCount = drawPassCPU.m_TotalParticleCount;
 	m_TotalVertexCount = drawPassCPU.m_TotalVertexCount;
 	m_TotalIndexCount = drawPassCPU.m_TotalIndexCount;
@@ -274,7 +275,8 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, con
 			return false;
 	}
 
-	if (drawPass.m_IsNewFrame)
+	if (drawPass.m_IsNewFrame ||
+		resizeBuffers) // m_TotalParticleCount can differ between passes, realloc buffers if that's the case
 	{
 		PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Ribbon_CPUBB::AllocBuffers_AdditionalInputs");
 

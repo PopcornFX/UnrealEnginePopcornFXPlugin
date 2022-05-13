@@ -497,6 +497,7 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::AllocBuffers");
 
+	const bool	resizeBuffers = m_TotalParticleCount != drawPass.m_TotalParticleCount;
 	m_TotalParticleCount = drawPass.m_TotalParticleCount;
 
 	if (drawPass.m_RendererType != PopcornFX::ERendererClass::Renderer_Billboard)
@@ -551,7 +552,8 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 #endif // (ENGINE_MAJOR_VERSION == 5)
 		}
 		// TODO: Sort for gpu particles
-		if (drawPass.m_IsNewFrame)
+		if (drawPass.m_IsNewFrame ||
+			resizeBuffers) // m_TotalParticleCount can differ between passes, realloc buffers if that's the case
 		{
 			m_ViewIndependentInputs = toGenerate.m_GeneratedInputs;
 
@@ -588,7 +590,8 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 		const u32	totalParticleCount = m_TotalParticleCount;
 
 		const bool	needsIndices = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_Indices) != 0;
-		if (drawPass.m_IsNewFrame)
+		if (drawPass.m_IsNewFrame ||
+			resizeBuffers) // m_TotalParticleCount can differ between passes, realloc buffers if that's the case
 		{
 			PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::AllocBuffers - New frame");
 			_ClearStreamOffsets();
@@ -716,6 +719,8 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 			}
 		}
 	}
+
+	m_ProcessViewIndependentData = drawPass.m_IsNewFrame || resizeBuffers;
 	return true;
 }
 
@@ -734,7 +739,7 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 	const u32	totalParticleCount = m_TotalParticleCount;
 
 	// View independent
-	if (drawPass.m_IsNewFrame)
+	if (m_ProcessViewIndependentData)
 	{
 		if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_Indices)
 		{
