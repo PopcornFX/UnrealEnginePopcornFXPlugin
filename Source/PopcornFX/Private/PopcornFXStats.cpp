@@ -26,6 +26,7 @@ DEFINE_STAT(STAT_PopcornFX_RayTracing_DrawCallsCount);
 DEFINE_STAT(STAT_PopcornFX_BatchesCount);
 
 DEFINE_STAT(STAT_PopcornFX_MediumCount);
+DEFINE_STAT(STAT_PopcornFX_ActiveMediumCount);
 
 DEFINE_STAT(STAT_PopcornFX_BroadcastedEventsCount);
 

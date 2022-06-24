@@ -414,7 +414,14 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 		}
 	}
 
-	// start PopcornFX update
+	const UPopcornFXSceneComponent	*sceneComponent = SceneComponent();
+	if (!PK_VERIFY(sceneComponent != null))
+		return;
+#if	(PK_PARTICLES_HAS_STATS != 0)
+	bool		storeTimingsSum = false;
+#endif // (PK_PARTICLES_HAS_STATS != 0)
+
+	// Update sim
 	{
 		SCOPE_CYCLE_COUNTER(STAT_PopcornFX_StartUpdateTime);
 
@@ -430,10 +437,6 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 		PK_SCOPEDLOCK(m_UpdateLock);
 
 		m_LastUpdate = GFrameCounter;
-
-		const UPopcornFXSceneComponent	*sceneComponent = SceneComponent();
-		if (!PK_VERIFY(sceneComponent != null))
-			return;
 
 		PK_ASSERT(sceneComponent->GetWorld() != null);
 		{
@@ -465,7 +468,6 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 		const UPopcornFXSettings	*settings = FPopcornFXPlugin::Get().Settings();
 		check(settings);
 
-		bool		storeTimingsSum = false;
 		const u32	frameCount = settings->HUD_UpdateTimeFrameCount;
 		if (++m_MediumCollectionUpdateTime_FrameCount >= frameCount)
 		{
@@ -487,84 +489,92 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 #if (PK_HAS_GPU != 0)
 		GPU_PostUpdate();
 #endif // (PK_HAS_GPU != 0)
+	}
+	
+	// Update bounds and total particle count
+	{
+		PK_NAMEDSCOPEDPROFILE("Update bounds");
+		PK_SCOPEDLOCK(m_ParticleMediumCollection->_ActiveMediums_Lock());
+		SCOPE_CYCLE_COUNTER(STAT_PopcornFX_UpdateBoundsTime);
 
-		// update bounds, timings, and total particle count
+		INC_DWORD_STAT_BY(STAT_PopcornFX_ActiveMediumCount, m_ParticleMediumCollection->_ActiveMediums_NoLock().Count());
+
+		s32					totalParticleCount = 0;
+		bool				boundsInit = false;
+		PopcornFX::CAABB	bounds = PopcornFX::CAABB::DEGENERATED;
+		for (const PopcornFX::PParticleMedium &medium : m_ParticleMediumCollection->_ActiveMediums_NoLock()) // 2.11+: Browse render mediums directly
 		{
-			PK_SCOPEDLOCK(m_ParticleMediumCollection->_ActiveMediums_Lock());
-			SCOPE_CYCLE_COUNTER(STAT_PopcornFX_UpdateBoundsTime);
-			s32					totalParticleCount = 0;
-			bool				boundsInit = false;
-			PopcornFX::CAABB	bounds = PopcornFX::CAABB::DEGENERATED;
-			for (uint32 i = 0; i < m_ParticleMediumCollection->Mediums().Count(); i++)
-			for (const PopcornFX::PParticleMedium &medium : m_ParticleMediumCollection->_ActiveMediums_NoLock()) // 2.11+: Browse render mediums directly
+
+			// Active medium: we should have non-zero particle count
+			const u32	particleCount = medium->ParticleStorage()->ActiveParticleCount();
+			const bool	hasMeaningfulBounds = medium->Descriptor() != null && !medium->Descriptor()->Renderers().Empty();
+			if (particleCount == 0 || !hasMeaningfulBounds)
+				continue;
+
+			const PopcornFX::CAABB	&mediumBounds = medium->CachedBounds();
+			const bool				validBBox = mediumBounds.Valid() && !mediumBounds.Empty() && mediumBounds.Extent() != CFloat3::ZERO; // PK2.10: bbox.Empty() behavior will change
+			const bool				validBBoxRange = PopcornFX::All(mediumBounds.Min() > -1.0e15f) && PopcornFX::All(mediumBounds.Max() < 1.0e15f);
+
+			if (validBBox &&
+				validBBoxRange) // If this is not checked and bouding boxes have extremely large values, it crashes later in UE code because the bounds have nan values
 			{
-				PK_ASSERT(medium != null);
-
-				// Active medium: some can have zero particles, skip them. Also skip mediums not having any renderers
-				const u32	particleCount = medium->ParticleStorage()->ActiveParticleCount();
-				const bool	hasMeaningfulBounds = medium->Descriptor() != null && !medium->Descriptor()->Renderers().Empty();
-				if (particleCount == 0 || !hasMeaningfulBounds)
-					continue;
-
-				const PopcornFX::CAABB	&mediumBounds = medium->CachedBounds();
-				const bool				validBBox = mediumBounds.Valid() && !mediumBounds.Empty() && mediumBounds.Extent() != CFloat3::ZERO; // PK2.10: bbox.Empty() behavior will change
-				const bool				validBBoxRange = PopcornFX::All(mediumBounds.Min() > -1.0e15f) && PopcornFX::All(mediumBounds.Max() < 1.0e15f);
-
-				if (validBBox &&
-					validBBoxRange) // If this is not checked and bouding boxes have extremely large values, it crashes later in UE code because the bounds have nan values
-				{
-					bounds.Add(mediumBounds);
-					boundsInit = true;
-				}
-				totalParticleCount += particleCount;
+				bounds.Add(mediumBounds);
+				boundsInit = true;
 			}
-			PK_RELEASE_ASSERT(!boundsInit || (bounds.Valid() && !bounds.Empty() && bounds.Extent() != CFloat3::ZERO));
+			totalParticleCount += particleCount;
+		}
+		PK_RELEASE_ASSERT(!boundsInit || (bounds.Valid() && !bounds.Empty() && bounds.Extent() != CFloat3::ZERO));
 
-			// Safety net for incorrect global bounds to make sure this doesn't crash in release.
-			// This will make the scene actor re-use the previous valid frame's bounds, until new bounds are valid.
-			//ensureMsgf(!Primitive->Bounds.BoxExtent.ContainsNaN() && !Primitive->Bounds.Origin.ContainsNaN() && !FMath::IsNaN(Primitive->Bounds.SphereRadius) && FMath::IsFinite(Primitive->Bounds.SphereRadius),
-			//	TEXT("Nans found on Bounds for Primitive %s: Origin %s, BoxExtent %s, SphereRadius %f"), *Primitive->GetName(), *Primitive->Bounds.Origin.ToString(), *Primitive->Bounds.BoxExtent.ToString(), Primitive->Bounds.SphereRadius);
+		// Safety net for incorrect global bounds to make sure this doesn't crash in release.
+		// This will make the scene actor re-use the previous valid frame's bounds, until new bounds are valid.
+		//ensureMsgf(!Primitive->Bounds.BoxExtent.ContainsNaN() && !Primitive->Bounds.Origin.ContainsNaN() && !FMath::IsNaN(Primitive->Bounds.SphereRadius) && FMath::IsFinite(Primitive->Bounds.SphereRadius),
+		//	TEXT("Nans found on Bounds for Primitive %s: Origin %s, BoxExtent %s, SphereRadius %f"), *Primitive->GetName(), *Primitive->Bounds.Origin.ToString(), *Primitive->Bounds.BoxExtent.ToString(), Primitive->Bounds.SphereRadius);
 
-			FBoxSphereBounds	_boundsCheck = ToUE(m_CachedBounds.CachedBounds() * FPopcornFXPlugin::GlobalScale());
-			if (PK_VERIFY(!_boundsCheck.BoxExtent.ContainsNaN()) &&
-				PK_VERIFY(!_boundsCheck.Origin.ContainsNaN()) &&
-				PK_VERIFY(!FMath::IsNaN(_boundsCheck.SphereRadius)) &&
-				PK_VERIFY(FMath::IsFinite(_boundsCheck.SphereRadius)))
-			{
-				if (boundsInit)
-					m_CachedBounds.SetExactBounds(bounds);
-				else
-					m_CachedBounds.SetExactBounds(PopcornFX::CAABB::ZERO);
-				m_CachedBounds.Update();
+		FBoxSphereBounds	_boundsCheck = ToUE(m_CachedBounds.CachedBounds() * FPopcornFXPlugin::GlobalScale());
+		if (PK_VERIFY(!_boundsCheck.BoxExtent.ContainsNaN()) &&
+			PK_VERIFY(!_boundsCheck.Origin.ContainsNaN()) &&
+			PK_VERIFY(!FMath::IsNaN(_boundsCheck.SphereRadius)) &&
+			PK_VERIFY(FMath::IsFinite(_boundsCheck.SphereRadius)))
+		{
+			if (boundsInit)
+				m_CachedBounds.SetExactBounds(bounds);
+			else
+				m_CachedBounds.SetExactBounds(PopcornFX::CAABB::ZERO);
+			m_CachedBounds.Update();
 
-				m_Bounds = _boundsCheck;
-			}
-
-			FPopcornFXPlugin::IncTotalParticleCount(totalParticleCount - m_LastTotalParticleCount);
-			m_LastTotalParticleCount = totalParticleCount;
-
-			INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount, m_ParticleMediumCollection->Stats().TotalParticleCount());
-			INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount_CPU, m_ParticleMediumCollection->Stats().m_TotalParticleCount_CPU.Load());
-
-#if (PK_GPU_D3D11 != 0)
-			if (m_EnableD3D11)
-			{
-				INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount_GPU_D3D11, m_ParticleMediumCollection->Stats().m_TotalParticleCount_GPU.Load());
-			}
-#endif // (PK_GPU_D3D11 != 0)
-
-#if (PK_GPU_D3D12 != 0)
-			if (m_EnableD3D12)
-			{
-				INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount_GPU_D3D12, m_ParticleMediumCollection->Stats().m_TotalParticleCount_GPU.Load());
-			}
-#endif // (PK_GPU_D3D12 != 0)
+			m_Bounds = _boundsCheck;
 		}
 
+		FPopcornFXPlugin::IncTotalParticleCount(totalParticleCount - m_LastTotalParticleCount);
+		m_LastTotalParticleCount = totalParticleCount;
+
+		INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount, m_ParticleMediumCollection->Stats().TotalParticleCount());
+		INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount_CPU, m_ParticleMediumCollection->Stats().m_TotalParticleCount_CPU.Load());
+
+	#if (PK_GPU_D3D11 != 0)
+		if (m_EnableD3D11)
+		{
+			INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount_GPU_D3D11, m_ParticleMediumCollection->Stats().m_TotalParticleCount_GPU.Load());
+		}
+	#endif // (PK_GPU_D3D11 != 0)
+
+	#if (PK_GPU_D3D12 != 0)
+		if (m_EnableD3D12)
+		{
+			INC_DWORD_STAT_BY(STAT_PopcornFX_ParticleCount_GPU_D3D12, m_ParticleMediumCollection->Stats().m_TotalParticleCount_GPU.Load());
+		}
+	#endif // (PK_GPU_D3D12 != 0)
+	}
+
+	// Collect frame
+	{
 		m_UpdateSubView.Setup_PostUpdate();
 
 		m_RenderBatchManager->GameThread_EndUpdate(m_UpdateSubView, sceneComponent->GetWorld());
+	}
 
+	// Update effect profiler
+	{
 #if POPCORNFX_RENDER_DEBUG
 		m_RenderBatchManager->GameThread_SetDebugMode(sceneComponent->HeavyDebugMode);
 #endif // POPCORNFX_RENDER_DEBUG
@@ -616,7 +626,6 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 			}
 		}
 #endif //	(PK_PARTICLES_HAS_STATS != 0)
-
 	}
 
 	_PostUpdate_Events();

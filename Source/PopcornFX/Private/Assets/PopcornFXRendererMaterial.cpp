@@ -523,6 +523,8 @@ namespace
 			}
 			break;
 		case	EPopcornFXMaterialType::Billboard_AlphaBlend:
+			if (mat.Lit)
+				finalMatType = EPopcornFXMaterialType::Billboard_AlphaBlend_Lit;
 			break;
 		case	EPopcornFXMaterialType::Billboard_AlphaBlendAdditive:
 			if (mat.Lit)

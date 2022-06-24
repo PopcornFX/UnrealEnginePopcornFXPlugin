@@ -34,6 +34,7 @@ DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls"), STAT_PopcornFX_Draw
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: Batches"), STAT_PopcornFX_BatchesCount, STATGROUP_PopcornFX, );
 
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("PopcornFX Mediums"), STAT_PopcornFX_MediumCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("PopcornFX Active Mediums"), STAT_PopcornFX_ActiveMediumCount, STATGROUP_PopcornFX, );
 
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Broadcasted events"), STAT_PopcornFX_BroadcastedEventsCount, STATGROUP_PopcornFX, );
 
