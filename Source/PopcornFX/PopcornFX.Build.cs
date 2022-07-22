@@ -269,7 +269,7 @@ namespace UnrealBuildTool.Rules
 			}
 			else if (isUNKNOWN)
 			{
-				libPrefix = clientLibDir + "vs2017_Gaming.Xbox.UNKNOWN1.x64/";
+				libPrefix = clientLibDir + "vs2017_UNKNOWN.x64/";
 				libExt = ".lib";
 			}
 #if !UE_5_0_OR_LATER // Support dropped with UE5

@@ -53,9 +53,9 @@ bool	_IsGpuSupportedOnPlatform(const EShaderPlatform &platform)
 #if (defined(PK_DURANGO) && defined(PK_UNKNOWN)) || (PK_COMPILE_GPU_XBOX_ONE != 0)
 				 platformName == FName("UNKNOWN") ||
 #endif // (defined(PK_DURANGO) && defined(PK_UNKNOWN)) || (PK_COMPILE_GPU_XBOX_ONE != 0)
-#if defined(PK_UNKNOWN1) || (PK_COMPILE_GPU_UNKNOWN != 0)
+#if defined(PK_SCARLETT) || (PK_COMPILE_GPU_UNKNOWN != 0)
 				 platformName == FName("UNKNOWN_SM6") ||
-#endif // defined(PK_UNKNOWN1) || (PK_COMPILE_GPU_UNKNOWN != 0)
+#endif // defined(PK_SCARLETT) || (PK_COMPILE_GPU_UNKNOWN != 0)
 #if defined(PK_UNKNOWN2) || (PK_COMPILE_GPU_UNKNOWN2 != 0)
 				 platformName == FName("UNKNOWN2") ||
 #endif // defined(PK_UNKNOWN2) || (PK_COMPILE_GPU_UNKNOWN2 != 0)
