@@ -1157,13 +1157,13 @@ void	UPopcornFXEmitterComponent::EndPlay(const EEndPlayReason::Type EndPlayReaso
 {
 	LLM_SCOPE(ELLMTag::Particles);
 
+	Super::EndPlay(EndPlayReason);
+
 	// unregister everything in case the user forgot to do it
 	if (Effect != null && Effect->Effect()->HasRegisteredEvents())
 		UnregisterAllEventsListeners();
 
 	TerminateEmitter(bKillParticlesOnDestroy);
-
-	Super::EndPlay(EndPlayReason);
 
 	bHasAlreadyPlayOnLoad = false;
 }

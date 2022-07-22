@@ -160,8 +160,7 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 	if (type == PopcornFX::EBaseTypeID::BaseType_Float4)
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() ||
-			fieldName == PopcornFX::BasicRendererProperties::SID_Distortion_Color() ||
-			fieldName == PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_Color())
+			fieldName == PopcornFX::BasicRendererProperties::SID_Distortion_Color())
 			outStreamOffsetType = StreamOffset_Colors;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput0_Input0())
 			outStreamOffsetType = StreamOffset_DynParam0s;

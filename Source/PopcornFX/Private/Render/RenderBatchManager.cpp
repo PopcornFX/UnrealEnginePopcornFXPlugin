@@ -212,13 +212,14 @@ CRenderBatchManager::~CRenderBatchManager()
 			delete m_VertexBufferPool_GPU;
 			delete m_IndexBufferPool_GPU;
 		});
+
+	FlushRenderingCommands(); // so we can safely release frames
+	
 	m_VertexBufferPool = null;
 	m_IndexBufferPool = null;
 	m_VertexBufferPool_VertexBB = null;
 	m_VertexBufferPool_GPU = null;
 	m_IndexBufferPool_GPU = null;
-
-	FlushRenderingCommands(); // so we can safely release frames
 
 #ifdef	POPCORNFX_ENABLE_POOL_STATS
 	delete m_VertexBufferPoolStats;
