@@ -19,8 +19,8 @@
 #	error invalid ENGINE_MAJOR_VERSION
 #endif
 #if (ENGINE_MAJOR_VERSION == 4)
-#	if (ENGINE_MINOR_VERSION < 26)
-#		error PopcornFX Plugin only supported in UE4 >= 4.26
+#	if (ENGINE_MINOR_VERSION < 27)
+#		error PopcornFX Plugin only supported in UE4 >= 4.27
 #	endif
 #endif // (ENGINE_MAJOR_VERSION == 4)
 
