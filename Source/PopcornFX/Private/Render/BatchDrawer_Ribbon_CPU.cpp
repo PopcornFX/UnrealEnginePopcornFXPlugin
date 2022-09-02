@@ -52,7 +52,23 @@ CBatchDrawer_Ribbon_CPUBB::CBatchDrawer_Ribbon_CPUBB()
 
 CBatchDrawer_Ribbon_CPUBB::~CBatchDrawer_Ribbon_CPUBB()
 {
-	_ClearBuffers();
+	// Render resources cannot be released on the game thread.
+	// When re-importing an effect, render medium gets destroyed on the main thread (expected scenario)
+	// When unloading a scene, render mediums are destroyed on the render thread (RenderBatchManager.cpp::Clean())
+	if (IsInRenderingThread() || IsInRHIThread())
+	{
+		_ClearBuffers();
+	}
+	else
+	{
+		ENQUEUE_RENDER_COMMAND(ReleaseRenderResourcesCommand)(
+			[this](FRHICommandListImmediate &RHICmdList)
+			{
+				_ClearBuffers();
+			});
+
+		FlushRenderingCommands(); // so we can safely release frames
+	}
 
 	PK_ASSERT(!m_Indices.Valid());
 	PK_ASSERT(!m_Positions.Valid());

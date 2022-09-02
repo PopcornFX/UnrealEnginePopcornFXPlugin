@@ -714,11 +714,11 @@ namespace
 			else
 				mat.MaterialType = kOpaqueMesh_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type())];
 
+			if (mat.MaterialType == EPopcornFXMaterialType::Mesh_Masked)
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
+
 			if (mat.Lit)
 				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(mat.MaterialType + 1); // Next enum index
-
-			if (mat.MaterialType == EPopcornFXMaterialType::Mesh_Masked)
-				mat.MaskThreshold = _GetPropertyValueAsFloat(decl, PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold());
 		}
 		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{

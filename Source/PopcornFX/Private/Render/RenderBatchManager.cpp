@@ -902,8 +902,7 @@ namespace
 		}
 	}
 
-	void	_DrawHeavyDebug(
-		const FPopcornFXSceneProxy *sceneProxy,
+	void	_DrawHeavyDebug(const FPopcornFXSceneProxy						*sceneProxy,
 		FPrimitiveDrawInterface *PDI,
 		const FSceneView *view,
 		uint32 debugModeMask,
@@ -958,24 +957,45 @@ namespace
 
 void	CRenderBatchManager::DrawHeavyDebug(const FPopcornFXSceneProxy *sceneProxy, FPrimitiveDrawInterface *PDI, const FSceneView *view, uint32 debugModeMask)
 {
-#if 0
 	const PopcornFX::SParticleCollectedFrameToRender2	*frame2 = m_FrameCollector_UE_Render.RenderedFrame();
 	if (frame2 != null)
 	{
-		uint32	globalIndex = 0;
-		for (uint32 dri = 0; dri < frame2->m_BillboardDrawRequests.Count(); ++dri)
-			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_BillboardDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
-		for (uint32 dri = 0; dri < frame2->m_RibbonDrawRequests.Count(); ++dri)
-			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_RibbonDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
-		for (uint32 dri = 0; dri < frame2->m_MeshDrawRequests.Count(); ++dri)
-			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_MeshDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
-		for (uint32 dri = 0; dri < frame2->m_LightDrawRequests.Count(); ++dri)
-			_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, frame2->m_LightDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+		u32	globalIndex = 0;
+
+		PK_ASSERT(frame2->m_DrawRequests.Count() >= frame2->m_ActiveRenderMediums.Count()); // m_DrawRequests is TChunkedArray
+		for (u32 i = 0; i < frame2->m_ActiveRenderMediums.Count(); ++i)
+		{
+			const PopcornFX::SRenderMediumDrawRequests	&drs = frame2->m_DrawRequests[i];
+			PK_ASSERT(drs.m_RenderMedium != null);
+			PK_ASSERT(drs.m_RenderMedium == frame2->m_ActiveRenderMediums[i]);
+			switch (drs.m_RenderMedium->RendererType())
+			{
+			case	PopcornFX::Renderer_Billboard:
+				for (u32 dri = 0; dri < drs.m_BillboardDrawRequests.Count(); ++dri)
+					_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, drs.m_BillboardDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+				break;
+			case	PopcornFX::Renderer_Ribbon:
+				for (u32 dri = 0; dri < drs.m_RibbonDrawRequests.Count(); ++dri)
+					_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, drs.m_RibbonDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+				break;
+			case	PopcornFX::Renderer_Triangle:
+				for (u32 dri = 0; dri < drs.m_TriangleDrawRequests.Count(); ++dri)
+					_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, drs.m_TriangleDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+				break;
+			case	PopcornFX::Renderer_Mesh:
+				for (u32 dri = 0; dri < drs.m_MeshDrawRequests.Count(); ++dri)
+					_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, drs.m_MeshDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+				break;
+			case	PopcornFX::Renderer_Light:
+				for (u32 dri = 0; dri < drs.m_LightDrawRequests.Count(); ++dri)
+					_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, drs.m_LightDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+				break;
+			}
+		}
 
 		// global bounds
 		sceneProxy->RenderBounds(PDI, view->Family->EngineShowFlags, sceneProxy->GetBounds(), true);
 	}
-#endif
 }
 
 #endif // POPCORNFX_RENDER_DEBUG
