@@ -1242,7 +1242,7 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::UpdateTransforms()
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerSkinnedMesh::_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXAttributeSamplerSkinnedMesh::_AttribSampler_PreUpdate(float deltaTime)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerSkinnedMesh::_AttribSampler_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);

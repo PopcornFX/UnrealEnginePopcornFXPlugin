@@ -110,7 +110,7 @@ public:
 
 	// PopcornFX Internal
 	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) { return nullptr; }
-	virtual void									_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType) { return; }
+	virtual void									_AttribSampler_PreUpdate(float deltaTime) { return; }
 
 #if WITH_EDITOR
 	virtual void									_AttribSampler_IndirectSelectedThisTick() {}

@@ -563,7 +563,7 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 	CFloat3			&currentVel = ToPkRef(m_CurrentWorldVelocity);
 	CFloat3			&previousVel = ToPkRef(m_PreviousWorldVelocity);
 
-	currentTr = ToPk(GetComponentTransform().ToMatrixNoScale());
+	currentTr = ToPk(GetComponentTransform().ToMatrixWithScale());
 	currentTr.StrippedTranslations() *= FPopcornFXPlugin::GlobalScaleRcp();
 	previousTr = currentTr;
 	currentVel = CFloat3::ZERO;
@@ -609,6 +609,23 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 		attributeList->RefreshAttributes(this);
 	if (attributeList != null)
 		attributeList->RefreshAttributeSamplers(this, true);
+
+	AActor	*owner = GetOwner();
+	bool	isVisible = IsVisible();
+	float	timeScale = 1.0f;
+	if (owner != null)
+	{
+		timeScale = owner->GetActorTimeDilation();
+#if WITH_EDITOR
+		if (owner->IsHiddenEd())
+			isVisible = false;
+#endif
+	}
+	if (PK_VERIFY(m_EffectInstancePtr != null))
+	{
+		m_EffectInstancePtr->SetVisible(isVisible);
+		m_EffectInstancePtr->SetTimeScale(timeScale);
+	}
 
 	// actual spawn
 	if (!m_EffectInstancePtr->Start(effectStartCtl))
@@ -1364,7 +1381,7 @@ void	UPopcornFXEmitterComponent::Scene_InitForUpdate(CParticleScene *scene)
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float deltaTime)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_ASSERT(!IsTemplate());
@@ -1432,7 +1449,7 @@ void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float de
 	if (IsValid(AttributeList))// && AttributeList->bNeedTick)
 	{
 		AttributeList->CheckEmitter(this);
-		AttributeList->Scene_PreUpdate(scene, this, deltaTime, tickType);
+		AttributeList->Scene_PreUpdate(this, deltaTime);
 	}
 
 	AActor	*owner = GetOwner();
@@ -1467,7 +1484,7 @@ void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float de
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXEmitterComponent::Scene_PostUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXEmitterComponent::Scene_PostUpdate(CParticleScene *scene, float deltaTime)
 {
 	// Destroy component if instance was destroyed during update
 	CheckForDead();

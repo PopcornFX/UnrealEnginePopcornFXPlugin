@@ -196,7 +196,7 @@ public:
 	void			RefreshAttributeSamplers(UPopcornFXEmitterComponent *emitter, bool reload = false) { if (m_Samplers.Num() > 0) _RefreshAttributeSamplers(emitter, reload); }
 	void			RefreshAttributes(UPopcornFXEmitterComponent *emitter) { if (m_Attributes.Num() > 0) _RefreshAttributes(emitter); }
 
-	void			Scene_PreUpdate(class CParticleScene *scene, UPopcornFXEmitterComponent *emitter, float deltaTime, enum ELevelTick tickType);
+	void			Scene_PreUpdate(UPopcornFXEmitterComponent *emitter, float deltaTime);
 #if WITH_EDITOR
 	void			AttributeSamplers_IndirectSelectedThisTick(UPopcornFXEmitterComponent *emitter) const;
 

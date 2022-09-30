@@ -46,7 +46,10 @@ public:
 	UPROPERTY(Category="PopcornFX Emitter", EditAnywhere, BlueprintReadOnly, meta=(DisplayThumbnail="true"))
 	UPopcornFXEffect						*Effect;
 
-	/** If false, the emitter will not update the emission position neither attributes */
+	/**
+		If false, the emitter will not update the emission position, attributes, visibility, ..
+		This is useful for static emitters in the scene
+	*/
 	UPROPERTY(Category="PopcornFX Emitter", EditAnywhere, BlueprintReadWrite)
 	uint32									bEnableUpdates : 1;
 
@@ -315,8 +318,8 @@ public:
 	void								Scene_OnRegistered(CParticleScene *scene, uint32 selfIdInScene);
 	void								Scene_OnUnregistered(CParticleScene *scene);
 	void								Scene_InitForUpdate(CParticleScene *scene);
-	void								Scene_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType);
-	void								Scene_PostUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType);
+	void								Scene_PreUpdate(CParticleScene *scene, float deltaTime);
+	void								Scene_PostUpdate(CParticleScene *scene, float deltaTime);
 	uint32								Scene_PreInitEmitterId() const { return m_Scene_PreInitEmitterId; };
 	uint32								Scene_EmitterId() const { return m_Scene_EmitterId; };
 

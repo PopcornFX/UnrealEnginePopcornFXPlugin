@@ -1105,7 +1105,7 @@ void	UPopcornFXAttributeList::PostEditChangeProperty(FPropertyChangedEvent& prop
 #endif // WITH_EDITOR
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeList::Scene_PreUpdate(CParticleScene *scene, UPopcornFXEmitterComponent *emitter, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXAttributeList::Scene_PreUpdate(UPopcornFXEmitterComponent *emitter, float deltaTime)
 {
 	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeList::Scene_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -1121,7 +1121,7 @@ void	UPopcornFXAttributeList::Scene_PreUpdate(CParticleScene *scene, UPopcornFXE
 			UPopcornFXAttributeSampler		*attribSampler = desc.ResolveAttributeSampler(emitter, null/*dont log each frame*/);
 			if (attribSampler != null)
 			{
-				attribSampler->_AttribSampler_PreUpdate(scene, deltaTime, tickType);
+				attribSampler->_AttribSampler_PreUpdate(deltaTime);
 			}
 		}
 	}

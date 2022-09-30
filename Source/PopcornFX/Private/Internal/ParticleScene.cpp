@@ -377,7 +377,7 @@ u32	CParticleScene::_InstanceCount(const PopcornFX::CParticleEffect *effect)
 
 //----------------------------------------------------------------------------
 
-void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
+void	CParticleScene::StartUpdate(float dt)
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::StartUpdate", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -401,7 +401,7 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 			m_ParticleMediumCollection->EnableLocalizedPages(enableLocalizedPages, enableByDefault);
 	}
 
-	_PreUpdate(dt, tickType);
+	_PreUpdate(dt);
 
 	// By default, register a view at world's origin
 	if (m_ParticleMediumCollection->RawViews().Empty())
@@ -484,7 +484,7 @@ void	CParticleScene::StartUpdate(float dt, enum ELevelTick tickType)
 		}
 #endif //	(PK_PARTICLES_HAS_STATS != 0)
 
-		_PostUpdate_Emitters(dt, tickType);
+		_PostUpdate_Emitters(dt);
 
 #if (PK_HAS_GPU != 0)
 		GPU_PostUpdate();
@@ -668,13 +668,13 @@ void	CParticleScene::SendRenderDynamicData_Concurrent()
 
 //----------------------------------------------------------------------------
 
-void	CParticleScene::_PreUpdate(float dt, enum ELevelTick tickType)
+void	CParticleScene::_PreUpdate(float dt)
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
 
 	_PreUpdate_Views();
 	_PreUpdate_Collisions();
-	_PreUpdate_Emitters(dt, tickType);
+	_PreUpdate_Emitters(dt);
 
 	if (m_FillAudioBuffers != null)
 		m_FillAudioBuffers->PreUpdate();
@@ -933,7 +933,7 @@ bool	CParticleScene::Effect_Install(PopcornFX::PCParticleEffect &effect)
 
 //----------------------------------------------------------------------------
 
-void	CParticleScene::_PreUpdate_Emitters(float dt, enum ELevelTick tickType)
+void	CParticleScene::_PreUpdate_Emitters(float dt)
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::_PreUpdate_Emitters", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -960,13 +960,13 @@ void	CParticleScene::_PreUpdate_Emitters(float dt, enum ELevelTick tickType)
 	{
 		SEmitterRegister		&emitter = m_Emitters[emitteri];
 		if (emitter.Valid())
-			emitter.m_Emitter->Scene_PreUpdate(this, dt, tickType);
+			emitter.m_Emitter->Scene_PreUpdate(this, dt);
 	}
 }
 
 //----------------------------------------------------------------------------
 
-void	CParticleScene::_PostUpdate_Emitters(float dt, enum ELevelTick tickType)
+void	CParticleScene::_PostUpdate_Emitters(float dt)
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::_PostUpdate_Emitters", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -978,7 +978,7 @@ void	CParticleScene::_PostUpdate_Emitters(float dt, enum ELevelTick tickType)
 	{
 		SEmitterRegister		&emitter = m_Emitters[emitteri];
 		if (emitter.Valid())
-			emitter.m_Emitter->Scene_PostUpdate(this, dt, tickType);
+			emitter.m_Emitter->Scene_PostUpdate(this, dt);
 	}
 }
 

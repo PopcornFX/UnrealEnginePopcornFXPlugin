@@ -81,7 +81,7 @@ public:
 
 	const UPopcornFXSceneComponent		*SceneComponent() const;
 
-	void					StartUpdate(float dt, enum ELevelTick tickType);
+	void					StartUpdate(float dt);
 	void					ApplyWorldOffset(const FVector &inOffset);
 	void					SendRenderDynamicData_Concurrent();
 	bool					PostUpdate_ShouldMarkRenderStateDirty() const;
@@ -199,7 +199,7 @@ private:
 
 	//----------------------------------------------------------------------------
 
-	void		_PreUpdate(float dt, enum ELevelTick tickType);
+	void		_PreUpdate(float dt);
 	void		_Clear();
 
 	//----------------------------------------------------------------------------
@@ -227,8 +227,8 @@ public:
 	bool				Effect_Install(PopcornFX::PCParticleEffect &effect);
 
 private:
-	void				_PreUpdate_Emitters(float dt, enum ELevelTick tickType);
-	void				_PostUpdate_Emitters(float dt, enum ELevelTick tickType);
+	void				_PreUpdate_Emitters(float dt);
+	void				_PostUpdate_Emitters(float dt);
 	void				_Clear_Emitters();
 
 	PopcornFX::TChunkedSlotArray<SEmitterRegister>	m_PreInitEmitters;

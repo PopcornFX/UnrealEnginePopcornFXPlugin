@@ -103,7 +103,7 @@ public:
 private:
 	// PopcornFX Internal
 	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual void									_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType) override;
+	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
 	void											_BuildVectorFieldFlags(uint32 &flags, uint32 &interpolation) const;
 	void											_SetBounds();
 

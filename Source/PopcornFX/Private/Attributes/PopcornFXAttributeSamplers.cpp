@@ -1021,7 +1021,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerShape::_AttribS
 	if (!PK_VERIFY(InitShape()))
 		return null;
 	desc.m_NeedUpdate = true;
-	_AttribSampler_PreUpdate(null, 0.f, LEVELTICK_PauseTick);
+	_AttribSampler_PreUpdate(0.f);
 	return m_Data->m_Desc.Get();
 }
 
@@ -1096,7 +1096,7 @@ PopcornFX::CShapeDescriptor	*UPopcornFXAttributeSamplerShape::GetShapeDescriptor
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
 {
 	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
 	check(m_Data != null);
@@ -1812,7 +1812,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangents4D(const TArray<FLinearC
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_PreUpdate(float deltaTime)
 {
 	PK_ASSERT(m_Data != null);
 
@@ -1889,6 +1889,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurveDynamic::_
 		m_Data->m_Desc = PK_NEW(PopcornFX::CParticleSamplerDescriptor_Curve_Default(m_Data->m_Curve0));
 	PK_ASSERT(m_Data->m_Desc->m_Curve0 == m_Data->m_Curve0);
 	desc.m_NeedUpdate = true;
+	_AttribSampler_PreUpdate(0.f);
 	return m_Data->m_Desc.Get();
 }
 
@@ -2670,12 +2671,13 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerVectorField::_A
 	}
 
 	desc.m_NeedUpdate = true;
+	_AttribSampler_PreUpdate(0.f);
 	return m_Data->m_Desc.Get();
 }
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXAttributeSamplerVectorField::_AttribSampler_PreUpdate(float deltaTime)
 {
 	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerVectorField::Update transforms", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -3253,6 +3255,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerAnimTrack::_Att
 		m_Data->m_NeedsReload = false;
 	}
 	desc.m_NeedUpdate = true;
+	_AttribSampler_PreUpdate(0.f);
 	if (bFastSampler)
 		return m_Data->m_DescFast.Get();
 	return m_Data->m_Desc.Get();
@@ -3260,7 +3263,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerAnimTrack::_Att
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType)
+void	UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(float deltaTime)
 {
 	check(m_Data != null);
 

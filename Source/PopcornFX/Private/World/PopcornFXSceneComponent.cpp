@@ -236,7 +236,7 @@ void	UPopcornFXSceneComponent::TickComponent(float deltaTime, enum ELevelTick ti
 
 	PK_ASSERT(m_ParticleScene->SceneComponent() == this);
 
-	m_ParticleScene->StartUpdate(deltaTime, tickType);
+	m_ParticleScene->StartUpdate(deltaTime);
 
 	FBoxSphereBounds			bounds;
 

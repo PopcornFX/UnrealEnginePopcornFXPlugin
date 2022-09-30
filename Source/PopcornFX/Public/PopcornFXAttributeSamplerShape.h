@@ -136,7 +136,7 @@ private:
 
 	// PopcornFX Internal
 	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual void									_AttribSampler_PreUpdate(CParticleScene *scene, float deltaTime, enum ELevelTick tickType) override;
+	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
 
 #if WITH_EDITOR
 	virtual void									_AttribSampler_IndirectSelectedThisTick() override { m_IndirectSelectedThisTick = true; }
