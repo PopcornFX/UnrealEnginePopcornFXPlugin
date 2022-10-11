@@ -13,11 +13,12 @@
 #include "World/PopcornFXSceneProxy.h"
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "Render/PopcornFXGPUVertexFactory.h"
+#include "Render/PopcornFXVertexFactoryCommon.h"
 #include "Render/PopcornFXShaderUtils.h"
 #include "Render/PopcornFXRendererProperties.h"
 #include "PopcornFXStats.h"
 
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
 
 #if (PK_HAS_GPU == 1)
 	// DrawIndexedInstanced (ie. https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_draw_indexed_instanced_indirect_args)
@@ -290,31 +291,31 @@ CBatchDrawer_Billboard_GPUBB::CBatchDrawer_Billboard_GPUBB()
 
 CBatchDrawer_Billboard_GPUBB::~CBatchDrawer_Billboard_GPUBB()
 {
-	// Render resources cannot be released on the game thread.
-	// When re-importing an effect, render medium gets destroyed on the main thread (expected scenario)
-	// When unloading a scene, render mediums are destroyed on the render thread (RenderBatchManager.cpp::Clean())
-	if (IsInRenderingThread() || IsInRHIThread())
-	{
-		_Clear();
-		_CleanRWBuffers();
-	}
-	else
-	{
-		ENQUEUE_RENDER_COMMAND(ReleaseRenderResourcesCommand)(
-			[this](FRHICommandListImmediate &RHICmdList)
-			{
-				_Clear();
-				_CleanRWBuffers();
-			});
-
-		FlushRenderingCommands(); // so we can safely release frames
-	}
+	_Clear();
 
 	PK_ASSERT(!m_Indices.Valid());
 	PK_ASSERT(!m_SimData.Valid());
 
 	for (u32 iView = 0; iView < m_ViewDependents.Count(); ++iView)
 		PK_ASSERT(!m_ViewDependents[iView].m_Indices.Valid());
+
+	// Render resources cannot be released on the game thread.
+	// When re-importing an effect, render medium gets destroyed on the main thread (expected scenario)
+	// When unloading a scene, render mediums are destroyed on the render thread (RenderBatchManager.cpp::Clean())
+	if (IsInGameThread())
+	{
+		ENQUEUE_RENDER_COMMAND(ReleaseRenderResourcesCommand)(
+			[this](FRHICommandListImmediate &RHICmdList)
+			{
+				_CleanRWBuffers();
+			});
+
+		FlushRenderingCommands(); // so we can safely release frames
+	}
+	else
+	{
+		_CleanRWBuffers();
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -377,25 +378,14 @@ bool	CBatchDrawer_Billboard_GPUBB::AreRenderersCompatible(const PopcornFX::CRend
 	if (rDesc0.m_RendererMaterial == rDesc1.m_RendererMaterial)
 		return true;
 
-	// If renderer materials are not the same, then they cannot be compatible
-	// Otherwise, they should've been batched at effect import time
-	switch (rDesc0.m_RendererClass)
-	{
-	case	PopcornFX::ERendererClass::Renderer_Billboard:
-	{
-		const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
-		const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
-		if (mat0 == null || mat1 == null)
-			return false;
-		if (mat0 == mat1 ||
-			mat0->CanBeMergedWith(*mat1))
-			return true;
-		break;
-	}
-	default:
-		PK_ASSERT_NOT_REACHED();
+	PK_ASSERT(rDesc0.m_RendererClass == PopcornFX::ERendererClass::Renderer_Billboard);
+	const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
+	const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
+	if (mat0 == null || mat1 == null)
 		return false;
-	}
+	if (mat0 == mat1 ||
+		mat0->CanBeMergedWith(*mat1))
+		return true;
 	return false;
 }
 
@@ -646,7 +636,7 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 			{
 				const PopcornFX::SRendererFeatureFieldDefinition& additionalInput = toGenerate.m_AdditionalGeneratedInputs[iField];
 
-				const PopcornFX::CStringId& fieldName = additionalInput.m_Name;
+				const PopcornFX::CStringId			&fieldName = additionalInput.m_Name;
 				const u32							typeSize = PopcornFX::CBaseTypeTraits::Traits(additionalInput.m_Type).Size;
 				EPopcornFXAdditionalStreamOffsets	streamOffsetType = EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
 
@@ -660,7 +650,7 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 
 				if (!PK_VERIFY(m_AdditionalInputs.PushBack().Valid()))
 					return false;
-				SAdditionalInput& newAdditionalInput = m_AdditionalInputs.Last();
+				SAdditionalInput	&newAdditionalInput = m_AdditionalInputs.Last();
 
 				newAdditionalInput.m_BufferOffset = m_TotalGPUBufferSize;
 				newAdditionalInput.m_ByteSize = typeSize;
@@ -768,7 +758,7 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 					return false;
 				}
 			}
-			float* _data = simData.Data();
+			float	*_data = simData.Data();
 			{
 				if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_ParticlePosition)
 					m_BBJobs_Billboard.m_Exec_CopyBillboardingStreams.m_PositionsDrIds = PopcornFX::TMemoryView<PopcornFX::Drawers::SVertex_PositionDrId/*CFloat3*/>(reinterpret_cast<PopcornFX::Drawers::SVertex_PositionDrId*>(PopcornFX::Mem::AdvanceRawPointer(_data, m_StreamOffsets[StreamOffset_Positions])), totalParticleCount);
@@ -807,8 +797,8 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 				}
 				for (u32 iField = 0; iField < aFieldCount; ++iField)
 				{
-					SAdditionalInput& field = m_AdditionalInputs[iField];
-					PopcornFX::Drawers::SCopyFieldDesc& desc = m_MappedAdditionalInputs[iField];
+					SAdditionalInput					&field = m_AdditionalInputs[iField];
+					PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[iField];
 
 					desc.m_Storage.m_Count = totalParticleCount;
 					desc.m_Storage.m_RawDataPtr = reinterpret_cast<u8*>(PopcornFX::Mem::AdvanceRawPointer(_data, field.m_BufferOffset));
@@ -954,7 +944,10 @@ bool	CBatchDrawer_Billboard_GPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx, 
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_CPU(FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc)
+bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_CPU(FPopcornFXGPUVertexFactory			*vertexFactory,
+																FPopcornFXUniforms					&vsUniforms,
+																FPopcornFXGPUBillboardVSUniforms	&vsUniformsGPUBillboard,
+																const PopcornFX::SDrawCallDesc		&desc)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_CPU");
 
@@ -978,17 +971,23 @@ bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_CPU(FPopcornFXGPUVertex
 	PK_ASSERT(m_Indices.Valid() || (viewDep != null && viewDep->m_Indices.Valid()));
 
 	vsUniforms.InSimData = m_SimData.Buffer()->SRV();
-	vsUniforms.DrawRequestID = -1;
-	vsUniforms.HasSortedIndices = 1; // By default we always generate indices, even when not required. TODO: Fix that to save perf/mem
-	vsUniforms.InIndicesOffset = desc.m_IndexOffset;
-	vsUniforms.InSortedIndices = viewIndependentIndices ? m_Indices.Buffer()->SRV() : viewDep->m_Indices.Buffer()->SRV();
-	vsUniforms.DrawRequest = FVector4f(ForceInitToZero);
+
+	vsUniformsGPUBillboard.DrawRequestID = -1;
+	vsUniformsGPUBillboard.HasSortedIndices = 1; // By default we always generate indices, even when not required. TODO: Fix that to save perf/mem
+	vsUniformsGPUBillboard.InIndicesOffset = desc.m_IndexOffset;
+	vsUniformsGPUBillboard.InSortedIndices = viewIndependentIndices ? m_Indices.Buffer()->SRV() : viewDep->m_Indices.Buffer()->SRV();
+	vsUniformsGPUBillboard.DrawRequest = FVector4f(ForceInitToZero);
 	return true;
 }
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_GPU(u32 drId, const SUERenderContext &renderContext, FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc)
+bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_GPU(u32									drId,
+																const SUERenderContext				&renderContext,
+																FPopcornFXGPUVertexFactory			*vertexFactory,
+																FPopcornFXUniforms				&vsUniforms,
+																FPopcornFXGPUBillboardVSUniforms	&vsUniformsGPUBillboard,
+																const PopcornFX::SDrawCallDesc		&desc)
 {
 #if (PK_HAS_GPU == 1)
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_GPU");
@@ -1046,12 +1045,12 @@ bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_GPU(u32 drId, const SUE
 	// GPU particles draw requests are not currently batched
 	PopcornFX::Drawers::SBillboardDrawRequest	drDesc;
 	drDesc.Setup(br);
-	vsUniforms.DrawRequest = *reinterpret_cast<FVector4f*>(&drDesc);
-	vsUniforms.DrawRequestID = drId;
+	vsUniformsGPUBillboard.DrawRequest = *reinterpret_cast<FVector4f*>(&drDesc);
+	vsUniformsGPUBillboard.DrawRequestID = drId;
 
-	vsUniforms.HasSortedIndices = 0; // TODO: Sorting
-	vsUniforms.InIndicesOffset = 0;//desc.m_IndexOffset;
-	vsUniforms.InSortedIndices = vsUniforms.InSimData/*m_DrawRequests.m_DrawRequestsBufferSRV*/;// TODO
+	vsUniformsGPUBillboard.HasSortedIndices = 0; // TODO: Sorting
+	vsUniformsGPUBillboard.InIndicesOffset = 0;//desc.m_IndexOffset;
+	vsUniformsGPUBillboard.InSortedIndices = vsUniforms.InSimData/*m_DrawRequests.m_DrawRequestsBufferSRV*/;// TODO
 #endif // (PK_HAS_GPU == 1)
 	return true;
 }
@@ -1118,50 +1117,55 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			PK_ASSERT(collectorRes->m_VertexFactory == null);
 			collectorRes->m_VertexFactory = vertexFactory;
 
-			FPopcornFXGPUBillboardVSUniforms	vsUniforms;
+			FPopcornFXUniforms					vsUniforms;
+			FPopcornFXGPUBillboardVSUniforms	vsUniformsGPUBillboard;
+
 #if (PK_HAS_GPU == 1)
 			if (gpuStorage)
 			{
-				if (!_FillDrawCallUniforms_GPU(iDr, renderContext, vertexFactory, vsUniforms, desc))
+				if (!_FillDrawCallUniforms_GPU(iDr, renderContext, vertexFactory, vsUniforms, vsUniformsGPUBillboard, desc))
 					return;
 			}
 			else
 #endif // (PK_HAS_GPU == 1)
 			{
-				if (!_FillDrawCallUniforms_CPU(vertexFactory, vsUniforms, desc))
+				if (!_FillDrawCallUniforms_CPU(vertexFactory, vsUniforms, vsUniformsGPUBillboard, desc))
 					return;
 			}
 
 			// Common
 			{
-				vsUniforms.CapsulesDC = m_CapsulesDC ? 1 : 0;
-				vsUniforms.HasSecondUVSet = m_HasAtlasBlending ? 1 : 0;
-				vsUniforms.InPositionsOffset = m_StreamOffsets[StreamOffset_Positions].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Positions] / sizeof(float)) : -1;
-				vsUniforms.InSizesOffset = m_StreamOffsets[StreamOffset_Sizes].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Sizes] / sizeof(float)) : -1;
-				vsUniforms.InSize2sOffset = m_StreamOffsets[StreamOffset_Size2s].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Size2s] / sizeof(float)) : -1;
-				vsUniforms.InRotationsOffset = m_StreamOffsets[StreamOffset_Rotations].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Rotations] / sizeof(float)) : -1;
-				vsUniforms.InAxis0sOffset = m_StreamOffsets[StreamOffset_Axis0s].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Axis0s] / sizeof(float)) : -1;
-				vsUniforms.InAxis1sOffset = m_StreamOffsets[StreamOffset_Axis1s].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Axis1s] / sizeof(float)) : -1;
-				vsUniforms.InTextureIDsOffset = m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) : -1;
-				vsUniforms.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) : -1;
-				vsUniforms.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors] / sizeof(float)) : -1;
-				vsUniforms.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_AlphaCursors] / sizeof(float)) : -1;
-				vsUniforms.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) : -1;
-				vsUniforms.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) : -1;
-				vsUniforms.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) : -1;
-				vsUniforms.AtlasRectCount = m_AtlasRects.m_AtlasRectsCount;
+				vsUniforms.DynamicParameterMask = matDesc.m_DynamicParameterMask;
+
+				vsUniformsGPUBillboard.CapsulesDC = m_CapsulesDC ? 1 : 0;
+				vsUniformsGPUBillboard.HasSecondUVSet = m_HasAtlasBlending ? 1 : 0;
+				vsUniformsGPUBillboard.InPositionsOffset = m_StreamOffsets[StreamOffset_Positions].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Positions] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InSizesOffset = m_StreamOffsets[StreamOffset_Sizes].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Sizes] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InSize2sOffset = m_StreamOffsets[StreamOffset_Size2s].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Size2s] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InRotationsOffset = m_StreamOffsets[StreamOffset_Rotations].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Rotations] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InAxis0sOffset = m_StreamOffsets[StreamOffset_Axis0s].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Axis0s] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InAxis1sOffset = m_StreamOffsets[StreamOffset_Axis1s].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Axis1s] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InTextureIDsOffset = m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_AlphaCursors] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.AtlasRectCount = m_AtlasRects.m_AtlasRectsCount;
 
 				if (m_AtlasRects.m_AtlasBufferSRV != null)
-					vsUniforms.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV;
+					vsUniformsGPUBillboard.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV;
 				else
-					vsUniforms.AtlasBuffer = vsUniforms.InSimData; // Dummy SRV
+					vsUniformsGPUBillboard.AtlasBuffer = vsUniforms.InSimData; // Dummy SRV
 
 				if (gpuStorage)
-					vsUniforms.DrawRequests = vsUniforms.InSimData;
+					vsUniformsGPUBillboard.DrawRequests = vsUniforms.InSimData;
 				else
-					vsUniforms.DrawRequests = m_DrawRequests.m_DrawRequestsBufferSRV; // Dummy SRV
+					vsUniformsGPUBillboard.DrawRequests = m_DrawRequests.m_DrawRequestsBufferSRV; // Dummy SRV
 
-				vertexFactory->m_VSUniformBuffer = FPopcornFXGPUBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
+				vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
+				vertexFactory->m_GPUBillboardVSUniformBuffer = FPopcornFXGPUBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsGPUBillboard, UniformBuffer_SingleFrame);
 
 				PK_ASSERT(!vertexFactory->IsInitialized());
 				vertexFactory->InitResource();
@@ -1252,6 +1256,7 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 #endif // RHI_RAYTRACING
 			{
 				INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsCount, 1);
+				INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsMeshCount, 1);
 
 				collector->AddMesh(realViewIndex, meshBatch);
 			}

@@ -10,9 +10,15 @@
 
 #include "PopcornFXRendererMaterial.generated.h"
 
+namespace PopcornFX
+{
+	struct	SRendererDeclaration;
+}
+
 class	UMaterialInterface;
 class	UMaterialInstanceConstant;
 class	UStaticMesh;
+class	USkeletalMesh;
 class	UTexture;
 class	UTexture2D;
 
@@ -141,6 +147,8 @@ public:
 	UTexture2D					*VATTextureColor;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UTexture2D					*VATTextureRotation;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	UTexture2D					*TextureSkeletalAnimation;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UPopcornFXTextureAtlas		*TextureAtlas;
@@ -206,15 +214,42 @@ public:
 	float						VATPositionBoundsMax;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32						SkeletalAnimationCount;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	FVector						SkeletalAnimationPosBoundsMin;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	FVector						SkeletalAnimationPosBoundsMax;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32						SkeletalAnimationLinearInterpolate : 1;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32						SkeletalAnimationLinearInterpolateTracks : 1;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	float						MaskThreshold;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	int32						DrawOrder;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32						DynamicParameterMask;
 
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	USkeletalMesh				*SkeletalMesh;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UStaticMesh					*StaticMesh;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	uint32						StaticMeshLOD;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32						PerParticleLOD : 1;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32						MotionBlur : 1;
+
+	UPROPERTY()
+	TArray<uint32>				m_SkeletalMeshBoneIndicesReorder;
+	UPROPERTY()
+	uint32						m_SkeletalMeshBoneMapSum;
 
 	UPROPERTY()
 	int32						m_RMId;
@@ -223,10 +258,13 @@ public:
 	UMaterialInstanceConstant	*MaterialInstance;
 
 	FPopcornFXSubRendererMaterial();
+	~FPopcornFXSubRendererMaterial();
 
 #if WITH_EDITOR
 	bool				_ResetDefaultMaterial_NoReload();
 	UMaterialInterface	*FindDefaultMaterial() const;
+	bool				BuildSkelMeshBoneIndicesReorder();
+	void				BuildDynamicParameterMask(const PopcornFX::SRendererDeclaration &decl);
 	void				RenameDependenciesIFN(UObject* oldAsset, UObject* newAsset);
 #endif
 
@@ -246,17 +284,6 @@ public:
 			TextureMotionVectors == other.TextureMotionVectors &&
 			TextureSixWay_RLTS == other.TextureSixWay_RLTS &&
 			TextureSixWay_BBF == other.TextureSixWay_BBF &&
-			//VATTexturePosition == other.VATTexturePosition &&
-			//VATTextureNormal == other.VATTextureNormal &&
-			//VATTextureColor == other.VATTextureColor &&
-			//VATTextureRotation == other.VATTextureRotation &&
-			//VATNumFrames == other.VATNumFrames &&
-			//VATPackedData == other.VATPackedData &&
-			//VATPivotBoundsMin == other.VATPivotBoundsMin &&
-			//VATPivotBoundsMax == other.VATPivotBoundsMax &&
-			//VATNormalizedData == other.VATNormalizedData &&
-			//VATPositionBoundsMin == other.VATPositionBoundsMin &&
-			//VATPositionBoundsMax == other.VATPositionBoundsMax &&
 			NoAlpha == other.NoAlpha &&
 			MeshAtlas == other.MeshAtlas &&
 			Raytraced == other.Raytraced &&
@@ -266,6 +293,7 @@ public:
 			MVDistortionStrengthRows == other.MVDistortionStrengthRows &&
 			SoftnessDistance == other.SoftnessDistance &&
 			DrawOrder == other.DrawOrder &&
+			DynamicParameterMask == other.DynamicParameterMask &&
 			CastShadow == other.CastShadow &&
 			Lit == other.Lit &&
 			SortIndices == other.SortIndices;
@@ -275,7 +303,11 @@ public:
 	{
 		// caller should have check that beforehand
 		ensure(StaticMesh == other.StaticMesh);
+		ensure(SkeletalMesh == other.SkeletalMesh);
 		ensure(StaticMeshLOD == other.StaticMeshLOD);
+		ensure(PerParticleLOD == other.PerParticleLOD);
+		ensure(MotionBlur == other.MotionBlur);
+		ensure(m_SkeletalMeshBoneIndicesReorder.Num() == other.m_SkeletalMeshBoneIndicesReorder.Num());
 		return
 			Material == other.Material && // Mandatory
 			TextureDiffuse == other.TextureDiffuse &&
@@ -286,8 +318,6 @@ public:
 			TextureAlphaRemapper == other.TextureAlphaRemapper &&
 			TextureAtlas == other.TextureAtlas && // not a parameter, yet ?
 			TextureMotionVectors == other.TextureMotionVectors &&
-			//TextureSixWay_RLTS == other.TextureSixWay_RLTS &&
-			//TextureSixWay_BBF == other.TextureSixWay_BBF &&
 			VATTexturePosition == other.VATTexturePosition &&
 			VATTextureNormal == other.VATTextureNormal &&
 			VATTextureColor == other.VATTextureColor &&
@@ -299,6 +329,12 @@ public:
 			VATNormalizedData == other.VATNormalizedData &&
 			VATPositionBoundsMin == other.VATPositionBoundsMin &&
 			VATPositionBoundsMax == other.VATPositionBoundsMax &&
+			TextureSkeletalAnimation == other.TextureSkeletalAnimation &&
+			SkeletalAnimationCount == other.SkeletalAnimationCount &&
+			SkeletalAnimationPosBoundsMin == other.SkeletalAnimationPosBoundsMin &&
+			SkeletalAnimationPosBoundsMax == other.SkeletalAnimationPosBoundsMax &&
+			SkeletalAnimationLinearInterpolate == other.SkeletalAnimationLinearInterpolate &&
+			SkeletalAnimationLinearInterpolateTracks == other.SkeletalAnimationLinearInterpolateTracks &&
 			NoAlpha == other.NoAlpha &&
 			MeshAtlas == other.MeshAtlas &&
 			Raytraced == other.Raytraced &&
@@ -308,6 +344,7 @@ public:
 			MVDistortionStrengthColumns == other.MVDistortionStrengthColumns &&
 			MVDistortionStrengthRows == other.MVDistortionStrengthRows &&
 			DrawOrder == other.DrawOrder &&
+			DynamicParameterMask == other.DynamicParameterMask &&
 			CastShadow == other.CastShadow &&
 			Lit == other.Lit &&
 			SortIndices == other.SortIndices;
@@ -370,7 +407,7 @@ public:
 	const FPopcornFXSubRendererMaterial	*GetSubMaterial(uint32 index) const { if (index >= uint32(SubMaterials.Num())) return nullptr; return &(SubMaterials[index]); }
 	uint32								SubMaterialCount() const { return SubMaterials.Num(); }
 
-	UMaterialInstanceConstant				*GetInstance(uint32 subMatId, bool forRenderThread) const;
+	UMaterialInstanceConstant			*GetInstance(uint32 subMatId, bool forRenderThread) const;
 
 private:
 #if WITH_EDITOR

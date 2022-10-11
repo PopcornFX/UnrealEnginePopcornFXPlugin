@@ -5,6 +5,7 @@
 
 #include "PopcornFXVertexFactoryShaderParameters.h"
 #include "PopcornFXVertexFactory.h"
+#include "PopcornFXVertexFactoryCommon.h"
 
 #include "PopcornFXCustomVersion.h"
 
@@ -32,8 +33,9 @@ void	FPopcornFXVertexFactoryShaderParametersVertex::GetElementShaderBindings(con
 																				FVertexInputStreamArray &vertexStreams) const
 {
 	FPopcornFXVertexFactory	*_vertexFactory = (FPopcornFXVertexFactory*)vertexFactory;
-	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXBillboardVSUniforms>(), _vertexFactory->GetVSUniformBuffer());
-	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXBillboardCommonUniforms>(), _vertexFactory->GetCommonUniformBuffer());
+	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXUniforms>(), _vertexFactory->GetVSUniformBuffer());
+	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXBillboardVSUniforms>(), _vertexFactory->GetBillboardVSUniformBuffer());
+	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXBillboardCommonUniforms>(), _vertexFactory->GetBillboardCommonUniformBuffer());
 }
 
 //----------------------------------------------------------------------------
@@ -53,7 +55,8 @@ void	FPopcornFXVertexFactoryShaderParametersPixel::GetElementShaderBindings(cons
 																				FVertexInputStreamArray &vertexStreams) const
 {
 	FPopcornFXVertexFactory	*_vertexFactory = (FPopcornFXVertexFactory*)vertexFactory;
-	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXBillboardCommonUniforms>(), _vertexFactory->GetCommonUniformBuffer());
+	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXUniforms>(), _vertexFactory->GetVSUniformBuffer());
+	shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXBillboardCommonUniforms>(), _vertexFactory->GetBillboardCommonUniformBuffer());
 }
 
 //----------------------------------------------------------------------------

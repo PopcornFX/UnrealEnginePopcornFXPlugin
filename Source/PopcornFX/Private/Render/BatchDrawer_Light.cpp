@@ -10,8 +10,8 @@
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "PopcornFXStats.h"
 
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
-#include <pk_render_helpers/include/basic_renderer_properties/rh_vertex_animation_renderer_properties.h>
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
 
 //----------------------------------------------------------------------------
 
@@ -206,6 +206,7 @@ void	CBatchDrawer_Light::_IssueDrawCall_Light(const SUERenderContext &renderCont
 			}
 		}
 	}
+	INC_DWORD_STAT_BY(STAT_PopcornFX_LightCount, totalParticleCount);
 }
 
 //----------------------------------------------------------------------------

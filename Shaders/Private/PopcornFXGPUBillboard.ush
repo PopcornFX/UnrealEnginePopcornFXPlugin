@@ -7,6 +7,8 @@
 PopcornFXGPUBillboard.ush: GPU billboarder code
 =============================================================================*/
 
+#include "PopcornFXCommon.ush"
+
 #define USE_PARTICLE_POSITION (NEEDS_PARTICLE_POSITION)
 #define USE_PARTICLE_VELOCITY (NEEDS_PARTICLE_VELOCITY)
 #define USE_PARTICLE_TIME (NEEDS_PARTICLE_TIME)
@@ -94,42 +96,6 @@ struct	FVertexFactoryIntermediates
 #define BILLBOARD_PlaneAligned			6U
 
 //----------------------------------------------------------------------------
-// Load functions
-//----------------------------------------------------------------------------
-
-float	PKSimData_Loadf(uint id, uint offset)
-{
-	return asfloat(PopcornFXVSUniforms.InSimData[offset + id]);
-}
-
-//----------------------------------------------------------------------------
-
-float2	PKSimData_Load2f(uint id, uint offset)
-{
-	return float2(asfloat(PopcornFXVSUniforms.InSimData[offset + id * 2 + 0]),
-				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 2 + 1]));
-}
-
-//----------------------------------------------------------------------------
-
-float3	PKSimData_Load3f(uint id, uint offset)
-{
-	return float3(asfloat(PopcornFXVSUniforms.InSimData[offset + id * 3 + 0]),
-				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 3 + 1]),
-				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 3 + 2]));
-}
-
-//----------------------------------------------------------------------------
-
-float4	PKSimData_Load4f(uint id, uint offset)
-{
-	return float4(asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 0]),
-				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 1]),
-				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 2]),
-				  asfloat(PopcornFXVSUniforms.InSimData[offset + id * 4 + 3]));
-}
-
-//----------------------------------------------------------------------------
 
 float3	PopcornFXSideAxisFromNrmUp(float3 nrm, float3 upAxis)
 {
@@ -148,7 +114,7 @@ float3	PopcornFXSideAxisFromNrmUp(float3 nrm, float3 upAxis)
 
 void	RotateTangents(uint particleID, inout float3 xAxis, inout float3 yAxis)
 {
-	const float	rotation = PKSimData_Loadf(particleID, PopcornFXVSUniforms.InRotationsOffset);
+	const float	rotation = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InRotationsOffset);
 	float		rotCos;
 	float		rotSin;
 
@@ -168,33 +134,33 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	uint	particleID = instanceID;
 
 	BRANCH
-	if (PopcornFXVSUniforms.HasSortedIndices)
-		particleID = asuint(PopcornFXVSUniforms.InSortedIndices[PopcornFXVSUniforms.InIndicesOffset + particleID]);
+	if (PopcornFXGPUBillboardVSUniforms.HasSortedIndices)
+		particleID = asuint(PopcornFXGPUBillboardVSUniforms.InSortedIndices[PopcornFXGPUBillboardVSUniforms.InIndicesOffset + particleID]);
 
 	float3	worldPos;
 	float4	currentDr;
 	BRANCH
-	if (PopcornFXVSUniforms.DrawRequestID == -1)
+	if (PopcornFXGPUBillboardVSUniforms.DrawRequestID == -1)
 	{
-		float4		worldPosDrId = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InPositionsOffset);
+		float4		worldPosDrId = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InPositionsOffset);
 		const uint	drId = asuint(worldPosDrId.w);
 
 		worldPos = worldPosDrId.xyz;
-		currentDr = PopcornFXVSUniforms.DrawRequests[drId];
+		currentDr = PopcornFXGPUBillboardVSUniforms.DrawRequests[drId];
 	}
 	else
 	{
-		worldPos = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InPositionsOffset);
-		currentDr = PopcornFXVSUniforms.DrawRequest;
+		worldPos = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InPositionsOffset);
+		currentDr = PopcornFXGPUBillboardVSUniforms.DrawRequest;
 	}
 
 	float2		radius = float2(0.0f, 0.0f);
 
 	BRANCH
-	if (PopcornFXVSUniforms.InSizesOffset != -1)
-		radius = (float2)PKSimData_Loadf(particleID, PopcornFXVSUniforms.InSizesOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InSizesOffset != -1)
+		radius = (float2)PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InSizesOffset);
 	else
-		radius = PKSimData_Load2f(particleID, PopcornFXVSUniforms.InSize2sOffset);
+		radius = PKSimData_Load2f(particleID, PopcornFXGPUBillboardVSUniforms.InSize2sOffset);
 
 	float3			xAxis = float3(0.0f, 0.0f, 0.0f);
 	float3			yAxis = float3(0.0f, 0.0f, 0.0f);
@@ -247,7 +213,7 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	case	BILLBOARD_AxisAligned:
 	{
 		const float3	camToParticle = worldPos - worldCameraOrigin;
-		const float3	axis = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
+		const float3	axis = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InAxis0sOffset);
 
 		xAxis = PopcornFXSideAxisFromNrmUp(camToParticle, axis) * radius.x;
 		yAxis = axis * 0.5f;
@@ -257,7 +223,7 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	case	BILLBOARD_AxisAlignedSpheroid:
 	{
 		const float3	camToParticle = normalize(worldPos - worldCameraOrigin);
-		const float3	axis = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
+		const float3	axis = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InAxis0sOffset);
 
 		xAxis = PopcornFXSideAxisFromNrmUp(camToParticle, axis) * radius.x;
 		const float3	upVec = myCross(xAxis, camToParticle);
@@ -268,7 +234,7 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	case	BILLBOARD_AxisAlignedCapsule:
 	{
 		const float3	camToParticle = normalize(worldPos - worldCameraOrigin);
-		const float3	axis = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
+		const float3	axis = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InAxis0sOffset);
 
 		xAxis = PopcornFXSideAxisFromNrmUp(camToParticle, axis) * radius.x * sqrt(2.f);
 		yAxis = axis * 0.5f;
@@ -282,8 +248,8 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	}
 	case	BILLBOARD_PlaneAligned:
 	{
-		const float3	axisUp = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis0sOffset);
-		const float3	axisNrm = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InAxis1sOffset);
+		const float3	axisUp = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InAxis0sOffset);
+		const float3	axisNrm = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InAxis1sOffset);
 
 		xAxis = PopcornFXSideAxisFromNrmUp(axisNrm, axisUp);
 		yAxis = myCross(xAxis, axisNrm);
@@ -328,7 +294,7 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 #endif
 
 	BRANCH
-	if (PopcornFXVSUniforms.CapsulesDC)
+	if (PopcornFXGPUBillboardVSUniforms.CapsulesDC)
 	{
 		const float		xMax = max(cornerCoords.x, 0.0f);
 		texCoords = float2(xMax + max(cornerCoords.y - 1.0f, 0.0f), xMax + max(-cornerCoords.y - 1.0f, 0.0f));
@@ -345,19 +311,19 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	float	atlasID = 0.0f;
 	intermediates.VertexTexCoords = texCoords.xyxy;
 	BRANCH
-	if (PopcornFXVSUniforms.InTextureIDsOffset != -1)
+	if (PopcornFXGPUBillboardVSUniforms.InTextureIDsOffset != -1)
 	{
 		// Resolve UVs from rectangle list
-		const float		textureID = PKSimData_Loadf(particleID, PopcornFXVSUniforms.InTextureIDsOffset);
-		const uint		atlasID0 = min((uint)abs(textureID), PopcornFXVSUniforms.AtlasRectCount - 1);
-		const float4	rect0 = PopcornFXVSUniforms.AtlasBuffer[atlasID0];
+		const float		textureID = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InTextureIDsOffset);
+		const uint		atlasID0 = min((uint)abs(textureID), PopcornFXGPUBillboardVSUniforms.AtlasRectCount - 1);
+		const float4	rect0 = PopcornFXGPUBillboardVSUniforms.AtlasBuffer[atlasID0];
 
 		intermediates.VertexTexCoords.xy = texCoords * rect0.xy + rect0.zw;
 		BRANCH
-		if (PopcornFXVSUniforms.HasSecondUVSet)
+		if (PopcornFXGPUBillboardVSUniforms.HasSecondUVSet)
 		{
-			const uint		atlasID1 = min(atlasID0 + 1, PopcornFXVSUniforms.AtlasRectCount - 1);
-			const float4	rect1 = PopcornFXVSUniforms.AtlasBuffer[atlasID1];
+			const uint		atlasID1 = min(atlasID0 + 1, PopcornFXGPUBillboardVSUniforms.AtlasRectCount - 1);
+			const float4	rect1 = PopcornFXGPUBillboardVSUniforms.AtlasBuffer[atlasID1];
 
 			intermediates.VertexTexCoords.zw = texCoords * rect1.xy + rect1.zw;
 		}
@@ -377,7 +343,7 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 
 		// TODO: Rething those ifs
 		BRANCH
-		if (PopcornFXVSUniforms.CapsulesDC)
+		if (PopcornFXGPUBillboardVSUniforms.CapsulesDC)
 		{
 			const float		nNormalizer = rsqrt(normalWeight * normalWeight + normalBendingFactor * normalBendingFactor);
 			const float		upAxisStretch = abs(cornerCoords.y) - 1.0f;
@@ -429,31 +395,31 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 
 	// Copies
 	BRANCH
-	if (PopcornFXVSUniforms.InColorsOffset != -1)
-		intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InColorsOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InColorsOffset != -1)
+		intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InColorsOffset);
 	BRANCH
-	if (PopcornFXVSUniforms.InEmissiveColorsOffset != -1)
-		intermediates.ParticleEmissiveColor = PKSimData_Load3f(particleID, PopcornFXVSUniforms.InEmissiveColorsOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset != -1)
+		intermediates.ParticleEmissiveColor = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset);
 	BRANCH
-	if (PopcornFXVSUniforms.InAlphaCursorsOffset != -1)
-		alphaCursor = PKSimData_Loadf(particleID, PopcornFXVSUniforms.InAlphaCursorsOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InAlphaCursorsOffset != -1)
+		alphaCursor = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InAlphaCursorsOffset);
 
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	intermediates.DynamicParameter = float4(atlasID, alphaCursor, 0.0f, 0.0f);
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 2)
 	BRANCH
-	if (PopcornFXVSUniforms.InDynamicParameter1sOffset != -1)
-		intermediates.DynamicParameter1 = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InDynamicParameter1sOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InDynamicParameter1sOffset != -1)
+		intermediates.DynamicParameter1 = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InDynamicParameter1sOffset);
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 4)
 	BRANCH
-	if (PopcornFXVSUniforms.InDynamicParameter2sOffset != -1)
-		intermediates.DynamicParameter2 = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InDynamicParameter2sOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InDynamicParameter2sOffset != -1)
+		intermediates.DynamicParameter2 = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InDynamicParameter2sOffset);
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 8)
 	BRANCH
-	if (PopcornFXVSUniforms.InDynamicParameter3sOffset != -1)
-		intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXVSUniforms.InDynamicParameter3sOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InDynamicParameter3sOffset != -1)
+		intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InDynamicParameter3sOffset);
 #endif
 }

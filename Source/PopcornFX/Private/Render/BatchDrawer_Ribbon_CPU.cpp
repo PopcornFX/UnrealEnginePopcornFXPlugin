@@ -12,10 +12,11 @@
 #include "World/PopcornFXSceneProxy.h"
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "Render/PopcornFXVertexFactory.h"
+#include "Render/PopcornFXVertexFactoryCommon.h"
 #include "PopcornFXStats.h"
 
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
-#include <pk_render_helpers/include/basic_renderer_properties/rh_vertex_animation_renderer_properties.h>
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
 
 //----------------------------------------------------------------------------
 
@@ -127,38 +128,14 @@ bool	CBatchDrawer_Ribbon_CPUBB::AreRenderersCompatible(const PopcornFX::CRendere
 	if (rDesc0.m_RendererMaterial == rDesc1.m_RendererMaterial)
 		return true;
 
-	// If renderer materials are not the same, then they cannot be compatible
-	// Otherwise, they should've been batched at effect import time
-	switch (rDesc0.m_RendererClass)
-	{
-	case	PopcornFX::ERendererClass::Renderer_Billboard:
-	case	PopcornFX::ERendererClass::Renderer_Ribbon:
-	case	PopcornFX::ERendererClass::Renderer_Triangle:
-	{
-		const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
-		const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
-		if (mat0 == null || mat1 == null)
-			return false;
-		if (mat0 == mat1 ||
-			mat0->RenderThread_SameMaterial_Billboard(*mat1))
-			return true;
-		break;
-	}
-	case	PopcornFX::ERendererClass::Renderer_Mesh:
-	{
-		const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
-		const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
-		if (mat0 == null || mat1 == null)
-			return false;
-		if (mat0 == mat1 ||
-			mat0->RenderThread_SameMaterial_Mesh(*mat1))
-			return true;
-		break;
-	}
-	default:
-		PK_ASSERT_NOT_REACHED();
+	PK_ASSERT(rDesc0.m_RendererClass == PopcornFX::ERendererClass::Renderer_Ribbon);
+	const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
+	const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
+	if (mat0 == null || mat1 == null)
 		return false;
-	}
+	if (mat0 == mat1 ||
+		mat0->RenderThread_SameMaterial_Billboard(*mat1))
+		return true;
 	return false;
 }
 
@@ -702,26 +679,30 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vertexFactory->m_Tangents.Setup(viewIndependentPNT ? m_Tangents : viewDep->m_Tangents);
 
 
-			FPopcornFXBillboardVSUniforms		vsUniforms;
-			FPopcornFXBillboardCommonUniforms	commonUniforms;
+			FPopcornFXUniforms					vsUniforms;
+			FPopcornFXBillboardVSUniforms		vsUniformsbillboard;
+			FPopcornFXBillboardCommonUniforms	commonUniformsBillboard;
 
-			vsUniforms.SimData = m_SimData.Buffer()->SRV();
-			vsUniforms.RendererType = static_cast<u32>(PopcornFX::Renderer_Ribbon);
-			vsUniforms.CapsulesOffset = 0;
-			vsUniforms.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
-			vsUniforms.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
-			vsUniforms.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
-			vsUniforms.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();
-			vsUniforms.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].OffsetForShaderConstant();
-			vsUniforms.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
+			vsUniforms.InSimData = m_SimData.Buffer()->SRV();
+			vsUniforms.DynamicParameterMask = matDesc.m_DynamicParameterMask;
 
-			commonUniforms.HasSecondUVSet = m_SecondUVSet;
-			commonUniforms.FlipUVs = false;
-			commonUniforms.NeedsBTN = m_NeedsBTN;
-			commonUniforms.CorrectRibbonDeformation = m_RibbonCorrectDeformation;
+			vsUniformsbillboard.RendererType = static_cast<u32>(PopcornFX::Renderer_Ribbon);
+			vsUniformsbillboard.CapsulesOffset = 0;
+			vsUniformsbillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
+			vsUniformsbillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
+			vsUniformsbillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
+			vsUniformsbillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();
+			vsUniformsbillboard.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].OffsetForShaderConstant();
+			vsUniformsbillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
 
-			vertexFactory->m_VSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
-			vertexFactory->m_CommonUniformBuffer = FPopcornFXBillboardCommonUniformsRef::CreateUniformBufferImmediate(commonUniforms, UniformBuffer_SingleDraw);
+			commonUniformsBillboard.HasSecondUVSet = m_SecondUVSet;
+			commonUniformsBillboard.FlipUVs = false;
+			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
+			commonUniformsBillboard.CorrectRibbonDeformation = m_RibbonCorrectDeformation;
+
+			vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
+			vertexFactory->m_BillboardVSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsbillboard, UniformBuffer_SingleDraw);
+			vertexFactory->m_BillboardCommonUniformBuffer = FPopcornFXBillboardCommonUniformsRef::CreateUniformBufferImmediate(commonUniformsBillboard, UniformBuffer_SingleDraw);
 
 			PK_ASSERT(!vertexFactory->IsInitialized());
 			vertexFactory->InitResource();
@@ -758,6 +739,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 
 		{
 			INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsCount, 1);
+			INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsRibbonCount, 1);
 
 			collector->AddMesh(realViewIndex, meshBatch);
 		}

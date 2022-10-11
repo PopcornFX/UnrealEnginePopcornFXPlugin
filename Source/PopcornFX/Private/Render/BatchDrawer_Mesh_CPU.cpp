@@ -13,23 +13,16 @@
 #include "World/PopcornFXSceneProxy.h"
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "Render/PopcornFXMeshVertexFactory.h"
+#include "Render/PopcornFXVertexFactoryCommon.h"
 #include "PopcornFXStats.h"
 
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
-#include <pk_render_helpers/include/basic_renderer_properties/rh_vertex_animation_renderer_properties.h>
-
-//----------------------------------------------------------------------------
-
-void	CBatchDrawer_Mesh_CPUBB::SAdditionalInput::UnmapBuffer()
-{
-	m_VertexBuffer.Unmap();
-}
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
 
 //----------------------------------------------------------------------------
 
 void	CBatchDrawer_Mesh_CPUBB::SAdditionalInput::ClearBuffer()
 {
-	m_VertexBuffer.UnmapAndClear();
 	m_ByteSize = 0;
 	m_BufferOffset = 0;
 	m_AdditionalInputIndex = 0;
@@ -38,9 +31,6 @@ void	CBatchDrawer_Mesh_CPUBB::SAdditionalInput::ClearBuffer()
 //----------------------------------------------------------------------------
 
 CBatchDrawer_Mesh_CPUBB::CBatchDrawer_Mesh_CPUBB()
-:	m_TotalParticleCount(0)
-,	m_TotalVertexCount(0)
-,	m_TotalIndexCount(0)
 {
 }
 
@@ -104,38 +94,14 @@ bool	CBatchDrawer_Mesh_CPUBB::AreRenderersCompatible(const PopcornFX::CRendererD
 	if (rDesc0.m_RendererMaterial == rDesc1.m_RendererMaterial)
 		return true;
 
-	// If renderer materials are not the same, then they cannot be compatible
-	// Otherwise, they should've been batched at effect import time
-	switch (rDesc0.m_RendererClass)
-	{
-	case	PopcornFX::ERendererClass::Renderer_Billboard:
-	case	PopcornFX::ERendererClass::Renderer_Ribbon:
-	case	PopcornFX::ERendererClass::Renderer_Triangle:
-	{
-		const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
-		const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
-		if (mat0 == null || mat1 == null)
-			return false;
-		if (mat0 == mat1 ||
-			mat0->RenderThread_SameMaterial_Billboard(*mat1))
-			return true;
-		break;
-	}
-	case	PopcornFX::ERendererClass::Renderer_Mesh:
-	{
-		const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
-		const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
-		if (mat0 == null || mat1 == null)
-			return false;
-		if (mat0 == mat1 ||
-			mat0->RenderThread_SameMaterial_Mesh(*mat1))
-			return true;
-		break;
-	}
-	default:
-		PK_ASSERT_NOT_REACHED();
+	PK_ASSERT(rDesc0.m_RendererClass == PopcornFX::ERendererClass::Renderer_Mesh);
+	const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
+	const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
+	if (mat0 == null || mat1 == null)
 		return false;
-	}
+	if (mat0 == mat1 ||
+		mat0->RenderThread_SameMaterial_Mesh(*mat1))
+		return true;
 	return false;
 }
 
@@ -184,8 +150,8 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 			outStreamOffsetType = StreamOffset_DynParam1s;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput2_Input2())
 			outStreamOffsetType = StreamOffset_DynParam2s;
-		//else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
-		//	outStreamOffsetType = StreamOffset_DynParam3s;
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
+			outStreamOffsetType = StreamOffset_DynParam3s;
 	}
 	else if (type == PopcornFX::EBaseTypeID::BaseType_Float3)
 	{
@@ -196,6 +162,8 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
+			outStreamOffsetType = StreamOffset_TextureIDs;
 		else if (fieldName == PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_Cursor() ||
 				 fieldName == PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_Cursor() ||
 				 fieldName == PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_Cursor())
@@ -226,15 +194,9 @@ bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const
 	PK_ASSERT(rbManager != null);
 
 	CVertexBufferPool	*mainVBPool = &rbManager->VBPool();
-	CIndexBufferPool	*mainIBPool = &rbManager->IBPool();
 	CVertexBufferPool	*particleDataVBPool = &rbManager->VBPool_VertexBB();
 	PK_ASSERT(mainVBPool != null);
-	PK_ASSERT(mainIBPool != null);
 	PK_ASSERT(particleDataVBPool != null);
-
-	const u32	totalParticleCount = m_TotalParticleCount;
-	const u32	totalVertexCount = m_TotalVertexCount;
-	const u32	totalIndexCount = m_TotalIndexCount;
 
 	// View independent
 	const PopcornFX::SGeneratedInputs	&toGenerate = drawPass.m_ToGenerate;
@@ -290,13 +252,10 @@ bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const
 				return false;
 			SAdditionalInput	&newAdditionalInput = m_AdditionalInputs.Last();
 
-			if (!mainVBPool->Allocate(newAdditionalInput.m_VertexBuffer, totalParticleCount, typeSize))
-				return false;
-
 			newAdditionalInput.m_BufferOffset = m_SimDataBufferSizeInBytes;
 			newAdditionalInput.m_ByteSize = typeSize;
 			newAdditionalInput.m_AdditionalInputIndex = iField;
-			m_SimDataBufferSizeInBytes += typeSize * totalParticleCount;
+			m_SimDataBufferSizeInBytes += typeSize * m_TotalParticleCount;
 		}
 
 		if (m_SimDataBufferSizeInBytes > 0) // m_SimDataBufferSizeInBytes being 0 means no additional inputs ?
@@ -304,6 +263,22 @@ bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const
 			const u32	elementCount = m_SimDataBufferSizeInBytes / sizeof(float);
 			if (!particleDataVBPool->Allocate(m_SimData, elementCount, sizeof(float), false))
 				return false;
+		}
+
+		{
+			PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::AllocBuffers (map atlas data)");
+
+			// CPU particles, only map atlas data
+			// TODO: move that in the renderer cache instead of doing that each frame
+			PopcornFX::TMemoryView<const PopcornFX::Drawers::SMesh_DrawRequest * const>	drawRequests = drawPass.DrawRequests<PopcornFX::Drawers::SMesh_DrawRequest>();
+			const PopcornFX::Drawers::SMesh_BillboardingRequest							&compatBr = drawRequests.First()->m_BB;
+
+			if (compatBr.m_Atlas != null)
+			{
+				if (!PK_VERIFY(m_AtlasRects.LoadRects(compatBr.m_Atlas->m_RectsFp32)))
+					return false;
+				PK_ASSERT(m_AtlasRects.Loaded());
+			}
 		}
 	}
 	return true;
@@ -332,10 +307,6 @@ bool	CBatchDrawer_Mesh_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx, const
 	// Meshes
 	m_Instanced_Matrices.Unmap();
 
-	const u32	aFieldCount = m_AdditionalInputs.Count();
-	for (u32 iField = 0; iField < aFieldCount; ++iField)
-		m_AdditionalInputs[iField].UnmapBuffer();
-
 	return true;
 }
 
@@ -357,12 +328,6 @@ void	CBatchDrawer_Mesh_CPUBB::_ClearBuffers()
 #endif // RHI_RAYTRACING
 
 	m_Mapped_Matrices.Clear();
-	m_Mapped_Param_Colors.Clear();
-	m_Mapped_Param_EmissiveColors.Clear();
-	m_Mapped_Param_DynamicParameter0.Clear();
-	m_Mapped_Param_DynamicParameter1.Clear();
-	m_Mapped_Param_DynamicParameter2.Clear();
-	//m_Mapped_Param_DynamicParameter3.Clear();
 
 	const u32	aFieldCount = m_AdditionalInputs.Count();
 	for (u32 iField = 0; iField < aFieldCount; ++iField)
@@ -385,15 +350,6 @@ bool	CBatchDrawer_Mesh_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const P
 
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
 
-	// Note: all of this verbose code related to additional inputs will be removed in future PK versions when all particle data is mapped in a single GPU buffer.
-	// This will allow support for all 4 shader parameters + VATs without vertex attribute limitations and will remove the need for explicit naming.
-	const bool		hasColors = m_AdditionalStreamOffsets[StreamOffset_Colors].Valid();
-	const bool		hasVATCursors = m_AdditionalStreamOffsets[StreamOffset_VATCursors].Valid();
-	const bool		hasDynParam0 = m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid();
-	const bool		hasDynParam1 = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid();
-	const bool		hasDynParam2 = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid();
-	const u32		mappedAdditionalInputCount = (u32)hasColors + (u32)hasVATCursors + (u32)hasDynParam0 + (u32)hasDynParam1 + (u32)hasDynParam2;
-
 	PK_ASSERT(m_Instanced_Matrices.Valid());
 
 	m_Mapped_Matrices = TStridedMemoryView<CFloat4x4>(0, m_TotalParticleCount);
@@ -413,107 +369,32 @@ bool	CBatchDrawer_Mesh_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const P
 	}
 #endif // RHI_RAYTRACING
 
-	// Additional input mapping (named because re-used when issuing draw calls)
-	if (hasColors)
+	if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
 	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_Colors].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-
-		m_Mapped_Param_Colors = TStridedMemoryView<CFloat4>(0, m_TotalParticleCount);
-		if (!m_AdditionalInputs[inputId].m_VertexBuffer->Map(m_Mapped_Param_Colors))
-			return false;
-	}
-	if (hasVATCursors)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_VATCursors].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-
-		m_Mapped_Param_VATCursors = TStridedMemoryView<float>(0, m_TotalParticleCount);
-		if (!m_AdditionalInputs[inputId].m_VertexBuffer->Map(m_Mapped_Param_VATCursors))
-			return false;
-	}
-	if (hasDynParam0)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam0s].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-
-		m_Mapped_Param_DynamicParameter0 = TStridedMemoryView<CFloat4>(0, m_TotalParticleCount);
-		if (!m_AdditionalInputs[inputId].m_VertexBuffer->Map(m_Mapped_Param_DynamicParameter0))
-			return false;
-	}
-	if (hasDynParam1)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-
-		m_Mapped_Param_DynamicParameter1 = TStridedMemoryView<CFloat4>(0, m_TotalParticleCount);
-		if (!m_AdditionalInputs[inputId].m_VertexBuffer->Map(m_Mapped_Param_DynamicParameter1))
-			return false;
-	}
-	if (hasDynParam2)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-
-		m_Mapped_Param_DynamicParameter2 = TStridedMemoryView<CFloat4>(0, m_TotalParticleCount);
-		if (!m_AdditionalInputs[inputId].m_VertexBuffer->Map(m_Mapped_Param_DynamicParameter2))
-			return false;
-	}
-
-	if (mappedAdditionalInputCount > 0)
-	{
-		u32	mappedBufferIndex = 0;
-		if (!PK_VERIFY(m_MappedAdditionalInputs.Resize(mappedAdditionalInputCount)))
-			return false;
-		if (hasColors)
+		// Map global GPU buffer
+		PK_ASSERT(m_SimData.Valid());
+		PopcornFX::TMemoryView<float>	simData;
 		{
-			const u32							inputId = m_AdditionalStreamOffsets[StreamOffset_Colors].InputId();
-			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[mappedBufferIndex++];
-			desc.m_AdditionalInputIndex = m_AdditionalInputs[inputId].m_AdditionalInputIndex;
-			desc.m_Storage.m_Count = m_TotalParticleCount;
-			desc.m_Storage.m_RawDataPtr = reinterpret_cast<u8*>(m_Mapped_Param_Colors.Data());
-			desc.m_Storage.m_Stride = sizeof(CFloat4);
+			const u32	elementCount = m_SimDataBufferSizeInBytes / sizeof(float);
+			if (!m_SimData->Map(simData, elementCount))
+				return false;
 		}
-		if (hasVATCursors)
+		float	*_data = simData.Data();
+
+		// Additional inputs
+		const u32	aFieldCount = m_AdditionalInputs.Count();
+
+		if (!PK_VERIFY(m_MappedAdditionalInputs.Resize(aFieldCount)))
+			return false;
+		for (u32 iField = 0; iField < aFieldCount; ++iField)
 		{
-			const u32							inputId = m_AdditionalStreamOffsets[StreamOffset_VATCursors].InputId();
-			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[mappedBufferIndex++];
-			desc.m_AdditionalInputIndex = m_AdditionalInputs[inputId].m_AdditionalInputIndex;
+			SAdditionalInput					&field = m_AdditionalInputs[iField];
+			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[iField];
+
 			desc.m_Storage.m_Count = m_TotalParticleCount;
-			desc.m_Storage.m_RawDataPtr = reinterpret_cast<u8*>(m_Mapped_Param_VATCursors.Data());
-			desc.m_Storage.m_Stride = sizeof(float);
-		}
-		if (hasDynParam0)
-		{
-			const u32							inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam0s].InputId();
-			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[mappedBufferIndex++];
-			desc.m_AdditionalInputIndex = m_AdditionalInputs[inputId].m_AdditionalInputIndex;
-			desc.m_Storage.m_Count = m_TotalParticleCount;
-			desc.m_Storage.m_RawDataPtr = reinterpret_cast<u8*>(m_Mapped_Param_DynamicParameter0.Data());
-			desc.m_Storage.m_Stride = sizeof(CFloat4);
-		}
-		if (hasDynParam1)
-		{
-			const u32							inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].InputId();
-			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[mappedBufferIndex++];
-			desc.m_AdditionalInputIndex = m_AdditionalInputs[inputId].m_AdditionalInputIndex;
-			desc.m_Storage.m_Count = m_TotalParticleCount;
-			desc.m_Storage.m_RawDataPtr = reinterpret_cast<u8*>(m_Mapped_Param_DynamicParameter1.Data());
-			desc.m_Storage.m_Stride = sizeof(CFloat4);
-		}
-		if (hasDynParam2)
-		{
-			const u32							inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].InputId();
-			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[mappedBufferIndex++];
-			desc.m_AdditionalInputIndex = m_AdditionalInputs[inputId].m_AdditionalInputIndex;
-			desc.m_Storage.m_Count = m_TotalParticleCount;
-			desc.m_Storage.m_RawDataPtr = reinterpret_cast<u8*>(m_Mapped_Param_DynamicParameter2.Data());
-			desc.m_Storage.m_Stride = sizeof(CFloat4);
+			desc.m_Storage.m_RawDataPtr = reinterpret_cast<u8*>(PopcornFX::Mem::AdvanceRawPointer(_data, field.m_BufferOffset));
+			desc.m_Storage.m_Stride = field.m_ByteSize;
+			desc.m_AdditionalInputIndex = field.m_AdditionalInputIndex;
 		}
 		m_BBJobs_Mesh.m_Exec_CopyField.m_FieldsToCopy = m_MappedAdditionalInputs.View();
 	}
@@ -562,56 +443,39 @@ void	CBatchDrawer_Mesh_CPUBB::_PreSetupMeshData(FPopcornFXMeshVertexFactory::FDa
 
 //----------------------------------------------------------------------------
 
-void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(u32 buffersOffset, FMeshElementCollector *collector, FPopcornFXMeshVertexFactory *&outFactory, FPopcornFXMeshCollector *&outCollectorRes)
+void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_RenderThread	&matDesc,
+															u32									buffersOffset,
+															FMeshElementCollector				*collector,
+															FPopcornFXMeshVertexFactory			*&outFactory,
+															FPopcornFXMeshCollector				*&outCollectorRes)
 {
-	// Note: all of this verbose code related to additional inputs will be removed in future PK versions when all particle data is mapped in a single GPU buffer.
-	// This will allow support for all 4 shader parameters + VATs without vertex attribute limitations and will remove the need for explicit naming.
-
-	// Should we even allow render without a color stream ? Default value ?
-	const bool	hasColors = m_AdditionalStreamOffsets[StreamOffset_Colors].Valid();
-	const bool	hasVATCursors = m_AdditionalStreamOffsets[StreamOffset_VATCursors].Valid();
-	const bool	hasDynParam0 = m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid();
-	const bool	hasDynParam1 = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid();
-	const bool	hasDynParam2 = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid();
-
 	// Resets m_VFData, that is *copied* per VF
 	m_VFData.m_InstancedMatrices.Setup(m_Instanced_Matrices, buffersOffset * sizeof(CFloat4x4));
 
-	if (hasColors)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_Colors].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-		m_VFData.m_InstancedColors.Setup(m_AdditionalInputs[inputId].m_VertexBuffer, buffersOffset * sizeof(CFloat4)); // Warning: Colors Stride with GPU particles might be different
-	}
-	if (hasVATCursors)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_VATCursors].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-		m_VFData.m_InstancedVATCursors.Setup(m_AdditionalInputs[inputId].m_VertexBuffer, buffersOffset * sizeof(float));
-	}
-	if (hasDynParam0)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam0s].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-		m_VFData.m_InstancedDynamicParameters0.Setup(m_AdditionalInputs[inputId].m_VertexBuffer, buffersOffset * sizeof(CFloat4));
-	}
-	if (hasDynParam1)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-		m_VFData.m_InstancedDynamicParameters1.Setup(m_AdditionalInputs[inputId].m_VertexBuffer, buffersOffset * sizeof(CFloat4));
-	}
-	if (hasDynParam2)
-	{
-		const u32	inputId = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].InputId();
-		PK_ASSERT(inputId < m_AdditionalInputs.Count());
-		PK_ASSERT(m_AdditionalInputs[inputId].m_VertexBuffer.Valid());
-		m_VFData.m_InstancedDynamicParameters2.Setup(m_AdditionalInputs[inputId].m_VertexBuffer, buffersOffset * sizeof(CFloat4));
-	}
+	FPopcornFXUniforms			vsUniforms;
+	FPopcornFXMeshVSUniforms	vsUniformsMesh;
+
+	vsUniforms.InSimData = m_SimData.Buffer()->SRV();
+	vsUniforms.DynamicParameterMask = matDesc.m_DynamicParameterMask;
+
+	vsUniformsMesh.AtlasRectCount = m_AtlasRects.m_AtlasRectsCount;
+	if (m_AtlasRects.m_AtlasBufferSRV != null)
+		vsUniformsMesh.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV;
+	else
+		vsUniformsMesh.AtlasBuffer = vsUniforms.InSimData; // Dummy SRV
+
+	vsUniformsMesh.InAlphaCursorsOffset =			m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_AlphaCursors] / sizeof(float)) + buffersOffset) : -1;
+	vsUniformsMesh.InTextureIDsOffset =				m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) + buffersOffset) : -1;
+	vsUniformsMesh.InVATCursorsOffset =				m_AdditionalStreamOffsets[StreamOffset_VATCursors].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATCursors] / sizeof(float)) + buffersOffset) : -1;
+
+	vsUniformsMesh.InEmissiveColorsOffset =			m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors] / sizeof(float)) + buffersOffset * 3) : -1;
+
+	vsUniformsMesh.InColorsOffset =					m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) + buffersOffset * 4) : -1;
+	vsUniformsMesh.InDynamicParameter0sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam0s] / sizeof(float)) + buffersOffset * 4) : -1;
+	vsUniformsMesh.InDynamicParameter1sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) + buffersOffset * 4) : -1;
+	vsUniformsMesh.InDynamicParameter2sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) + buffersOffset * 4) : -1;
+	vsUniformsMesh.InDynamicParameter3sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) + buffersOffset * 4) : -1;
+
 	m_VFData.bInitialized = true;
 
 	// Create the vertex factory
@@ -626,6 +490,8 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(u32 buffersOffset, FMeshE
 
 		outFactory = outCollectorRes->m_VertexFactory;
 		outFactory->SetData(m_VFData);
+		outFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
+		outFactory->m_MeshVSUniformBuffer = FPopcornFXMeshVSUniformsRef::CreateUniformBufferImmediate(vsUniformsMesh, UniformBuffer_SingleFrame);
 		PK_ASSERT(!outFactory->IsInitialized());
 		outFactory->InitResource();
 	}
@@ -636,6 +502,7 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(u32 buffersOffset, FMeshE
 #if RHI_RAYTRACING
 void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc)
 {
+#if 0
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::IssueDrawCall_Mesh");
 
 	CRendererSubView	*view = renderContext.m_RendererSubView;
@@ -652,9 +519,6 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUERenderCo
 	const FPopcornFXSceneProxy	*sceneProxy = view->SceneProxy();
 	PK_ASSERT(collector != null);
 	PK_ASSERT(sceneProxy != null);
-
-	const u32	totalParticleCount = desc.m_TotalParticleCount;
-	PK_ASSERT(totalParticleCount == m_TotalParticleCount);
 
 	CRendererCache	*matCache = static_cast<CRendererCache*>(desc.m_RendererCaches.First().Get());
 	if (!PK_VERIFY(matCache != null))
@@ -756,17 +620,20 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUERenderCo
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 		}
 	}
+#endif
 }
 #endif // RHI_RAYTRACING
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Mesh_CPUBB::_BuildMeshBatch_Mesh(	FMeshBatch &meshBatch,
-														const FPopcornFXSceneProxy *sceneProxy,
-														const FSceneView *view,
-														const CMaterialDesc_RenderThread &matDesc,
-														u32 iSection,
-														u32 sectionParticleCount)
+bool	CBatchDrawer_Mesh_CPUBB::_BuildMeshBatch_Mesh(	FMeshBatch							&meshBatch,
+														const FPopcornFXSceneProxy			*sceneProxy,
+														const FSceneView					*view,
+														const CMaterialDesc_RenderThread	&matDesc,
+														const FStaticMeshLODResources		&LODResources,
+														u32									LODLevel,
+														u32									iSection,
+														u32									sectionParticleCount)
 {
 	PK_ASSERT(sceneProxy != null);
 
@@ -785,7 +652,7 @@ bool	CBatchDrawer_Mesh_CPUBB::_BuildMeshBatch_Mesh(	FMeshBatch &meshBatch,
 	meshBatch.MaterialRenderProxy = matDesc.RenderProxy(); // TODO: Check with v1 impl.
 	meshBatch.bCanApplyViewModeOverrides = true;
 
-	const FStaticMeshSection	&section = matDesc.m_LODResources->Sections[iSection];
+	const FStaticMeshSection	&section = LODResources.Sections[iSection];
 	if (!PK_VERIFY(section.NumTriangles > 0))
 		return false;
 	FMeshBatchElement	&batchElement = meshBatch.Elements[0];
@@ -795,12 +662,89 @@ bool	CBatchDrawer_Mesh_CPUBB::_BuildMeshBatch_Mesh(	FMeshBatch &meshBatch,
 	batchElement.MaxVertexIndex = section.MaxVertexIndex;
 	batchElement.NumInstances = sectionParticleCount; // Ignored by raytracing pass
 
-	batchElement.IndexBuffer = &matDesc.m_LODResources->IndexBuffer;
+	batchElement.IndexBuffer = &LODResources.IndexBuffer;
 	batchElement.NumPrimitives = section.NumTriangles;
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+	batchElement.VisualizeElementIndex = iSection;
+
+	meshBatch.LODIndex = LODLevel;
+	meshBatch.VisualizeLODIndex = LODLevel;
+#endif // !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
 	batchElement.UserIndex = 0;
 
 	return true;
+}
+
+//----------------------------------------------------------------------------
+
+void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_Sections(	const FPopcornFXSceneProxy				*sceneProxy,
+																const SUERenderContext					&renderContext,
+																const PopcornFX::SDrawCallDesc			&desc,
+																const PopcornFX::TMemoryView<const u32>	&perSectionPCount,
+																CMaterialDesc_RenderThread				&matDesc,
+																u32										&buffersOffset,
+																u32										LODLevel,
+																FMeshElementCollector					*collector)
+{
+	const FStaticMeshRenderData	*renderData = matDesc.m_StaticMeshRenderData;
+	CRendererSubView			*view = renderContext.m_RendererSubView;
+	PK_ASSERT(view != null);
+	PK_ASSERT(renderData != null);
+
+	PK_ASSERT(LODLevel < (u32)renderData->LODResources.Num());
+	PK_ASSERT(perSectionPCount.Count() == (u32)renderData->LODResources[LODLevel].Sections.Num());
+	const FStaticMeshLODResources	&LODResources = renderData->LODResources[LODLevel];
+
+	// Could we do this elsewhere ? .. Not per draw call ?
+	_PreSetupMeshData(m_VFData, LODResources);
+
+	// Vertex factory and collector resource are either used to render all sections (if all sections of the mesh are being rendered of m_TotalParticleCount)
+	// If there is a mesh atlas, we have to create a vertex factory per mesh section, because we cannot specify per FMeshBatchElement an offset into the instances buffers
+	FPopcornFXMeshVertexFactory		*vertexFactory = null;
+	FPopcornFXMeshCollector			*collectorRes = null;
+	if (!m_HasMeshIDs)
+		_CreateMeshVertexFactory(matDesc, 0, collector, vertexFactory, collectorRes);
+
+	PK_ASSERT(desc.m_ViewIndex < m_RealViewCount);
+	PK_ASSERT(renderContext.m_RendererSubView->BBViews().Count() == m_RealViewCount);
+	PK_ASSERT(renderContext.m_RendererSubView->BBViews().Count() <= renderContext.m_RendererSubView->SceneViews().Count());
+	for (u32 iView = 0; iView < m_RealViewCount; ++iView)
+	{
+		if (desc.m_ViewIndex != iView)
+			continue;
+
+		const u32	realViewIndex = renderContext.m_RendererSubView->BBViews()[iView].m_ViewIndex;
+		const u32	sectionCount = LODResources.Sections.Num();
+		for (u32 iSection = 0; iSection < sectionCount; ++iSection)
+		{
+			const u32	sectionPCount = (m_HasMeshIDs || matDesc.m_PerParticleLOD) ? perSectionPCount[iSection] : m_TotalParticleCount;
+			if (sectionPCount == 0)
+				continue;
+
+			if (m_HasMeshIDs)
+				_CreateMeshVertexFactory(matDesc, buffersOffset, collector, vertexFactory, collectorRes);
+
+			PK_ASSERT(view->RenderPass() != CRendererSubView::RenderPass_Shadow || matDesc.m_CastShadows);
+
+			FMeshBatch	&meshBatch = collector->AllocateMesh();
+
+			if (!PK_VERIFY(_BuildMeshBatch_Mesh(meshBatch, sceneProxy, view->SceneViews()[realViewIndex].m_SceneView, matDesc, LODResources, LODLevel, iSection, sectionPCount)))
+				return;
+
+			meshBatch.VertexFactory = vertexFactory;
+			meshBatch.Elements[0].PrimitiveUniformBuffer = sceneProxy->GetUniformBuffer();
+
+			buffersOffset += m_HasMeshIDs ? sectionPCount : 0;
+
+			{
+				INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsCount, 1);
+				INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsMeshCount, 1);
+				collector->AddMesh(realViewIndex, meshBatch);
+			}
+		} // for (sections)
+	} // for (views)
 }
 
 //----------------------------------------------------------------------------
@@ -817,63 +761,39 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext &render
 	PK_ASSERT(collector != null);
 	PK_ASSERT(sceneProxy != null);
 
-	const u32	totalParticleCount = desc.m_TotalParticleCount;
-	PK_ASSERT(totalParticleCount == m_TotalParticleCount);
-
 	CRendererCache	*matCache = static_cast<CRendererCache*>(desc.m_RendererCaches.First().Get());
 	if (!PK_VERIFY(matCache != null))
 		return;
 	CMaterialDesc_RenderThread	&matDesc = matCache->RenderThread_Desc();
 	PK_ASSERT(matDesc.ValidForRendering());
 
-	// Could we do this elsewhere ? .. Not per draw call ?
-	_PreSetupMeshData(m_VFData, *matDesc.m_LODResources);
+	const FStaticMeshRenderData	*renderData = matDesc.m_StaticMeshRenderData;
+	PK_ASSERT(matDesc.m_BaseLODLevel < (u32)renderData->LODResources.Num());
+	const u32					LODCount = matDesc.m_PerParticleLOD ? renderData->LODResources.Num() - matDesc.m_BaseLODLevel : 1;
 
-	// Vertex factory and collector resource are either used to render all sections (if all sections of the mesh are being rendered of m_TotalParticleCount)
-	// If there is a mesh atlas, we have to create a vertex factory per mesh section, because we cannot specify per FMeshBatchElement an offset into the instances buffers
-	FPopcornFXMeshVertexFactory		*vertexFactory = null;
-	FPopcornFXMeshCollector			*collectorRes = null;
-	if (!m_HasMeshIDs)
-		_CreateMeshVertexFactory(0, collector, vertexFactory, collectorRes);
+	PK_ONLY_IF_ASSERTS(
+		u32	_sectionCount = 0;
+		for (u32 i = 0; i < LODCount; ++i)
+			_sectionCount += renderData->LODResources[i].Sections.Num();
+		PK_ASSERT(_sectionCount == m_PerMeshParticleCount.Count());
+	);
 
-	PK_ASSERT(desc.m_ViewIndex < m_RealViewCount);
-	PK_ASSERT(renderContext.m_RendererSubView->BBViews().Count() == m_RealViewCount);
-	PK_ASSERT(renderContext.m_RendererSubView->BBViews().Count() <= renderContext.m_RendererSubView->SceneViews().Count());
-	for (u32 iView = 0; iView < m_RealViewCount; ++iView)
+	if (matDesc.m_PerParticleLOD)
 	{
-		if (desc.m_ViewIndex != iView)
-			continue;
-
-		u32			buffersOffset = 0;
-		const u32	realViewIndex = renderContext.m_RendererSubView->BBViews()[iView].m_ViewIndex;
-		const u32	sectionCount = matDesc.m_LODResources->Sections.Num();
-		for (u32 iSection = 0; iSection < sectionCount; ++iSection)
+		u32	sectionsStart = 0;
+		u32	buffersOffset = 0;
+		for (u32 i = matDesc.m_BaseLODLevel; i < LODCount; ++i)
 		{
-			const u32	sectionPCount = m_HasMeshIDs ? m_PerMeshParticleCount[iSection] : m_TotalParticleCount;
-			if (sectionPCount == 0)
-				continue;
-
-			if (m_HasMeshIDs)
-				_CreateMeshVertexFactory(buffersOffset, collector, vertexFactory, collectorRes);
-
-			PK_ASSERT(view->RenderPass() != CRendererSubView::RenderPass_Shadow || matDesc.m_CastShadows);
-
-			FMeshBatch	&meshBatch = collector->AllocateMesh();
-
-			if (!PK_VERIFY(_BuildMeshBatch_Mesh(meshBatch, sceneProxy, view->SceneViews()[realViewIndex].m_SceneView, matDesc, iSection, sectionPCount)))
-				return;
-
-			meshBatch.VertexFactory = vertexFactory;
-			meshBatch.Elements[0].PrimitiveUniformBuffer = sceneProxy->GetUniformBuffer();
-
-			buffersOffset += m_HasMeshIDs ? sectionPCount : 0;
-
-			{
-				INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsCount, 1);
-				collector->AddMesh(realViewIndex, meshBatch);
-			}
-		} // for (sections)
-	} // for (views)
+			const u32	LODSectionCount = renderData->LODResources[i].Sections.Num();
+			_IssueDrawCall_Mesh_Sections(sceneProxy, renderContext, desc, m_PerMeshParticleCount.Slice(sectionsStart, LODSectionCount), matDesc, buffersOffset, i, collector);
+			sectionsStart += LODSectionCount;
+		}
+	}
+	else
+	{
+		u32	buffersOffset = 0;
+		_IssueDrawCall_Mesh_Sections(sceneProxy, renderContext, desc, m_PerMeshParticleCount, matDesc, buffersOffset, matDesc.m_BaseLODLevel, collector);
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -882,8 +802,6 @@ bool	CBatchDrawer_Mesh_CPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::EmitDrawCall");
 	PK_ASSERT(toEmit.m_TotalParticleCount <= m_TotalParticleCount); // <= if slicing is enabled
-	PK_ASSERT(toEmit.m_TotalIndexCount <= m_TotalIndexCount);
-	PK_ASSERT(toEmit.m_TotalVertexCount <= m_TotalIndexCount);
 	PK_ASSERT(toEmit.m_DrawRequests.First() != null);
 
 	// !Resolve material proxy and interface for first compatible material

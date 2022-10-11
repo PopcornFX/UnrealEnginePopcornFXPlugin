@@ -254,7 +254,6 @@ public:
 	virtual void	Serialize(FArchive& Ar) override;
 #if WITH_EDITOR
 	virtual void	PostEditUndo() override;
-	virtual void	PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif
 
 	void			RestoreAttributesFromCachedRawData(const TArray<uint8> &rawData);

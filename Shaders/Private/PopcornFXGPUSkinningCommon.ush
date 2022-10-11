@@ -1,0 +1,83 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+/*=============================================================================
+PopcornFXSkinningCommon.ush: Load functions
+=============================================================================*/
+
+#include "PopcornFXCommon.ush"
+
+//----------------------------------------------------------------------------
+
+#if SAMPLE_VAT_TEXTURES
+float3x4	BuildMatrix(half3 translation, half4 rotation, half3 scale)
+{
+	half3			boundsMin = PopcornFXSkelMeshUniforms.SkeletalAnimationPosBoundsMin;
+	half3			boundsMax = PopcornFXSkelMeshUniforms.SkeletalAnimationPosBoundsMax;
+
+	translation = boundsMin + translation * (boundsMax - boundsMin);
+	translation *= 100.0f;
+
+	half4		quat = rotation * 2.0f - 1.0f;
+	half		x = quat.x, y = quat.y, z = quat.z, w = quat.w;
+	half		x2 = x + x, y2 = y + y, z2 = z + z;
+	half		xx = x * x2, xy = x * y2, xz = x * z2;
+	half		yy = y * y2, yz = y * z2, zz = z * z2;
+	half		wx = w * x2, wy = w * y2, wz = w * z2;
+
+	float3x4	transforms;
+	transforms[0][0] = 1.0 - (yy + zz);
+	transforms[0][1] = xy - wz;
+	transforms[0][2] = xz + wy;
+
+	transforms[1][0] = xy + wz;
+	transforms[1][1] = 1.0 - (xx + zz);
+	transforms[1][2] = yz - wx;
+
+	transforms[2][0] = xz - wy;
+	transforms[2][1] = yz + wx;
+	transforms[2][2] = 1.0 - (xx + yy);
+
+	transforms[0][3] = translation.x;
+	transforms[1][3] = translation.y;
+	transforms[2][3] = translation.z;
+
+#if 0
+	transforms[0].xyz *= scale;
+	transforms[1].xyz *= scale;
+	transforms[2].xyz *= scale;
+#endif
+
+	return transforms;
+}
+
+//----------------------------------------------------------------------------
+
+float3x4	ExtractBoneTransforms(float cursorX, float cursorScaleY, float animOffsetY, uint boneID)
+{
+	float		pixelsPerBoneY = 2.0f;
+	float2		animUVs = float2(cursorX, (float)boneID * pixelsPerBoneY * cursorScaleY + animOffsetY);
+
+	half3		translation =	PopcornFXSkelMeshUniforms.SkeletalAnimationTexture.SampleLevel(PopcornFXSkelMeshUniforms.SkeletalAnimationSampler, animUVs + float2(0.0f, cursorScaleY) * 0.5f, 0).xyz;
+	half4		rotation =		PopcornFXSkelMeshUniforms.SkeletalAnimationTexture.SampleLevel(PopcornFXSkelMeshUniforms.SkeletalAnimationSampler, animUVs + float2(0.0f, cursorScaleY) * 1.5f, 0);
+	half3		scale =			float3(1.0f, 1.0f, 1.0f);
+
+	return BuildMatrix(translation, rotation, scale);
+}
+
+//----------------------------------------------------------------------------
+
+float3x4	LerpSkinningTransforms(float3x4 tr0, float3x4 tr1, float cursor)
+{
+	float3x4	tr;
+
+	tr[0] = lerp(tr0[0], tr1[0], cursor);
+	tr[1] = lerp(tr0[1], tr1[1], cursor);
+	tr[2] = lerp(tr0[2], tr1[2], cursor);
+	return tr;
+}
+#endif // SAMPLE_VAT_TEXTURES
+
+//----------------------------------------------------------------------------

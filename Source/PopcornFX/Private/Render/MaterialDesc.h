@@ -9,6 +9,7 @@
 
 #include "PopcornFXSDK.h"
 #include "RHIDefinitions.h"
+#include "Engine/SkeletalMesh.h"
 #include <pk_particles/include/Renderers/ps_renderer_base.h>
 #include <pk_render_helpers/include/frame_collector/rh_particle_render_data_factory.h>
 #include <pk_render_helpers/include/draw_requests/rh_billboard.h>
@@ -21,7 +22,12 @@ class	UPopcornFXRendererMaterial;
 class	UMaterialInterface;
 struct	FStaticMeshLODResources;
 struct	FStaticMeshVertexFactories;
+class	FStaticMeshRenderData;
+class	FSkeletalMeshRenderData;
+struct	FSkeletalMeshLODInfo;
 class	UStaticMesh;
+class	USkeletalMesh;
+class	FSkeletalMeshLODRenderData;
 class	FMaterialRenderProxy;
 class	CSoundDescriptorPoolCollection;
 
@@ -40,15 +46,32 @@ public:
 	virtual void	Clear();
 
 public:
-	const UPopcornFXRendererMaterial	*m_RendererMaterial = null;
+	UPopcornFXRendererMaterial			*m_RendererMaterial = null;
 	PopcornFX::ERendererClass			m_RendererClass;
 	PopcornFX::PCRendererDataBase		m_Renderer = null;
 
 	CSoundDescriptorPoolCollection		*m_SoundPoolCollection = null;
 
-	FStaticMeshLODResources				*m_LODResources = null;
-	FStaticMeshVertexFactories			*m_LODVertexFactories = null;
+	u32									m_BaseLODLevel = 0;
+
+	// Static meshes
 	UStaticMesh							*m_StaticMesh = null;
+	const FStaticMeshRenderData			*m_StaticMeshRenderData = null;
+
+	// Skeletal meshes
+	USkeletalMesh									*m_SkeletalMesh = null;
+	const FSkeletalMeshRenderData					*m_SkeletalMeshRenderData = null;
+	PopcornFX::TMemoryView<const FSkeletalMeshLODInfo>	m_SkeletalMeshLODInfos;
+	UTexture2D										*m_SkeletalAnimationTexture = null;
+	u32												m_SkeletalAnimationCount = 0;
+	FVector3f										m_SkeletalAnimationPosBoundsMin = FVector3f::ZeroVector;
+	FVector3f										m_SkeletalAnimationPosBoundsMax = FVector3f::ZeroVector;
+	u32												m_SkeletalAnimationLinearInterpolate = 0;
+	u32												m_SkeletalAnimationLinearInterpolateTracks = 0;
+	u32												m_TotalBoneCount = 0;
+	PopcornFX::TMemoryView<const u32>				m_SkeletalMeshBoneIndicesReorder;
+
+	u32												m_DynamicParameterMask = 0;
 
 #if RHI_RAYTRACING
 	::TArray<FRayTracingGeometry>		m_RayTracingGeometries;
@@ -63,12 +86,18 @@ public:
 	bool		m_Raytraced = false;
 	bool		m_CastShadows = false;
 	bool		m_CorrectDeformation = false;
+	bool		m_PerParticleLOD = false;
+	bool		m_MotionBlur = false;
 
 protected:
 #if WITH_EDITOR
+	void		OnSkelMeshChanged();
 	void		OnMeshChanged();
 	void		OnMeshPostBuild(UStaticMesh *staticMesh);
 #endif // WITH_EDITOR
+
+	void		_BuildStaticMesh();
+	void		_BuildSkelMesh();
 };
 
 //----------------------------------------------------------------------------
@@ -102,6 +131,9 @@ public:
 	bool			GameThread_ResolveRenderer(PopcornFX::PCRendererDataBase renderer, const PopcornFX::CParticleDescriptor *particleDesc);
 	bool			GameThread_Setup() { return m_GameThreadDesc.GameThread_Setup(); }
 	bool			RenderThread_Setup();
+
+	void			BuildCacheInfos_StaticMesh();
+	void			BuildCacheInfos_SkeletalMesh();
 
 	virtual void	UpdateThread_BuildBillboardingFlags(const PopcornFX::PRendererDataBase &renderer) override;
 

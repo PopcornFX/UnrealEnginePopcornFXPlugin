@@ -107,7 +107,10 @@ EReimportResult::Type	UPopcornFXFileReimportFactory::Reimport(UObject *obj)
 
 	file->PostEditChange();
 
-#if WITH_EDITOR
+	// Crashes in some projects and seems outdated. Attributes do not need their PostEditChangeProperty function called
+	// and emitters are properly restarted when a file is reimported anyways. Keeping this around in case a specific case
+	// was missed when testing
+#if 0
 	// massive ugly notify all object that reference this file
 	// but works fine
 	{

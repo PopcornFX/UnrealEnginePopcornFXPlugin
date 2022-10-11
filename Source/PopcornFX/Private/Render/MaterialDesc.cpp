@@ -8,12 +8,15 @@
 #include "Assets/PopcornFXEffect.h"
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "PopcornFXMeshVertexFactory.h"
+#include "PopcornFXSkeletalMeshVertexFactory.h"
 #include "PopcornFXVertexFactory.h"
 #include "PopcornFXGPUVertexFactory.h"
 #include "AudioPools.h"
 #include "PopcornFXPlugin.h"
 
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
+#include "Rendering/SkeletalMeshRenderData.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "MaterialShared.h"
@@ -21,27 +24,7 @@
 #include <pk_particles/include/Renderers/ps_renderer_sound.h>
 #include <pk_particles/include/ps_effect.h>
 #include <pk_particles/include/ps_event_map.h>
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
-
-//----------------------------------------------------------------------------
-//
-// UE version wrappers
-//
-//----------------------------------------------------------------------------
-
-namespace
-{
-	FStaticMeshRenderData	*StaticMeshRenderData(UStaticMesh *staticMesh)
-	{
-		if (staticMesh == null)
-			return null;
-#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
-		return staticMesh->GetRenderData();
-#else
-		return staticMesh->RenderData.Get();
-#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
-	}
-}
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
 
 //----------------------------------------------------------------------------
 
@@ -71,13 +54,13 @@ namespace
 		{
 			// Quick resolve renderer index, find better way ?
 			PK_ASSERT(IsInGameThread());
-			PopcornFX::PCEventConnectionMap	ecMap = parentEffect->EventConnectionMap();
+			const PopcornFX::PCEventConnectionMap	&ecMap = parentEffect->EventConnectionMap();
 			if (!PK_VERIFY(ecMap != null))
 				return null;
 			const u32	layerCount = ecMap->m_LayerSlots.Count();
 			for (u32 iLayer = 0; iLayer < layerCount && !srcRendererFound; ++iLayer)
 			{
-				const PopcornFX::PParticleDescriptor	desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
+				const PopcornFX::PParticleDescriptor	&desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
 				if (!PK_VERIFY(desc != null))
 					return null;
 				PopcornFX::TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
@@ -131,6 +114,64 @@ bool	CRendererCache::GameThread_ResolveRenderer(PopcornFX::PCRendererDataBase re
 		return rendererMat != null;
 	}
 	return true; // Light, sound
+}
+
+//----------------------------------------------------------------------------
+
+void	CRendererCache::BuildCacheInfos_SkeletalMesh()
+{
+	PK_ASSERT(m_GameThreadDesc.m_SkeletalMesh != null);
+	PK_ASSERT(m_GameThreadDesc.m_RendererMaterial != null);
+	const FSkeletalMeshRenderData	*renderData = m_GameThreadDesc.m_SkeletalMesh->GetResourceForRendering();
+	FPopcornFXSubRendererMaterial	*rendererSubMat = m_GameThreadDesc.m_RendererMaterial->GetSubMaterial(0);
+	PK_ASSERT(rendererSubMat != null);
+
+	if (renderData != null)
+	{
+		m_GlobalMeshBounds = ToPk(FBox3f(m_GameThreadDesc.m_SkeletalMesh->GetBounds().GetBox())) * FPopcornFXPlugin::GlobalScaleRcp();
+
+		const u32		LODCount = rendererSubMat->PerParticleLOD ? renderData->LODRenderData.Num() - m_GameThreadDesc.m_BaseLODLevel : 1;
+		PK_VERIFY(m_PerLODMeshCount.Resize(LODCount));
+		for (u32 i = 0; i < m_PerLODMeshCount.Count(); ++i)
+		{
+			m_PerLODMeshCount[i] = renderData->LODRenderData[m_GameThreadDesc.m_BaseLODLevel + i].RenderSections.Num();
+
+			// WIP
+			const u32	oldCount = m_SubMeshBounds.Count();
+			PK_VERIFY(m_SubMeshBounds.Resize(oldCount + m_PerLODMeshCount[i]));
+			for (u32 iSection = 0; iSection < m_PerLODMeshCount[i]; ++iSection)
+				m_SubMeshBounds[oldCount + iSection] = m_GlobalMeshBounds;
+		}
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	CRendererCache::BuildCacheInfos_StaticMesh()
+{
+	PK_ASSERT(m_GameThreadDesc.m_StaticMesh != null);
+	PK_ASSERT(m_GameThreadDesc.m_RendererMaterial != null);
+	const FStaticMeshRenderData		*renderData = m_GameThreadDesc.m_StaticMesh->GetRenderData();
+	FPopcornFXSubRendererMaterial	*rendererSubMat = m_GameThreadDesc.m_RendererMaterial->GetSubMaterial(0);
+	PK_ASSERT(rendererSubMat != null);
+
+	if (renderData != null)
+	{
+		m_GlobalMeshBounds = ToPk(FBox3f(m_GameThreadDesc.m_StaticMesh->GetBoundingBox())) * FPopcornFXPlugin::GlobalScaleRcp();
+
+		const u32		LODCount = rendererSubMat->PerParticleLOD ? renderData->LODResources.Num() - m_GameThreadDesc.m_BaseLODLevel : 1;
+		PK_VERIFY(m_PerLODMeshCount.Resize(LODCount));
+		for (u32 i = 0; i < m_PerLODMeshCount.Count(); ++i)
+		{
+			m_PerLODMeshCount[i] = renderData->LODResources[m_GameThreadDesc.m_BaseLODLevel + i].Sections.Num();
+
+			// WIP
+			const u32	oldCount = m_SubMeshBounds.Count();
+			PK_VERIFY(m_SubMeshBounds.Resize(oldCount + m_PerLODMeshCount[i]));
+			for (u32 iSection = 0; iSection < m_PerLODMeshCount[i]; ++iSection)
+				m_SubMeshBounds[oldCount + iSection] = m_GlobalMeshBounds;
+		}
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -199,22 +240,10 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 	}
 	else if (renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Mesh)
 	{
-		const FStaticMeshLODResources	*LODResources = (m_GameThreadDesc.m_StaticMesh != null) ? &StaticMeshRenderData(m_GameThreadDesc.m_StaticMesh)->LODResources[0/*TODO: LOD*/] : null;
-
-		m_MeshCount = (LODResources != null) ? LODResources->Sections.Num() : 0;
-
-		m_GlobalMeshBound = PopcornFX::CAABB::DEGENERATED;
-		PK_VERIFY(m_SubMeshBounds.Resize(m_MeshCount));
-		const float		scaleUEToPk = FPopcornFXPlugin::GlobalScaleRcp();
-		for (u32 iSubMeshBound = 0; iSubMeshBound < m_MeshCount; ++iSubMeshBound)
-		{
-			const FBox							&meshBBox = m_GameThreadDesc.m_StaticMesh->GetBoundingBox();
-			const PopcornFX::TVector<float, 3>	bbMin(meshBBox.Min.X, meshBBox.Min.Y, meshBBox.Min.Z);
-			const PopcornFX::TVector<float, 3>	bbMax(meshBBox.Max.X, meshBBox.Max.Y, meshBBox.Max.Z);
-
-			m_SubMeshBounds[iSubMeshBound] = PopcornFX::CAABB(bbMin, bbMax) * scaleUEToPk;
-			m_GlobalMeshBound.Add(m_SubMeshBounds[iSubMeshBound]);
-		}
+		if (m_GameThreadDesc.m_SkeletalMesh != null)
+			BuildCacheInfos_SkeletalMesh();
+		else if (m_GameThreadDesc.m_StaticMesh != null)
+			BuildCacheInfos_StaticMesh();
 	}
 }
 
@@ -267,6 +296,8 @@ void	CMaterialDesc_GameThread::Clear()
 		m_StaticMesh->GetOnMeshChanged().RemoveAll(this);
 		m_StaticMesh->OnPostMeshBuild().RemoveAll(this);
 	}
+	if (m_SkeletalMesh != null)
+		m_SkeletalMesh->GetOnMeshChanged().RemoveAll(this);
 #endif // WITH_EDITOR
 
 	PK_SAFE_DELETE(m_SoundPoolCollection);
@@ -279,9 +310,33 @@ void	CMaterialDesc_GameThread::OnMeshChanged()
 {
 	if (PK_VERIFY(m_StaticMesh != null))
 	{
-		FStaticMeshRenderData	*renderData = StaticMeshRenderData(m_StaticMesh);
-		m_LODResources = renderData != null ? &renderData->LODResources[0/*TODO: LOD*/] : null;
-		m_LODVertexFactories = renderData != null ? &renderData->LODVertexFactories[0/*TODO: LOD*/] : null;
+		_BuildStaticMesh();
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	CMaterialDesc_GameThread::OnSkelMeshChanged()
+{
+	if (PK_VERIFY(m_RendererMaterial != null))
+	{
+		FPopcornFXSubRendererMaterial	*rendererSubMat = m_RendererMaterial->GetSubMaterial(0);
+		PK_ASSERT(rendererSubMat != null);
+
+		if (PK_VERIFY(m_SkeletalMesh != null))
+		{
+			// Rebuild the bone indices reorder array
+			rendererSubMat->BuildSkelMeshBoneIndicesReorder();
+
+			// Grab new render data
+			_BuildSkelMesh();
+
+			// Update the renderer cache
+			PK_ASSERT(m_Renderer != null);
+			PK_ASSERT(m_Renderer->m_RendererCache != null);
+			CRendererCache	*rCache = static_cast<CRendererCache*>(m_Renderer->m_RendererCache.Get());
+			rCache->BuildCacheInfos_SkeletalMesh();
+		}
 	}
 }
 
@@ -295,6 +350,34 @@ void	CMaterialDesc_GameThread::OnMeshPostBuild(UStaticMesh *staticMesh)
 
 //----------------------------------------------------------------------------
 #endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
+void	CMaterialDesc_GameThread::_BuildStaticMesh()
+{
+	const u32	baseLODLevel = 0; // TODO
+	m_StaticMeshRenderData = m_StaticMesh->GetRenderData();
+	m_BaseLODLevel = PopcornFX::PKMin(baseLODLevel, (u32)m_StaticMeshRenderData->LODResources.Num() - 1);
+}
+
+//----------------------------------------------------------------------------
+
+void	CMaterialDesc_GameThread::_BuildSkelMesh()
+{
+	const u32	baseLODLevel = 0; // TODO
+	m_SkeletalMeshRenderData = m_SkeletalMesh->GetResourceForRendering();
+	const TArray<FSkeletalMeshLODInfo>	&LODInfos = m_SkeletalMesh->GetLODInfoArray();
+	m_SkeletalMeshLODInfos = PopcornFX::TMemoryView<const FSkeletalMeshLODInfo>(LODInfos.GetData(), LODInfos.Num());
+	m_BaseLODLevel = PopcornFX::PKMin(baseLODLevel, (u32)m_SkeletalMeshRenderData->LODRenderData.Num() - 1);
+	m_TotalBoneCount = m_SkeletalMesh->GetRefSkeleton().GetNum();
+
+	if (PK_VERIFY(m_RendererMaterial != null))
+	{
+		const FPopcornFXSubRendererMaterial	*rendererSubMat = m_RendererMaterial->GetSubMaterial(0);
+		if (PK_VERIFY(rendererSubMat != null))
+			m_SkeletalMeshBoneIndicesReorder = PopcornFX::TMemoryView<const u32>(rendererSubMat->m_SkeletalMeshBoneIndicesReorder.GetData(), rendererSubMat->m_SkeletalMeshBoneIndicesReorder.Num());
+	}
+}
 
 //----------------------------------------------------------------------------
 
@@ -347,6 +430,7 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 			Clear();
 			return false;
 		}
+		m_DynamicParameterMask = rendererSubMat->DynamicParameterMask;
 		m_Raytraced = (rendererSubMat->Raytraced != 0);
 		m_CastShadows = (rendererSubMat->CastShadow != 0);
 		m_CorrectDeformation = (rendererSubMat->CorrectDeformation != 0);
@@ -360,21 +444,37 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 				m_StaticMesh->GetOnMeshChanged().RemoveAll(this);
 				m_StaticMesh->OnPostMeshBuild().RemoveAll(this);
 			}
+			const bool	skelMeshChanged = m_SkeletalMesh != rendererSubMat->SkeletalMesh;
+			if (skelMeshChanged && m_SkeletalMesh != null)
+				m_SkeletalMesh->GetOnMeshChanged().RemoveAll(this);
 #endif // WITH_EDITOR
 
-			if (rendererSubMat->StaticMesh == null ||
-				!rendererSubMat->StaticMesh->HasValidRenderData())
+			m_PerParticleLOD = rendererSubMat->PerParticleLOD;
+			m_MotionBlur = rendererSubMat->MotionBlur;
+			const u32	baseLODLevel = 0; // TODO
+			if (rendererSubMat->SkeletalMesh != null &&
+				rendererSubMat->TextureSkeletalAnimation != null)
+			{
+				m_SkeletalMesh = rendererSubMat->SkeletalMesh;
+				m_SkeletalAnimationTexture = rendererSubMat->TextureSkeletalAnimation;
+				m_SkeletalAnimationCount = rendererSubMat->SkeletalAnimationCount;
+				m_SkeletalAnimationPosBoundsMin = FVector3f(rendererSubMat->SkeletalAnimationPosBoundsMin);
+				m_SkeletalAnimationPosBoundsMax = FVector3f(rendererSubMat->SkeletalAnimationPosBoundsMax);
+				m_SkeletalAnimationLinearInterpolate = rendererSubMat->SkeletalAnimationLinearInterpolate ? 1 : 0;
+				m_SkeletalAnimationLinearInterpolateTracks = rendererSubMat->SkeletalAnimationLinearInterpolateTracks ? 1 : 0;
+				_BuildSkelMesh();
+			}
+			else if (rendererSubMat->StaticMesh != null)
+			{
+				if (!rendererSubMat->StaticMesh->HasValidRenderData())
+					return false;
+				m_StaticMesh = rendererSubMat->StaticMesh;
+				_BuildStaticMesh();
+			}
+			else
 				return false;
 
-			m_StaticMesh = rendererSubMat->StaticMesh;
 			m_HasMeshAtlas = rendererSubMat->MeshAtlas;
-
-			FStaticMeshRenderData	*renderData = StaticMeshRenderData(m_StaticMesh);
-			m_LODResources = renderData != null ? &renderData->LODResources[0/*TODO: LOD*/] : null;
-			m_LODVertexFactories = renderData != null ? &renderData->LODVertexFactories[0/*TODO: LOD*/] : null;
-
-			if (m_StaticMesh == null || m_LODResources == null || m_LODVertexFactories == null)
-				return false;
 
 #if WITH_EDITOR
 			if (meshChanged)
@@ -382,6 +482,11 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 				PK_ASSERT(m_StaticMesh != null);
 				m_StaticMesh->GetOnMeshChanged().AddRaw(this, &CMaterialDesc_GameThread::OnMeshChanged);
 				m_StaticMesh->OnPostMeshBuild().AddRaw(this, &CMaterialDesc_GameThread::OnMeshPostBuild);
+			}
+			if (skelMeshChanged)
+			{
+				PK_ASSERT(m_SkeletalMesh != null);
+				m_SkeletalMesh->GetOnMeshChanged().AddRaw(this, &CMaterialDesc_GameThread::OnSkelMeshChanged);
 			}
 #endif // WITH_EDITOR
 		}
@@ -415,11 +520,8 @@ bool	CMaterialDesc_RenderThread::ValidForRendering() const
 		return false;
 	if (m_RendererClass == PopcornFX::ERendererClass::Renderer_Mesh)
 	{
-		return rendererSubMat->StaticMesh != null;
-		//if (rendererSubMat->StaticMesh == null ||
-		//	!rendererSubMat->StaticMesh->HasValidRenderData() ||
-		//	!m_LODResources->IndexBuffer.IsInitialized())
-		//	return false;
+		return	rendererSubMat->StaticMesh != null ||
+				(rendererSubMat->SkeletalMesh != null && rendererSubMat->TextureSkeletalAnimation != null);
 	}
 //#endif
 	return true;
@@ -449,21 +551,26 @@ bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &g
 	m_LightsTranslucent = gameMat.m_LightsTranslucent;
 	m_HasMeshAtlas = gameMat.m_HasMeshAtlas;
 	m_Raytraced = gameMat.m_Raytraced;
+	m_PerParticleLOD = gameMat.m_PerParticleLOD;
+	m_MotionBlur = gameMat.m_MotionBlur;
+
+	m_BaseLODLevel = gameMat.m_BaseLODLevel;
 
 #if WITH_EDITOR
 	const bool	meshChanged = m_StaticMesh != gameMat.m_StaticMesh;
+	//const bool	skelMeshChanged = m_SkeletalMesh != gameMat.m_SkeletalMesh;
 	if (meshChanged && m_StaticMesh != null)
 	{
 		m_StaticMesh->GetOnMeshChanged().RemoveAll(this);
 		m_StaticMesh->OnPostMeshBuild().RemoveAll(this);
 	}
+	//if (skelMeshChanged && m_SkeletalMesh != null)
+	//	m_SkeletalMesh->GetOnMeshChanged().RemoveAll(this);
 #endif // WITH_EDITOR
 
-	m_LODResources = gameMat.m_LODResources;
-	m_LODVertexFactories = gameMat.m_LODVertexFactories;
-
 	// Temp code for raytracing testing. Requires modification on UE4 side.
-#if RHI_RAYTRACING
+#if 0
+#	if RHI_RAYTRACING
 	if (IsRayTracingEnabled() && m_LODResources != null && m_HasMeshAtlas && m_Raytraced)
 	{
 		if (m_RayTracingGeometries.Num() == 0) // Careful here, in editor mode, SetupFromGame gets called every frame
@@ -503,15 +610,31 @@ bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &g
 			}
 		}
 	}
-#endif // RHI_RAYTRACING
+#	endif // RHI_RAYTRACING
+#endif
 
 	m_StaticMesh = gameMat.m_StaticMesh;
+	m_StaticMeshRenderData = gameMat.m_StaticMeshRenderData;
+	m_DynamicParameterMask = gameMat.m_DynamicParameterMask;
+	m_SkeletalMesh = gameMat.m_SkeletalMesh;
+	m_SkeletalMeshRenderData = gameMat.m_SkeletalMeshRenderData;
+	m_SkeletalMeshLODInfos = gameMat.m_SkeletalMeshLODInfos;
+	m_SkeletalAnimationTexture = gameMat.m_SkeletalAnimationTexture;
+	m_SkeletalAnimationCount = gameMat.m_SkeletalAnimationCount;
+	m_SkeletalAnimationPosBoundsMin = gameMat.m_SkeletalAnimationPosBoundsMin;
+	m_SkeletalAnimationPosBoundsMax = gameMat.m_SkeletalAnimationPosBoundsMax;
+	m_SkeletalAnimationLinearInterpolate = gameMat.m_SkeletalAnimationLinearInterpolate;
+	m_SkeletalAnimationLinearInterpolateTracks = gameMat.m_SkeletalAnimationLinearInterpolateTracks;
+	m_TotalBoneCount = gameMat.m_TotalBoneCount;
+	m_SkeletalMeshBoneIndicesReorder = gameMat.m_SkeletalMeshBoneIndicesReorder;
 #if WITH_EDITOR
 	if (meshChanged && m_StaticMesh != null)
 	{
 		m_StaticMesh->GetOnMeshChanged().AddRaw(this, &CMaterialDesc_RenderThread::OnMeshChanged);
 		m_StaticMesh->OnPostMeshBuild().AddRaw(this, &CMaterialDesc_RenderThread::OnMeshPostBuild);
 	}
+	//if (skelMeshChanged && m_SkeletalMesh != null)
+	//	m_SkeletalMesh->GetOnMeshChanged().AddRaw(this, &CMaterialDesc_RenderThread::OnSkelMeshChanged);
 #endif // WITH_EDITOR
 
 	// m_RendererMaterial's access safety on the render thread is ensured by:
@@ -566,8 +689,16 @@ bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardi
 			m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
 		break;
 	case	PopcornFX::ERendererClass::Renderer_Mesh:
-		if (!FPopcornFXMeshVertexFactory::IsCompatible(materialInstance))
-			m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
+		if (m_SkeletalMesh != null)
+		{
+			if (!FPopcornFXSkelMeshVertexFactory::IsCompatible(materialInstance))
+				m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
+		}
+		else
+		{
+			if (!FPopcornFXMeshVertexFactory::IsCompatible(materialInstance))
+				m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
+		}
 		break;
 	default:
 		PK_ASSERT_NOT_REACHED();

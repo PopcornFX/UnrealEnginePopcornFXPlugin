@@ -10,6 +10,7 @@
 =============================================================================*/
 
 #include "/Engine/Private/VertexFactoryCommon.ush"
+#include "PopcornFXCommon.ush"
 
 #define HAS_INSTANCE_ID				(ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER)
 
@@ -21,42 +22,6 @@
 //#define Renderer_Decal		4
 //#define Renderer_Light		5
 //#define Renderer_Sound		6
-
-//----------------------------------------------------------------------------
-// Load functions
-//----------------------------------------------------------------------------
-
-float	PKSimData_Loadf(uint id, uint offset)
-{
-	return asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id]);
-}
-
-//----------------------------------------------------------------------------
-
-float2	PKSimData_Load2f(uint id, uint offset)
-{
-	return float2(asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 2 + 0]),
-				  asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 2 + 1]));
-}
-
-//----------------------------------------------------------------------------
-
-float3	PKSimData_Load3f(uint id, uint offset)
-{
-	return float3(asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 3 + 0]),
-				  asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 3 + 1]),
-				  asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 3 + 2]));
-}
-
-//----------------------------------------------------------------------------
-
-float4	PKSimData_Load4f(uint id, uint offset)
-{
-	return float4(asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 4 + 0]),
-				  asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 4 + 1]),
-				  asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 4 + 2]),
-				  asfloat(PopcornFXBillboardVSUniforms.SimData[offset + id * 4 + 3]));
-}
 
 //----------------------------------------------------------------------------
 // VS Inputs
@@ -183,7 +148,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #endif	//NUM_TEX_COORD_INTERPOLATORS
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
-	PixelParameters.Particle.DynamicParameterValidMask = 0x1 | 0x2 | 0x4 | 0x8; // Add them all, we don't have that info yet. TODO
+	PixelParameters.Particle.DynamicParameterValidMask = PopcornFXUniforms.DynamicParameterMask;
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
 	PixelParameters.Particle.DynamicParameter = Interpolants.DynamicParameter;
@@ -263,7 +228,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 #endif
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
-	VertexParameters.Particle.DynamicParameterValidMask = 0x1 | 0x2 | 0x4 | 0x8; // Add them all, we don't have that info yet. TODO
+	VertexParameters.Particle.DynamicParameterValidMask = PopcornFXUniforms.DynamicParameterMask;
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
 	VertexParameters.Particle.DynamicParameter = Intermediates.DynamicParameter;

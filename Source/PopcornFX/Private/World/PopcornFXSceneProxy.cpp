@@ -23,8 +23,9 @@ FPopcornFXSceneProxy::FPopcornFXSceneProxy(UPopcornFXSceneComponent *component)
 	bVerifyUsedMaterials = true;
 
 #if (ENGINE_MAJOR_VERSION == 5)
-	// Motion blur not supported anyways right now
-	bAlwaysHasVelocity = false;
+#if 0
+	bAlwaysHasVelocity = true;
+#endif
 #endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
@@ -161,7 +162,9 @@ FPrimitiveViewRelevance	FPopcornFXSceneProxy::GetViewRelevance(const FSceneView*
 	viewRelevance.bHasVolumeMaterialDomain = true;
 
 	viewRelevance.bTranslucentSelfShadow = true;
-	viewRelevance.bVelocityRelevance = false;
+#if 0
+	viewRelevance.bVelocityRelevance = true;
+#endif
 	return viewRelevance;
 }
 

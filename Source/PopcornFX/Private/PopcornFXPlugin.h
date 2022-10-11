@@ -174,6 +174,7 @@ public:
 	static FName						Name_POPCORNFX_CAST_SHADOW() { static FName n(TEXT("POPCORNFX_CAST_SHADOW")); return n; }
 	static FName						Name_POPCORNFX_HAS_VAT_NORMALIZEDDATA() { static FName n(TEXT("POPCORNFX_HAS_VAT_NORMALIZEDDATA")); return n; }
 	static FName						Name_POPCORNFX_HAS_VAT_PACKEDDATA() { static FName n(TEXT("POPCORNFX_HAS_VAT_PACKEDDATA")); return n; }
+	static FName						Name_POPCORNFX_HAS_SKELMESH_ANIM() { static FName n(TEXT("POPCORNFX_HAS_SKELMESH_ANIM")); return n; }
 
 	static FName						Name_POPCORNFX_IS_BILLBOARD() { static FName n(TEXT("POPCORNFX_IS_BILLBOARD")); return n; }
 	static FName						Name_POPCORNFX_IS_RIBBON() { static FName n(TEXT("POPCORNFX_IS_RIBBON")); return n; }

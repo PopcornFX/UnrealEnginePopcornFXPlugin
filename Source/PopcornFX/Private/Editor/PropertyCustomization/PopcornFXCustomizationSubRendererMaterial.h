@@ -48,9 +48,11 @@ private:
 		Thumb_VATNormal,
 		Thumb_VATColor,
 		Thumb_VATRotation,
+		Thumb_SkeletalAnimation,
 		Thumb_Normal,
 		Thumb_Specular,
 		Thumb_Mesh,
+		Thumb_SkeletalMesh,
 		__MaxThumb,
 	};
 

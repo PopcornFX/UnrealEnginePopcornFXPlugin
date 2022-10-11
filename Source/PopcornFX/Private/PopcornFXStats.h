@@ -31,6 +31,13 @@ DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Emitters updated"), STAT_PopcornFX_Emitt
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Sound particles"), STAT_PopcornFX_SoundParticleCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawRequests"), STAT_PopcornFX_DrawRequestsCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls"), STAT_PopcornFX_DrawCallsCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Billboard)"), STAT_PopcornFX_DrawCallsBillboardCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Ribbon)"), STAT_PopcornFX_DrawCallsRibbonCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Triangle)"), STAT_PopcornFX_DrawCallsTriangleCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Mesh)"), STAT_PopcornFX_DrawCallsMeshCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Skeletal Mesh)"), STAT_PopcornFX_DrawCallsSkelMeshCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: Lights"), STAT_PopcornFX_LightCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: Sounds"), STAT_PopcornFX_SoundCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: Batches"), STAT_PopcornFX_BatchesCount, STATGROUP_PopcornFX, );
 
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("PopcornFX Mediums"), STAT_PopcornFX_MediumCount, STATGROUP_PopcornFX, );

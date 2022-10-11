@@ -1,0 +1,124 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "/Engine/Public/Platform.ush"
+
+/*=============================================================================
+PopcornFXComputeBoneTransformsComputeShader.usf: Compute bone transforms per particle
+=============================================================================*/
+
+#include "/Engine/Private/Common.ush"
+#include "PopcornFXCommon.ush"
+#include "PopcornFXGPUSkinningCommon.ush"
+
+uint				TotalParticleCount;
+uint				TotalBoneCount;
+RWBuffer<float4>	BoneMatrices;
+#if COMPUTE_PREV_MATRICES
+RWBuffer<float4>	PrevBoneMatrices;
+#endif // COMPUTE_PREV_MATRICES
+
+//----------------------------------------------------------------------------
+
+float3x4	CalcSkinningTransformsAt(float animCursor, uint trackID, uint boneID)
+{
+	float2		pixelUVSize = PopcornFXSkelMeshUniforms.InvSkeletalAnimationTextureDimensions;
+
+#if 0
+	float		snappedAnimCursor = animCursor;
+#else
+	float		animCursorToUVRange = animCursor * (1.0f - pixelUVSize.x);
+	float		animCursorToPrevPixel = fmod(animCursorToUVRange, pixelUVSize.x);
+	float		snappedAnimCursor = (animCursorToUVRange - animCursorToPrevPixel) + pixelUVSize.x * 0.5f;
+#endif
+
+	float		animationUVOffset = PopcornFXSkelMeshUniforms.SkeletalAnimationYOffsetPerTrack * (float)trackID;
+
+	float3x4	transforms = ExtractBoneTransforms(snappedAnimCursor, pixelUVSize.y, animationUVOffset, boneID);
+
+	[branch]
+	if (PopcornFXSkelMeshUniforms.LinearInterpolateTransforms != 0)
+	{
+		float		snappedAnimCursor1 = (animCursorToUVRange + (pixelUVSize.x - animCursorToPrevPixel)) + pixelUVSize.x * 0.5f;
+		float		cursor = animCursorToPrevPixel / pixelUVSize.x;
+		float3x4	transforms1 = ExtractBoneTransforms(snappedAnimCursor1, pixelUVSize.y, animationUVOffset, boneID);
+		return LerpSkinningTransforms(transforms, transforms1, cursor);
+	}
+	return transforms;
+}
+
+//----------------------------------------------------------------------------
+
+float3x4	CalcSkinningTransforms(	uint particleID,
+									uint boneID,
+									uint cursorsOffset,
+									uint tracksOffset,
+									uint nextCursorsOffset,
+									uint nextTracksOffset,
+									uint transitionCursorsOffset)
+{
+	float		animCursor0 = PKSimData_Loadf(particleID, cursorsOffset);
+	uint		animationId0 = PKSimData_Loadi(particleID, tracksOffset);
+
+	float		animCursor1; 
+	uint		animationId1;
+	float		transitionCursor;
+	[branch]
+	if (PopcornFXSkelMeshUniforms.LinearInterpolateTracks != 0)
+	{
+		animCursor1 = PKSimData_Loadf(particleID, nextCursorsOffset);
+		animationId1 = PKSimData_Loadi(particleID, nextTracksOffset);
+		transitionCursor = PKSimData_Loadf(particleID, transitionCursorsOffset);
+	}
+
+	float3x4	transforms = CalcSkinningTransformsAt(animCursor0, animationId0, boneID);
+
+	[branch]
+	if (PopcornFXSkelMeshUniforms.LinearInterpolateTracks != 0)
+	{
+		float3x4	transforms1 = CalcSkinningTransformsAt(animCursor1, animationId1, boneID);
+		transforms = LerpSkinningTransforms(transforms, transforms1, transitionCursor);
+	}
+	return transforms;
+}
+
+[numthreads(PK_GPU_THREADGROUP_SIZE_X, PK_GPU_THREADGROUP_SIZE_Y, 1)]
+void	Main(uint3 DTid : SV_DispatchThreadID)
+{
+	uint		particleID = DTid.x;
+	uint		boneID = DTid.y;
+
+	if (particleID >= TotalParticleCount ||
+		boneID >= TotalBoneCount)
+	{
+		return;
+	}
+
+	float3x4	transforms = CalcSkinningTransforms(particleID,
+													boneID,
+													PopcornFXSkelMeshUniforms.InVATCursorsOffset,
+													PopcornFXSkelMeshUniforms.InVATTracksOffset,
+													PopcornFXSkelMeshUniforms.InVATCursorNextsOffset,
+													PopcornFXSkelMeshUniforms.InVATTrackNextsOffset,
+													PopcornFXSkelMeshUniforms.InVATTransitionCursorsOffset);
+
+	BoneMatrices[PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 0] = transforms[0];
+	BoneMatrices[PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 1] = transforms[1];
+	BoneMatrices[PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 2] = transforms[2];
+
+#if COMPUTE_PREV_MATRICES
+	float3x4	prevTransforms = CalcSkinningTransforms(particleID,
+														boneID,
+														PopcornFXSkelMeshUniforms.InPrevVATCursorsOffset,
+														PopcornFXSkelMeshUniforms.InPrevVATTracksOffset,
+														PopcornFXSkelMeshUniforms.InPrevVATCursorNextsOffset,
+														PopcornFXSkelMeshUniforms.InPrevVATTrackNextsOffset,
+														PopcornFXSkelMeshUniforms.InPrevVATTransitionCursorsOffset);
+														
+	PrevBoneMatrices[PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 0] = prevTransforms[0];
+	PrevBoneMatrices[PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 1] = prevTransforms[1];
+	PrevBoneMatrices[PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 2] = prevTransforms[2];
+#endif // COMPUTE_PREV_MATRICES
+}

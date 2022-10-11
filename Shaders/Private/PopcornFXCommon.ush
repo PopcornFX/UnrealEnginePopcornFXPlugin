@@ -1,0 +1,61 @@
+#pragma once
+
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+/*=============================================================================
+PopcornFXCommon.ush: Load functions
+=============================================================================*/
+
+float	PKSimData_Loadf(uint id, uint offset)
+{
+	return asfloat(PopcornFXUniforms.InSimData[offset + id]);
+}
+
+//----------------------------------------------------------------------------
+
+float2	PKSimData_Load2f(uint id, uint offset)
+{
+	return float2(asfloat(PopcornFXUniforms.InSimData[offset + id * 2 + 0]),
+				  asfloat(PopcornFXUniforms.InSimData[offset + id * 2 + 1]));
+}
+
+//----------------------------------------------------------------------------
+
+float3	PKSimData_Load3f(uint id, uint offset)
+{
+	return float3(asfloat(PopcornFXUniforms.InSimData[offset + id * 3 + 0]),
+				  asfloat(PopcornFXUniforms.InSimData[offset + id * 3 + 1]),
+				  asfloat(PopcornFXUniforms.InSimData[offset + id * 3 + 2]));
+}
+
+//----------------------------------------------------------------------------
+
+float4	PKSimData_Load4f(uint id, uint offset)
+{
+	return float4(asfloat(PopcornFXUniforms.InSimData[offset + id * 4 + 0]),
+				  asfloat(PopcornFXUniforms.InSimData[offset + id * 4 + 1]),
+				  asfloat(PopcornFXUniforms.InSimData[offset + id * 4 + 2]),
+				  asfloat(PopcornFXUniforms.InSimData[offset + id * 4 + 3]));
+}
+
+//----------------------------------------------------------------------------
+
+float4x4	PKSimData_Load4x4f(uint id, uint offset)
+{
+	return float4x4(PKSimData_Load4f(id * 4 + 0, offset),
+					PKSimData_Load4f(id * 4 + 1, offset),
+					PKSimData_Load4f(id * 4 + 2, offset),
+					PKSimData_Load4f(id * 4 + 3, offset));
+}
+
+//----------------------------------------------------------------------------
+
+int	PKSimData_Loadi(uint id, uint offset)
+{
+	return asint(PopcornFXUniforms.InSimData[offset + id]);
+}
+
+//----------------------------------------------------------------------------

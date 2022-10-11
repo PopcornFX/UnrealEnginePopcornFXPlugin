@@ -4,6 +4,7 @@
 //----------------------------------------------------------------------------
 
 #include "PopcornFXGPUVertexFactory.h"
+#include "PopcornFXVertexFactoryCommon.h"
 
 #include "PopcornFXVertexFactoryShaderParameters.h"
 
@@ -16,7 +17,7 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
 
-IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, "PopcornFXVSUniforms");
+IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, "PopcornFXGPUBillboardVSUniforms");
 
 //----------------------------------------------------------------------------
 //	Base
@@ -48,7 +49,8 @@ public:
 														FVertexInputStreamArray &vertexStreams) const
 	{
 		FPopcornFXGPUVertexFactory	*_vertexFactory = (FPopcornFXGPUVertexFactory*)vertexFactory;
-		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXGPUBillboardVSUniforms>(), _vertexFactory->GetVSUniformBuffer());
+		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXUniforms>(), _vertexFactory->GetVSUniformBuffer());
+		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXGPUBillboardVSUniforms>(), _vertexFactory->GetGPUBillboardVSUniformBuffer());
 	}
 };
 
@@ -70,6 +72,7 @@ public:
 														FVertexInputStreamArray &vertexStreams) const
 	{
 		FPopcornFXGPUVertexFactory	*_vertexFactory = (FPopcornFXGPUVertexFactory*)vertexFactory;
+		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXUniforms>(), _vertexFactory->GetVSUniformBuffer());
 		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXGPUBillboardVSUniforms>(), _vertexFactory->GetVSUniformBuffer());
 	}
 };

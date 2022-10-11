@@ -3,8 +3,7 @@
 // https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 #include "PopcornFXMeshVertexFactory.h"
-
-#include "PopcornFXVertexFactoryShaderParameters.h"
+#include "PopcornFXVertexFactoryCommon.h"
 
 #include "Render/PopcornFXShaderUtils.h"
 
@@ -18,6 +17,10 @@
 #include "MeshDrawShaderBindings.h"
 
 //----------------------------------------------------------------------------
+
+IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXMeshVSUniforms, "PopcornFXMeshVSUniforms");
+
+//----------------------------------------------------------------------------
 //
 // FPopcornFXMeshVertexFactoryShaderParameters
 //
@@ -27,7 +30,7 @@ class FPopcornFXMeshVertexFactoryShaderParameters : public FVertexFactoryShaderP
 {
 public:
 
-	void	Bind(const FShaderParameterMap& ParameterMap)
+	void	Bind(const FShaderParameterMap &ParameterMap)
 	{
 	}
 
@@ -41,6 +44,9 @@ public:
 													class FMeshDrawSingleShaderBindings &shaderBindings,
 													FVertexInputStreamArray &vertexStreams) const
 	{
+		FPopcornFXMeshVertexFactory	*_vertexFactory = (FPopcornFXMeshVertexFactory*)vertexFactory;
+		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXUniforms>(), _vertexFactory->GetVSUniformBuffer());
+		shaderBindings.Add(shader->GetUniformBufferParameter<FPopcornFXMeshVSUniforms>(), _vertexFactory->GetMeshVSUniformBuffer());
 	}
 };
 
@@ -60,30 +66,7 @@ IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXMeshVertexFactory, PKUE_SHADER_PATH("Pop
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_Vertex, FPopcornFXMeshVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_Compute, FPopcornFXMeshVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_RayHitGroup, FPopcornFXMeshVertexFactoryShaderParameters);
-
-//----------------------------------------------------------------------------
-
-void	FPopcornFXMeshVertexFactory::_SetupInstanceStream(	u32								attributeIndex,
-															u32								offset,
-															FPopcornFXVertexBufferView		&buffer,
-															EVertexElementType				type,
-															FVertexDeclarationElementList	&decl)
-{
-	if (!buffer.Valid())
-	{
-		FVertexStreamComponent NullColorComponent(&GNullColorVertexBuffer, 0, 0, VET_Color);
-		decl.Add(AccessStreamComponent(NullColorComponent, attributeIndex));
-		return;
-	}
-
-	const u32			streamIndex = Streams.Num();
-	FVertexStream		*stream = new (Streams) FVertexStream();
-	stream->Offset = buffer.Offset();
-	stream->Stride = buffer.Stride();
-	stream->VertexBuffer = buffer.VertexBufferPtr();
-
-	decl.Add(FVertexElement(streamIndex, offset, type, attributeIndex, buffer.Stride(), true));
-}
+IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_Pixel, FPopcornFXMeshVertexFactoryShaderParameters);
 
 //----------------------------------------------------------------------------
 
@@ -141,14 +124,6 @@ void	FPopcornFXMeshVertexFactory::InitRHI()
 			Elements.Add(FVertexElement(streamIndex, sizeof(float) * 4 * 3, VET_Float4, 11, stride, true));
 		}
 
-		// Particle colors
-		PK_ASSERT(Data.m_InstancedColors.Valid());
-		{
-			const u32	attributeIndex = 12;
-			const u32	offset = 0;
-			_SetupInstanceStream(attributeIndex, offset, Data.m_InstancedColors, Data.m_InstancedColors.Stride() == 8 ? VET_Half4 : VET_Float4, Elements);
-		}
-
 		// Vertex positions
 		if (Data.PositionComponent.VertexBuffer != NULL)
 		{
@@ -198,52 +173,6 @@ void	FPopcornFXMeshVertexFactory::InitRHI()
 					));
 			}
 		}
-
-		// Particle VAT cursors
-		{
-			const u32	attributeIndex = 13;
-			const u32	offset = 0;
-			_SetupInstanceStream(attributeIndex, offset, Data.m_InstancedVATCursors, VET_Float1, Elements);
-		}
-		// Particle Dynamic parameter 0
-		{
-			const u32	attributeIndex = 14;
-			const u32	offset = 0;
-			_SetupInstanceStream(attributeIndex, offset, Data.m_InstancedDynamicParameters0, VET_Float4, Elements);
-		}
-
-		// Particle Dynamic parameter 1
-		{
-			const u32	attributeIndex = 15;
-			const u32	offset = 0;
-			_SetupInstanceStream(attributeIndex, offset, Data.m_InstancedDynamicParameters1, VET_Float4, Elements);
-		}
-
-		// Dyn param 2 & 3 are currently disabled. Will need rework using a single GPU buffer containing all per instance data to remove this vertex attribute limit
-
-		// Particle Dynamic parameter 2
-		//{
-		//	const u32				streamIndex = 9;
-		//	FVertexStream			*stream = new (Streams)FVertexStream();
-		//	stream->Offset = Data.m_InstancedDynamicParameters2.Offset();
-		//	stream->Stride = Data.m_InstancedDynamicParameters2.Stride();
-		//	stream->VertexBuffer = Data.m_InstancedDynamicParameters2.VertexBufferPtr();
-		//
-		//	const u32		stride = Data.m_InstancedDynamicParameters2.Stride();
-		//	Elements.Add(FVertexElement(streamIndex, 0, VET_Float4, 16, stride, true));
-		//}
-
-		// Particle Dynamic parameter 3
-		//{
-		//	const u32			streamIndex = 9;
-		//	FVertexStream			*stream = new (Streams)FVertexStream();
-		//	stream->Offset = Data.m_InstancedDynamicParameters3.Offset();
-		//	stream->Stride = Data.m_InstancedDynamicParameters3.Stride();
-		//	stream->VertexBuffer = Data.m_InstancedDynamicParameters3.VertexBufferPtr();
-		//
-		//	const u32		stride = Data.m_InstancedDynamicParameters3.Stride();
-		//	Elements.Add(FVertexElement(streamIndex, 0, VET_Float4, 16, stride, true));
-		//}
 
 		if (Streams.Num() > 0)
 		{

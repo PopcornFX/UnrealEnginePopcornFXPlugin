@@ -21,6 +21,7 @@
 #include "Render/BatchDrawer_Ribbon_CPU.h"
 #include "Render/BatchDrawer_Triangle_CPU.h"
 #include "Render/BatchDrawer_Mesh_CPU.h"
+#include "Render/BatchDrawer_SkeletalMesh_CPU.h"
 #include "Render/BatchDrawer_Light.h"
 #include "Render/BatchDrawer_Sound.h"
 
@@ -275,6 +276,7 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 
 	bool			hasVolumeMaterial = false;
 	bool			hasValidMaterial = true;
+	bool			hasSkelMesh = false;
 	CRendererCache	*matCache = static_cast<CRendererCache*>(rendererCache.Get());
 	if (PK_VERIFY(matCache != null))
 	{
@@ -310,6 +312,8 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 				PK_ASSERT_NOT_REACHED();
 				break;
 			}
+			hasSkelMesh = rendererSubMat->SkeletalMesh != null;
+			PK_ASSERT(!hasSkelMesh || rendererType == PopcornFX::Renderer_Mesh);
 		}
 	}
 
@@ -352,6 +356,8 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 			case	PopcornFX::Renderer_Triangle:
 				return PK_NEW(CBatchDrawer_Triangle_CPUBB);
 			case	PopcornFX::Renderer_Mesh:
+				if (hasSkelMesh)
+					return PK_NEW(CBatchDrawer_SkeletalMesh_CPUBB);
 				return PK_NEW(CBatchDrawer_Mesh_CPUBB);
 			case	PopcornFX::Renderer_Light:
 				return PK_NEW(CBatchDrawer_Light);
@@ -602,7 +608,7 @@ void	CRenderBatchManager::GameThread_EndUpdate(PopcornFX::CRendererSubView &upda
 	PK_NAMEDSCOPEDPROFILE_C("CRenderBatchManager::GameThread_EndUpdate", POPCORNFX_UE_PROFILER_COLOR);
 
 	{
-		// Billboards/Ribbons/Meshes/Lights
+		// Billboards/Ribbons/Triangles/Meshes/Lights
 		// Lights could be gathered in the update thread pass
 		PK_NAMEDSCOPEDPROFILE_C("CRenderBatchManager::GameThread_EndUpdate - Collect render thread frame", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -773,7 +779,7 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 		return;
 
 	PopcornFX::TArray<PopcornFX::SSceneView>	sceneViews;
-	const u32											viewCount = bbViews.Count();
+	const u32									viewCount = bbViews.Count();
 	for (u32 iView = 0; iView < viewCount; ++iView)
 	{
 		PopcornFX::CGuid	sceneViewId = sceneViews.PushBack();
@@ -903,13 +909,13 @@ namespace
 	}
 
 	void	_DrawHeavyDebug(const FPopcornFXSceneProxy						*sceneProxy,
-		FPrimitiveDrawInterface *PDI,
-		const FSceneView *view,
-		uint32 debugModeMask,
-		uint32 globalIndex,
-		const PopcornFX::Drawers::SBase_DrawRequest &dr,
-		float particlePointsize,
-		float boundsLinesThickness)
+							FPrimitiveDrawInterface							*PDI,
+							const FSceneView								*view,
+							uint32											debugModeMask,
+							uint32											globalIndex,
+							const PopcornFX::Drawers::SBase_DrawRequest		&dr,
+							float											particlePointsize,
+							float											boundsLinesThickness)
 	{
 		if (dr.Empty())
 			return;

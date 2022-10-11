@@ -677,22 +677,6 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 
 	PK_ASSERT(FPopcornFXPlugin::IsMainThread());
 
-	PK_ONLY_IF_ASSERTS(
-		{
-			UPopcornFXEmitterComponent	*cpnt = Cast<UPopcornFXEmitterComponent>(GetOuter());
-			if (cpnt != null)
-			{
-				PK_ASSERT(m_Owner == null || cpnt == m_Owner);
-				PK_ASSERT(!cpnt->IsEmitterStarted());
-				if (cpnt->_GetParticleScene() != null &&
-					cpnt->_GetParticleScene()->Unsafe_ParticleMediumCollection() != null)
-				{
-					PK_ASSERT(!cpnt->_GetParticleScene()->Unsafe_ParticleMediumCollection()->UpdatePending());
-				}
-				//cpnt->TerminateEmitter();
-			}
-		});
-
 	m_Effect = effect;
 	m_FileVersionId = effect->FileVersionId();
 
@@ -1090,15 +1074,6 @@ void	UPopcornFXAttributeList::PostEditUndo()
 	if (m_Owner != null)
 		_RefreshAttributes(m_Owner);
 	Super::PostEditUndo();
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXAttributeList::PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent)
-{
-	DBG_HERE();
-	PK_ASSERT(CheckDataIntegrity());
-	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
 //----------------------------------------------------------------------------

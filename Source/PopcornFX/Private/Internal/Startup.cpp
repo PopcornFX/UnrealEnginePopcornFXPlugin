@@ -30,7 +30,8 @@
 #include <pk_particles/include/ps_init.h>
 #include <pk_particles_toolbox/include/pt_init.h>
 #include <pk_render_helpers/include/rh_init.h>
-#include <pk_render_helpers/include/basic_renderer_properties/rh_vertex_animation_renderer_properties.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_skeletal.h>
 #include <pk_kernel/include/kr_static_config_flags.h>
 
 #include <pk_kernel/include/kr_mem_stats.h>
@@ -809,6 +810,7 @@ bool	PopcornFXStartup()
 
 	VertexAnimationRendererProperties::Startup();
 	UERendererProperties::Startup();
+	SkeletalAnimationTexture::Startup();
 
 #if WITH_EDITOR
 	PopcornFX::COvenBakeConfig_Base::RegisterHandler();
@@ -853,6 +855,7 @@ void	PopcornFXShutdown()
 
 	ShutdownPlugins();
 
+	SkeletalAnimationTexture::Shutdown();
 	UERendererProperties::Shutdown();
 	VertexAnimationRendererProperties::Shutdown();
 

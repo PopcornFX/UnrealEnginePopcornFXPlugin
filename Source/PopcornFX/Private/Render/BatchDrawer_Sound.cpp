@@ -26,8 +26,8 @@
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "PopcornFXStats.h"
 
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
-#include <pk_render_helpers/include/basic_renderer_properties/rh_vertex_animation_renderer_properties.h>
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
 
 //----------------------------------------------------------------------------
 
@@ -239,6 +239,8 @@ void	CBatchDrawer_Sound::_IssueDrawCall_Sound(const SUERenderContext &renderCont
 	}
 
 	sPoolCollection->EndInsert(world);
+
+	INC_DWORD_STAT_BY(STAT_PopcornFX_SoundCount, totalParticleCount);
 }
 
 //----------------------------------------------------------------------------

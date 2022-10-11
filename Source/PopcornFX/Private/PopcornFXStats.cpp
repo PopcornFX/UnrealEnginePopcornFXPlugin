@@ -22,6 +22,13 @@ DEFINE_STAT(STAT_PopcornFX_EmitterUpdateCount);
 DEFINE_STAT(STAT_PopcornFX_SoundParticleCount);
 DEFINE_STAT(STAT_PopcornFX_DrawRequestsCount);
 DEFINE_STAT(STAT_PopcornFX_DrawCallsCount);
+DEFINE_STAT(STAT_PopcornFX_DrawCallsBillboardCount);
+DEFINE_STAT(STAT_PopcornFX_DrawCallsRibbonCount);
+DEFINE_STAT(STAT_PopcornFX_DrawCallsTriangleCount);
+DEFINE_STAT(STAT_PopcornFX_DrawCallsMeshCount);
+DEFINE_STAT(STAT_PopcornFX_DrawCallsSkelMeshCount);
+DEFINE_STAT(STAT_PopcornFX_LightCount);
+DEFINE_STAT(STAT_PopcornFX_SoundCount);
 DEFINE_STAT(STAT_PopcornFX_RayTracing_DrawCallsCount);
 DEFINE_STAT(STAT_PopcornFX_BatchesCount);
 

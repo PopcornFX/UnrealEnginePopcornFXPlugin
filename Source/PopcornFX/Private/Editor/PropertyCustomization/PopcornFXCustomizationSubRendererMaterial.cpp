@@ -15,6 +15,7 @@
 #include "AssetThumbnail.h"
 #include "Engine/Texture2D.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
 #include "PropertyCustomizationHelpers.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Images/SImage.h"
@@ -108,6 +109,9 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 	m_Thumbs[Thumb_VATRotation].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, VATTextureRotation)).ToSharedRef();
 	m_Thumbs[Thumb_VATRotation].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->VATTextureRotation, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
+	m_Thumbs[Thumb_SkeletalAnimation].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureSkeletalAnimation)).ToSharedRef();
+	m_Thumbs[Thumb_SkeletalAnimation].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureSkeletalAnimation, 64, 64, CustomizationUtils.GetThumbnailPool()));
+
 	m_Thumbs[Thumb_Normal].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureNormal)).ToSharedRef();
 	m_Thumbs[Thumb_Normal].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureNormal, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
@@ -119,6 +123,9 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 
 	m_Thumbs[Thumb_Mesh].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, StaticMesh)).ToSharedRef();
 	m_Thumbs[Thumb_Mesh].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->StaticMesh, 64, 64, CustomizationUtils.GetThumbnailPool()));
+
+	m_Thumbs[Thumb_SkeletalMesh].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, SkeletalMesh)).ToSharedRef();
+	m_Thumbs[Thumb_SkeletalMesh].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->SkeletalMesh, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
 	PropertyHandle->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationSubRendererMaterial::OnThumbnailPtyChange, -1));
 

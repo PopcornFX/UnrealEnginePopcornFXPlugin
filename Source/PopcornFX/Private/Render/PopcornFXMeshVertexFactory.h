@@ -14,6 +14,27 @@
 
 #include "PopcornFXSDK.h"
 
+//----------------------------------------------------------------------------
+
+// Vertex shader uniforms
+BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXMeshVSUniforms, POPCORNFX_API)
+	SHADER_PARAMETER(int32, InColorsOffset)
+	SHADER_PARAMETER(int32, InEmissiveColorsOffset)
+	SHADER_PARAMETER(int32, InAlphaCursorsOffset)
+	SHADER_PARAMETER(int32, InTextureIDsOffset)
+	SHADER_PARAMETER(int32, InVATCursorsOffset)
+	SHADER_PARAMETER(int32, InDynamicParameter0sOffset)
+	SHADER_PARAMETER(int32, InDynamicParameter1sOffset)
+	SHADER_PARAMETER(int32, InDynamicParameter2sOffset)
+	SHADER_PARAMETER(int32, InDynamicParameter3sOffset)
+	SHADER_PARAMETER(uint32, AtlasRectCount)
+	SHADER_PARAMETER_SRV(Buffer<float4>, AtlasBuffer)
+END_GLOBAL_SHADER_PARAMETER_STRUCT()
+
+typedef TUniformBufferRef<FPopcornFXMeshVSUniforms> FPopcornFXMeshVSUniformsRef;
+
+//----------------------------------------------------------------------------
+
 class	FPopcornFXMeshVertexFactory : public FVertexFactory
 {
 	DECLARE_VERTEX_FACTORY_TYPE(FPopcornFXMeshVertexFactory);
@@ -22,19 +43,12 @@ public:
 	struct FDataType : public FStaticMeshDataType
 	{
 		// Instanced particle streams:
-
 		FPopcornFXVertexBufferView	m_InstancedMatrices;
-		FPopcornFXVertexBufferView	m_InstancedColors;
-		FPopcornFXVertexBufferView	m_InstancedVATCursors;
-		FPopcornFXVertexBufferView	m_InstancedDynamicParameters0;
-		FPopcornFXVertexBufferView	m_InstancedDynamicParameters1;
-		FPopcornFXVertexBufferView	m_InstancedDynamicParameters2;
-		//FPopcornFXVertexBufferView	m_InstancedDynamicParameters3;
 
-		bool bInitialized;
+		bool						bInitialized;
 
 		FDataType()
-			: bInitialized(false)
+		:	bInitialized(false)
 		{
 
 		}
@@ -55,13 +69,13 @@ public:
 
 	static bool			SupportsTessellationShaders() { return true; }
 
+	FRHIUniformBuffer	*GetVSUniformBuffer() { return m_VSUniformBuffer; }
+	FRHIUniformBuffer	*GetMeshVSUniformBuffer() { return m_MeshVSUniformBuffer; }
+
 protected:
 	FDataType			Data;
 
-private:
-	void				_SetupInstanceStream(	u32								attributeIndex,
-												u32								offset,
-												FPopcornFXVertexBufferView		&buffer,
-												EVertexElementType				type,
-												FVertexDeclarationElementList	&decl);
+public:
+	FUniformBufferRHIRef	m_VSUniformBuffer;
+	FUniformBufferRHIRef	m_MeshVSUniformBuffer;
 };

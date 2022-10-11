@@ -25,7 +25,7 @@
 #include "PopcornFXPlugin.h"
 #include "PopcornFXStats.h"
 
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
 
 //----------------------------------------------------------------------------
 //

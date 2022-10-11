@@ -6,11 +6,12 @@
 #include "/Engine/Public/Platform.ush"
 
 /*=============================================================================
-	PopcornFXMeshVertexFactory.ush: PopcornFX Vertex factory shader code (CPU billboarded Meshes)
+	PopcornFXSkeletalMeshVertexFactory.ush: PopcornFX Vertex factory shader code (CPU billboarded Skeletal Meshes)
 =============================================================================*/
 
 #include "/Engine/Private/VertexFactoryCommon.ush"
 #include "PopcornFXCommon.ush"
+#include "PopcornFXGPUSkinningCommon.ush"
 
 // These are only enabled for SM5 due to limited interpolators elsewhere
 #define USE_PARTICLE_POSITION ((NEEDS_PARTICLE_POSITION || PASS_NEEDS_PRIMITIVE_VOLUME_BOUNDS))
@@ -19,23 +20,28 @@
 #define USE_PARTICLE_LOCAL_TO_WORLD (NEEDS_PARTICLE_LOCAL_TO_WORLD || NEEDS_INSTANCE_LOCAL_TO_WORLD_PS)
 #define USE_PARTICLE_WORLD_TO_LOCAL (NEEDS_PARTICLE_WORLD_TO_LOCAL || NEEDS_INSTANCE_WORLD_TO_LOCAL_PS)
 
+uint	BoneIndicesReorderOffset;
+
+#if PREBUILD_BONE_TRANSFORMS
+Buffer<float4> 	BoneMatrices;
+Buffer<float4> 	PreviousBoneMatrices; // If MotionBlur is disabled, BoneMatrices is bound instead
+#endif
+
 struct FVertexFactoryInput
 {
-	float4	Position : ATTRIBUTE0;
-	half3	TangentX : ATTRIBUTE1;
+	float4	Position			: ATTRIBUTE0;
+	half3	TangentX			: ATTRIBUTE1;
 	// TangentZ.w contains sign of tangent basis determinant
-	half4	TangentZ : ATTRIBUTE2;
-	half4	VertexColor : ATTRIBUTE3;
+	half4	TangentZ			: ATTRIBUTE2;
+	half4	VertexColor			: ATTRIBUTE3;
 
 #if NUM_MATERIAL_TEXCOORDS_VERTEX
 	float2	TexCoords[NUM_MATERIAL_TEXCOORDS_VERTEX] : ATTRIBUTE4;
 #endif
 
-	float4 Transform1 : ATTRIBUTE8;
-	float4 Transform2 : ATTRIBUTE9;
-	float4 Transform3 : ATTRIBUTE10;
-	float4 Transform4 : ATTRIBUTE11;
-	
+	uint4	BoneIndices			: ATTRIBUTE8;
+	float4	BoneWeights			: ATTRIBUTE9;
+
 	uint InstanceId	: SV_InstanceID;
 };
 
@@ -59,7 +65,7 @@ struct FVertexFactoryInterpolantsVSToPS
 #if NEEDS_PARTICLE_COLOR
 	nointerpolation float4	ParticleColor : COLOR1;
 #endif
-	nointerpolation float4	EmissiveColor : COLOR6;
+	nointerpolation float3	EmissiveColor : COLOR6;
 
 	nointerpolation float	VATCursor : PARTICLE_TIME;
 
@@ -96,6 +102,10 @@ struct FVertexFactoryInterpolantsVSToPS
 #if INSTANCED_STEREO
 	nointerpolation uint EyeIndex : PACKED_EYE_INDEX;
 #endif
+
+#if USE_PARTICLE_SUBUVS
+	nointerpolation float4	AtlasRect : COLOR7;
+#endif
 };
 
 struct FVertexFactoryIntermediates
@@ -106,9 +116,9 @@ struct FVertexFactoryIntermediates
 	/** The color of the particle. */
 	float4	ParticleColor;
 
-	float4	EmissiveColor;
+	float3	EmissiveColor;
 
-	float	VATCursor;
+	half	VATCursor;
 	
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	float4	DynamicParameter0;
@@ -137,16 +147,28 @@ struct FVertexFactoryIntermediates
 
 	float4x4	ParticleToWorld;
 	float4x4	WorldToParticle;
+	float4x4	PrevParticleToWorld;
 
 #if (ENGINE_MAJOR_VERSION == 5)
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
 #endif // (ENGINE_MAJOR_VERSION == 5)
+
+	float3x4	SkinningMatrix;
+	float3x4	PrevSkinningMatrix;
+	float3x3	TangentToLocal;
+
+	float4		AtlasRect;
 };
 
-float4x4 GetParticleTransform(FVertexFactoryInput Input)
+float4x4 GetParticleTransform(FVertexFactoryIntermediates Intermediates)
 {
-	return float4x4(Input.Transform1, Input.Transform2, Input.Transform3, Input.Transform4);
+	return Intermediates.ParticleToWorld;
+}
+
+float4x4 GetPrevParticleTransform(FVertexFactoryIntermediates Intermediates)
+{
+	return Intermediates.PrevParticleToWorld;
 }
 
 /** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
@@ -191,7 +213,9 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #endif
 #if USE_PARTICLE_SUBUVS
 	Result.Particle.SubUVCoords[0] = Interpolants.EmissiveColor.xy;
-	Result.Particle.SubUVCoords[1] = Interpolants.EmissiveColor.zz;
+	Result.Particle.SubUVCoords[1] = float2(Interpolants.EmissiveColor.z, Interpolants.AtlasRect.x);
+	Result.Particle.SubUVLerp = Interpolants.AtlasRect.y;
+	Result.Particle.Size = Interpolants.AtlasRect.zw;
 #endif
 	Result.Particle.RelativeTime = Interpolants.VATCursor;
 
@@ -256,6 +280,8 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #	endif // USE_PARTICLE_WORLD_TO_LOCAL
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
+	//Result.PrevFrameLocalToWorld = ;
+
 	Result.Particle.MotionBlurFade = 1.0f;
 	Result.TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
 	Result.TwoSidedSign = 1;
@@ -307,7 +333,9 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.Color = Intermediates.ParticleColor;
 #if USE_PARTICLE_SUBUVS
 	Result.Particle.SubUVCoords[0] = Intermediates.EmissiveColor.xy;
-	Result.Particle.SubUVCoords[1] = Intermediates.EmissiveColor.zz;
+	Result.Particle.SubUVCoords[1] = float2(Intermediates.EmissiveColor.z, Intermediates.AtlasRect.x);
+	Result.Particle.SubUVLerp = Intermediates.AtlasRect.y;
+	Result.Particle.Size = Intermediates.AtlasRect.zw;
 #endif
 	Result.Particle.RelativeTime = Intermediates.VATCursor;
 
@@ -331,10 +359,10 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.TranslatedWorldPositionAndSize.w = 1;
 
 #if (ENGINE_MAJOR_VERSION == 5)
-	float4x4	_transform = GetParticleTransform(Input);
+	float4x4	_transform = GetParticleTransform(Intermediates);
 	FLWCMatrix	Transform = LWCPromote(_transform);
 #else
-	float4x4 Transform = GetParticleTransform(Input);
+	float4x4 Transform = GetParticleTransform(Intermediates);
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Result.InstanceLocalToWorld = Transform;
@@ -371,15 +399,186 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	return Result;
 }
 
-float4 CalcWorldPosition(FVertexFactoryInput Input)
+#if PREBUILD_BONE_TRANSFORMS
+float3x4	ReadBoneMatrix(uint particleID, uint boneID)
 {
-	float4x4 Transform = GetParticleTransform(Input);
-#if (ENGINE_MAJOR_VERSION == 5)
-	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.PreViewTranslation);
+	float4		X = BoneMatrices[PopcornFXSkelMeshUniforms.BoneMatricesOffset + PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 0];
+	float4		Y = BoneMatrices[PopcornFXSkelMeshUniforms.BoneMatricesOffset + PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 1];
+	float4		Z = BoneMatrices[PopcornFXSkelMeshUniforms.BoneMatricesOffset + PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 2];
+	return float3x4(X,Y,Z);
+}
+
+float3x4	ReadPreviousBoneMatrix(uint particleID, uint boneID)
+{
+	float4		X = PreviousBoneMatrices[PopcornFXSkelMeshUniforms.BoneMatricesOffset + PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 0];
+	float4		Y = PreviousBoneMatrices[PopcornFXSkelMeshUniforms.BoneMatricesOffset + PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 1];
+	float4		Z = PreviousBoneMatrices[PopcornFXSkelMeshUniforms.BoneMatricesOffset + PopcornFXSkelMeshUniforms.SkinningBufferStride * particleID + boneID * 3 + 2];
+	return float3x4(X,Y,Z);
+}
+
+float3x4	CalcPreviousSkinningTransformsAt(FVertexFactoryInput Input, uint particleID)
+{
+	float		weightsSum = Input.BoneWeights.x + Input.BoneWeights.y + Input.BoneWeights.z + Input.BoneWeights.w;
+	float4		boneWeights = Input.BoneWeights / weightsSum;
+
+	uint4		boneIndices = uint4(PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.x],
+									PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.y],
+									PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.z],
+									PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.w]);
+
+	float3x4	transforms;
+	transforms =	ReadPreviousBoneMatrix(particleID, boneIndices.x) * boneWeights.x;
+	transforms +=	ReadPreviousBoneMatrix(particleID, boneIndices.y) * boneWeights.y;
+	transforms +=	ReadPreviousBoneMatrix(particleID, boneIndices.z) * boneWeights.z;
+	transforms +=	ReadPreviousBoneMatrix(particleID, boneIndices.w) * boneWeights.w;
+	return transforms;
+}
+#endif // PREBUILD_BONE_TRANSFORMS
+
+#if PREBUILD_BONE_TRANSFORMS
+float3x4	CalcSkinningTransformsAt(FVertexFactoryInput Input, uint particleID)
 #else
-	float3 WorldPosition = mul(Input.Position, Transform).xyz + ResolvedView.PreViewTranslation;
+float3x4	CalcSkinningTransformsAt(FVertexFactoryInput Input, float animCursor, uint trackID)
+#endif // PREBUILD_BONE_TRANSFORMS
+{
+	float		weightsSum = Input.BoneWeights.x + Input.BoneWeights.y + Input.BoneWeights.z + Input.BoneWeights.w;
+	float4		boneWeights = Input.BoneWeights / weightsSum;
+
+	uint4		boneIndices = uint4(PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.x],
+									PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.y],
+									PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.z],
+									PopcornFXSkelMeshUniforms.BoneIndicesReorder[BoneIndicesReorderOffset + Input.BoneIndices.w]);
+
+#if PREBUILD_BONE_TRANSFORMS
+	float3x4	transforms;
+	transforms =	ReadBoneMatrix(particleID, boneIndices.x) * boneWeights.x;
+	transforms +=	ReadBoneMatrix(particleID, boneIndices.y) * boneWeights.y;
+	transforms +=	ReadBoneMatrix(particleID, boneIndices.z) * boneWeights.z;
+	transforms +=	ReadBoneMatrix(particleID, boneIndices.w) * boneWeights.w;
+#else
+	float2		pixelUVSize = PopcornFXSkelMeshUniforms.InvSkeletalAnimationTextureDimensions;
+
+	float		animCursorToUVRange = animCursor * (1.0f - pixelUVSize.x);
+	float		animCursorToPrevPixel = fmod(animCursorToUVRange, pixelUVSize.x);
+	float		snappedAnimCursor = (animCursorToUVRange - animCursorToPrevPixel) + pixelUVSize.x * 0.5f;
+
+	float		animationUVOffset = PopcornFXSkelMeshUniforms.SkeletalAnimationYOffsetPerTrack * (float)trackID;
+
+	float3x4	transforms;
+	transforms = ExtractBoneTransforms(snappedAnimCursor, pixelUVSize.y, animationUVOffset, boneIndices.x) * boneWeights.x;
+	[branch]
+	if (Input.BoneWeights.y > 0.0f)
+	{
+		transforms += ExtractBoneTransforms(snappedAnimCursor, pixelUVSize.y, animationUVOffset, boneIndices.y) * boneWeights.y;
+		[branch]
+		if (Input.BoneWeights.z > 0.0f)
+		{
+			transforms += ExtractBoneTransforms(snappedAnimCursor, pixelUVSize.y, animationUVOffset, boneIndices.z) * boneWeights.z;
+			[branch]
+			if (Input.BoneWeights.w > 0.0f)
+				transforms += ExtractBoneTransforms(snappedAnimCursor, pixelUVSize.y, animationUVOffset, boneIndices.w) * boneWeights.w;
+		}
+	}
+	[branch]
+	if (PopcornFXSkelMeshUniforms.LinearInterpolateTransforms != 0)
+	{
+		float	snappedAnimCursor1 = (animCursorToUVRange + (pixelUVSize.x - animCursorToPrevPixel)) + pixelUVSize.x * 0.5f;
+		float	cursor = animCursorToPrevPixel / pixelUVSize.x;
+
+		float3x4	transforms1;
+		transforms1 = ExtractBoneTransforms(snappedAnimCursor1, pixelUVSize.y, animationUVOffset, boneIndices.x) * Input.BoneWeights.x;
+		[branch]
+		if (Input.BoneWeights.y > 0.0f)
+		{
+			transforms1 += ExtractBoneTransforms(snappedAnimCursor1, pixelUVSize.y, animationUVOffset, boneIndices.y) * Input.BoneWeights.y;
+			[branch]
+			if (Input.BoneWeights.z > 0.0f)
+			{
+				transforms1 += ExtractBoneTransforms(snappedAnimCursor1, pixelUVSize.y, animationUVOffset, boneIndices.z) * Input.BoneWeights.z;
+				[branch]
+				if (Input.BoneWeights.w > 0.0f)
+					transforms1 += ExtractBoneTransforms(snappedAnimCursor1, pixelUVSize.y, animationUVOffset, boneIndices.w) * Input.BoneWeights.w;
+			}
+		}
+
+		return LerpSkinningTransforms(transforms, transforms1, cursor);
+	}
+#endif // PREBUILD_BONE_TRANSFORMS
+	return transforms;
+}
+
+float3x4	CalcSkinningTransforms(FVertexFactoryInput Input)
+{
+	uint		particleID = GetInstanceId(Input.InstanceId); // Necessary for VR Instanced Stereo rendering (returns Input.InstanceId / 2)
+
+#if PREBUILD_BONE_TRANSFORMS
+	float3x4	transforms = CalcSkinningTransformsAt(Input, particleID);
+#else
+	float		animCursor0 = PKSimData_Loadf(particleID, PopcornFXSkelMeshUniforms.InVATCursorsOffset);
+	uint		animationId0 = PKSimData_Loadi(particleID, PopcornFXSkelMeshUniforms.InVATTracksOffset);
+	float3x4	transforms = CalcSkinningTransformsAt(Input, animCursor0, animationId0);
+
+	[branch]
+	if (PopcornFXSkelMeshUniforms.LinearInterpolateTracks != 0)
+	{
+		float		animCursor1 = PKSimData_Loadf(particleID, PopcornFXSkelMeshUniforms.InVATCursorNextsOffset);
+		uint		animationId1 = PKSimData_Loadi(particleID, PopcornFXSkelMeshUniforms.InVATTrackNextsOffset);
+		float		transitionCursor = PKSimData_Loadf(particleID, PopcornFXSkelMeshUniforms.InVATTransitionCursorsOffset);
+		float3x4	transforms1 = CalcSkinningTransformsAt(Input, animCursor1, animationId1);
+		transforms = LerpSkinningTransforms(transforms, transforms1, transitionCursor);
+	}
+#endif // PREBUILD_BONE_TRANSFORMS
+	return transforms;
+}
+
+float3x4	CalcPreviousSkinningTransforms(FVertexFactoryInput Input)
+{
+#if PREBUILD_BONE_TRANSFORMS
+	uint		particleID = GetInstanceId(Input.InstanceId); // Necessary for VR Instanced Stereo rendering (returns Input.InstanceId / 2)
+	float3x4	transforms = CalcPreviousSkinningTransformsAt(Input, particleID);
+	return transforms;
+#else
+	return CalcSkinningTransforms(Input);
+#endif
+}
+
+float3	SkinPosition(float3 localPosition, float3x4 SkinningMatrix)
+{
+	float3	skinnedPosition = mul(SkinningMatrix, float4(localPosition, 1.0f)).xyz;
+	return skinnedPosition;
+}
+
+float4 CalcWorldPosition(FVertexFactoryInput Input, float4x4 l2wTransform, float3x4 SkinningMatrix, float3 PreViewTranslation)
+{
+	float3	skinnedPosition = SkinPosition(Input.Position.xyz, SkinningMatrix);
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	float3 WorldPosition = mul(float4(skinnedPosition, 1.0f), l2wTransform).xyz + PreViewTranslation;
+#else
+	float3 WorldPosition = mul(float4(skinnedPosition, 1.0f), l2wTransform).xyz + PreViewTranslation;
 #endif // (ENGINE_MAJOR_VERSION == 5)
 	return float4(WorldPosition, Input.Position.w);
+}
+
+float3x3	SkinTangents(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	float3x3	Result = 0;
+	float3x3	skinningMatrix = (float3x3)Intermediates.SkinningMatrix;
+	float4		TangentZ = TangentBias(Input.TangentZ);
+
+	// pass-thru the tangent
+	Result[0] = normalize(mul(skinningMatrix, TangentBias(Input.TangentX))).xyz;
+	// pass-thru the normal
+	Result[2] = normalize(mul(skinningMatrix, TangentZ.xyz)).xyz;
+
+	// derive the binormal by getting the cross product of the normal and tangent
+	Result[1] = cross(Result[2], Result[0]) * TangentZ.w;
+	// Recalculate TangentX off of the other two vectors
+	// This corrects quantization error since TangentX was passed in as a quantized vertex input
+	// The error shows up most in specular off of a mesh with a smoothed UV seam (normal is smooth, but tangents vary across the seam)
+	Result[0] = cross(Result[1], Result[2]) * TangentZ.w;
+
+	return Result;
 }
 
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
@@ -391,14 +590,16 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	// Swizzle vertex color.
 	Intermediates.VertexColor = Input.VertexColor FCOLOR_COMPONENT_SWIZZLE;
 
+	uint		particleID = GetInstanceId(Input.InstanceId); // Necessary for VR Instanced Stereo rendering (returns Input.InstanceId / 2)
+	float4x4	ParticleToWorld = PKSimData_Load4x4f(particleID, PopcornFXSkelMeshUniforms.InMatricesOffset);
+	float3		ParticleWorldPosition = ParticleToWorld[3].xyz;
+
 	// World position.
-	float3 ParticleWorldPosition = Input.Transform4.xyz;
-#if NEEDS_PARTICLE_TRANSFORM
-	float4x4 LocalToWorldMat = float4x4(Input.Transform1, Input.Transform2, Input.Transform3, float4(0.0f, 0.0f, 0.0f, 1.0f));
-	Intermediates.LocalToWorld[0] = LocalToWorldMat[0];
-	Intermediates.LocalToWorld[1] = LocalToWorldMat[1];
-	Intermediates.LocalToWorld[2] = LocalToWorldMat[2];
-	Intermediates.LocalToWorld[3] = LocalToWorldMat[3];
+#if NEEDS_PARTICLE_TRANSFORM // UE4
+	Intermediates.LocalToWorld[0] = ParticleToWorld[0];
+	Intermediates.LocalToWorld[1] = ParticleToWorld[1];
+	Intermediates.LocalToWorld[2] = ParticleToWorld[2];
+	Intermediates.LocalToWorld[3] = ParticleToWorld[3];
 #endif
 
 #if (ENGINE_MAJOR_VERSION == 5)
@@ -406,68 +607,61 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 #else
 	Intermediates.ParticleTranslatedWorldPosition = ParticleWorldPosition + ResolvedView.PreViewTranslation.xyz;
 #endif // (ENGINE_MAJOR_VERSION == 5)
-
-	uint	particleID = GetInstanceId(Input.InstanceId); // Necessary for VR Instanced Stereo rendering (returns Input.InstanceId / 2)
 	
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InColorsOffset != -1)
-		Intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InColorsOffset);
+	if (PopcornFXSkelMeshUniforms.InColorsOffset != -1)
+		Intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXSkelMeshUniforms.InColorsOffset);
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InEmissiveColorsOffset != -1)
-		Intermediates.EmissiveColor = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InEmissiveColorsOffset);
-	BRANCH
-	if (PopcornFXMeshVSUniforms.InVATCursorsOffset != -1)
-		Intermediates.VATCursor = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InVATCursorsOffset);
+	if (PopcornFXSkelMeshUniforms.InEmissiveColorsOffset != -1)
+		Intermediates.EmissiveColor = PKSimData_Load3f(particleID, PopcornFXSkelMeshUniforms.InEmissiveColorsOffset);
 
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InDynamicParameter0sOffset != -1)
-		Intermediates.DynamicParameter0 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter0sOffset);
+	if (PopcornFXSkelMeshUniforms.InDynamicParameter0sOffset != -1)
+		Intermediates.DynamicParameter0 = PKSimData_Load4f(particleID, PopcornFXSkelMeshUniforms.InDynamicParameter0sOffset);
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 2)
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InDynamicParameter1sOffset != -1)
-		Intermediates.DynamicParameter1 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter1sOffset);
+	if (PopcornFXSkelMeshUniforms.InDynamicParameter1sOffset != -1)
+		Intermediates.DynamicParameter1 = PKSimData_Load4f(particleID, PopcornFXSkelMeshUniforms.InDynamicParameter1sOffset);
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 4)
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InDynamicParameter2sOffset != -1)
-		Intermediates.DynamicParameter2 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter2sOffset);
+	if (PopcornFXSkelMeshUniforms.InDynamicParameter2sOffset != -1)
+		Intermediates.DynamicParameter2 = PKSimData_Load4f(particleID, PopcornFXSkelMeshUniforms.InDynamicParameter2sOffset);
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 8)
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InDynamicParameter3sOffset != -1)
-		Intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter3sOffset);
+	if (PopcornFXSkelMeshUniforms.InDynamicParameter3sOffset != -1)
+		Intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXSkelMeshUniforms.InDynamicParameter3sOffset);
 #endif
 
 #if NUM_MATERIAL_TEXCOORDS_VERTEX
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InTextureIDsOffset != -1)
+	if (PopcornFXSkelMeshUniforms.InTextureIDsOffset != -1)
 	{
 		// Resolve UVs from rectangle list
-		const float		textureID = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InTextureIDsOffset);
-		const uint		atlasID = min((uint)abs(textureID), PopcornFXMeshVSUniforms.AtlasRectCount - 1);
-		const float4	rect = PopcornFXMeshVSUniforms.AtlasBuffer[atlasID];
+		const float		textureID = PKSimData_Loadf(particleID, PopcornFXSkelMeshUniforms.InTextureIDsOffset);
+		const uint		atlasID = min((uint)abs(textureID), PopcornFXSkelMeshUniforms.AtlasRectCount - 1);
+		const float4	rect = PopcornFXSkelMeshUniforms.AtlasBuffer[atlasID];
 
-		for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
-		{
-			Intermediates.TexCoords[CoordinateIndex] = Input.TexCoords[CoordinateIndex].xy * rect.xy + rect.zw;
-		}
+		Intermediates.AtlasRect = rect;
 	}
-	else
+	for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
 	{
-		for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
-		{
-			Intermediates.TexCoords[CoordinateIndex] = Input.TexCoords[CoordinateIndex].xy;
-		}
+		Intermediates.TexCoords[CoordinateIndex] = Input.TexCoords[CoordinateIndex].xy;
 	}
 #endif
 
-	float4x4 ParticleToWorld = float4x4(Input.Transform1, Input.Transform2, Input.Transform3, float4(0.0f, 0.0f, 0.0f, 1.0f));
-	float4x4 WorldToParticle = InverseTransform(ParticleToWorld);
-
+	float4x4	WorldToParticle = InverseTransform(ParticleToWorld);
 	Intermediates.ParticleToWorld = ParticleToWorld;
 	Intermediates.WorldToParticle = WorldToParticle;
+	Intermediates.PrevParticleToWorld = PKSimData_Load4x4f(particleID, PopcornFXSkelMeshUniforms.InPrevMatricesOffset);
+
+	Intermediates.SkinningMatrix = CalcSkinningTransforms(Input);
+	Intermediates.PrevSkinningMatrix = CalcPreviousSkinningTransforms(Input);
+	Intermediates.TangentToLocal = SkinTangents(Input, Intermediates);
+
 	return Intermediates;
 }
 
@@ -480,29 +674,18 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 */
 float3x3 VertexFactoryGetTangentToLocal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
-	float3x3 Result = 0;
-	float4 TangentZ = TangentBias(Input.TangentZ);
-
-	// pass-thru the tangent
-	Result[0] = TangentBias(Input.TangentX);
-	// pass-thru the normal
-	Result[2] = TangentZ.xyz;
-
-
-	// derive the binormal by getting the cross product of the normal and tangent
-	Result[1] = cross(Result[2], Result[0]) * TangentZ.w;
-	// Recalculate TangentX off of the other two vectors
-	// This corrects quantization error since TangentX was passed in as a quantized vertex input
-	// The error shows up most in specular off of a mesh with a smoothed UV seam (normal is smooth, but tangents vary across the seam)
-	Result[0] = cross(Result[1], Result[2]) * TangentZ.w;
-
-	return Result;
+	return Intermediates.TangentToLocal;
 }
 
 // @return translated world position
 float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
-	return CalcWorldPosition(Input);
+	float4x4	l2wTransform = GetParticleTransform(Intermediates);
+#if (ENGINE_MAJOR_VERSION == 5)
+	return CalcWorldPosition(Input, l2wTransform, Intermediates.SkinningMatrix, LWCHackToFloat(ResolvedView.PreViewTranslation));
+#else
+	return CalcWorldPosition(Input, l2wTransform, Intermediates.SkinningMatrix, ResolvedView.PreViewTranslation);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 // since 4.12
@@ -518,10 +701,8 @@ float4 VertexFactoryGetRasterizedWorldPosition(FVertexFactoryInput Input, FVerte
 
 void CalcTangentToWorld(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, out float3 TangentToWorld0, out float4 TangentToWorld2)
 {
-	float3x3 TangentToLocal = VertexFactoryGetTangentToLocal(Input, Intermediates);
-
-	float4x4 Transform = GetParticleTransform(Input);
-	float3x3 TangentToWorld = mul(TangentToLocal, (float3x3)Transform);
+	float4x4	Transform = GetParticleTransform(Intermediates);
+	float3x3	TangentToWorld = mul(Intermediates.TangentToLocal, (float3x3)Transform);
 
 	// Normalize to remove scaling. Incorrect but faster than computing the inverse-transpose.
 	TangentToWorld0 = normalize(TangentToWorld[0]);
@@ -615,14 +796,22 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 	Interpolants.EyeIndex = 0;
 #endif
 
+#if USE_PARTICLE_SUBUVS
+	Interpolants.AtlasRect = Intermediates.AtlasRect;
+#endif
+
 	return Interpolants;
 }
 
 // @return previous translated world position
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
-	// The previous local to world instance transform isn't available.
-	return CalcWorldPosition(Input);
+	float4x4	l2wTransform = GetPrevParticleTransform(Intermediates);
+#if (ENGINE_MAJOR_VERSION == 5)
+	return CalcWorldPosition(Input, l2wTransform, Intermediates.PrevSkinningMatrix, LWCHackToFloat(ResolvedView.PrevPreViewTranslation));
+#else
+	return CalcWorldPosition(Input, l2wTransform, Intermediates.PrevSkinningMatrix, ResolvedView.PrevPreViewTranslation);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 #if USING_TESSELLATION

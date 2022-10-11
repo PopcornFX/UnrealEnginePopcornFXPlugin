@@ -14,6 +14,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/Texture2D.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_base_object/include/hbo_handler.h>
@@ -23,13 +24,15 @@
 #include <pk_particles/include/Renderers/ps_renderer_base.h>
 
 #include "Render/PopcornFXRendererProperties.h"
-#include <pk_render_helpers/include/basic_renderer_properties/rh_basic_renderer_properties.h>
-#include <pk_render_helpers/include/basic_renderer_properties/rh_vertex_animation_renderer_properties.h>
+#include <pk_render_helpers/include/render_features/rh_features_basic.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_skeletal.h>
+#include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
 
 #if WITH_EDITOR
 #	include "Misc/MessageDialog.h"
 #	include "Factories/FbxStaticMeshImportData.h"
 #	include "Factories/ReimportFbxStaticMeshFactory.h"
+#	include "Rendering/SkeletalMeshRenderData.h"
 #endif
 
 #if (ENGINE_MAJOR_VERSION == 5)
@@ -43,6 +46,7 @@
 UTexture2D					*LoadTexturePk(const PopcornFX::CString &pkPath);
 UPopcornFXTextureAtlas		*LoadAtlasPk(const PopcornFX::CString &pkPath);
 UStaticMesh					*LoadMeshPk(const PopcornFX::CString &pkPath);
+USkeletalMesh				*LoadSkelMeshPk(const PopcornFX::CString &pkPath);
 void						SetMaterialTextureParameter(UMaterialInstanceDynamic *mat, FName textureName, const PopcornFX::CString &pkTexturePath);
 
 //----------------------------------------------------------------------------
@@ -63,39 +67,6 @@ namespace
 	};
 
 #if WITH_EDITOR
-	// ..
-	bool	_GetPropertyValueAsBool(const PopcornFX::SRendererDeclaration &decl, PopcornFX::CStringId propertyName)
-	{
-		const PopcornFX::SRendererFeaturePropertyValue	*prop = decl.FindProperty(propertyName);
-		if (prop == null)
-			return false;
-		return prop->ValueB();
-	}
-
-	const PopcornFX::CString	_GetPropertyValueAsPath(const PopcornFX::SRendererDeclaration &decl, PopcornFX::CStringId propertyName)
-	{
-		const PopcornFX::SRendererFeaturePropertyValue	*prop = decl.FindProperty(propertyName);
-		if (prop == null)
-			return "";
-		return prop->ValuePath();
-	}
-
-	float	_GetPropertyValueAsFloat(const PopcornFX::SRendererDeclaration &decl, PopcornFX::CStringId propertyName)
-	{
-		const PopcornFX::SRendererFeaturePropertyValue	*prop = decl.FindProperty(propertyName);
-		if (prop == null)
-			return 0.0f;
-		return prop->ValueF().x();
-	}
-
-	CFloat2	_GetPropertyValueAsFloat2(const PopcornFX::SRendererDeclaration &decl, PopcornFX::CStringId propertyName)
-	{
-		const PopcornFX::SRendererFeaturePropertyValue	*prop = decl.FindProperty(propertyName);
-		if (prop == null)
-			return CFloat2::ZERO;
-		return prop->ValueF().xy();
-	}
-
 	bool	_IsVATTextureConfigured(const UTexture2D *texture)
 	{
 		PK_ASSERT(texture != null);
@@ -107,14 +78,6 @@ namespace
 		PK_ASSERT(staticMesh != null);
 		return	staticMesh->GetSourceModel(0).BuildSettings.bUseFullPrecisionUVs &&
 				!staticMesh->GetSourceModel(0).BuildSettings.bRemoveDegenerates;
-	}
-
-	s32	_GetPropertyValueAsInt(const PopcornFX::SRendererDeclaration &decl, const PopcornFX::CStringId propertyName)
-	{
-		const PopcornFX::SRendererFeaturePropertyValue	*prop = decl.FindProperty(propertyName);
-		if (prop == null)
-			return 0;
-		return prop->ValueI().x();
 	}
 
 	void	_SetStaticSwitch(FStaticParameterSet &params, FName name, bool value)
@@ -186,63 +149,63 @@ namespace
 		const PopcornFX::SRendererFeaturePropertyValue	*prop = null;
 		const PopcornFX::SRendererDeclaration			&decl = renderer->m_Declaration;
 
-		const bool	legacyLit = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit());
+		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
 
 		// Default values:
 		mat.MaterialType = EPopcornFXMaterialType::Billboard_Additive;
-		mat.Lit = legacyLit || _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit());
-		mat.Raytraced = _GetPropertyValueAsBool(decl, PopcornFX::CStringId("Raytraced")); // tmp
+		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		mat.Raytraced = decl.IsFeatureEnabled(PopcornFX::CStringId("Raytraced")); // tmp
 
 		if (mat.Lit)
 		{
 			if (legacyLit)
 			{
-				mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows());
-				mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap()));
+				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
+				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 			else
 			{
-				mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit_CastShadows());
-				mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Lit_NormalMap()));
+				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Transparent()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
-			mat.MaterialType = kTransparentBillboard_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_Type())];
-			mat.DrawOrder = _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride());
-			if (_GetPropertyValueAsBool(decl, UERendererProperties::SID_SixWayLightmap()))
+			mat.MaterialType = kTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
+			if (decl.IsFeatureEnabled(UERendererProperties::SID_SixWayLightmap()))
 			{
 				mat.CastShadow = true; // Tmp: Force cast shadows true when six way lightmap material is used
 				mat.MaterialType = EPopcornFXMaterialType::Billboard_SixWayLightmap;
-				mat.TextureSixWay_RLTS = LoadTexturePk(_GetPropertyValueAsPath(decl, UERendererProperties::SID_SixWayLightmap_RightLeftTopSmoke()));
-				mat.TextureSixWay_BBF = LoadTexturePk(_GetPropertyValueAsPath(decl, UERendererProperties::SID_SixWayLightmap_BottomBackFront()));
+				mat.TextureSixWay_RLTS = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_RightLeftTopSmoke(), PopcornFX::CString::EmptyString));
+				mat.TextureSixWay_BBF = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_BottomBackFront(), PopcornFX::CString::EmptyString));
 			}
 		}
-		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Opaque()))
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
-			mat.MaterialType = kOpaqueBillboard_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type())];
+			mat.MaterialType = kOpaqueBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 			if (mat.MaterialType == EPopcornFXMaterialType::Billboard_Masked)
-				mat.MaskThreshold = _GetPropertyValueAsFloat(decl, PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold());
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 		}
-		else if (_GetPropertyValueAsBool(decl, UERendererProperties::SID_VolumetricFog()))
+		else if (decl.IsFeatureEnabled(UERendererProperties::SID_VolumetricFog()))
 		{
 			mat.MaterialType = EPopcornFXMaterialType::Billboard_VolumetricFog;
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, UERendererProperties::SID_VolumetricFog_AlbedoMap()));
-			mat.SphereMaskHardness = _GetPropertyValueAsFloat(decl, UERendererProperties::SID_VolumetricFog_SphereMaskHardness());
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_VolumetricFog_AlbedoMap(), PopcornFX::CString::EmptyString));
+			mat.SphereMaskHardness = decl.GetPropertyValue_F1(UERendererProperties::SID_VolumetricFog_SphereMaskHardness(), 0.0f);
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.TextureEmissive = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap()));
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap()));
-			if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.TextureDiffuseRamp = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap()));
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
-		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Distortion()))
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap()));
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			mat.MaterialType = EPopcornFXMaterialType::Billboard_Distortion;
 
 			if (mat.TextureDiffuse != null &&
@@ -261,26 +224,26 @@ namespace
 			}
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Atlas()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.TextureAtlas = LoadAtlasPk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Atlas_Definition()));
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
-			const s32	blendingType = _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Atlas_Blending()); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
+			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
 			mat.SoftAnimBlending = blendingType == 1;
 			mat.MotionVectorsBlending = blendingType == 2;
 			if (mat.MotionVectorsBlending)
 			{
-				mat.TextureMotionVectors = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap()));
+				mat.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
-				const CFloat2	distortionStrength = _GetPropertyValueAsFloat2(decl, PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength());
+				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
 				mat.MVDistortionStrengthRows = distortionStrength.y();
 			}
 		}
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.TextureAlphaRemapper = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap()));
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_SoftParticles()))
-			mat.SoftnessDistance = _GetPropertyValueAsFloat(decl, PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance());
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
+			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 
 		EPopcornFXMaterialType::Type	finalMatType = mat.MaterialType;
 		switch (mat.MaterialType)
@@ -332,6 +295,7 @@ namespace
 		mat.SortIndices =	(mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit) ||
 							mat.MaterialType == EPopcornFXMaterialType::Billboard_SixWayLightmap;
 
+		mat.BuildDynamicParameterMask(decl);
 		return true;
 	}
 
@@ -401,64 +365,50 @@ namespace
 
 		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
 
-		const bool	legacyLit = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit());
+		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
 
 		// Default values:
 		mat.MaterialType = EPopcornFXMaterialType::Billboard_Additive;
-		mat.TextureNormal = null;
-		mat.TextureDiffuse = null;
-		mat.TextureDiffuseRamp = null;
-		mat.TextureEmissive = null;
-		mat.SoftnessDistance = 0.0f;
-		mat.MaskThreshold = 0.0f;
-		mat.TextureAlphaRemapper = null;
-		mat.TextureAtlas = null;
-		mat.Lit = legacyLit || _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit());
-		mat.SoftAnimBlending = false;
-		mat.MotionVectorsBlending = false;
-		mat.TextureMotionVectors = null;
-		mat.MVDistortionStrengthColumns = 1.0f;
-		mat.MVDistortionStrengthRows = 1.0f;
-		mat.CastShadow = false;
-		mat.CorrectDeformation = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
+		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		mat.CorrectDeformation = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
 
 		if (mat.Lit)
 		{
 			if (legacyLit)
 			{
-				mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows());
-				mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap()));
+				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
+				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 			else
 			{
-				mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit_CastShadows());
-				mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Lit_NormalMap()));
+				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Transparent()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
-			mat.MaterialType = kTransparentBillboard_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_Type())];
-			mat.DrawOrder = _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride());
+			mat.MaterialType = kTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
 		}
-		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Opaque()))
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
-			mat.MaterialType = kOpaqueBillboard_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type())];
+			mat.MaterialType = kOpaqueBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 			if (mat.MaterialType == EPopcornFXMaterialType::Billboard_Masked)
-				mat.MaskThreshold = _GetPropertyValueAsFloat(decl, PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold());
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.TextureEmissive = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap()));
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap()));
-			if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.TextureDiffuseRamp = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap()));
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
-		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Distortion()))
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap()));
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			mat.MaterialType = EPopcornFXMaterialType::Billboard_Distortion;
 
 			if (mat.TextureDiffuse != null &&
@@ -477,31 +427,26 @@ namespace
 			}
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Atlas()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.TextureAtlas = LoadAtlasPk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Atlas_Definition()));
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
-			const s32	blendingType = _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Atlas_Blending()); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
+			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
 			mat.SoftAnimBlending = blendingType == 1;
 			mat.MotionVectorsBlending = blendingType == 2;
 			if (mat.MotionVectorsBlending)
 			{
-				mat.TextureMotionVectors = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap()));
+				mat.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
-				const CFloat2	distortionStrength = _GetPropertyValueAsFloat2(decl, PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength());
+				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
 				mat.MVDistortionStrengthRows = distortionStrength.y();
 			}
 		}
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.TextureAlphaRemapper = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap()));
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_SoftParticles()))
-			mat.SoftnessDistance = _GetPropertyValueAsFloat(decl, PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance());
-
-		//if (_GetPropertyValueAsBool(decl, "Opaque"))
-		//{
-		//	const PopcornFX::SRendererFeaturePropertyValue	*type = decl.FindProperty("Opaque.Type");
-		//}
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
+			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 
 		EPopcornFXMaterialType::Type	finalMatType = mat.MaterialType;
 		switch (mat.MaterialType)
@@ -548,6 +493,7 @@ namespace
 		mat.MaterialType = finalMatType;
 		mat.SortIndices = mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
 
+		mat.BuildDynamicParameterMask(decl);
 		return true;
 	}
 
@@ -565,60 +511,69 @@ namespace
 
 		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
 
-		const bool	legacyLit = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit());
+		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
 
 		// Default values:
 		mat.MaterialType = EPopcornFXMaterialType::Mesh_Solid;
-		mat.StaticMesh = LoadMeshPk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Mesh()));
-		mat.StaticMeshLOD = 0; // TODO
-		mat.Lit = legacyLit || _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit());
-		mat.MeshAtlas = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_MeshAtlas());
 
-		mat.Raytraced = _GetPropertyValueAsBool(decl, PopcornFX::CStringId("Raytraced")); // tmp
+		const bool	skelMesh = decl.IsFeatureEnabled(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation());
+		if (skelMesh)
+			mat.SkeletalMesh = LoadSkelMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
+		else
+		{
+			mat.StaticMesh = LoadMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
+			mat.StaticMeshLOD = 0; // TODO
+		}
+		mat.PerParticleLOD = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshLOD());
+		mat.MotionBlur = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MotionBlur());
 
-		const bool		fluidVAT = _GetPropertyValueAsBool(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid());
-		const bool		softVAT = _GetPropertyValueAsBool(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft());
-		const bool		rigidVAT = _GetPropertyValueAsBool(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid());
-		const bool		normalizedVAT = _GetPropertyValueAsBool(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_NormalizedData());
+		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		mat.MeshAtlas = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshAtlas());
+		mat.Raytraced = decl.IsFeatureEnabled(PopcornFX::CStringId("Raytraced")); // tmp
+
+		const bool		fluidVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid());
+		const bool		softVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft());
+		const bool		rigidVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid());
+		const bool		normalizedVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_NormalizedData());
 
 		if (mat.Lit)
 		{
 			if (legacyLit)
 			{
-				mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows());
-				mat.TextureSpecular = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_SpecularMap()));
-				mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap()));
+				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
+				mat.TextureSpecular = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_SpecularMap(), PopcornFX::CString::EmptyString));
+				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 			else
 			{
-				mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit_CastShadows());
-				mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Lit_NormalMap()));
+				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 		}
 
 		if (fluidVAT)
 		{
-			mat.VATTexturePosition = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_PositionMap()));
-			mat.VATTextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_NormalMap()));
-			mat.VATTextureColor = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_ColorMap()));
-			mat.VATNumFrames = _GetPropertyValueAsInt(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_NumFrames());
-			mat.VATPackedData = _GetPropertyValueAsBool(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_PackedData());
+			mat.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_PositionMap(), PopcornFX::CString::EmptyString));
+			mat.VATTextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.VATTextureColor = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_ColorMap(), PopcornFX::CString::EmptyString));
+			mat.VATNumFrames = decl.GetPropertyValue_I1(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_NumFrames(), 0);
+			mat.VATPackedData = decl.GetPropertyValue_B(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_PackedData(), false);
 		}
 		else if (softVAT)
 		{
-			mat.VATTexturePosition = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_PositionMap()));
-			mat.VATTextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_NormalMap()));
-			mat.VATNumFrames = _GetPropertyValueAsInt(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_NumFrames());
-			mat.VATPackedData = _GetPropertyValueAsBool(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_PackedData());
+			mat.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_PositionMap(), PopcornFX::CString::EmptyString));
+			mat.VATTextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.VATNumFrames = decl.GetPropertyValue_I1(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_NumFrames(), 0);
+			mat.VATPackedData = decl.GetPropertyValue_B(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_PackedData(), false);
 		}
 		else if (rigidVAT)
 		{
-			mat.VATTexturePosition = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_PositionMap()));
-			mat.VATTextureRotation = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_RotationMap()));
-			mat.VATNumFrames = _GetPropertyValueAsInt(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_NumFrames());
+			mat.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_PositionMap(), PopcornFX::CString::EmptyString));
+			mat.VATTextureRotation = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_RotationMap(), PopcornFX::CString::EmptyString));
+			mat.VATNumFrames = decl.GetPropertyValue_I1(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_NumFrames(), 0);
 
 			const float		globalScale = FPopcornFXPlugin::GlobalScale();
-			const CFloat2	pivotBounds = _GetPropertyValueAsFloat2(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_BoundsPivot());
+			const CFloat2	pivotBounds = decl.GetPropertyValue_F2(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_BoundsPivot(), CFloat2::ZERO);
 			mat.VATPivotBoundsMin = pivotBounds.x() * globalScale;
 			mat.VATPivotBoundsMax = pivotBounds.y() * globalScale;
 		}
@@ -628,10 +583,13 @@ namespace
 			mat.VATNormalizedData = true;
 
 			const float		globalScale = FPopcornFXPlugin::GlobalScale();
-			const CFloat2	positionBounds = _GetPropertyValueAsFloat2(decl, PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_BoundsPosition());
+			const CFloat2	positionBounds = decl.GetPropertyValue_F2(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_BoundsPosition(), CFloat2::ZERO);
 			mat.VATPositionBoundsMin = positionBounds.x() * globalScale;
 			mat.VATPositionBoundsMax = positionBounds.y() * globalScale;
 		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 		if (fluidVAT || softVAT || rigidVAT)
 		{
@@ -701,18 +659,29 @@ namespace
 				}
 			}
 		}
+		if (skelMesh && mat.SkeletalMesh != null)
+		{
+			mat.TextureSkeletalAnimation = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimationTexture(), PopcornFX::CString::EmptyString));
+			mat.SkeletalAnimationCount = decl.GetPropertyValue_I1(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimTracksCount(), 0);
+			mat.SkeletalAnimationPosBoundsMin = FVector(ToUE(decl.GetPropertyValue_F3(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimPositionsBoundsMin(), PopcornFX::CFloat3::ZERO)));
+			mat.SkeletalAnimationPosBoundsMax = FVector(ToUE(decl.GetPropertyValue_F3(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimPositionsBoundsMax(), PopcornFX::CFloat3::ZERO)));
+			mat.SkeletalAnimationLinearInterpolate = decl.IsFeatureEnabled(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimationInterpolate());
+			mat.SkeletalAnimationLinearInterpolateTracks = decl.IsFeatureEnabled(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimationInterpolateTracks());
+			if (!mat.BuildSkelMeshBoneIndicesReorder())
+				return false;
+		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Opaque()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
 			// * 2 because unlit/lit pair per enum value
 			if (fluidVAT)
-				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Fluid + _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type()) * 2);
+				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Fluid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
 			else if (softVAT)
-				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Soft + _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type()) * 2);
+				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Soft + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
 			else if (rigidVAT)
-				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Rigid + _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type()) * 2);
+				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Rigid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
 			else
-				mat.MaterialType = kOpaqueMesh_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type())];
+				mat.MaterialType = kOpaqueMesh_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 
 			if (mat.MaterialType == EPopcornFXMaterialType::Mesh_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
@@ -720,24 +689,26 @@ namespace
 			if (mat.Lit)
 				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(mat.MaterialType + 1); // Next enum index
 		}
-		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Transparent()))
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
 			if (fluidVAT || softVAT || rigidVAT)
 				return false; // unsupported
 			else
 				mat.MaterialType = EPopcornFXMaterialType::Mesh_Additive;
 
-			mat.DrawOrder = _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride());
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
 			mat.Lit = false;
 		}
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap()));
-			if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.TextureDiffuseRamp = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap()));
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.TextureEmissive = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap()));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+
+		mat.BuildDynamicParameterMask(decl);
 		return true;
 	}
 
@@ -826,58 +797,45 @@ namespace
 		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
 
 		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
-		const bool	legacyLit = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit());
+		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
 
 		mat.MaterialType = EPopcornFXMaterialType::Billboard_Additive;
-		mat.TextureNormal = null;
-		mat.TextureDiffuse = null;
-		mat.TextureDiffuseRamp = null;
-		mat.TextureEmissive = null;
-		mat.SoftnessDistance = 0.0f;
-		mat.MaskThreshold = 0.0f;
-		mat.TextureAlphaRemapper = null;
-		mat.TextureAtlas = null;
-		mat.Lit = legacyLit || _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit());
-		mat.SoftAnimBlending = false;
-		mat.MotionVectorsBlending = false;
-		mat.TextureMotionVectors = null;
-		mat.MVDistortionStrengthColumns = 1.0f;
-		mat.MVDistortionStrengthRows = 1.0f;
+		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
 
 		if (legacyLit)
 		{
-			mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows());
-			mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap()));
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
+			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 		}
 		else if (mat.Lit)
 		{
-			mat.CastShadow = _GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Lit_CastShadows());
-			mat.TextureNormal = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Lit_NormalMap()));
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Transparent()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
-			mat.MaterialType = kTransparentBillboard_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_Type())];
-			mat.DrawOrder = _GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride());
+			mat.MaterialType = kTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
 		}
-		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Opaque()))
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
-			mat.MaterialType = kOpaqueBillboard_Material_ToUE[_GetPropertyValueAsInt(decl, PopcornFX::BasicRendererProperties::SID_Opaque_Type())];
+			mat.MaterialType = kOpaqueBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 			if (mat.MaterialType == EPopcornFXMaterialType::Billboard_Masked)
-				mat.MaskThreshold = _GetPropertyValueAsFloat(decl, PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold());
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.TextureEmissive = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap()));
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap()));
-			if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.TextureDiffuseRamp = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap()));
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
-		else if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_Distortion()))
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.TextureDiffuse = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap()));
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			mat.MaterialType = EPopcornFXMaterialType::Mesh_Distortion;
 
 			if (mat.TextureDiffuse != null &&
@@ -896,8 +854,8 @@ namespace
 			}
 		}
 
-		if (_GetPropertyValueAsBool(decl, PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.TextureAlphaRemapper = LoadTexturePk(_GetPropertyValueAsPath(decl, PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap()));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
 		EPopcornFXMaterialType::Type	finalMatType = mat.MaterialType;
 		switch (mat.MaterialType)
@@ -942,6 +900,7 @@ namespace
 		mat.MaterialType = finalMatType;
 		mat.SortIndices = mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
 
+		mat.BuildDynamicParameterMask(decl);
 		return true;
 	}
 
@@ -973,50 +932,70 @@ namespace
 //----------------------------------------------------------------------------
 
 FPopcornFXSubRendererMaterial::FPopcornFXSubRendererMaterial()
-	: Material(null)
-	, MaterialType()
-	, TextureDiffuse(null)
-	, TextureDiffuseRamp(null)
-	, TextureEmissive(null)
-	, TextureNormal(null)
-	, TextureSpecular(null)
-	, TextureAlphaRemapper(null)
-	, TextureMotionVectors(null)
-	, TextureSixWay_RLTS(null)
-	, TextureSixWay_BBF(null)
-	, VATTexturePosition(null)
-	, VATTextureNormal(null)
-	, VATTextureColor(null)
-	, VATTextureRotation(null)
-	, TextureAtlas(null)
-	, NoAlpha(false)
-	, MeshAtlas(false)
-	, Raytraced(false)
-	, SoftAnimBlending(false)
-	, MotionVectorsBlending(false)
-	, CastShadow(false)
-	, Lit(false)
-	, SortIndices(false)
-	, CorrectDeformation(false)
-	, SoftnessDistance(0)
-	, SphereMaskHardness(100.0f)
-	, MVDistortionStrengthColumns(1.0f)
-	, MVDistortionStrengthRows(1.0f)
-	, VATNumFrames(0)
-	, VATPackedData(false)
-	, VATPivotBoundsMin(0.0f)
-	, VATPivotBoundsMax(0.0f)
-	, VATNormalizedData(false)
-	, VATPositionBoundsMin(0.0f)
-	, VATPositionBoundsMax(0.0f)
-	, MaskThreshold(0.0f)
-	, DrawOrder(0)
-	, StaticMesh(null)
-	, StaticMeshLOD(0)
-	, m_RMId(-1)
-	, MaterialInstance(null)
+:	Material(null)
+,	MaterialType()
+,	TextureDiffuse(null)
+,	TextureDiffuseRamp(null)
+,	TextureEmissive(null)
+,	TextureNormal(null)
+,	TextureSpecular(null)
+,	TextureAlphaRemapper(null)
+,	TextureMotionVectors(null)
+,	TextureSixWay_RLTS(null)
+,	TextureSixWay_BBF(null)
+,	VATTexturePosition(null)
+,	VATTextureNormal(null)
+,	VATTextureColor(null)
+,	VATTextureRotation(null)
+,	TextureSkeletalAnimation(null)
+,	TextureAtlas(null)
+,	NoAlpha(false)
+,	MeshAtlas(false)
+,	Raytraced(false)
+,	SoftAnimBlending(false)
+,	MotionVectorsBlending(false)
+,	CastShadow(false)
+,	Lit(false)
+,	SortIndices(false)
+,	CorrectDeformation(false)
+,	SoftnessDistance(0)
+,	SphereMaskHardness(100.0f)
+,	MVDistortionStrengthColumns(1.0f)
+,	MVDistortionStrengthRows(1.0f)
+,	VATNumFrames(0)
+,	VATPackedData(false)
+,	VATPivotBoundsMin(0.0f)
+,	VATPivotBoundsMax(0.0f)
+,	VATNormalizedData(false)
+,	VATPositionBoundsMin(0.0f)
+,	VATPositionBoundsMax(0.0f)
+,	SkeletalAnimationCount(0)
+,	SkeletalAnimationPosBoundsMin(FVector::ZeroVector)
+,	SkeletalAnimationPosBoundsMax(FVector::ZeroVector)
+,	SkeletalAnimationLinearInterpolate(false)
+,	SkeletalAnimationLinearInterpolateTracks(false)
+,	MaskThreshold(0.0f)
+,	DrawOrder(0)
+,	DynamicParameterMask(0)
+,	SkeletalMesh(null)
+,	StaticMesh(null)
+,	StaticMeshLOD(0)
+,	PerParticleLOD(false)
+,	MotionBlur(false)
+,	m_RMId(-1)
+,	MaterialInstance(null)
 {
 
+}
+
+//----------------------------------------------------------------------------
+
+FPopcornFXSubRendererMaterial::~FPopcornFXSubRendererMaterial()
+{
+#if WITH_EDITOR
+	if (SkeletalMesh != null)
+		SkeletalMesh->GetOnMeshChanged().RemoveAll(this);
+#endif // WITH_EDITOR
 }
 
 //----------------------------------------------------------------------------
@@ -1087,13 +1066,165 @@ void	FPopcornFXSubRendererMaterial::RenameDependenciesIFN(UObject* oldAsset, UOb
 	PK_RENAME_MAT_PROP_IFN(TextureMotionVectors, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(TextureSixWay_RLTS, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(TextureSixWay_BBF, UTexture2D);
+	PK_RENAME_MAT_PROP_IFN(TextureSkeletalAnimation, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(VATTexturePosition, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(VATTextureNormal, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(VATTextureColor, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(VATTextureRotation, UTexture2D);
+	PK_RENAME_MAT_PROP_IFN(SkeletalMesh, USkeletalMesh);
 	PK_RENAME_MAT_PROP_IFN(StaticMesh, UStaticMesh);
 
 #undef PK_RENAME_MAT_PROP_IFN
+}
+
+//----------------------------------------------------------------------------
+
+// Keeping this around for now, however enabling this generates invalid indices:
+// Meshes imported in UE (sanitized by UE import pipe), exported to PK-Editor and used to generate a texture: PK-Editor considers unmapped bones to be mapped, probably due a to a UE export specificity.
+// Meshes imported in UE from external packages (only affects some meshes), UE end up having a different mapped bone count compared to PK-Editor.
+// Additionally, this does not current take into account all sections so the logic isn't correct.
+#define _SKIP_UNMAPPED_BONES	0
+
+namespace
+{
+	s16	_UEBoneIdToPK(/*FSkeletalMeshLODRenderData *renderData, */const TArray<FMeshBoneInfo> &refBoneInfos, u16 boneId, u16 currentBoneLevel, u16 &currentBoneId)
+	{
+		// This function generates a PKFX bone id based on UE's bone id.
+		// In PopcornFX Editor (where the BAT is generated), bones ids are generated based on the bone name
+		// This is only done when importing an effect or when the source skel mesh was modified in UE.
+		PK_ASSERT(boneId < refBoneInfos.Num());
+		PK_ASSERT(currentBoneLevel < refBoneInfos.Num());
+
+		if (refBoneInfos[boneId] == refBoneInfos[currentBoneLevel])
+			return currentBoneId;
+		// Gather child bones
+		TArray<const FMeshBoneInfo*>	childBones;
+		for (s32 i = 0; i < refBoneInfos.Num(); ++i)
+		{
+			if (refBoneInfos[i].ParentIndex == currentBoneLevel)
+				childBones.Push(&refBoneInfos[i]);
+		}
+
+		// Sort
+		TArray<const FMeshBoneInfo*>	childBonesAlphabetical;
+		for (s32 i = 0; i < childBones.Num(); ++i)
+		{
+			bool	inserted = false;
+			for (s32 j = 0; j < childBonesAlphabetical.Num(); ++j)
+			{
+				if (childBonesAlphabetical[j]->Name.Compare(childBones[i]->Name) > 0)
+				{
+					childBonesAlphabetical.Insert(childBones[i], j);
+					inserted = true;
+					break;
+				}
+			}
+			if (!inserted)
+				childBonesAlphabetical.Push(childBones[i]);
+		}
+		PK_ASSERT(childBonesAlphabetical.Num() == childBones.Num());
+
+		for (s32 i = 0; i < childBonesAlphabetical.Num(); ++i)
+		{
+			const s32	boneIdInMainMap = refBoneInfos.Find(*childBonesAlphabetical[i]);
+
+	#if (_SKIP_UNMAPPED_BONES != 0)
+			if (renderData->ActiveBoneIndices.Find(boneIdInMainMap) != -1)
+				++currentBoneId;
+	#endif
+
+	#if (_SKIP_UNMAPPED_BONES != 0)
+			const s16	foundBone = _UEBoneIdToPK(renderData, refBoneInfos, boneId, boneIdInMainMap, currentBoneId);
+	#else
+			const s16	foundBone = _UEBoneIdToPK(refBoneInfos, boneId, boneIdInMainMap, ++currentBoneId);
+	#endif
+			if (foundBone != -1)
+				return foundBone;
+		}
+		return -1;
+	}
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXSubRendererMaterial::BuildSkelMeshBoneIndicesReorder()
+{
+	m_SkeletalMeshBoneIndicesReorder.Empty();
+	if (SkeletalMesh == null)
+		return true;
+
+	const FSkeletalMeshRenderData	*skelMeshRenderData = SkeletalMesh->GetResourceForRendering();
+	if (skelMeshRenderData == null)
+	{
+		UE_LOG(LogPopcornFXRendererMaterial, Error, TEXT("Renderer material cannot be built, skeletal mesh '%s' does not contain any render data"), *SkeletalMesh->GetPathName());
+		return false;
+	}
+	u32									skeletalMeshBoneMapSum = 0;
+	const u32							baseLODLevel = 0; // TODO: BaseLODLevel
+	const u32							LODCount = PerParticleLOD ? skelMeshRenderData->LODRenderData.Num() - baseLODLevel : 1; 
+	for (u32 i = baseLODLevel; i < LODCount; ++i)
+	{
+		const FSkeletalMeshLODRenderData	&LODRenderData = skelMeshRenderData->LODRenderData[i];
+		for (const FSkelMeshRenderSection &renderSection : LODRenderData.RenderSections)
+		{
+			PK_ASSERT(renderSection.BoneMap.Num() > 0);
+			skeletalMeshBoneMapSum += renderSection.BoneMap.Num();
+		}
+	}
+	if (skeletalMeshBoneMapSum == 0)
+	{
+		UE_LOG(LogPopcornFXRendererMaterial, Error, TEXT("Renderer material cannot be built, skeletal mesh '%s' does not contain any mapped bones"), *SkeletalMesh->GetPathName());
+		return false;
+	}
+	const FReferenceSkeleton	&refSkeleton = SkeletalMesh->GetRefSkeleton();
+	const TArray<FMeshBoneInfo>	&boneInfos = refSkeleton.GetRefBoneInfo();
+
+	m_SkeletalMeshBoneIndicesReorder.SetNum(skeletalMeshBoneMapSum);
+
+	u32	*boneIndicesReorder = m_SkeletalMeshBoneIndicesReorder.GetData();
+	u32	offset = 0;
+	for (u32 i = baseLODLevel; i < LODCount; ++i)
+	{
+		const FSkeletalMeshLODInfo			*LODInfo = SkeletalMesh->GetLODInfo(i);
+		const FSkeletalMeshLODRenderData	&LODRenderData = skelMeshRenderData->LODRenderData[i];
+		for (u32 iSection = 0; iSection < (u32)LODRenderData.RenderSections.Num(); ++iSection)
+		{
+			const u32						renderSectionId = LODInfo != null && LODInfo->LODMaterialMap.Num() > 0 ? LODInfo->LODMaterialMap[iSection] : iSection;
+			const FSkelMeshRenderSection	&renderSection = LODRenderData.RenderSections[renderSectionId];
+			const u16						mappedBoneCount = renderSection.BoneMap.Num();
+
+			if (PK_VERIFY(mappedBoneCount > 0))
+			{
+				for (u32 j = 0; j < mappedBoneCount; ++j)
+				{
+					u16	currentId = 0;
+	#if (_SKIP_UNMAPPED_BONES != 0)
+					boneIndicesReorder[offset + j] = _UEBoneIdToPK(LODRenderData, boneInfos, renderSection.BoneMap[j], 0, currentId);
+	#else
+					boneIndicesReorder[offset + j] = _UEBoneIdToPK(boneInfos, renderSection.BoneMap[j], 0, currentId);
+	#endif
+				}
+				offset += mappedBoneCount;
+			}
+		}
+	}
+	return true;
+}
+
+#undef _SKIP_UNMAPPED_BONES
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXSubRendererMaterial::BuildDynamicParameterMask(const PopcornFX::SRendererDeclaration &decl)
+{
+	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput0()))
+		DynamicParameterMask |= 0x1;
+	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput1()))
+		DynamicParameterMask |= 0x2;
+	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput2()))
+		DynamicParameterMask |= 0x4;
+	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput3()))
+		DynamicParameterMask |= 0x8;
 }
 
 #endif // WITH_EDITOR
@@ -1122,6 +1253,7 @@ bool	FPopcornFXSubRendererMaterial::CanBeMergedWith(const FPopcornFXSubRendererM
 		VATTextureNormal == other.VATTextureNormal &&
 		VATTextureColor == other.VATTextureColor &&
 		VATTextureRotation == other.VATTextureRotation &&
+		TextureSkeletalAnimation == other.TextureSkeletalAnimation &&
 		VATNumFrames == other.VATNumFrames &&
 		VATPackedData == other.VATPackedData &&
 		VATPivotBoundsMin == other.VATPivotBoundsMin &&
@@ -1129,12 +1261,21 @@ bool	FPopcornFXSubRendererMaterial::CanBeMergedWith(const FPopcornFXSubRendererM
 		VATNormalizedData == other.VATNormalizedData &&
 		VATPositionBoundsMin == other.VATPositionBoundsMin &&
 		VATPositionBoundsMax == other.VATPositionBoundsMax &&
+		SkeletalAnimationCount == other.SkeletalAnimationCount &&
+		SkeletalAnimationPosBoundsMin == other.SkeletalAnimationPosBoundsMin &&
+		SkeletalAnimationPosBoundsMax == other.SkeletalAnimationPosBoundsMax &&
+		SkeletalAnimationLinearInterpolate == other.SkeletalAnimationLinearInterpolate &&
+		SkeletalAnimationLinearInterpolateTracks == other.SkeletalAnimationLinearInterpolateTracks &&
 		CastShadow == other.CastShadow &&
 		SoftnessDistance == other.SoftnessDistance &&
 		MaskThreshold == other.MaskThreshold &&
 		DrawOrder == other.DrawOrder &&
+		DynamicParameterMask == other.DynamicParameterMask &&
+		SkeletalMesh == other.SkeletalMesh &&
 		StaticMesh == other.StaticMesh &&
-		StaticMeshLOD == other.StaticMeshLOD;
+		StaticMeshLOD == other.StaticMeshLOD &&
+		PerParticleLOD == other.PerParticleLOD &&
+		MotionBlur == other.MotionBlur;
 }
 
 //----------------------------------------------------------------------------
@@ -1302,8 +1443,6 @@ bool	UPopcornFXRendererMaterial::_Setup(UPopcornFXEffect *parentEffect, const vo
 	for (int32 mati = 0; mati < SubMaterials.Num(); ++mati)
 		if (SubMaterials[mati].Material == null)
 			SubMaterials[mati]._ResetDefaultMaterial_NoReload();
-
-	// ReloadInstances();
 	return true;
 }
 
@@ -1516,6 +1655,28 @@ UStaticMesh		*LoadMeshPk(const PopcornFX::CString &pkPath)
 	if (mesh == null)
 	{
 		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load mesh '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		return null;
+	}
+	return mesh;
+}
+
+//----------------------------------------------------------------------------
+
+USkeletalMesh		*LoadSkelMeshPk(const PopcornFX::CString &pkPath)
+{
+	if (pkPath.Empty())
+		return null;
+
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath.Data(), false);
+	USkeletalMesh	*mesh = Cast<USkeletalMesh>(obj);
+	if (obj != null && mesh == null)
+	{
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a skeletal mesh: '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		return null;
+	}
+	if (mesh == null)
+	{
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load skeletal mesh '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
 		return null;
 	}
 	return mesh;

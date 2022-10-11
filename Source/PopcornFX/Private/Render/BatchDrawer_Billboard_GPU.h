@@ -14,6 +14,7 @@
 #include <pk_render_helpers/include/batch_jobs/rh_batch_jobs_billboard_gpu.h>
 
 class	FPopcornFXGPUVertexFactory;
+class	FPopcornFXUniforms;
 class	FPopcornFXGPUBillboardVSUniforms;
 
 //----------------------------------------------------------------------------
@@ -141,8 +142,16 @@ private:
 	void		_Clear();
 	void		_CleanRWBuffers();
 	bool		_IsAdditionalInputSupported(const PopcornFX::CStringId &fieldName, PopcornFX::EBaseTypeID type, EPopcornFXAdditionalStreamOffsets &outStreamOffsetType);
-	bool		_FillDrawCallUniforms_CPU(FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc);
-	bool		_FillDrawCallUniforms_GPU(u32 drId, const SUERenderContext &renderContext, FPopcornFXGPUVertexFactory *vertexFactory, FPopcornFXGPUBillboardVSUniforms &vsUniforms, const PopcornFX::SDrawCallDesc &desc);
+	bool		_FillDrawCallUniforms_CPU(	FPopcornFXGPUVertexFactory			*vertexFactory,
+											FPopcornFXUniforms				&vsUniforms,
+											FPopcornFXGPUBillboardVSUniforms	&vsUniformsGPUBillboard,
+											const PopcornFX::SDrawCallDesc		&desc);
+	bool		_FillDrawCallUniforms_GPU(	u32									drId,
+											const SUERenderContext				&renderContext,
+											FPopcornFXGPUVertexFactory			*vertexFactory,
+											FPopcornFXUniforms				&vsUniforms,
+											FPopcornFXGPUBillboardVSUniforms	&vsUniformsGPUBillboard,
+											const PopcornFX::SDrawCallDesc		&desc);
 
 private:
 	u32			m_TotalParticleCount = 0;

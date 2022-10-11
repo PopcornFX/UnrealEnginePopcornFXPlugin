@@ -33,7 +33,6 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardVSUniforms, POPCORNFX_AP
 	SHADER_PARAMETER(int32, InDynamicParameter1sOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter2sOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter3sOffset)
-	SHADER_PARAMETER_SRV(Buffer<uint>, SimData)
 END_GLOBAL_SHADER_PARAMETER_STRUCT()
 
 typedef TUniformBufferRef<FPopcornFXBillboardVSUniforms>	FPopcornFXBillboardVSUniformsRef;
@@ -83,11 +82,13 @@ public:
 	static bool								SupportsTessellationShaders() { return false; }
 
 	FRHIUniformBuffer						*GetVSUniformBuffer() { return m_VSUniformBuffer; }
-	FRHIUniformBuffer						*GetCommonUniformBuffer() { return m_CommonUniformBuffer; }
+	FRHIUniformBuffer						*GetBillboardVSUniformBuffer() { return m_BillboardVSUniformBuffer; }
+	FRHIUniformBuffer						*GetBillboardCommonUniformBuffer() { return m_BillboardCommonUniformBuffer; }
 
 public:
 	FUniformBufferRHIRef					m_VSUniformBuffer;
-	FUniformBufferRHIRef					m_CommonUniformBuffer;
+	FUniformBufferRHIRef					m_BillboardVSUniformBuffer;
+	FUniformBufferRHIRef					m_BillboardCommonUniformBuffer;
 
 private:
 	void			_SetupStream(	u32								attributeIndex,
