@@ -159,7 +159,11 @@ FShaderResourceViewRHIRef		My_RHICreateShaderResourceView_D3D11(FVBRHIParamRef /
 		}
 	}
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+	return new FD3D11ShaderResourceView(ShaderResourceView, VertexBuffer, VertexBuffer);
+#else
 	return new FD3D11ShaderResourceView(ShaderResourceView, VertexBuffer);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 }
 
 //----------------------------------------------------------------------------
@@ -254,7 +258,11 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamB
 	if (pixelFormat == PF_Unknown)
 	{
 		// Create RHI SRV wrapper from SRV already available
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+		FD3D11ShaderResourceView* srv = new FD3D11ShaderResourceView(stream->m_BufferSRV, buffer, buffer);
+#else
 		FD3D11ShaderResourceView* srv = new FD3D11ShaderResourceView(stream->m_BufferSRV, buffer);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		PK_ASSERT(_PopcornFXD3DGetRefCount(*(srv->View)) > 1); // Referenced here and by PopcornFX
 		return srv;
 	}

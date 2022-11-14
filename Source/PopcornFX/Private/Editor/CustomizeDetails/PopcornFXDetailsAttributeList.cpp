@@ -382,7 +382,11 @@ namespace
 
 				TSharedPtr<SSplitter>		inlineSplitter;
 				SAssignNew(inlineSplitter, SSplitter)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+				.Style(FAppStyle::Get(), "DetailsView.Splitter")
+#else
 				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 				.PhysicalSplitterHandleSize(1.0f)
 				.HitDetectionSplitterHandleSize(5.0f)
 					+ SSplitter::Slot()
@@ -425,7 +429,11 @@ namespace
 						.Padding(0.0f, 2.0f)
 						[
 							SNew(SSplitter)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+							.Style(FAppStyle::Get(), "DetailsView.Splitter")
+#else
 							.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 							.PhysicalSplitterHandleSize(1.0f)
 							.HitDetectionSplitterHandleSize(5.0f)
 								+ SSplitter::Slot()
@@ -813,11 +821,19 @@ namespace
 				.OnClicked(this, &TSelf::OnDimResetClicked, dimi)
 				.Visibility(this, &TSelf::GetDimResetVisibility, dimi)
 				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+				.ButtonStyle(FAppStyle::Get(), "NoBorder")
+#else
 				.ButtonStyle(FEditorStyle::Get(), "NoBorder")
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 				.Content()
 				[
 					SNew(SImage)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+					.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+#else
 					.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 				];
 		}
 
@@ -827,11 +843,19 @@ namespace
 				.OnClicked(this, &TSelf::OnResetClicked)
 				.Visibility(this, &TSelf::GetResetVisibility)
 				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+				.ButtonStyle(FAppStyle::Get(), "NoBorder")
+#else
 				.ButtonStyle(FEditorStyle::Get(), "NoBorder")
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 				.Content()
 				[
 					SNew(SImage)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+					.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+#else
 					.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 				];
 		}
 
@@ -1162,7 +1186,11 @@ namespace
 
 				TSharedPtr<SSplitter>	inlineSplitter;
 				SAssignNew(inlineSplitter, SSplitter)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+				.Style(FAppStyle::Get(), "DetailsView.Splitter")
+#else
 				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 				.PhysicalSplitterHandleSize(1.0f)
 				.HitDetectionSplitterHandleSize(5.0f)
 					+ SSplitter::Slot()
@@ -1239,7 +1267,11 @@ namespace
 					.FillHeight(1.0f)
 					[
 						SNew(SSplitter)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+						.Style(FAppStyle::Get(), "DetailsView.Splitter")
+#else
 						.Style(FEditorStyle::Get(), "DetailsView.Splitter")
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 						.PhysicalSplitterHandleSize(1.0f)
 						.HitDetectionSplitterHandleSize(5.0f)
 							+ SSplitter::Slot()
@@ -1268,14 +1300,6 @@ namespace
 									[
 										m_ExpandedContent.ToSharedRef()
 									]
-								//	//+ SHorizontalBox::Slot()
-								//	//.Padding(1.f)
-								//	//.AutoWidth()
-								//	//.HAlign(HAlign_Center)
-								//	//.VAlign(VAlign_Center)
-								//	//[
-								//	//	MakeResetButton(dimi)
-								//	//]
 							]
 					];
 
@@ -1514,7 +1538,11 @@ namespace
 					[
 						SNew(STextBlock)
 						.Text(m_CategoryName)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+#else
 						.Font(FEditorStyle::GetFontStyle("PropertyWindow.NormalFont"))
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 					]
 				]
 			]
@@ -1623,9 +1651,15 @@ namespace
 
 		const FSlateBrush	*GetBorderImage() const
 		{
+#if (ENGINE_MAJOR_VERSION == 5)
+			if (m_Border->IsHovered())
+				return FAppStyle::Get().GetBrush("DetailsView.CategoryTop_Hovered");
+			return FAppStyle::Get().GetBrush("DetailsView.CategoryTop");
+#else
 			if (m_Border->IsHovered())
 				return FEditorStyle::GetBrush("DetailsView.CategoryTop_Hovered");
 			return FEditorStyle::GetBrush("DetailsView.CategoryTop");
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		}
 
 		FReply			OnArrowClicked()

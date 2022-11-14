@@ -12,8 +12,6 @@
 
 #include "SequencerUtilities.h"
 
-#include "KeyDrawParams.h"
-
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 
 #include "PopcornFXEmitter.h"

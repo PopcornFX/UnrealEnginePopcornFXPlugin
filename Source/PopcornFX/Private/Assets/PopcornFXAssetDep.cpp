@@ -21,7 +21,11 @@
 #include "Engine/SkeletalMesh.h"
 #include "VectorField/VectorFieldStatic.h"
 #if WITH_EDITOR
-#	include "AssetRegistryModule.h"
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#		include "AssetRegistry/AssetRegistryModule.h"
+#	else
+#		include "AssetRegistryModule.h"
+#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #	include "Editor/EditorHelpers.h"
 #endif // WITH_EDITOR
 
@@ -468,7 +472,12 @@ bool	UPopcornFXAssetDep::Conflicts(const FString &importPath, EPopcornFXAssetDep
 		return false;
 
 	FAssetRegistryModule&	AssetRegistryModule = FModuleManager::Get().LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+	FSoftObjectPath			objectPath(gamePath);
+	FAssetData				assetData = AssetRegistryModule.Get().GetAssetByObjectPath(objectPath);
+#else
 	FAssetData				assetData = AssetRegistryModule.Get().GetAssetByObjectPath(*gamePath);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	if (assetData.IsValid())
 	{
 		// Retro compat for UPopcornFXFile atlases

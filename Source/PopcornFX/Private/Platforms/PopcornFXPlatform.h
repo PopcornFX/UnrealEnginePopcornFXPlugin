@@ -24,11 +24,15 @@ FWD_PK_API_END
 
 //----------------------------------------------------------------------------
 
-#if PLATFORM_PS4 || PLATFORM_XBOXONE
-#	define PKFX_COMMON_NewImageFromTexture		0
-#else
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #	define PKFX_COMMON_NewImageFromTexture		1
-#endif
+#else
+#	if PLATFORM_PS4 || PLATFORM_XBOXONE
+#	define PKFX_COMMON_NewImageFromTexture		0
+#	else
+#	define PKFX_COMMON_NewImageFromTexture		1
+#	endif // PLATFORM_PS4 || PLATFORM_XBOXONE
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 //----------------------------------------------------------------------------
 

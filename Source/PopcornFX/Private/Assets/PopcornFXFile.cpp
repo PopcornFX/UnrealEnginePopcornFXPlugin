@@ -17,7 +17,11 @@
 #include "UObject/LinkerLoad.h"
 #if WITH_EDITOR
 #	include "Factories/TextureFactory.h"
-#	include "AssetRegistryModule.h"
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#		include "AssetRegistry/AssetRegistryModule.h"
+#	else
+#		include "AssetRegistryModule.h"
+#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #	include "EditorReimportHandler.h"
 #endif // WITH_EDITOR
 

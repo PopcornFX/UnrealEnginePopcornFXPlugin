@@ -553,7 +553,11 @@ namespace UnrealBuildTool.Rules
 				}
 				);
 
+#if !UE_5_1_OR_LATER
 			bool compileWithPhysX = Target.bCompilePhysX;
+#else
+			bool compileWithPhysX = false;
+#endif // !UE_5_1_OR_LATER
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.Lumin)
 				compileWithPhysX = false;

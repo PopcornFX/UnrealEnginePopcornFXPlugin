@@ -885,7 +885,11 @@ bool	CBatchDrawer_Billboard_GPUBB::LaunchCustomTasks(PopcornFX::SRenderContext &
 			copyParams.m_IsCapsule = m_CapsulesDC;
 			copyParams.m_DrawIndirectArgsOffset = iDr * POPCORNFX_INDIRECT_ARGS_ARG_COUNT;
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			SetComputePipelineState(RHICmdList, copySizeBufferCS.GetComputeShader());
+#else
 			RHICmdList.SetComputeShader(copySizeBufferCS.GetComputeShader());
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			copySizeBufferCS->Dispatch(RHICmdList, copyParams);
 		}
 

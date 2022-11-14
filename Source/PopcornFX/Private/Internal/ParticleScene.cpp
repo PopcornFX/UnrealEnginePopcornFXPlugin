@@ -1370,12 +1370,21 @@ public:
 		return ECollisionQueryHitType::Block;
 	}
 
-#if PHYSICS_INTERFACE_PHYSX
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+	virtual ECollisionQueryHitType PostFilter(const FCollisionFilterData &filterData, const ChaosInterface::FPTQueryHit &hit) override { return ECollisionQueryHitType::Block; }
+	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticleHandle &actor)
+	{
+		// TODO
+		return ECollisionQueryHitType::None;
+	}
+#else
+#	if PHYSICS_INTERFACE_PHYSX
 	virtual ECollisionQueryHitType	PostFilter(const FCollisionFilterData& FilterData, const physx::PxQueryHit& Hit) { PK_ASSERT_NOT_REACHED(); return ECollisionQueryHitType::None; }
 	virtual ECollisionQueryHitType	PreFilter(const FCollisionFilterData& FilterData, const physx::PxShape& Shape, physx::PxRigidActor& Actor) { PK_ASSERT_NOT_REACHED(); return ECollisionQueryHitType::None; }
 	virtual PxQueryHitType::Enum	preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
 	virtual PxQueryHitType::Enum	postFilter(const PxFilterData& filterData, const PxQueryHit& hit) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
-#endif
+#	endif // PHYSICS_INTERFACE_PHYSX
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 };
 #endif
 
@@ -1616,7 +1625,7 @@ void	CParticleScene::RayTracePacket(
 	// TODO: Contact objects / surfaces with physics
 
 	EHitFlags						outFlags = PK_ONLY_IF_ASSERTS(EHitFlags::Position | ) EHitFlags::Distance | EHitFlags::Normal;
-	FBlockQueryCallbackChaos		callBack;
+	FBlockQueryCallbackChaos		callback;
 	FCollisionFilterData			filterData = FCollisionFilterData();
 	filterData.Word0 = 0; // ECollisionQuery::ObjectQuery;
 	filterData.Word1 = objectTypesToQuery;
@@ -1662,7 +1671,7 @@ void	CParticleScene::RayTracePacket(
 						if (emptySphereSweeps || packet.m_RaySweepRadii_Aligned16[rayi] == 0.0f)
 						{
 							FSingleHitBuffer<FHitRaycast>	hitBuffer;
-							sqAccelerator.Raycast(FVector(ToUE(start)), FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+							sqAccelerator.Raycast(FVector(ToUE(start)), FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callback, debugParams);
 							if (hitBuffer.HasBlockingHit())
 							{
 								resultBufferAndIndex.m_HitLocation = *hitBuffer.GetBlock();
@@ -1675,9 +1684,9 @@ void	CParticleScene::RayTracePacket(
 
 							FSingleHitBuffer<FHitSweep>		hitBuffer;
 #if (ENGINE_MAJOR_VERSION == 5)
-							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callback, debugParams);
 #else
-							sqAccelerator.Sweep(Chaos::TSphere<float, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, _Reinterpret<FVector>(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callBack, debugParams);
+							sqAccelerator.Sweep(Chaos::TSphere<float, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, _Reinterpret<FVector>(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callback, debugParams);
 #endif // (ENGINE_MAJOR_VERSION == 5)
 							if (hitBuffer.HasBlockingHit())
 							{
@@ -2344,9 +2353,14 @@ static void		_D3D12_ExecuteTasksArray(CParticleScene *self)
 	auto			&m_Exec_D3D12_Tasks = self->m_Exec_D3D12_Tasks;
 	//auto			&m_UpdateLock = self->m_UpdateLock;
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+	ID3D12CommandQueue	*commandQueue = GetID3D12DynamicRHI()->RHIGetCommandQueue();
+#else
 	PK_RELEASE_ASSERT(GDynamicRHI != null);
 	FD3D12DynamicRHI	*dynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
 	ID3D12CommandQueue	*commandQueue = dynamicRHI->RHIGetD3DCommandQueue(); // Returns the direct command queue
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+
 	// TODO: Investigate performance when using the compute command queue
 
 	{

@@ -258,7 +258,11 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchGenIndiceBatch(FRHICommandList&
 
 	PK_ASSERT(params.m_Count > 0);
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+	SetComputePipelineState(RHICmdList, shader);
+#else
 	RHICmdList.SetComputeShader(shader);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 	if (PK_VERIFY(genKeys->InPositions.IsBound()) &&
 		PK_VERIFY(IsValidRef(params.m_InputPositions)))
@@ -342,7 +346,12 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 	{
 		//----------------------------------------------------------------------------
 		// Up Sweep
+
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+		SetComputePipelineState(RHICmdList, upSweepShader);
+#else
 		RHICmdList.SetComputeShader(upSweepShader);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 		if (PK_VERIFY(upSweep->InKeys.IsBound()))
 			RHICmdList.SetShaderResourceViewParameter(upSweepShader, upSweep->InKeys.GetBaseIndex(), m_Keys[m_CurrBuff]->SRV());
@@ -369,7 +378,11 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 
 		//----------------------------------------------------------------------------
 		// Up Sweep Offsets
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+		SetComputePipelineState(RHICmdList, upSweepOffsetsShader);
+#else
 		RHICmdList.SetComputeShader(upSweepOffsetsShader);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 		if (PK_VERIFY(upSweepOffsets->InOutOffsets.IsBound()))
 		{
@@ -392,7 +405,11 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 
 		//----------------------------------------------------------------------------
 		// Down Sweep
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+		SetComputePipelineState(RHICmdList, downSweepShader);
+#else
 		RHICmdList.SetComputeShader(downSweepShader);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 		if (PK_VERIFY(downSweep->InOffsets.IsBound()))
 			RHICmdList.SetShaderResourceViewParameter(downSweepShader, downSweep->InOffsets.GetBaseIndex(), m_Cache->SRV());

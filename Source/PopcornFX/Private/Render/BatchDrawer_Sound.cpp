@@ -9,19 +9,21 @@
 
 #include "Render/AudioPools.h"
 
-#if (PLATFORM_PS4)
-//	Since 4.19.1/2.. can't include AudioDevice.h anymore because of AudioDeviceManager.h
-//	raising:
-//		Runtime/Engine/Public/AudioDeviceManager.h(135,2): error : declaration does not declare anything [-Werror,-Wmissing-declarations]
-//		          void TrackResource(USoundWave* SoundWave, FSoundBuffer* Buffer);
-//		          ^~~~
-//	So we now use GameplayStatics directly
-
-#	include "Kismet/GameplayStatics.h"
-#else
+#if (ENGINE_MAJOR_VERSION == 5)
 #	include "AudioDevice.h"
-#endif // PLATFORM_PS4
+#else
+#	if !PLATFORM_PS4
+#		include "AudioDevice.h"
+#	else
+#		define PK_CAN_USE_AUDIO_DEVICE	0
+#	endif // !PLATFORM_PS4
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
+#ifndef PK_CAN_USE_AUDIO_DEVICE
+#	define PK_CAN_USE_AUDIO_DEVICE	1
+#endif
+
+#include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "PopcornFXStats.h"
@@ -206,11 +208,11 @@ void	CBatchDrawer_Sound::_IssueDrawCall_Sound(const SUERenderContext &renderCont
 				const FVector	pos = FVector(ToUE(positions[iParticle] * globalScale));
 				const float		radius = radii[iParticle] * globalScale;
 
-#if (PLATFORM_PS4)
+#if (PK_CAN_USE_AUDIO_DEVICE == 0)
 				const bool		audible = true; // Since 4.19.1/2 ....
 #else
 				const bool		audible = world->GetAudioDevice()->LocationIsAudible(pos, radius + radius * 0.5f);
-#endif // (PLATFORM_PS4)
+#endif // (PK_CAN_USE_AUDIO_DEVICE == 0)
 
 				const float		soundId = 0;//PopcornFX::PKMin(soundIDs[iParticle], maxSoundPoolsFp);
 				const float		soundIdFrac = PopcornFX::PKFrac(soundId) * isBlended;

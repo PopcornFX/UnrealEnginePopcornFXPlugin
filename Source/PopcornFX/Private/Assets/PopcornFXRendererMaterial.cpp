@@ -82,9 +82,15 @@ namespace
 
 	void	_SetStaticSwitch(FStaticParameterSet &params, FName name, bool value)
 	{
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+		for (int32 i = 0; i < params.EditorOnly.StaticSwitchParameters.Num(); ++i)
+		{
+			FStaticSwitchParameter		&param  = params.EditorOnly.StaticSwitchParameters[i];
+#else
 		for (int32 i = 0; i < params.StaticSwitchParameters.Num(); ++i)
 		{
 			FStaticSwitchParameter		&param  = params.StaticSwitchParameters[i];
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 			if (param.ParameterInfo.Name == name)
 			{
@@ -94,7 +100,11 @@ namespace
 				return;
 			}
 		}
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+		new (params.EditorOnly.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???
+#else
 		new (params.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	}
 
 	void	_SetStaticSwitches_Common(UMaterialInstanceConstant *material, FPopcornFXSubRendererMaterial &mat)

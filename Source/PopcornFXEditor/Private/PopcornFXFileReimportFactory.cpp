@@ -8,8 +8,13 @@
 #include "PopcornFXFileFactory.h"
 #include "Assets/PopcornFXFile.h"
 
+#include "Launch/Resources/Version.h"
 #include "EditorReimportHandler.h"
-#include "AssetRegistryModule.h"
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#	include "AssetRegistry/AssetRegistryModule.h"
+#else
+#	include "AssetRegistryModule.h"
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #include "EditorFramework/AssetImportData.h"
 #include "UObject/UnrealType.h"
 

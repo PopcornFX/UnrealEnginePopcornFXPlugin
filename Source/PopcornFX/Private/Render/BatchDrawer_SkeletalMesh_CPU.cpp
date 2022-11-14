@@ -949,13 +949,21 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext
 		if (m_MotionBlur)
 		{
 			TShaderMapRef< FPopcornFXComputeMBBoneTransformsCS >	computeBoneTransformsCS(GetGlobalShaderMap(m_FeatureLevel));
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			SetComputePipelineState(RHICmdList, computeBoneTransformsCS.GetComputeShader());
+#else
 			RHICmdList.SetComputeShader(computeBoneTransformsCS.GetComputeShader());
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			computeBoneTransformsCS->Dispatch(RHICmdList, params);
 		}
 		else
 		{
 			TShaderMapRef< FPopcornFXComputeBoneTransformsCS >	computeBoneTransformsCS(GetGlobalShaderMap(m_FeatureLevel));
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			SetComputePipelineState(RHICmdList, computeBoneTransformsCS.GetComputeShader());
+#else
 			RHICmdList.SetComputeShader(computeBoneTransformsCS.GetComputeShader());
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			computeBoneTransformsCS->Dispatch(RHICmdList, params);
 		}
 	}

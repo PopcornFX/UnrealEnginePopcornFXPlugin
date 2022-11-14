@@ -110,19 +110,31 @@ void	FPopcornFXDependencyModuleLevelEditor::FillPopcornFXMenu(FMenuBuilder &menu
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("DocumentationTitle", "Documentation"),
 			LOCTEXT("DocumentationTooltip", "Opens the PopcornFX Wiki"),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.BrowseDocumentation"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenDocumentationURL, *FPopcornFXPlugin::DocumentationURL())));
 
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("WikiTitle", "Plugin Wiki"),
 			LOCTEXT("WikiTooltip", "Opens the PopcornFX UE4 plugin wiki"),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.BrowseDocumentation"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenDocumentationURL, *FPopcornFXPlugin::PluginWikiURL())));
 
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("DiscordTitle", "Discord"),
 			LOCTEXT("DiscordTooltip", "Join PopcornFX Discord server"),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.BrowseDocumentation"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.BrowseDocumentation"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenDocumentationURL, *FPopcornFXPlugin::DiscordURL())));
 	}
 	menuBuilder.EndSection();
@@ -139,7 +151,11 @@ void	FPopcornFXDependencyModuleLevelEditor::FillPopcornFXMenu(FMenuBuilder &menu
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("OpenSourcePackTitle", "Open PopcornFX Editor Project"),
 			tooltip,
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "PopcornFXLevelEditor.OpenSourcePack"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "PopcornFXLevelEditor.OpenSourcePack"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenSourcePack),
 			FCanExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::CanOpenSourcePack)));
 	}
@@ -150,31 +166,51 @@ void	FPopcornFXDependencyModuleLevelEditor::FillPopcornFXMenu(FMenuBuilder &menu
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("RuntimeSettingsTitle", "Runtime settings"),
 			LOCTEXT("RuntimeSettingsTooltip", "Opens the project runtime settings"),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "ProjectSettings.TabIcon"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "ProjectSettings.TabIcon"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenSettings, TEXT("PopcornFXSettings"))));
 
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("EditorSettingsTitle", "Editor settings"),
 			LOCTEXT("EditorSettingsTooltip", "Opens the project editor settings"),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "ProjectSettings.TabIcon"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "ProjectSettings.TabIcon"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::OpenSettings, TEXT("PopcornFXSettingsEditor"))));
 
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("CmdStatPopcornFXTitle", "Cmd stat PopcornFX"),
 			LOCTEXT("CmdStatPopcornFXTooltip", "Runs command \"stat PopcornFX\": Toggles PopcornFX Stats display."),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "Log.TabIcon"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "Log.TabIcon"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::RunCommand, TEXT("stat PopcornFX"))));
 
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("CmdPopcornFXProfilerHUDTitle", "Cmd ToggleProfilerHUD"),
 			LOCTEXT("CmdPopcornFXProfilerHUDTooltip", "Runs command \"PopcornFX.ToggleProfilerHUD\": Toggles PopcornFX Profiler HUD."),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "Log.TabIcon"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "Log.TabIcon"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::RunCommand, TEXT("PopcornFX.ToggleProfilerHUD"))));
 
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("CmdPopcornFXDebugHUDTitle", "Cmd ToggleMemoryHUD"),
 			LOCTEXT("CmdPopcornFXDebugHUDTooltip", "Runs command \"PopcornFX.ToggleMemoryHUD\": Toggles PopcornFX Memory HUD."),
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+			FSlateIcon(FAppStyle::GetAppStyleSetName(), "Log.TabIcon"),
+#else
 			FSlateIcon(FEditorStyle::GetStyleSetName(), "Log.TabIcon"),
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FUIAction(FExecuteAction::CreateRaw(this, &FPopcornFXDependencyModuleLevelEditor::RunCommand, TEXT("PopcornFX.ToggleMemoryHUD"))));
 
 	}

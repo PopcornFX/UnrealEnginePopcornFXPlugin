@@ -5,7 +5,12 @@
 
 #include "PopcornFXEmitterFactory.h"
 
-#include "AssetData.h"
+#include "Launch/Resources/Version.h"
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#	include "AssetRegistry/AssetData.h"
+#else
+#	include "AssetData.h"
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 #include "Assets/PopcornFXEffect.h"
 #include "PopcornFXEmitter.h"

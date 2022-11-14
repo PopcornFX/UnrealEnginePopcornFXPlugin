@@ -33,8 +33,13 @@
 class	UPopcornFXSceneComponent;
 class	FPopcornFXSceneProxy;
 
-#define PK_WITH_PHYSX    PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
-#define PK_WITH_CHAOS    !(PK_WITH_PHYSX) && WITH_CHAOS
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#	define PK_WITH_PHYSX	0
+#	define PK_WITH_CHAOS	1
+#else
+#	define PK_WITH_PHYSX	PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
+#	define PK_WITH_CHAOS	!(PK_WITH_PHYSX) && WITH_CHAOS
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 // The plugin doesn't support both being active at the same time.
 #if PK_WITH_PHYSX && PK_WITH_CHAOS

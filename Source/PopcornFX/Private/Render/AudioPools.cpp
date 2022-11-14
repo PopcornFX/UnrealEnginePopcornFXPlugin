@@ -6,19 +6,21 @@
 
 #include "AudioPools.h"
 
-#if (PLATFORM_PS4)
-//	Since 4.19.1/2.. can't include AudioDevice.h anymore because of AudioDeviceManager.h
-//	raising:
-//		Runtime/Engine/Public/AudioDeviceManager.h(135,2): error : declaration does not declare anything [-Werror,-Wmissing-declarations]
-//		          void TrackResource(USoundWave* SoundWave, FSoundBuffer* Buffer);
-//		          ^~~~
-//	So we now use GameplayStatics directly
-
-#	include "Kismet/GameplayStatics.h"
-#else
+#if (ENGINE_MAJOR_VERSION == 5)
 #	include "AudioDevice.h"
-#endif // PLATFORM_PS4
+#else
+#	if PLATFORM_PS4
+#		define PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS	1
+#	else
+#		include "AudioDevice.h"
+#	endif // PLATFORM_PS4
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
+#ifndef PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS
+#	define PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS	0
+#endif
+
+#include "Kismet/GameplayStatics.h"
 #include "Components/AudioComponent.h"
 #include "Sound/SoundBase.h"
 
@@ -93,15 +95,13 @@ void	CSoundDescriptor::Update(SUpdateCtx &updCtx, const SSoundInsertDesc &insert
 
 	m_UsedUpdateId = updCtx.m_CurrentUpdateId;
 
-	//float		startpos = insertDesc.m_StartPos;
-	//startpos -= FMath::Fmod(startpos, 1.0 / 120.0);
 	PK_ASSERT(m_SelfID == insertDesc.m_SelfID);
 
 	UAudioComponent		*comp = GetAudioComponentIFP();
 	if (comp == null)
 	{
 		// Create one
-#if (PLATFORM_PS4)
+#if (PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS != 0)
 		comp = UGameplayStatics::SpawnSoundAtLocation(updCtx.m_World, updCtx.m_Sound, insertDesc.m_Position, FRotator::ZeroRotator, 1.f, 1.f, 0.f, null, null, false);
 		if (!PK_VERIFY(comp != null))
 			return;
@@ -109,7 +109,7 @@ void	CSoundDescriptor::Update(SUpdateCtx &updCtx, const SSoundInsertDesc &insert
 		m_AudioComponent = comp;
 #else
 		FAudioDevice::FCreateComponentParams	params(updCtx.m_World);
-		params.bAutoDestroy = false;	// TODO: Test how this affects 4.15
+		params.bAutoDestroy = false;
 		params.bPlay = false;
 		params.bStopWhenOwnerDestroyed = true;
 		params.SetLocation(insertDesc.m_Position);
@@ -117,8 +117,7 @@ void	CSoundDescriptor::Update(SUpdateCtx &updCtx, const SSoundInsertDesc &insert
 		PK_ASSERT(comp != null);
 		m_AudioComponent = comp;
 		comp->Play(0);//insertDesc.m_Age);
-#endif // (PLATFORM_PS4)
-		//PopcornFX::CLog::Log(PK_INFO, "Sound Update Spawned %d %p %f", m_UsedUpdateId, comp, insertDesc.m_Age);
+#endif // (PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS != 0)
 	}
 
 	if (m_LastPosition != insertDesc.m_Position)
@@ -132,18 +131,11 @@ void	CSoundDescriptor::Update(SUpdateCtx &updCtx, const SSoundInsertDesc &insert
 		comp->SetVolumeMultiplier(insertDesc.m_Volume);
 	}
 
-//	comp->ComponentVelocity = insertDesc.m_Velocity; // don't really care, FAudioDevice compute it's own Pos- PrevPos
 
 	bool	isPlaying = comp->IsPlaying();
 	// @TODO if playing access FActiveSound for faster seek without full re-setup ?
 	if (!isPlaying)
-	{
-		//PopcornFX::CLog::Log(PK_INFO, "Sound Update Start %d cp:%d %p %f", m_UsedUpdateId, comp, isPlaying, insertDesc.m_Age);
-		//comp->Play(insertDesc.m_Age);
 		comp->Play(0);
-		//float	time = (PK_VERIFY(comp->Sound != null) ? FMath::Fmod(m_StartPos, comp->Sound->Duration) : 0);
-		//comp->Play(m_StartPos);
-	}
 }
 
 //----------------------------------------------------------------------------
@@ -155,25 +147,20 @@ void	CSoundDescriptor::Spawn(SUpdateCtx &updCtx, const SSoundInsertDesc &insertD
 
 	m_UsedUpdateId = updCtx.m_CurrentUpdateId;
 
-	//float		startpos = insertDesc.m_StartPos;
-	//startpos -= FMath::Fmod(startpos, 1.0 / 120.0);
-	//m_LastAge = insertDesc.m_Age;
 	m_SelfID = insertDesc.m_SelfID;
 
 	UAudioComponent		*comp = GetAudioComponentIFP();
 	if (comp != null)
 	{
-		//comp->Stop();
 		comp->ConditionalBeginDestroy();
 		comp = null;
 		m_AudioComponent = null;
-		//comp->FadeOut(0.1f, 0.f);
 	}
 
 	if (comp == null)
 	{
 		// Create one
-#if (PLATFORM_PS4)
+#if (PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS != 0)
 		comp = UGameplayStatics::SpawnSoundAtLocation(updCtx.m_World, updCtx.m_Sound, insertDesc.m_Position, FRotator::ZeroRotator, 1.f, 1.f, 0.f, null, null, false);
 		if (!PK_VERIFY(comp != null))
 			return;
@@ -181,7 +168,7 @@ void	CSoundDescriptor::Spawn(SUpdateCtx &updCtx, const SSoundInsertDesc &insertD
 		m_AudioComponent = comp;
 #else
 		FAudioDevice::FCreateComponentParams	params(updCtx.m_World);
-		params.bAutoDestroy = false;	// TODO: Test how this affects 4.15
+		params.bAutoDestroy = false;
 		params.bPlay = false;
 		params.bStopWhenOwnerDestroyed = true;
 		params.SetLocation(insertDesc.m_Position);
@@ -189,8 +176,7 @@ void	CSoundDescriptor::Spawn(SUpdateCtx &updCtx, const SSoundInsertDesc &insertD
 		PK_ASSERT(comp != null);
 		m_AudioComponent = comp;
 		comp->Play(0/*m_LastAge*/);
-#endif // (PLATFORM_PS4)
-		//PopcornFX::CLog::Log(PK_INFO, "Sound Spawn Spawned %d %p %f", m_UsedUpdateId, comp, 0.0f/*m_LastAge*/);
+#endif // (PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS != 0)
 	}
 
 	if (m_LastPosition != insertDesc.m_Position)
@@ -204,16 +190,11 @@ void	CSoundDescriptor::Spawn(SUpdateCtx &updCtx, const SSoundInsertDesc &insertD
 		comp->SetVolumeMultiplier(insertDesc.m_Volume);
 	}
 
-	//	comp->ComponentVelocity = insertDesc.m_Velocity; // don't really care, FAudioDevice compute it's own Pos- PrevPos
-
 	bool	isPlaying = comp->IsPlaying();
 	// @TODO if playing access FActiveSound for faster seek without full re-setup ?
 	if (!isPlaying)
 	{
-		//PopcornFX::CLog::Log(PK_INFO, "Sound Spawn Start cp:%d %p p:%d %f", m_UsedUpdateId, comp, isPlaying, 0.0f/*m_LastAge*/);
 		comp->Play(0/*m_LastAge*/);
-		//float	time = (PK_VERIFY(comp->Sound != null) ? FMath::Fmod(m_StartPos, comp->Sound->Duration) : 0);
-		//comp->Play(m_StartPos);
 	}
 }
 
@@ -221,25 +202,15 @@ void	CSoundDescriptor::Spawn(SUpdateCtx &updCtx, const SSoundInsertDesc &insertD
 
 void	CSoundDescriptor::Unuse(SUpdateCtx &updCtx)
 {
-	//if (UsedThisUpdate(updCtx.m_CurrentUpdateId))
-	//	return;
 	UAudioComponent		*comp = GetAudioComponentIFP();
 	if (comp == null)
 		return;
 
 	m_UsedUpdateId = 0;
 	m_SelfID = CInt2(0);
-	//m_UsedUpdateId = updCtx.m_CurrentUpdateId;
-	//m_UsedUpdateId = 0;
-	//m_StartPos = insertDesc.m_StartPos;
 
 	if (comp->IsPlaying())
-	{
-		//PopcornFX::CLog::Log(PK_INFO, "Sound Unuse %d(last use: %d) %p %f", updCtx.m_CurrentUpdateId, m_UsedUpdateId, comp, 0.0f/*m_LastAge*/);
 		comp->Stop();
-	}
-
-	//comp->Stop();
 }
 
 //----------------------------------------------------------------------------
@@ -249,8 +220,6 @@ void	CSoundDescriptor::Stop()
 	UAudioComponent		*comp = GetAudioComponentIFP();
 	if (comp == null)
 		return;
-	//comp->bAutoDestroy = true;
-	//comp->Stop();
 	comp->ConditionalBeginDestroy();
 	m_AudioComponent = null;
 }
@@ -311,10 +280,6 @@ void	CSoundDescriptorPool::InsertSoundIFP(const SSoundInsertDesc &insertDesc)
 {
 	UWorld			*world = m_PoolCollection->World();
 	const uint32	currentUpdateId = m_PoolCollection->CurrentUpdateId();
-
-//	const float		dt = m_PoolCollection->CurrentUpdateDt();
-//	const float		dt = m_PoolCollection->World()->GetAudioDevice()->GetDeviceDeltaTime();
-//	const float		maxAllowedDelta = dt + 0.9e-2f;
 
 	USoundBase		*sound = GetOrLoadSound();
 	if (!PK_VERIFY(sound != null))
@@ -437,9 +402,7 @@ void	CSoundDescriptorPoolCollection::BeginInsert(UWorld *world)
 	m_LastTime = currTime;
 
 	for (u32 i = 0; i < m_Pools.Count(); ++i)
-	{
 		m_Pools[i].BeginInsert(world);
-	}
 }
 
 //----------------------------------------------------------------------------
@@ -448,9 +411,7 @@ void	CSoundDescriptorPoolCollection::EndInsert(UWorld *world)
 {
 	PK_ASSERT(m_World == world);
 	for (u32 i = 0; i < m_Pools.Count(); ++i)
-	{
 		m_Pools[i].EndInsert(world);
-	}
 }
 
 //----------------------------------------------------------------------------

@@ -23,7 +23,7 @@ namespace
 		EMessageSeverity::Info,				//	Level_Info,
 		EMessageSeverity::Warning,			//	Level_Warning,
 		EMessageSeverity::Error,			//	Level_Error,
-		EMessageSeverity::CriticalError,	//	Level_ErrorCritical,
+		EMessageSeverity::Error,			//	Level_ErrorCritical,
 		EMessageSeverity::Error,			//	Level_ErrorInternal,	// triggered by kr_assert, if you need to use one explicitely, prefer using an assert, or a release_assert
 		EMessageSeverity::Info,				//	Level_None,	// used mainly to disable all logging when calling 'SetGlobalLogLevel()'
 	};

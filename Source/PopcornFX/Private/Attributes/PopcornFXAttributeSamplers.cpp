@@ -1992,15 +1992,15 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerText::_AttribSa
 
 struct FAttributeSamplerImageData
 {
-	PopcornFX::PParticleSamplerDescriptor_Image_Default	m_Desc;
-	PopcornFX::CImageSampler							*m_ImageSampler = null;
-	PopcornFX::TResourcePtr<PopcornFX::CImage>			m_TextureResource;
+	PopcornFX::PParticleSamplerDescriptor_Image_Default			m_Desc;
+	PopcornFX::CImageSampler									*m_ImageSampler = null;
+	PopcornFX::TResourcePtr<PopcornFX::CImage>					m_TextureResource;
 	PopcornFX::TResourcePtr<PopcornFX::CRectangleList>			m_TextureAtlasResource;
 #if (PK_GPU_D3D12 != 0)
-	PopcornFX::TResourcePtr<PopcornFX::CImageGPU_D3D12>	m_TextureResource_D3D12;
+	PopcornFX::TResourcePtr<PopcornFX::CImageGPU_D3D12>			m_TextureResource_D3D12;
 	PopcornFX::TResourcePtr<PopcornFX::CRectangleListGPU_D3D12>	m_TextureAtlasResource_D3D12;
 #endif // (PK_GPU_D3D12 != 0)
-	PopcornFX::SDensitySamplerData					*	m_DensityData = null;
+	PopcornFX::SDensitySamplerData								*m_DensityData = null;
 
 	bool		m_ReloadTexture = true;
 	bool		m_ReloadTextureAtlas = true;
@@ -2208,8 +2208,8 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 		if (TextureAtlas != null)
 		{
 			bool						success = false;
-		const PopcornFX::CString	fullPath = TCHAR_TO_ANSI(*TextureAtlas->GetPathName());
-		m_Data->m_TextureAtlasResource = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CRectangleList>(fullPath, true);
+			const PopcornFX::CString	fullPath = TCHAR_TO_ANSI(*TextureAtlas->GetPathName());
+			m_Data->m_TextureAtlasResource = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CRectangleList>(fullPath, true);
 			success |= (m_Data->m_TextureAtlasResource != null && !m_Data->m_TextureAtlasResource->Empty());
 
 			// Try loading the image atlas with GPU sim resource handlers:
@@ -2225,7 +2225,7 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 			if (!success) // Couldn't load any of the resources (CPU/GPU)
 			{
 				UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("AttrSamplerImage: couldn't load texture atlas '%s' for CPU/GPU sim sampling"), fullPath.Data());
-			return false;
+				return false;
 			}
 		}
 		else
@@ -3134,9 +3134,9 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 				const VectorRegister	arriveTangent = VectorMultiply(srcArriveTan, invScale);
 				const VectorRegister	leaveTangent = VectorMultiply(srcLeaveTan, invScale);
 
-				VectorStore(pos, dstPos++);
-				VectorStore(arriveTangent, dstTangents++);
-				VectorStore(leaveTangent, dstTangents++);
+				VectorStoreFloat3(pos, dstPos++);
+				VectorStoreFloat3(arriveTangent, dstTangents++);
+				VectorStoreFloat3(leaveTangent, dstTangents++);
 #endif // (ENGINE_MAJOR_VERSION == 5)
 				++srcPoints;
 			}

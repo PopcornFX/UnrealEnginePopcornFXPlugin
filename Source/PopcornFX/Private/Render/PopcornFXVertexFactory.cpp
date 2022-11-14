@@ -62,15 +62,12 @@ IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXVertexFactory, SF_Pixel, FPopc
 FPopcornFXVertexFactory::FPopcornFXVertexFactory(ERHIFeatureLevel::Type InFeatureLevel)
 :	FVertexFactory(InFeatureLevel)
 {
-	check(IsInRenderingThread());
 }
 
 //----------------------------------------------------------------------------
 
 FPopcornFXVertexFactory::~FPopcornFXVertexFactory()
 {
-	check(IsInRenderingThread());
-
 }
 
 //----------------------------------------------------------------------------
