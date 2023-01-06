@@ -176,8 +176,6 @@ CParticleScene::CParticleScene()
 
 CParticleScene::~CParticleScene()
 {
-	Clear();
-
 #if (PK_GPU_D3D12 == 1)
 	if (m_EnableD3D12)
 	{
@@ -194,6 +192,8 @@ CParticleScene::~CParticleScene()
 		FlushRenderingCommands();
 	}
 #endif
+
+	Clear();
 
 	m_RenderBatchManager->Clean();
 	m_RenderBatchManager = null;
