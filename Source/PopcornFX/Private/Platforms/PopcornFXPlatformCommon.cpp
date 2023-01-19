@@ -269,6 +269,7 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				}
 				PK_ASSERT(buildInfos.m_KernelStage < PopcornFX::SBackendBuildInfos::__MaxKernelStages);
 
+#if 0
 				if (buildInfos.m_KernelStage == PopcornFX::SBackendBuildInfos::KernelStage_Simulation)
 				{
 					PK_ASSERT(buildInfos.m_KernelKey <= PopcornFX::Compiler::EExecFreq::__MaxExecFreqs); // <=, __MaxExecFreqs actually maps to a valid name
@@ -276,6 +277,7 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				}
 				else
 					finalSource.Prepend(PopcornFX::CString::Format("// Shader kernel key: %d\n", buildInfos.m_KernelKey));
+#endif
 
 				finalSource.Prepend(PopcornFX::CString::Format(	"// Effect: %s\n"
 																"// Layer: %s\n"

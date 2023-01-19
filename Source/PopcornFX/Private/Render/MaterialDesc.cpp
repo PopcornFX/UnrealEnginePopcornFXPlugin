@@ -37,8 +37,8 @@ namespace
 	
 		if (renderer == null || particleDesc == null)
 			return null;
-		PK_ASSERT(renderer->m_RendererType != PopcornFX::ERendererClass::Renderer_Light &&
-				  renderer->m_RendererType != PopcornFX::ERendererClass::Renderer_Sound); // We could create renderer materials for sounds!
+		PK_ASSERT(renderer->m_RendererType != PopcornFX::Renderer_Light &&
+				  renderer->m_RendererType != PopcornFX::Renderer_Sound); // We could create renderer materials for sounds!
 		const PopcornFX::CParticleEffect	*parentEffect = particleDesc->ParentEffect();
 		if (parentEffect == null)
 			return null;
@@ -191,9 +191,9 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 	m_Flags.m_HasTangent = m_GameThreadDesc.m_IsLit; // TODO: we could skip this when flat normal map is provided
 	m_Flags.m_Slicable = false;
 
-	if (renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Billboard ||
-		renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Ribbon ||
-		renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Triangle)
+	if (renderer->m_RendererType == PopcornFX::Renderer_Billboard ||
+		renderer->m_RendererType == PopcornFX::Renderer_Ribbon ||
+		renderer->m_RendererType == PopcornFX::Renderer_Triangle)
 	{
 		if (m_GameThreadDesc.m_RendererMaterial != null)
 		{
@@ -210,7 +210,7 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 	if (m_Flags.m_NeedSort && !m_Flags.m_Slicable)
 		m_Flags.m_NeedSort = false;
 
-	if (renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Billboard)
+	if (renderer->m_RendererType == PopcornFX::Renderer_Billboard)
 	{
 		const PopcornFX::SRendererFeaturePropertyValue	*flipUVs = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_FlipUVs());
 
@@ -220,7 +220,7 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 			m_Flags.m_FlipV = true;
 		}
 	}
-	else if (renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Ribbon)
+	else if (renderer->m_RendererType == PopcornFX::Renderer_Ribbon)
 	{
 		const PopcornFX::SRendererFeaturePropertyValue	*textureUVs = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_TextureUVs());
 
@@ -238,7 +238,7 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 		const PopcornFX::SRendererFeaturePropertyValue	*correctDeformation = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
 		m_Flags.m_HasRibbonCorrectDeformation = correctDeformation != null ? correctDeformation->ValueB() : false;
 	}
-	else if (renderer->m_RendererType == PopcornFX::ERendererClass::Renderer_Mesh)
+	else if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
 	{
 		if (m_GameThreadDesc.m_SkeletalMesh != null)
 			BuildCacheInfos_SkeletalMesh();
@@ -280,8 +280,8 @@ bool	CMaterialDesc_GameThread::MaterialIsValid() const
 
 bool	CMaterialDesc_GameThread::HasMaterial() const
 {
-	return m_RendererClass != PopcornFX::ERendererClass::Renderer_Light &&
-		m_RendererClass != PopcornFX::ERendererClass::Renderer_Sound;
+	return m_RendererClass != PopcornFX::Renderer_Light &&
+		m_RendererClass != PopcornFX::Renderer_Sound;
 }
 
 //----------------------------------------------------------------------------
@@ -387,8 +387,8 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 
 	if (m_RendererMaterial == null)
 	{
-		if (m_RendererClass != PopcornFX::ERendererClass::Renderer_Light &&
-			m_RendererClass != PopcornFX::ERendererClass::Renderer_Sound)
+		if (m_RendererClass != PopcornFX::Renderer_Light &&
+			m_RendererClass != PopcornFX::Renderer_Sound)
 		{
 			PK_ASSERT_NOT_REACHED();
 			return false;
@@ -401,7 +401,7 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 		m_LightsTranslucent = false;
 		m_CastShadows = false;
 
-		if (m_RendererClass == PopcornFX::ERendererClass::Renderer_Sound)
+		if (m_RendererClass == PopcornFX::Renderer_Sound)
 		{
 			m_SoundPoolCollection = PK_NEW(CSoundDescriptorPoolCollection);
 
@@ -435,7 +435,7 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 		m_CastShadows = (rendererSubMat->CastShadow != 0);
 		m_CorrectDeformation = (rendererSubMat->CorrectDeformation != 0);
 		m_IsLit = (rendererSubMat->Lit != 0);
-		if (m_RendererClass == PopcornFX::ERendererClass::Renderer_Mesh)
+		if (m_RendererClass == PopcornFX::Renderer_Mesh)
 		{
 #if WITH_EDITOR
 			const bool	meshChanged = m_StaticMesh != rendererSubMat->StaticMesh;
@@ -518,7 +518,7 @@ bool	CMaterialDesc_RenderThread::ValidForRendering() const
 	const FPopcornFXSubRendererMaterial	*rendererSubMat = m_RendererMaterial->GetSubMaterial(0);
 	if (rendererSubMat == null)
 		return false;
-	if (m_RendererClass == PopcornFX::ERendererClass::Renderer_Mesh)
+	if (m_RendererClass == PopcornFX::Renderer_Mesh)
 	{
 		return	rendererSubMat->StaticMesh != null ||
 				(rendererSubMat->SkeletalMesh != null && rendererSubMat->TextureSkeletalAnimation != null);
@@ -652,8 +652,8 @@ bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &g
 
 bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardingLocation bbLocation)
 {
-	if (m_RendererClass == PopcornFX::ERendererClass::Renderer_Light ||
-		m_RendererClass == PopcornFX::ERendererClass::Renderer_Sound)
+	if (m_RendererClass == PopcornFX::Renderer_Light ||
+		m_RendererClass == PopcornFX::Renderer_Sound)
 		return true; // No material to resolve for lights/sounds
 	PK_ASSERT(IsInRenderingThread());
 	if (!MaterialIsValid())
@@ -666,8 +666,8 @@ bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardi
 	m_MaterialInterface = materialInstance;
 	switch (m_RendererClass)
 	{
-	case	PopcornFX::ERendererClass::Renderer_Billboard:
-	case	PopcornFX::ERendererClass::Renderer_Triangle:
+	case	PopcornFX::Renderer_Billboard:
+	case	PopcornFX::Renderer_Triangle:
 		if (bbLocation == PopcornFX::Drawers::BillboardingLocation_CPU ||
 			bbLocation == PopcornFX::Drawers::BillboardingLocation_ComputeShader)
 		{
@@ -684,11 +684,11 @@ bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardi
 			PK_ASSERT_NOT_REACHED();
 		}
 		break;
-	case	PopcornFX::ERendererClass::Renderer_Ribbon:
+	case	PopcornFX::Renderer_Ribbon:
 		if (!FPopcornFXVertexFactory::IsCompatible(m_MaterialInterface))
 			m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
 		break;
-	case	PopcornFX::ERendererClass::Renderer_Mesh:
+	case	PopcornFX::Renderer_Mesh:
 		if (m_SkeletalMesh != null)
 		{
 			if (!FPopcornFXSkelMeshVertexFactory::IsCompatible(materialInstance))

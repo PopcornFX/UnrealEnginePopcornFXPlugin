@@ -831,7 +831,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 		return false;
 	}
 
-	bakeConfig->SetSourceConfig((forEditor) ? PopcornFX::EBakeSourceConfig::Bake_StandaloneSource : PopcornFX::EBakeSourceConfig::Bake_NoSource);
+	bakeConfig->SetSourceConfig((forEditor) ? PopcornFX::Bake_StandaloneSource : PopcornFX::Bake_NoSource);
 	bakeConfig->SetCompile(true);
 	bakeConfig->SetRemoveEditorNodes(true);
 

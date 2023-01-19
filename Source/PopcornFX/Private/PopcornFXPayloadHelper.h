@@ -17,31 +17,31 @@ namespace	EPopcornFXPayloadType
 	{
 		switch (typeID)
 		{
-		case	PopcornFX::EBaseTypeID::BaseType_Bool:
+		case	PopcornFX::BaseType_Bool:
 			return Type::Bool;
-		case	PopcornFX::EBaseTypeID::BaseType_Bool2:
+		case	PopcornFX::BaseType_Bool2:
 			return Type::Bool2;
-		case	PopcornFX::EBaseTypeID::BaseType_Bool3:
+		case	PopcornFX::BaseType_Bool3:
 			return Type::Bool3;
-		case	PopcornFX::EBaseTypeID::BaseType_Bool4:
+		case	PopcornFX::BaseType_Bool4:
 			return Type::Bool4;
-		case	PopcornFX::EBaseTypeID::BaseType_I32:
+		case	PopcornFX::BaseType_I32:
 			return Type::Int;
-		case	PopcornFX::EBaseTypeID::BaseType_Int2:
+		case	PopcornFX::BaseType_Int2:
 			return Type::Int2;
-		case	PopcornFX::EBaseTypeID::BaseType_Int3:
+		case	PopcornFX::BaseType_Int3:
 			return Type::Int3;
-		case	PopcornFX::EBaseTypeID::BaseType_Int4:
+		case	PopcornFX::BaseType_Int4:
 			return Type::Int4;
-		case	PopcornFX::EBaseTypeID::BaseType_Float:
-		case	PopcornFX::EBaseTypeID::BaseType_Double:
+		case	PopcornFX::BaseType_Float:
+		case	PopcornFX::BaseType_Double:
 			return Type::Float;
-		case	PopcornFX::EBaseTypeID::BaseType_Float2:
+		case	PopcornFX::BaseType_Float2:
 			return Type::Float2;
-		case	PopcornFX::EBaseTypeID::BaseType_Float3:
+		case	PopcornFX::BaseType_Float3:
 			return Type::Float3;
-		case	PopcornFX::EBaseTypeID::BaseType_Float4:
-		case	PopcornFX::EBaseTypeID::BaseType_Quaternion:
+		case	PopcornFX::BaseType_Float4:
+		case	PopcornFX::BaseType_Quaternion:
 			return Type::Float4;
 		default:
 			PK_ASSERT_NOT_REACHED();

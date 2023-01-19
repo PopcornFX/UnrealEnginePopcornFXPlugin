@@ -235,7 +235,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	if (m_Enable ## __name) \
 	{ \
 		PK_ASSERT(updateManager == null); \
-		updateManager = PopcornFX::CParticleUpdateManager_Auto::New(PopcornFX::EGPUContext::Context ## __name); \
+		updateManager = PopcornFX::CParticleUpdateManager_Auto::New(PopcornFX::Context ## __name); \
 		API = SUERenderContext:: ## __name; \
 	} \
 
@@ -1057,7 +1057,7 @@ void	CParticleScene::_PreUpdate_Views()
 		worldType == EWorldType::PIE)
 	{
 		CFloat4x4	toZUp;
-		PopcornFX::CCoordinateFrame::BuildTransitionFrame(PopcornFX::ECoordinateFrame::Frame_LeftHand_Y_Up, PopcornFX::ECoordinateFrame::Frame_LeftHand_Z_Up, toZUp);
+		PopcornFX::CCoordinateFrame::BuildTransitionFrame(PopcornFX::Frame_LeftHand_Y_Up, PopcornFX::Frame_LeftHand_Z_Up, toZUp);
 
 		auto	playerIt = GEngine->GetLocalPlayerIterator(world);
 		while (playerIt)
@@ -1116,7 +1116,7 @@ void	CParticleScene::_PreUpdate_Views()
 			return;
 
 		CFloat4x4	toZUp;
-		PopcornFX::CCoordinateFrame::BuildTransitionFrame(PopcornFX::ECoordinateFrame::Frame_LeftHand_Y_Up, PopcornFX::ECoordinateFrame::Frame_LeftHand_Z_Up, toZUp);
+		PopcornFX::CCoordinateFrame::BuildTransitionFrame(PopcornFX::Frame_LeftHand_Y_Up, PopcornFX::Frame_LeftHand_Z_Up, toZUp);
 		for (u32 iViewport = 0; iViewport < levelViewportCount; ++iViewport)
 		{
 			FLevelEditorViewportClient	*client = levelViewportClients[iViewport];

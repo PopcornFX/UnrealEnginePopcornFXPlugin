@@ -105,7 +105,7 @@ PopcornFX::CVectorField	*CResourceHandlerVectorField_UE::NewFromVectorField(UVec
 	if (!PK_VERIFY(vectorField != null))
 		return null;
 	vectorField->m_Data = fp16Values;
-	vectorField->m_DataType = PopcornFX::EVectorFieldDataType::VFDataType_Fp16;
+	vectorField->m_DataType = PopcornFX::VFDataType_Fp16;
 	vectorField->m_Dimensions = CUint4(vectorFieldStatic->SizeX, vectorFieldStatic->SizeY, vectorFieldStatic->SizeZ, 1);
 	vectorField->m_BoundsMin = CFloat4(ToPk(vectorFieldStatic->Bounds.Min), 0.0f);
 	vectorField->m_BoundsMax = CFloat4(ToPk(vectorFieldStatic->Bounds.Max), 1.0f);

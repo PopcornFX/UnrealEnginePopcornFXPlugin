@@ -61,7 +61,7 @@ uint32		ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType)
 	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule		== (u32)CShapeDescriptor::ShapeCapsule);
 	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone			== (u32)CShapeDescriptor::ShapeCone);
 	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh			== (u32)CShapeDescriptor::ShapeMesh);
-	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeCollection);
+	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeMeshCollection);
 	return static_cast<CShapeDescriptor::EShapeType>(ueShapeType);
 }
 
@@ -85,8 +85,8 @@ namespace
 			return "CShapeDescriptor_Cone";
 		case PopcornFX::CShapeDescriptor::ShapeMesh:
 			return "CShapeDescriptor_Mesh";
-		case PopcornFX::CShapeDescriptor::ShapeCollection:
-			return "CShapeDescriptor_Collection";
+		case PopcornFX::CShapeDescriptor::ShapeMeshCollection:
+			return "CShapeDescriptor_MeshCollection";
 		default:
 			break;
 		}
@@ -150,14 +150,22 @@ void	ResetAttribute(FPopcornFXAttributeDesc &attrib, const PopcornFX::CParticleA
 		attrib.m_AttributeType = decl->ExportedType();
 
 #if WITH_EDITOR
-		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_None			== (u32)PopcornFX::EDataSemantic::DataSemantic_None);
-		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_3DCoordinate	== (u32)PopcornFX::EDataSemantic::DataSemantic_3DCoordinate);
-		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_3DScale			== (u32)PopcornFX::EDataSemantic::DataSemantic_3DScale);
-		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_Color			== (u32)PopcornFX::EDataSemantic::DataSemantic_Color);
-
+		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_None			== (u32)PopcornFX::DataSemantic_None);
+		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_3DCoordinate	== (u32)PopcornFX::DataSemantic_3DCoordinate);
+		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_3DScale			== (u32)PopcornFX::DataSemantic_3DScale);
+		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_Color			== (u32)PopcornFX::DataSemantic_Color);
 		attrib.m_AttributeSemantic = static_cast<EPopcornFXAttributeSemantic::Type>(decl->GetEffectiveDataSemantic());
 
-		if ((PopcornFX::EBaseTypeID)attrib.m_AttributeType == PopcornFX::EBaseTypeID::BaseType_Quaternion)
+		PK_STATIC_ASSERT(EPopcornFXAttributeDropDownMode::AttributeDropDownMode_None			== (u32)PopcornFX::EnumDropDown_None);
+		PK_STATIC_ASSERT(EPopcornFXAttributeDropDownMode::AttributeDropDownMode_SingleSelect	== (u32)PopcornFX::EnumDropDown_SingleSelect);
+		PK_STATIC_ASSERT(EPopcornFXAttributeDropDownMode::AttributeDropDownMode_MultiSelect		== (u32)PopcornFX::EnumDropDown_MultiSelect);
+		attrib.m_DropDownMode = static_cast<EPopcornFXAttributeDropDownMode::Type>(decl->DropDownMode());
+
+		attrib.m_EnumList.SetNum(decl->EnumList().Count());
+		for (u32 i = 0; i < decl->EnumList().Count(); ++i)
+			attrib.m_EnumList[i] = ANSI_TO_TCHAR(decl->EnumList()[i].Data());
+
+		if ((PopcornFX::EBaseTypeID)attrib.m_AttributeType == PopcornFX::BaseType_Quaternion)
 		{
 			const PopcornFX::SAttributesContainer_SAttrib		attribValue = decl->GetDefaultValue();
 			const FRotator										rotator = FQuat(attribValue.m_Data32f[0], attribValue.m_Data32f[1], attribValue.m_Data32f[2], attribValue.m_Data32f[3]).Rotator();
@@ -763,7 +771,7 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 				attr->m_AttributeType = refAttr.m_AttributeType;
 
 #if	WITH_EDITOR
-				if ((PopcornFX::EBaseTypeID)attr->m_AttributeType == PopcornFX::EBaseTypeID::BaseType_Quaternion)
+				if ((PopcornFX::EBaseTypeID)attr->m_AttributeType == PopcornFX::BaseType_Quaternion)
 				{
 					const PopcornFX::SAttributesContainer_SAttrib		attrib = AttributeRawDataAttributes(this)[attri];
 					const FRotator										rotator = FQuat(attrib.m_Data32f[0], attrib.m_Data32f[1], attrib.m_Data32f[2], attrib.m_Data32f[3]).Rotator();

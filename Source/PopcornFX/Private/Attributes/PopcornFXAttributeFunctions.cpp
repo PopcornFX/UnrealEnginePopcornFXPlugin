@@ -105,11 +105,11 @@ namespace
 		if (_Dim > dstAttrTraits.VectorDimension ||
 			srcTraits.ScalarType != dstAttrTraits.ScalarType)
 		{
-			if (srcTraits.ScalarType != PopcornFX::EBaseTypeID::BaseType_U32 ||
-				dstAttrTraits.ScalarType != PopcornFX::EBaseTypeID::BaseType_Bool)
+			if (srcTraits.ScalarType != PopcornFX::BaseType_U32 ||
+				dstAttrTraits.ScalarType != PopcornFX::BaseType_Bool)
 			{
-				const char			*inType = (srcTraits.ScalarType == PopcornFX::EBaseTypeID::BaseType_U32 ? "Bool" : (srcTraits.IsFp ? "Float" : "Int"));
-				const char			*attrType = (dstAttrTraits.ScalarType == PopcornFX::EBaseTypeID::BaseType_Bool ? "Bool" : (dstAttrTraits.IsFp ? "Float" : "Int"));
+				const char			*inType = (srcTraits.ScalarType == PopcornFX::BaseType_U32 ? "Bool" : (srcTraits.IsFp ? "Float" : "Int"));
+				const char			*attrType = (dstAttrTraits.ScalarType == PopcornFX::BaseType_Bool ? "Bool" : (dstAttrTraits.IsFp ? "Float" : "Int"));
 				UE_LOG(LogPopcornFXAttributeFunctions, Warning,
 					TEXT("SetAttributeAs: the Attribute [%d] \"%s\" cannot be set as %s %d: the attribute is %s %d (%s)"),
 					attri, ANSI_TO_TCHAR(decl->ExportedName().Data()),
@@ -169,11 +169,11 @@ namespace
 		if (_Dim > dstAttrTraits.VectorDimension ||
 			srcTraits.ScalarType != dstAttrTraits.ScalarType)
 		{
-			if (srcTraits.ScalarType != PopcornFX::EBaseTypeID::BaseType_U32 ||
-				dstAttrTraits.ScalarType != PopcornFX::EBaseTypeID::BaseType_Bool)
+			if (srcTraits.ScalarType != PopcornFX::BaseType_U32 ||
+				dstAttrTraits.ScalarType != PopcornFX::BaseType_Bool)
 			{
-				const char			*inType = (srcTraits.ScalarType == PopcornFX::EBaseTypeID::BaseType_U32 ? "Bool" : (srcTraits.IsFp ? "Float" : "Int"));
-				const char			*attrType = (dstAttrTraits.ScalarType == PopcornFX::EBaseTypeID::BaseType_Bool ? "Bool" : (dstAttrTraits.IsFp ? "Float" : "Int"));
+				const char	*inType = (srcTraits.ScalarType == PopcornFX::BaseType_U32 ? "Bool" : (srcTraits.IsFp ? "Float" : "Int"));
+				const char	*attrType = (dstAttrTraits.ScalarType == PopcornFX::BaseType_Bool ? "Bool" : (dstAttrTraits.IsFp ? "Float" : "Int"));
 				UE_LOG(LogPopcornFXAttributeFunctions, Warning,
 					TEXT("GetAttributeAs: the Attribute [%d] \"%s\" cannot be get as %s %d: the attribute is %s %d (%s)"),
 					attri, ANSI_TO_TCHAR(decl->ExportedName().Data()),

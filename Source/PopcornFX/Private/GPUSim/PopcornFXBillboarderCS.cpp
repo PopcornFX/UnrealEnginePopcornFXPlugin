@@ -43,22 +43,22 @@ namespace PopcornFXBillboarder
 		EBillboarder::Type		bbType = (EBillboarder::Type)~0;
 		switch (mode)
 		{
-		case	PopcornFX::EBillboardMode::BillboardMode_ScreenAligned:
+		case	PopcornFX::BillboardMode_ScreenAligned:
 			bbType = EBillboarder::ScreenAligned;
 			break;
-		case	PopcornFX::EBillboardMode::BillboardMode_ViewposAligned:
+		case	PopcornFX::BillboardMode_ViewposAligned:
 			bbType = EBillboarder::ViewposAligned;
 			break;
-		case	PopcornFX::EBillboardMode::BillboardMode_AxisAligned:
+		case	PopcornFX::BillboardMode_AxisAligned:
 			bbType = EBillboarder::AxisAligned;
 			break;
-		case	PopcornFX::EBillboardMode::BillboardMode_AxisAlignedSpheroid:
+		case	PopcornFX::BillboardMode_AxisAlignedSpheroid:
 			bbType = EBillboarder::AxisAlignedSpheroid;
 			break;
-		case	PopcornFX::EBillboardMode::BillboardMode_AxisAlignedCapsule:
+		case	PopcornFX::BillboardMode_AxisAlignedCapsule:
 			bbType = EBillboarder::AxisAlignedCapsule;
 			break;
-		case	PopcornFX::EBillboardMode::BillboardMode_PlaneAligned:
+		case	PopcornFX::BillboardMode_PlaneAligned:
 			bbType = EBillboarder::PlaneAligned;
 			break;
 		default:

@@ -126,7 +126,7 @@ bool	CBatchDrawer_Billboard_CPUBB::AreRenderersCompatible(const PopcornFX::CRend
 	if (rDesc0.m_RendererMaterial == rDesc1.m_RendererMaterial)
 		return true;
 
-	PK_ASSERT(rDesc0.m_RendererClass == PopcornFX::ERendererClass::Renderer_Billboard);
+	PK_ASSERT(rDesc0.m_RendererClass == PopcornFX::Renderer_Billboard);
 	const FPopcornFXSubRendererMaterial	*mat0 = rDesc0.m_RendererMaterial->GetSubMaterial(0);
 	const FPopcornFXSubRendererMaterial	*mat1 = rDesc1.m_RendererMaterial->GetSubMaterial(0);
 	if (mat0 == null || mat1 == null)
@@ -168,7 +168,7 @@ void	CBatchDrawer_Billboard_CPUBB::BeginFrame(PopcornFX::SRenderContext &ctx)
 
 bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStringId &fieldName, PopcornFX::EBaseTypeID type, EPopcornFXAdditionalStreamOffsets &outStreamOffsetType)
 {
-	if (type == PopcornFX::EBaseTypeID::BaseType_Float4)
+	if (type == PopcornFX::BaseType_Float4)
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() ||
 			fieldName == PopcornFX::BasicRendererProperties::SID_Distortion_Color())
@@ -180,12 +180,12 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
 			outStreamOffsetType = StreamOffset_DynParam3s;
 	}
-	else if (type == PopcornFX::EBaseTypeID::BaseType_Float3)
+	else if (type == PopcornFX::BaseType_Float3)
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
 			outStreamOffsetType = StreamOffset_EmissiveColors;
 	}
-	else if (type == PopcornFX::EBaseTypeID::BaseType_Float)
+	else if (type == PopcornFX::BaseType_Float)
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
