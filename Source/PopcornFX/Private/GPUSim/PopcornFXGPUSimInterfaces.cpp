@@ -101,12 +101,12 @@ namespace	PopcornFXGPU
 			if (texRHI == null)
 				return false;
 
-			if (context.m_ContextType == PopcornFX::EGPUContext::ContextD3D12)
+			if (context.m_ContextType == PopcornFX::ContextD3D12)
 			{
 #if	(PK_GPU_D3D12 != 0)
 #endif	// (PK_GPU_D3D12 != 0)
 			}
-			else if (context.m_ContextType == PopcornFX::EGPUContext::ContextD3D11)
+			else if (context.m_ContextType == PopcornFX::ContextD3D11)
 			{
 #if	(PK_GPU_D3D11 != 0)
 				const PopcornFX::SBindingContextD3D11	&d3d11Context = context.ToD3D11();
@@ -150,12 +150,12 @@ namespace	PopcornFXGPU
 #if 0
 			const SUEViewUniformData	&viewUniformData = FPopcornFXPlugin::Get().ViewUniformData();
 
-			if (context.m_ContextType == PopcornFX::EGPUContext::ContextD3D12)
+			if (context.m_ContextType == PopcornFX::ContextD3D12)
 			{
 #if	(PK_GPU_D3D12 != 0)
 #endif	// (PK_GPU_D3D12 != 0)
 			}
-			else if (context.m_ContextType == PopcornFX::EGPUContext::ContextD3D11)
+			else if (context.m_ContextType == PopcornFX::ContextD3D11)
 			{
 #if	(PK_GPU_D3D11 != 0)
 				const PopcornFX::SBindingContextD3D11	&d3d11Context = context.ToD3D11();

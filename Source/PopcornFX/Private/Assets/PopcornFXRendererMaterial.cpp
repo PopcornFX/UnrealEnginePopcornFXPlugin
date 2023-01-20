@@ -148,7 +148,7 @@ namespace
 #if WITH_EDITOR
 	bool		RM_Setup_Billboard(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::ERendererClass::Renderer_Billboard)
+		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Billboard)
 			return false;
 		const PopcornFX::CRendererDataBillboard	*renderer = static_cast<const PopcornFX::CRendererDataBillboard*>(rendererBase);
 		if (renderer == null)
@@ -365,7 +365,7 @@ namespace
 #if WITH_EDITOR
 	bool		RM_Setup_Ribbon(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::ERendererClass::Renderer_Ribbon)
+		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Ribbon)
 			return false;
 		const PopcornFX::CRendererDataRibbon	*renderer = static_cast<const PopcornFX::CRendererDataRibbon*>(rendererBase);
 		if (renderer == null)
@@ -509,7 +509,7 @@ namespace
 
 	bool		RM_Setup_Mesh(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::ERendererClass::Renderer_Mesh)
+		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Mesh)
 			return false;
 		const PopcornFX::CRendererDataMesh	*renderer = static_cast<const PopcornFX::CRendererDataMesh*>(rendererBase);
 		if (renderer == null)
@@ -796,7 +796,7 @@ namespace
 
 	bool		RM_Setup_Triangle(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::ERendererClass::Renderer_Triangle)
+		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Triangle)
 			return false;
 
 		const PopcornFX::CRendererDataTriangle	*renderer = static_cast<const PopcornFX::CRendererDataTriangle*>(rendererBase);

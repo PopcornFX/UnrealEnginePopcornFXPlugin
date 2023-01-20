@@ -57,6 +57,7 @@
 #include <pk_particles/include/ps_font_metrics.h>
 
 #if (PK_GPU_D3D12 != 0)
+#	include <pk_particles/include/Samplers/D3D12/image_gpu_d3d12.h>
 #	include <pk_particles/include/Samplers/D3D12/rectangle_list_gpu_d3d12.h>
 #	include "Windows/HideWindowsPlatformTypes.h"
 #	include "D3D12RHIPrivate.h"
@@ -643,23 +644,23 @@ namespace
 	// COLLECTION
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 	template <>
-	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Collection>(const SNewShapeParams &params)
+	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_MeshCollection>(const SNewShapeParams &params)
 	{
 		const UPopcornFXAttributeSamplerShape			*self = params.self;
 
-		PopcornFX::CShapeDescriptor_Collection	*shapeCollection = PK_NEW(PopcornFX::CShapeDescriptor_Collection());
+		PopcornFX::CShapeDescriptor_MeshCollection	*shapeCollection = PK_NEW(PopcornFX::CShapeDescriptor_MeshCollection());
 		if (shapeCollection == null)
 			return null;
 		if (self->Shapes.Num() == 0) // not an error
 			return shapeCollection;
 
-		PK_STATIC_ASSERT(EPopcornFXShapeCollectionSamplingHeuristic::NoWeight			== (u32)PopcornFX::CShapeDescriptor_Collection::NoWeight);
-		PK_STATIC_ASSERT(EPopcornFXShapeCollectionSamplingHeuristic::WeightWithVolume	== (u32)PopcornFX::CShapeDescriptor_Collection::WeightWithVolume);
-		PK_STATIC_ASSERT(EPopcornFXShapeCollectionSamplingHeuristic::WeightWithSurface	== (u32)PopcornFX::CShapeDescriptor_Collection::WeightWithSurface);
-		PK_STATIC_ASSERT(3 == PopcornFX::CShapeDescriptor_Collection::__MaxSamplingHeuristics);
-		shapeCollection->m_SamplingHeuristic = static_cast<PopcornFX::CShapeDescriptor_Collection::ESamplingHeuristic>(self->CollectionSamplingHeuristic.GetValue());
-		shapeCollection->m_UseSubShapeWeights = (self->CollectionUseShapeWeights != 0);
-		shapeCollection->m_PermutateMultiSamples = false;
+		PK_STATIC_ASSERT(EPopcornFXShapeCollectionSamplingHeuristic::NoWeight			== (u32)PopcornFX::CShapeDescriptor_MeshCollection::NoWeight);
+		PK_STATIC_ASSERT(EPopcornFXShapeCollectionSamplingHeuristic::WeightWithVolume	== (u32)PopcornFX::CShapeDescriptor_MeshCollection::WeightWithVolume);
+		PK_STATIC_ASSERT(EPopcornFXShapeCollectionSamplingHeuristic::WeightWithSurface	== (u32)PopcornFX::CShapeDescriptor_MeshCollection::WeightWithSurface);
+		PK_STATIC_ASSERT(3 == PopcornFX::CShapeDescriptor_MeshCollection::__MaxSamplingHeuristics);
+		shapeCollection->SetSamplingHeuristic(static_cast<PopcornFX::CShapeDescriptor_MeshCollection::ESamplingHeuristic>(self->CollectionSamplingHeuristic.GetValue()));
+		shapeCollection->SetUseSubMeshWeights(self->CollectionUseShapeWeights != 0);
+//		shapeCollection->m_PermutateMultiSamples = false;	// Oh god no ! This should almost always be 'true' !!
 
 		const float	invGlobalScale = FPopcornFXPlugin::GlobalScaleRcp();
 		for (auto shapeIt = self->Shapes.CreateConstIterator(); shapeIt; ++shapeIt)
@@ -668,7 +669,7 @@ namespace
 
 			if (attrSampler == null)
 				continue;
-			UPopcornFXAttributeSamplerShape	*shape = Cast<UPopcornFXAttributeSamplerShape>(attrSampler->Sampler);
+			UPopcornFXAttributeSamplerShape	*shape = Cast<UPopcornFXAttributeSamplerShape>(attrSampler->Sampler);	// This must be a mesh
 			if (shape == null || shape->IsCollection())
 				continue;
 
@@ -679,9 +680,10 @@ namespace
 				PK_ASSERT(shapeInitOk);
 			}
 
-			PopcornFX::CShapeDescriptor	*desc = shape->GetShapeDescriptor();
+			// This won't compile now, it must be a CShapeDescriptor_Mesh*
+			PopcornFX::CShapeDescriptor_Mesh	*desc = shape->GetShapeDescriptor();
 			if (!PK_VERIFY(desc != null) ||
-				!PK_VERIFY(shapeCollection->AddSubShape(desc)))
+				!PK_VERIFY(shapeCollection->AddSubMesh(desc)))
 				continue;
 			// Don't transform the world rotation
 			const FVector	transformedLocation = self->GetComponentTransform().InverseTransformPosition(shape->GetComponentLocation());
@@ -699,9 +701,9 @@ namespace
 
 	// COLLECTION
 	template <>
-	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Collection>(const SUpdateShapeParams &params)
+	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_MeshCollection>(const SUpdateShapeParams &params)
 	{
-		//PopcornFX::CShapeDescriptor_Collection	*collection = static_cast<PopcornFX::CShapeDescriptor_Collection*>(shape);
+		//PopcornFX::CShapeDescriptor_MeshCollection	*collection = static_cast<PopcornFX::CShapeDescriptor_MeshCollection*>(shape);
 	}
 #endif
 
@@ -715,7 +717,7 @@ namespace
 		&_NewDescriptor<PopcornFX::CShapeDescriptor_Mesh>,		//Mesh,
 		//null,		// Spline
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
-		&_NewDescriptor<PopcornFX::CShapeDescriptor_Collection>,		//Collection
+		&_NewDescriptor<PopcornFX::CShapeDescriptor_MeshCollection>,	//MeshCollection
 #endif
 	};
 
@@ -729,7 +731,7 @@ namespace
 		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Mesh>,		//Mesh,
 		//null,		// Spline
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
-		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Collection>,		//Collection
+		&_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_MeshCollection>,	//MeshCollection
 #endif
 	};
 
@@ -943,7 +945,7 @@ void	UPopcornFXAttributeSamplerShape::TickComponent(float deltaTime, ELevelTick 
 
 	// Use the TickComponent to render the geometry, because _AttribSampler_PreUpdate()
 	// isn't called on attr samplers that are not directly referenced (ie shape collection referencing other attr sampler shapes)
-	// So they wont be rendered. Attr sampler collections manually rendering their subshapes isn't an option (might induce multiple draws for a single attr sampler)
+	// So they wont be rendered. Attr sampler collections manually rendering their subMeshes isn't an option (might induce multiple draws for a single attr sampler)
 	RenderShapeIFP(isSelected);
 }
 
@@ -1125,13 +1127,13 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
 		PK_ASSERT(m_Data->m_Desc->m_Shape != null);
 		PK_ASSERT(m_Data->m_Desc->m_Shape.Get() == m_Data->m_Shape.Get());
 
-		PopcornFX::CShapeDescriptor_Collection			*shape = static_cast<PopcornFX::CShapeDescriptor_Collection*>(m_Data->m_Shape.Get());
-		PopcornFX::TMemoryView<const PCShapeDescriptor>	subShapes = shape->SubShapes();
+		PopcornFX::CShapeDescriptor_MeshCollection			*shape = static_cast<PopcornFX::CShapeDescriptor_MeshCollection*>(m_Data->m_Shape.Get());
+		PopcornFX::TMemoryView<const PCShapeDescriptor_Mesh>	subMeshes = shape->SubMeshes();
 
 		bool		collectionIsDirty = false;
 		u32			iSubShape = 0;
 		const u32	shapeCount = Shapes.Num();
-		const u32	subShapeCount = subShapes.Count();
+		const u32	subShapeCount = subMeshes.Count();
 		for (u32 iShape = 0; iShape < shapeCount && iSubShape < subShapeCount; ++iShape)
 		{
 			const APopcornFXAttributeSamplerActor	*attr = Shapes[iShape];
@@ -1142,7 +1144,7 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
 			if (shapeComp == null/* || shapeComp->IsCollection()*/)
 				continue;
 			PK_TODO("Remove this Gore non-const cast when the popcornfx runtime is modified the proper way ")
-			CShapeDescriptor	*desc = const_cast<CShapeDescriptor*>(subShapes[iSubShape].Get());
+			CShapeDescriptor	*desc = const_cast<CShapeDescriptor*>(subMeshes[iSubShape].Get());
 			PK_ASSERT(desc != null);
 			if (desc != shapeComp->GetShapeDescriptor())
 			{

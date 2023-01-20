@@ -154,7 +154,7 @@ void	FPopcornFXStyle::Initialize()
 		STYLE_PKFX_NODE("CParticleSamplerText");
 		STYLE_PKFX_NODE("CShapeDescriptor_Box");
 		STYLE_PKFX_NODE("CShapeDescriptor_Capsule");
-		STYLE_PKFX_NODE("CShapeDescriptor_Collection");
+		STYLE_PKFX_NODE("CShapeDescriptor_MeshCollection");
 		STYLE_PKFX_NODE("CShapeDescriptor_Ellipsoid");
 		STYLE_PKFX_NODE("CShapeDescriptor_Cone");
 		STYLE_PKFX_NODE("CShapeDescriptor_Cylinder");

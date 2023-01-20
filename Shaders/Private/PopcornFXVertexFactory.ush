@@ -12,8 +12,6 @@
 #include "/Engine/Private/VertexFactoryCommon.ush"
 #include "PopcornFXCommon.ush"
 
-#define HAS_INSTANCE_ID				(ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER)
-
 // Must match PopcornFX::ERendererClass !
 #define Renderer_Billboard		0
 #define Renderer_Ribbon			1
@@ -38,9 +36,11 @@ struct FVertexFactoryInput
 	float4	UVScalesAndOffsets		: ATTRIBUTE6;
 	float	AtlasID					: ATTRIBUTE7; // Should be an additional input
 
-	/** Optional instance ID for vertex layered rendering */
-#if HAS_INSTANCE_ID
+	// Optional instance ID for vertex layered rendering
+#if FEATURE_LEVEL >= FEATURE_LEVEL_SM4 && ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER
 	uint	InstanceId	: SV_InstanceID;
+#else
+	VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK()
 #endif
 	uint	VertexId : SV_VertexID;
 };

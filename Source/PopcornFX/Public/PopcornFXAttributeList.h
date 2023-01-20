@@ -30,6 +30,18 @@ namespace EPopcornFXAttributeSemantic
 		AttributeSemantic_Count
 	};
 }
+
+UENUM()
+namespace EPopcornFXAttributeDropDownMode
+{
+	enum	Type
+	{
+		AttributeDropDownMode_None = 0,
+		AttributeDropDownMode_SingleSelect,
+		AttributeDropDownMode_MultiSelect,
+		AttributeDropDownMode_Count
+	};
+}
 #endif // WITH_EDITORONLY_DATA
 
 USTRUCT()
@@ -55,6 +67,12 @@ struct FPopcornFXAttributeDesc
 
 	UPROPERTY()
 	FVector					m_AttributeEulerAngles;
+
+	UPROPERTY()
+	TEnumAsByte<EPopcornFXAttributeDropDownMode::Type>	m_DropDownMode;
+
+	UPROPERTY()
+	TArray<FString>			m_EnumList;
 #endif // WITH_EDITORONLY_DATA
 
 	FPopcornFXAttributeDesc()
@@ -64,7 +82,8 @@ struct FPopcornFXAttributeDesc
 #if WITH_EDITORONLY_DATA
 	,	m_AttributeSemantic(EPopcornFXAttributeSemantic::AttributeSemantic_None)
 	,	m_IsExpanded(false)
-	, m_AttributeEulerAngles(FVector(0.f, 0.f, 0.f))
+	,	m_AttributeEulerAngles(FVector(0.f, 0.f, 0.f))
+	,	m_DropDownMode(EPopcornFXAttributeDropDownMode::AttributeDropDownMode_None)
 #endif // WITH_EDITORONLY_DATA
 	{ }
 
@@ -82,6 +101,8 @@ struct FPopcornFXAttributeDesc
 #if WITH_EDITORONLY_DATA
 		m_AttributeSemantic = EPopcornFXAttributeSemantic::AttributeSemantic_None;
 		m_AttributeEulerAngles = FVector(0.f, 0.f, 0.f);
+		m_DropDownMode = EPopcornFXAttributeDropDownMode::AttributeDropDownMode_None;
+		m_EnumList.Empty();
 #endif // WITH_EDITORONLY_DATA
 	}
 

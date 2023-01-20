@@ -131,13 +131,13 @@ TSharedRef<SWidget>	FPopcornFXAttributeTrackEditor::OnGetAddParameterMenuContent
 		bool			supportedType = true;
 		switch (attrType)
 		{
-			case	PopcornFX::EBaseTypeID::BaseType_Float:
+			case	PopcornFX::BaseType_Float:
 				attrAction.ExecuteAction = FExecuteAction::CreateSP(this, &FPopcornFXAttributeTrackEditor::AddScalarAttribute, objectBinding, attributeTrack, attrName, iAttr);
 				break;
-			case	PopcornFX::EBaseTypeID::BaseType_Float3:
+			case	PopcornFX::BaseType_Float3:
 				attrAction.ExecuteAction = FExecuteAction::CreateSP(this, &FPopcornFXAttributeTrackEditor::AddVectorAttribute, objectBinding, attributeTrack, attrName, iAttr);
 				break;
-			case	PopcornFX::EBaseTypeID::BaseType_Float4:
+			case	PopcornFX::BaseType_Float4:
 				attrAction.ExecuteAction = FExecuteAction::CreateSP(this, &FPopcornFXAttributeTrackEditor::AddColorAttribute, objectBinding, attributeTrack, attrName, iAttr);
 				break;
 			default: // Every other types are not supported right now

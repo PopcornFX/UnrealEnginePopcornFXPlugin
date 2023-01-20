@@ -27,6 +27,7 @@
 #include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
+#include "Widgets/Input/SComboBox.h"
 #include "Widgets/Layout/SSplitter.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Colors/SColorPicker.h"
@@ -68,7 +69,7 @@ namespace
 		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule		== (u32)PopcornFX::CShapeDescriptor::ShapeCapsule);
 		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone			== (u32)PopcornFX::CShapeDescriptor::ShapeCone);
 		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh			== (u32)PopcornFX::CShapeDescriptor::ShapeMesh);
-		//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)PopcornFX::CShapeDescriptor::ShapeCollection);
+		//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)PopcornFX::CShapeDescriptor::ShapeMeshCollection);
 		return static_cast<EPopcornFXAttribSamplerShapeType::Type>(pkShapeType);
 	}
 
@@ -166,7 +167,7 @@ namespace
 		const PopcornFX::CBaseTypeTraits	&traits = PopcornFX::CBaseTypeTraits::Traits(typeId);
 		FString			name;
 
-		if (traits.ScalarType == PopcornFX::EBaseTypeID::BaseType_Bool)
+		if (traits.ScalarType == PopcornFX::BaseType_Bool)
 			name = TEXT("B");
 		else if (traits.IsFp)
 			name = TEXT("F");
@@ -330,7 +331,7 @@ namespace
 					];
 
 				SAssignNew(attrValuesInline, SHorizontalBox);
-				for (u32 dimi = 0; dimi < m_VectorDimension; ++dimi)
+				if (m_DropDownMode == EPopcornFXAttributeDropDownMode::AttributeDropDownMode_SingleSelect)
 				{
 					attrValuesInline->AddSlot()
 						.VAlign(VAlign_Center)
@@ -341,9 +342,27 @@ namespace
 							.MinWidth(125.f)
 							.MaxWidth(125.f)
 							[
-								MakeAxis(dimi)
+								MakeSingleSelectEnum()
 							]
 						];
+				}
+				else
+				{
+					for (u32 dimi = 0; dimi < m_VectorDimension; ++dimi)
+					{
+						attrValuesInline->AddSlot()
+							.VAlign(VAlign_Center)
+							.FillWidth(1.0f)
+							.Padding(3.0f, 1.0f, 2.0f, 1.0f)
+							[
+								SNew(SMyConstrainedBox)
+								.MinWidth(125.f)
+								.MaxWidth(125.f)
+								[
+									MakeAxis(dimi)
+								]
+							];
+					}
 				}
 				attrValuesInline->AddSlot()
 					.HAlign(HAlign_Right)
@@ -520,14 +539,20 @@ namespace
 			const FPopcornFXAttributeDesc	*desc = attrList->GetAttributeDesc(m_Index);
 			check(desc != null);
 
-			const PopcornFX::EBaseTypeID attributeBaseTypeID = (PopcornFX::EBaseTypeID)desc->AttributeBaseTypeID();
+			const PopcornFX::EBaseTypeID	attributeBaseTypeID = (PopcornFX::EBaseTypeID)desc->AttributeBaseTypeID();
 
 			m_Traits = &(PopcornFX::CBaseTypeTraits::Traits(attributeBaseTypeID));
 
-			m_IsQuaternion = attributeBaseTypeID == PopcornFX::EBaseTypeID::BaseType_Quaternion;
+			m_IsQuaternion = attributeBaseTypeID == PopcornFX::BaseType_Quaternion;
 
 			// force vector dimension to 3 for quaternion, allow to display 3 float and use euler angles in editor
 			m_VectorDimension = (!m_IsQuaternion) ? m_Traits->VectorDimension : 3;
+
+			m_DropDownMode = desc->m_DropDownMode;
+			m_EnumList = desc->m_EnumList;
+			m_EnumListIndices.SetNum(m_EnumList.Num());
+			for (s32 i = 0; i < m_EnumListIndices.Num(); ++i)
+				m_EnumListIndices[i] = MakeShareable(new int32(i)); // SEnumComboBox::Construct
 
 			const FString	name = desc->AttributeName();
 			m_Title = FText::FromString(name);
@@ -732,11 +757,49 @@ namespace
 		TSharedRef<SWidget>		MakeAxis(uint32 dimi)
 		{
 			check(dimi < m_Traits->VectorDimension);
-			if (m_Traits->ScalarType == PopcornFX::EBaseTypeID::BaseType_Bool)
+			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 				return _MakeBoolAxis(dimi);
 			if (m_Traits->IsFp)
 				return _MakeAxis<float>(dimi);
 			return _MakeAxis<int32>(dimi);
+		}
+
+		TSharedRef<SWidget>	MakeSingleSelectEnum()
+		{
+			TSharedRef<TSelf>							sharedThis = SharedThis(this);
+			TSharedPtr<SComboBox<TSharedPtr<int32>>>	comboBox;
+
+			// Custom SEnumComboBox. Attribute enums aren't reflected enums
+			if (m_ReadOnly)
+			{
+				SAssignNew(comboBox, SComboBox<TSharedPtr<int32>>)
+					.OptionsSource(&m_EnumListIndices)
+					.OnGenerateWidget_Lambda([sharedThis](TSharedPtr<int32> Item)
+						{
+							return SNew(STextBlock).Text(Item.IsValid() ? FText::FromString(sharedThis->m_EnumList[*Item]) : FText::GetEmpty());
+						})
+					.Content()
+					[
+						SNew(STextBlock)
+						.Text(sharedThis, &TSelf::GetValueEnumText)
+					];
+			}
+			else
+			{
+				SAssignNew(comboBox, SComboBox<TSharedPtr<int32>>)
+					.OptionsSource(&m_EnumListIndices)
+					.OnGenerateWidget_Lambda([sharedThis](TSharedPtr<int32> Item)
+						{
+							return SNew(STextBlock).Text(Item.IsValid() ? FText::FromString(sharedThis->m_EnumList[*Item]) : FText::GetEmpty());
+						})
+					.OnSelectionChanged(sharedThis, &TSelf::OnValueChangedEnum)
+					.Content()
+					[
+						SNew(STextBlock)
+						.Text(sharedThis, &TSelf::GetValueEnumText)
+					];
+			}
+			return comboBox.ToSharedRef();
 		}
 
 		TSharedRef<SWidget>		_MakeBoolAxis(uint32 dimi)
@@ -907,6 +970,31 @@ namespace
 			attrList->PostEditChange();
 		}
 
+		FText	GetValueEnumText() const
+		{
+			UPopcornFXAttributeList	*attrList;
+			if (!_GetAttrib(attrList))
+				return FText();
+			return FText::FromString(m_EnumList[attrList->GetAttributeDim<int32>(m_Index, 0)]);
+		}
+
+		void	OnValueChangedEnum(TSharedPtr<int32> selectedItem, ESelectInfo::Type selectInfo)
+		{
+			if (m_ReadOnly)
+				return;
+			UPopcornFXAttributeList	*attrList;
+			if (!_GetAttrib(attrList))
+				return;
+
+			attrList->SetFlags(RF_Transactional);
+
+			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Commit"));
+
+			attrList->Modify();
+			attrList->SetAttributeDim<int32>(m_Index, 0, *selectedItem);
+			attrList->PostEditChange();
+		}
+
 		template <typename _Scalar>
 		void		OnValueChanged(const _Scalar value, uint32 dimi)
 		{
@@ -979,7 +1067,7 @@ namespace
 			attrList->SetFlags(RF_Transactional);
 			attrList->Modify();
 
-			if (m_Traits->ScalarType == PopcornFX::EBaseTypeID::BaseType_Bool)
+			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
 				const bool	defaultValue = reinterpret_cast<const bool*>(m_Def.Get<u32>())[dimi];
 				attrList->SetAttributeDim<bool>(m_Index, dimi, defaultValue);
@@ -1002,7 +1090,7 @@ namespace
 			PopcornFX::SAttributesContainer_SAttrib	attribValue;
 			attrList->GetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 
-			if (m_Traits->ScalarType == PopcornFX::EBaseTypeID::BaseType_Bool)
+			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
 				for (uint32 dimi = 0; dimi < m_Traits->VectorDimension; ++dimi)
 				{
@@ -1030,7 +1118,7 @@ namespace
 			PopcornFX::SAttributesContainer_SAttrib	attribValue;
 			attrList->GetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 
-			if (m_Traits->ScalarType == PopcornFX::EBaseTypeID::BaseType_Bool)
+			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
 				if (reinterpret_cast<bool*>(attribValue.Get<uint32>())[dimi] != reinterpret_cast<const bool*>(m_Def.Get<uint32>())[dimi])
 					return EVisibility::Visible;
@@ -1064,10 +1152,13 @@ namespace
 		FText				m_ShortDescription;
 		FName				m_AttributeIcon;
 
-		bool				m_IsColor;
-		bool				m_IsQuaternion;
-		bool				m_HasMin;
-		bool				m_HasMax;
+		bool									m_IsColor;
+		bool									m_IsQuaternion;
+		EPopcornFXAttributeDropDownMode::Type	m_DropDownMode;
+		TArray<FString>							m_EnumList; // copy
+		TArray<TSharedPtr<int32>>				m_EnumListIndices;
+		bool									m_HasMin;
+		bool									m_HasMax;
 
 		PopcornFX::SAttributesContainer_SAttrib	m_Min;
 		PopcornFX::SAttributesContainer_SAttrib	m_Max;

@@ -170,7 +170,7 @@ CRenderBatchManager::CRenderBatchManager()
 #if POPCORNFX_RENDER_DEBUG
 ,	m_DebugDrawMode(0)
 #endif // POPCORNFX_RENDER_DEBUG
-,	m_DCSortMethod(PopcornFX::EDrawCallSortMethod::Sort_DrawCalls)
+,	m_DCSortMethod(PopcornFX::Sort_DrawCalls)
 ,	m_StatelessCollect(false)
 ,	m_BillboardingLocation(PopcornFX::Drawers::BillboardingLocation_CPU)
 ,	m_RenderThread_BillboardingLocation(PopcornFX::Drawers::BillboardingLocation_CPU)
@@ -423,11 +423,11 @@ bool	CRenderBatchManager::Setup(const CParticleScene *scene, PopcornFX::CParticl
 	PK_ASSERT(collection != null);
 	PK_ASSERT(m_ParticleMediumCollection == null);
 
-	const u32	enabledRenderers =	(1U << PopcornFX::ERendererClass::Renderer_Billboard) |
-									(1U << PopcornFX::ERendererClass::Renderer_Ribbon) |
-									(1U << PopcornFX::ERendererClass::Renderer_Mesh) |
-									(1U << PopcornFX::ERendererClass::Renderer_Triangle) |
-									(1U << PopcornFX::ERendererClass::Renderer_Light);
+	const u32	enabledRenderers =	(1U << PopcornFX::Renderer_Billboard) |
+									(1U << PopcornFX::Renderer_Ribbon) |
+									(1U << PopcornFX::Renderer_Mesh) |
+									(1U << PopcornFX::Renderer_Triangle) |
+									(1U << PopcornFX::Renderer_Light);
 	CUEFrameCollector::SFrameCollectorInit	init_RenderThread_UE(	enabledRenderers,
 																	PopcornFX::CbNewBatchDrawer(this, &CRenderBatchManager::CreateBatchDrawer),
 																	PopcornFX::CbNewRendererCache(this, &CRenderBatchManager::CreateRendererCache),
@@ -437,7 +437,7 @@ bool	CRenderBatchManager::Setup(const CParticleScene *scene, PopcornFX::CParticl
 		return false;
 	m_FrameCollector_UE_Render.InstallToMediumCollection(collection);
 	
-	CUEFrameCollector::SFrameCollectorInit	init_GameThread_UE(	(1U << PopcornFX::ERendererClass::Renderer_Sound),
+	CUEFrameCollector::SFrameCollectorInit	init_GameThread_UE(	(1U << PopcornFX::Renderer_Sound),
 																PopcornFX::CbNewBatchDrawer(this, &CRenderBatchManager::CreateBatchDrawer),
 																PopcornFX::CbNewRendererCache(this, &CRenderBatchManager::CreateRendererCache),
 																4 /* maxCollectedFrames */,
@@ -571,17 +571,17 @@ void	CRenderBatchManager::GameThread_PreUpdate(const FPopcornFXRenderSettings &r
 	switch (renderSettings.DrawCallSortMethod)
 	{
 	case	EPopcornFXDrawCallSortMethod::None:
-		m_DCSortMethod = PopcornFX::EDrawCallSortMethod::Sort_None;
+		m_DCSortMethod = PopcornFX::Sort_None;
 		break;
 	case	EPopcornFXDrawCallSortMethod::PerDrawCalls:
-		m_DCSortMethod = PopcornFX::EDrawCallSortMethod::Sort_DrawCalls;
+		m_DCSortMethod = PopcornFX::Sort_DrawCalls;
 		break;
 	case	EPopcornFXDrawCallSortMethod::PerSlicedDrawCalls:
-		m_DCSortMethod = PopcornFX::EDrawCallSortMethod::Sort_Slices;
+		m_DCSortMethod = PopcornFX::Sort_Slices;
 		break;
 	case	EPopcornFXDrawCallSortMethod::PerPageDrawCalls:
 	default:
-		m_DCSortMethod = PopcornFX::EDrawCallSortMethod::Sort_DrawCalls;
+		m_DCSortMethod = PopcornFX::Sort_DrawCalls;
 		break;
 	}
 	switch (renderSettings.BillboardingLocation)
@@ -822,8 +822,8 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 	// Special rendering method in UE, in editor only: we want to debug render particles so need to keep the rendering locked until this is done.
 
 #if POPCORNFX_RENDER_DEBUG
-	const u32	endCollectingDrawCallsMask = PopcornFX::kEndCollectingDrawCallsMask & ~PopcornFX::EGenerateDrawCallsMask::Mask_UnlockCollectedFrame; // We'll unlock after debug draw
-	const u32	postDebugDrawMask = PopcornFX::EGenerateDrawCallsMask::Mask_UnlockCollectedFrame;
+	const u32	endCollectingDrawCallsMask = PopcornFX::kEndCollectingDrawCallsMask & ~PopcornFX::Mask_UnlockCollectedFrame; // We'll unlock after debug draw
+	const u32	postDebugDrawMask = PopcornFX::Mask_UnlockCollectedFrame;
 	bool		unlockFrame = false;
 	bool		unlockFrame2 = false;
 #else
