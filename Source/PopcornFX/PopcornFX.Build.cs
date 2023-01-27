@@ -300,15 +300,15 @@ namespace UnrealBuildTool.Rules
 #endif // !UE_5_0_OR_LATER
 			else if (Target.Platform == UnrealTargetPlatform.Android)
 			{
-				// Multiple Architectures ! (armeabi, arm64)
-				// Using PublicLibraryPaths so ld will "skipping incompatible" libraries
-				// FIXME: UE Build will not watch for lib changes to relink
-
 				processLibs = false;
 				foreach (string lib in PkLibs)
 				{
-					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android/lib" + lib + "_" + configShort + ".a");     // armv7a (armeabi)
-					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android64/lib" + lib + "_" + configShort + ".a");   // armv8a (arm64)
+#if !UE_5_0_OR_LATER // armv7 dropped with UE5
+					// Multiple Architectures ! (armeabi, arm64)
+					// Using PublicLibraryPaths so ld will "skipping incompatible" libraries
+					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android/lib" + lib + "_" + configShort + ".a");     // armv7 (armeabi)
+#endif
+					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android64/lib" + lib + "_" + configShort + ".a");   // armv8 (arm64)
 				}
 				libPrefix = "";
 				libExt = "";

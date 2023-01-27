@@ -840,11 +840,6 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	else
 		bakeConfig->SetBakeMode(FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects ? PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsText : PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsBinary); // "Final" bake when cooking: store as binary
 
-#if 1
-	// Temp: Disable VRP optim pass as it's broken in 2.9.13
-	bakeConfig->SetCompilerSwitches("--no-ins-vrp");
-#endif
-
 	// build versions
 	PopcornFX::COvenBakeConfig_Particle::_TypeOfBuildVersions	buildVersions;
 	buildVersions = targetBuildVersions;

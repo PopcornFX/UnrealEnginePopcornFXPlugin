@@ -1,8 +1,8 @@
 # Unreal Engine PopcornFX Plugin
 
 Integrates the **PopcornFX Runtime SDK** into **Unreal Engine 4** and **Unreal Engine 5** as a Plugin.
-* **Version:** `v2.15.0`
-* **Unreal Engine:** `4.27` and `5.1`
+* **Version:** `v2.15.1`
+* **Unreal Engine:** `4.27`, `5.0` and `5.1`
 * **Supported platforms:** `Windows`, `MacOS`, `Linux`, `iOS`, `Android`, `PS4`, `PS5`, `XboxOne`, `Xbox Series`, `Switch`
 
 [Contact-us](http://www.popcornfx.com/contact-us/) to request access to the plugin for consoles.
