@@ -28,8 +28,17 @@ struct FVertexFactoryInput
 	half4	VertexColor : ATTRIBUTE3;
 
 #if NUM_MATERIAL_TEXCOORDS_VERTEX
-	float2	TexCoords[NUM_MATERIAL_TEXCOORDS_VERTEX] : ATTRIBUTE4;
-#endif
+	float2	TexCoords0 : ATTRIBUTE4;
+	#if NUM_MATERIAL_TEXCOORDS_VERTEX > 1
+		float2	TexCoords1 : ATTRIBUTE5;
+	#endif
+	#if NUM_MATERIAL_TEXCOORDS_VERTEX > 2
+		float2	TexCoords2 : ATTRIBUTE6;
+	#endif
+	#if NUM_MATERIAL_TEXCOORDS_VERTEX > 3
+		float2	TexCoords3 : ATTRIBUTE7;
+	#endif
+#endif // NUM_MATERIAL_TEXCOORDS_VERTEX
 
 	float4 Transform1 : ATTRIBUTE8;
 	float4 Transform2 : ATTRIBUTE9;
@@ -44,12 +53,9 @@ struct FVertexFactoryInterpolantsVSToPS
 	TANGENTTOWORLD_INTERPOLATOR_BLOCK
 
 #if NUM_TEX_COORD_INTERPOLATORS
-		#if (ES2_PROFILE || ES3_1_PROFILE)
-			// Avoid dependent texture fetches, put all UVs in xy
-			float2	TexCoords[NUM_TEX_COORD_INTERPOLATORS] : TEXCOORD0;
-		#else
-			float4	TexCoords[(NUM_TEX_COORD_INTERPOLATORS+1)/2] : TEXCOORD0;
-		#endif
+#	if NUM_TEX_COORD_INTERPOLATORS
+	float4	TexCoords[(NUM_TEX_COORD_INTERPOLATORS+1)/2] : TEXCOORD0;
+#	endif
 #endif
 
 #if INTERPOLATE_VERTEX_COLOR
@@ -95,6 +101,10 @@ struct FVertexFactoryInterpolantsVSToPS
 
 #if INSTANCED_STEREO
 	nointerpolation uint EyeIndex : PACKED_EYE_INDEX;
+#endif
+
+#if USE_PARTICLE_SUBUVS
+	nointerpolation float4	AtlasRect : COLOR7;
 #endif
 };
 
@@ -142,6 +152,8 @@ struct FVertexFactoryIntermediates
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
 #endif // (ENGINE_MAJOR_VERSION == 5)
+
+	float4		AtlasRect;
 };
 
 float4x4 GetParticleTransform(FVertexFactoryInput Input)
@@ -156,24 +168,15 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
 
 #if NUM_TEX_COORD_INTERPOLATORS
-	#if (ES2_PROFILE || ES3_1_PROFILE)
-		UNROLL
-		for( int CoordinateIndex = 0; CoordinateIndex < NUM_TEX_COORD_INTERPOLATORS; CoordinateIndex++ )
-		{
-			Result.TexCoords[CoordinateIndex] = Interpolants.TexCoords[CoordinateIndex].xy;
-		}
-	#else
-		UNROLL
-		for(int CoordinateIndex = 0;CoordinateIndex < NUM_TEX_COORD_INTERPOLATORS;CoordinateIndex += 2)
-		{
-			Result.TexCoords[CoordinateIndex] = Interpolants.TexCoords[CoordinateIndex/2].xy;
-
-			if(CoordinateIndex + 1 < NUM_TEX_COORD_INTERPOLATORS)
-			{
-				Result.TexCoords[CoordinateIndex + 1] = Interpolants.TexCoords[CoordinateIndex/2].wz;
-			}
-		}
-	#endif
+	UNROLL
+	for (int CoordinateIndex = 0; CoordinateIndex * 2 + 1 < NUM_TEX_COORD_INTERPOLATORS; ++CoordinateIndex)
+	{
+		Result.TexCoords[CoordinateIndex * 2] = Interpolants.TexCoords[CoordinateIndex].xy;
+		Result.TexCoords[CoordinateIndex * 2 + 1] = Interpolants.TexCoords[CoordinateIndex].wz;
+	}
+#	if NUM_TEX_COORD_INTERPOLATORS & 1
+		Result.TexCoords[NUM_TEX_COORD_INTERPOLATORS - 1] = Interpolants.TexCoords[NUM_TEX_COORD_INTERPOLATORS / 2].xy;
+#	endif // #if NUM_TEX_COORD_INTERPOLATORS & 1
 #endif
 
 	half3 TangentToWorld0 = Interpolants.TangentToWorld0.xyz;
@@ -191,7 +194,9 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #endif
 #if USE_PARTICLE_SUBUVS
 	Result.Particle.SubUVCoords[0] = Interpolants.EmissiveColor.xy;
-	Result.Particle.SubUVCoords[1] = Interpolants.EmissiveColor.zz;
+	Result.Particle.SubUVCoords[1] = float2(Interpolants.EmissiveColor.z, Interpolants.AtlasRect.x);
+	Result.Particle.SubUVLerp = Interpolants.AtlasRect.y;
+	Result.Particle.Size = Interpolants.AtlasRect.zw;
 #endif
 	Result.Particle.RelativeTime = Interpolants.VATCursor;
 
@@ -307,7 +312,9 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.Color = Intermediates.ParticleColor;
 #if USE_PARTICLE_SUBUVS
 	Result.Particle.SubUVCoords[0] = Intermediates.EmissiveColor.xy;
-	Result.Particle.SubUVCoords[1] = Intermediates.EmissiveColor.zz;
+	Result.Particle.SubUVCoords[1] = float2(Intermediates.EmissiveColor.z, Intermediates.AtlasRect.x);
+	Result.Particle.SubUVLerp = Intermediates.AtlasRect.y;
+	Result.Particle.Size = Intermediates.AtlasRect.zw;
 #endif
 	Result.Particle.RelativeTime = Intermediates.VATCursor;
 
@@ -439,8 +446,6 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	if (PopcornFXMeshVSUniforms.InDynamicParameter3sOffset != -1)
 		Intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter3sOffset);
 #endif
-
-#if NUM_MATERIAL_TEXCOORDS_VERTEX
 	BRANCH
 	if (PopcornFXMeshVSUniforms.InTextureIDsOffset != -1)
 	{
@@ -449,18 +454,20 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 		const uint		atlasID = min((uint)abs(textureID), PopcornFXMeshVSUniforms.AtlasRectCount - 1);
 		const float4	rect = PopcornFXMeshVSUniforms.AtlasBuffer[atlasID];
 
-		for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
-		{
-			Intermediates.TexCoords[CoordinateIndex] = Input.TexCoords[CoordinateIndex].xy * rect.xy + rect.zw;
-		}
+		Intermediates.AtlasRect = rect;
 	}
-	else
-	{
-		for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
-		{
-			Intermediates.TexCoords[CoordinateIndex] = Input.TexCoords[CoordinateIndex].xy;
-		}
-	}
+
+#if NUM_MATERIAL_TEXCOORDS_VERTEX
+	Intermediates.TexCoords[0] = Input.TexCoords0;
+	#if NUM_MATERIAL_TEXCOORDS_VERTEX > 1
+		Intermediates.TexCoords[1] = Input.TexCoords1;
+	#endif
+	#if NUM_MATERIAL_TEXCOORDS_VERTEX > 2
+		Intermediates.TexCoords[2] = Input.TexCoords2;
+	#endif
+	#if NUM_MATERIAL_TEXCOORDS_VERTEX > 3
+		Intermediates.TexCoords[3] = Input.TexCoords3;
+	#endif
 #endif
 
 	float4x4 ParticleToWorld = float4x4(Input.Transform1, Input.Transform2, Input.Transform3, float4(0.0f, 0.0f, 0.0f, 1.0f));
@@ -537,34 +544,22 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 	FVertexFactoryInterpolantsVSToPS Interpolants;
 
 #if NUM_TEX_COORD_INTERPOLATORS
-	#if (ES2_PROFILE || ES3_1_PROFILE)
-		float2 CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS];
-		GetMaterialCustomizedUVs(VertexParameters, CustomizedUVs);
-		GetCustomInterpolators(VertexParameters, CustomizedUVs);
-		
-		UNROLL
-		for(int CoordinateIndex = 0;CoordinateIndex < NUM_TEX_COORD_INTERPOLATORS;++CoordinateIndex)
-		{
-			Interpolants.TexCoords[CoordinateIndex] = CustomizedUVs[CoordinateIndex];
-		}
-	#else
-		// Ensure the unused components of the last packed texture coordinate are initialized.
-		Interpolants.TexCoords[(NUM_TEX_COORD_INTERPOLATORS + 1) / 2 - 1] = 0;
+	// Ensure the unused components of the last packed texture coordinate are initialized.
+	Interpolants.TexCoords[(NUM_TEX_COORD_INTERPOLATORS + 1) / 2 - 1] = 0;
 
-		float2 CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS];
-		GetMaterialCustomizedUVs(VertexParameters, CustomizedUVs);
-		GetCustomInterpolators(VertexParameters, CustomizedUVs);
+	float2 CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS];
+	GetMaterialCustomizedUVs(VertexParameters, CustomizedUVs);
+	GetCustomInterpolators(VertexParameters, CustomizedUVs);
 
-		UNROLL
-		for(int CoordinateIndex = 0;CoordinateIndex < NUM_TEX_COORD_INTERPOLATORS;CoordinateIndex += 2)
-		{
-			Interpolants.TexCoords[CoordinateIndex / 2].xy = CustomizedUVs[CoordinateIndex];
-			if(CoordinateIndex + 1 < NUM_TEX_COORD_INTERPOLATORS)
-			{
-				Interpolants.TexCoords[CoordinateIndex / 2].wz = CustomizedUVs[CoordinateIndex + 1];
-			}
-		}
-	#endif
+	UNROLL
+	for (int CoordinateIndex = 0; CoordinateIndex * 2 + 1 < NUM_TEX_COORD_INTERPOLATORS; ++CoordinateIndex)
+	{
+		Interpolants.TexCoords[CoordinateIndex].xy = CustomizedUVs[CoordinateIndex * 2];
+		Interpolants.TexCoords[CoordinateIndex].wz = CustomizedUVs[CoordinateIndex * 2 + 1];
+	}
+#	if NUM_TEX_COORD_INTERPOLATORS & 1
+		Interpolants.TexCoords[NUM_TEX_COORD_INTERPOLATORS / 2].xy = CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS - 1];
+#	endif // #if NUM_TEX_COORD_INTERPOLATORS & 1
 #endif
 
 	Interpolants.TangentToWorld0.w = 0;
@@ -613,6 +608,10 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 
 #if INSTANCED_STEREO
 	Interpolants.EyeIndex = 0;
+#endif
+
+#if USE_PARTICLE_SUBUVS
+	Interpolants.AtlasRect = Intermediates.AtlasRect;
 #endif
 
 	return Interpolants;

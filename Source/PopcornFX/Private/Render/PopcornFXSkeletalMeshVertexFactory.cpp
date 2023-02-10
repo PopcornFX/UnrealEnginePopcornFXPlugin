@@ -18,6 +18,8 @@
 #include "MeshMaterialShader.h"
 #include "MeshDrawShaderBindings.h"
 
+#include "PopcornFXSDK.h"
+
 //----------------------------------------------------------------------------
 
 #define PK_CS_PCOUNT_THREADGROUP_SIZE	32U

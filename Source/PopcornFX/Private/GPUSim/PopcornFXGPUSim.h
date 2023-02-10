@@ -7,23 +7,14 @@
 
 #include "PopcornFXMinimal.h"
 
-#if (PK_HAS_GPU != 0)
+#include "RHI.h"
+#include "RHIResources.h"
 
-#	include "RHI.h"
-#	include "RHIResources.h"
+#include "PopcornFXSDK.h"
 
-#	include "PopcornFXSDK.h"
-
-#	include "Render/RenderTypesPolicies.h"
+#include "Render/RenderTypesPolicies.h"
 
 	//----------------------------------------------------------------------------
-
-	FWD_PK_API_BEGIN
-	class	CParticleStreamToRender;
-	class	CParticleStreamToRender_GPU;
-	FWD_PK_API_END
-
-	extern SUERenderContext::ERHIAPI			g_PopcornFXRHIAPI;
 
 #if (ENGINE_MAJOR_VERSION == 5)
 	typedef FRHIBuffer*						FVBRHIParamRef;
@@ -35,6 +26,15 @@
 	typedef FRHIComputeShader*				FCSRHIParamRef;
 	typedef FRHIShaderResourceView*			FSRVRHIParamRef;
 	typedef FRHIUnorderedAccessView*		FUAVRHIParamRef;
+
+#if (PK_HAS_GPU != 0)
+
+	FWD_PK_API_BEGIN
+	class	CParticleStreamToRender;
+	class	CParticleStreamToRender_GPU;
+	FWD_PK_API_END
+
+	extern SUERenderContext::ERHIAPI			g_PopcornFXRHIAPI;
 
 	void							SetupPopcornFXRHIAPI(uint32 API);
 
