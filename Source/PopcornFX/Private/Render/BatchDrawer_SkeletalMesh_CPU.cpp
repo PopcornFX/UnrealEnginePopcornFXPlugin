@@ -546,56 +546,56 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_PreSetupMeshData(FPopcornFXSkelMeshVertex
 void	CBatchDrawer_SkeletalMesh_CPUBB::_FillUniforms(	CMaterialDesc_RenderThread		&matDesc,
 														u32								buffersOffset,
 														FPopcornFXUniforms				&outUniforms,
-														FPopcornFXSkelMeshUniforms		&outUniformsMesh)
+														FPopcornFXSkelMeshUniforms		&outUniformsSkelMesh)
 {
 	outUniforms.InSimData = m_SimData.Buffer()->SRV();
 	outUniforms.DynamicParameterMask = matDesc.m_DynamicParameterMask;
 
-	outUniformsMesh.AtlasRectCount = m_AtlasRects.m_AtlasRectsCount;
+	outUniformsSkelMesh.AtlasRectCount = m_AtlasRects.m_AtlasRectsCount;
 	if (m_AtlasRects.m_AtlasBufferSRV != null)
-		outUniformsMesh.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV;
+		outUniformsSkelMesh.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV;
 	else
-		outUniformsMesh.AtlasBuffer = outUniforms.InSimData; // Dummy SRV
+		outUniformsSkelMesh.AtlasBuffer = outUniforms.InSimData; // Dummy SRV
 
-	outUniformsMesh.InAlphaCursorsOffset =				m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_AlphaCursors] / sizeof(float)) + buffersOffset) : -1;
-	outUniformsMesh.InTextureIDsOffset =				m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) + buffersOffset) : -1;
-	outUniformsMesh.InVATCursorsOffset =				m_AdditionalStreamOffsets[StreamOffset_VATCursors].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATCursors] / sizeof(float)) + buffersOffset) : -1;
-	outUniformsMesh.InVATCursorNextsOffset =			m_AdditionalStreamOffsets[StreamOffset_VATCursorNexts].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATCursorNexts] / sizeof(float)) + buffersOffset) : -1;
-	outUniformsMesh.InVATTracksOffset =					m_AdditionalStreamOffsets[StreamOffset_VATTracks].Valid() ?					(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATTracks] / sizeof(float)) + buffersOffset) : -1;
-	outUniformsMesh.InVATTrackNextsOffset =				m_AdditionalStreamOffsets[StreamOffset_VATTrackNexts].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATTrackNexts] / sizeof(float)) + buffersOffset) : -1;
-	outUniformsMesh.InVATTransitionCursorsOffset =		m_AdditionalStreamOffsets[StreamOffset_VATTransitionCursors].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATTransitionCursors] / sizeof(float)) + buffersOffset) : -1;
-	outUniformsMesh.InPrevVATCursorsOffset =			m_AdditionalStreamOffsets[StreamOffset_PrevVATCursors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATCursors] / sizeof(float)) + buffersOffset) : outUniformsMesh.InVATCursorsOffset;
-	outUniformsMesh.InPrevVATCursorNextsOffset =		m_AdditionalStreamOffsets[StreamOffset_PrevVATCursorNexts].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATCursorNexts] / sizeof(float)) + buffersOffset) : outUniformsMesh.InVATCursorNextsOffset;
-	outUniformsMesh.InPrevVATTracksOffset =				m_AdditionalStreamOffsets[StreamOffset_PrevVATTracks].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATTracks] / sizeof(float)) + buffersOffset) : outUniformsMesh.InVATTracksOffset;
-	outUniformsMesh.InPrevVATTrackNextsOffset =			m_AdditionalStreamOffsets[StreamOffset_PrevVATTrackNexts].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATTrackNexts] / sizeof(float)) + buffersOffset) : outUniformsMesh.InVATTrackNextsOffset;
-	outUniformsMesh.InPrevVATTransitionCursorsOffset =	m_AdditionalStreamOffsets[StreamOffset_PrevVATTransitionCursors].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATTransitionCursors] / sizeof(float)) + buffersOffset) : outUniformsMesh.InVATTransitionCursorsOffset;
+	outUniformsSkelMesh.InAlphaCursorsOffset =				m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_AlphaCursors] / sizeof(float)) + buffersOffset) : -1;
+	outUniformsSkelMesh.InTextureIDsOffset =				m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) + buffersOffset) : -1;
+	outUniformsSkelMesh.InVATCursorsOffset =				m_AdditionalStreamOffsets[StreamOffset_VATCursors].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATCursors] / sizeof(float)) + buffersOffset) : -1;
+	outUniformsSkelMesh.InVATCursorNextsOffset =			m_AdditionalStreamOffsets[StreamOffset_VATCursorNexts].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATCursorNexts] / sizeof(float)) + buffersOffset) : -1;
+	outUniformsSkelMesh.InVATTracksOffset =					m_AdditionalStreamOffsets[StreamOffset_VATTracks].Valid() ?					(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATTracks] / sizeof(float)) + buffersOffset) : -1;
+	outUniformsSkelMesh.InVATTrackNextsOffset =				m_AdditionalStreamOffsets[StreamOffset_VATTrackNexts].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATTrackNexts] / sizeof(float)) + buffersOffset) : -1;
+	outUniformsSkelMesh.InVATTransitionCursorsOffset =		m_AdditionalStreamOffsets[StreamOffset_VATTransitionCursors].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATTransitionCursors] / sizeof(float)) + buffersOffset) : -1;
+	outUniformsSkelMesh.InPrevVATCursorsOffset =			m_AdditionalStreamOffsets[StreamOffset_PrevVATCursors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATCursors] / sizeof(float)) + buffersOffset) : outUniformsSkelMesh.InVATCursorsOffset;
+	outUniformsSkelMesh.InPrevVATCursorNextsOffset =		m_AdditionalStreamOffsets[StreamOffset_PrevVATCursorNexts].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATCursorNexts] / sizeof(float)) + buffersOffset) : outUniformsSkelMesh.InVATCursorNextsOffset;
+	outUniformsSkelMesh.InPrevVATTracksOffset =				m_AdditionalStreamOffsets[StreamOffset_PrevVATTracks].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATTracks] / sizeof(float)) + buffersOffset) : outUniformsSkelMesh.InVATTracksOffset;
+	outUniformsSkelMesh.InPrevVATTrackNextsOffset =			m_AdditionalStreamOffsets[StreamOffset_PrevVATTrackNexts].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATTrackNexts] / sizeof(float)) + buffersOffset) : outUniformsSkelMesh.InVATTrackNextsOffset;
+	outUniformsSkelMesh.InPrevVATTransitionCursorsOffset =	m_AdditionalStreamOffsets[StreamOffset_PrevVATTransitionCursors].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PrevVATTransitionCursors] / sizeof(float)) + buffersOffset) : outUniformsSkelMesh.InVATTransitionCursorsOffset;
 
-	outUniformsMesh.InEmissiveColorsOffset =			m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors] / sizeof(float)) + buffersOffset * 3) : -1;
+	outUniformsSkelMesh.InEmissiveColorsOffset =			m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors] / sizeof(float)) + buffersOffset * 3) : -1;
 
-	outUniformsMesh.InColorsOffset =					m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ?					(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) + buffersOffset * 4) : -1;
-	outUniformsMesh.InDynamicParameter0sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam0s] / sizeof(float)) + buffersOffset * 4) : -1;
-	outUniformsMesh.InDynamicParameter1sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) + buffersOffset * 4) : -1;
-	outUniformsMesh.InDynamicParameter2sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) + buffersOffset * 4) : -1;
-	outUniformsMesh.InDynamicParameter3sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) + buffersOffset * 4) : -1;
+	outUniformsSkelMesh.InColorsOffset =					m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ?					(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) + buffersOffset * 4) : -1;
+	outUniformsSkelMesh.InDynamicParameter0sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam0s] / sizeof(float)) + buffersOffset * 4) : -1;
+	outUniformsSkelMesh.InDynamicParameter1sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) + buffersOffset * 4) : -1;
+	outUniformsSkelMesh.InDynamicParameter2sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) + buffersOffset * 4) : -1;
+	outUniformsSkelMesh.InDynamicParameter3sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ?				(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) + buffersOffset * 4) : -1;
 
-	outUniformsMesh.InMatricesOffset =					buffersOffset * 16;
-	outUniformsMesh.InPrevMatricesOffset =				m_PrevMatricesOffset + buffersOffset * 16;
+	outUniformsSkelMesh.InMatricesOffset =					buffersOffset * 16;
+	outUniformsSkelMesh.InPrevMatricesOffset =				m_PrevMatricesOffset + buffersOffset * 16;
 
-	outUniformsMesh.BoneIndicesReorder = m_BoneIndicesReorder.Buffer()->SRV();
+	outUniformsSkelMesh.BoneIndicesReorder = m_BoneIndicesReorder.Buffer()->SRV();
 
-	outUniformsMesh.SkinningBufferStride = m_BoneMatricesBufferStride;
-	outUniformsMesh.BoneMatricesOffset = buffersOffset * m_BoneMatricesBufferStride;
+	outUniformsSkelMesh.SkinningBufferStride = m_BoneMatricesBufferStride;
+	outUniformsSkelMesh.BoneMatricesOffset = buffersOffset * m_BoneMatricesBufferStride;
 
-	outUniformsMesh.SkeletalAnimationSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp, 0, 0>::GetRHI();
-	outUniformsMesh.SkeletalAnimationTexture = matDesc.m_SkeletalAnimationTexture->TextureReference.TextureReferenceRHI;
-	outUniformsMesh.SkeletalAnimationPosBoundsMin = matDesc.m_SkeletalAnimationPosBoundsMin;
-	outUniformsMesh.SkeletalAnimationPosBoundsMax = matDesc.m_SkeletalAnimationPosBoundsMax;
-	outUniformsMesh.LinearInterpolateTransforms = matDesc.m_SkeletalAnimationLinearInterpolate;
-	outUniformsMesh.LinearInterpolateTracks = matDesc.m_SkeletalAnimationLinearInterpolateTracks;
+	outUniformsSkelMesh.SkeletalAnimationSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp, 0, 0>::GetRHI();
+	outUniformsSkelMesh.SkeletalAnimationTexture = matDesc.m_SkeletalAnimationTexture->TextureReference.TextureReferenceRHI;
+	outUniformsSkelMesh.SkeletalAnimationPosBoundsMin = matDesc.m_SkeletalAnimationPosBoundsMin;
+	outUniformsSkelMesh.SkeletalAnimationPosBoundsMax = matDesc.m_SkeletalAnimationPosBoundsMax;
+	outUniformsSkelMesh.LinearInterpolateTransforms = matDesc.m_SkeletalAnimationLinearInterpolate;
+	outUniformsSkelMesh.LinearInterpolateTracks = matDesc.m_SkeletalAnimationLinearInterpolateTracks;
 
 	const FVector2f		texDimensions(matDesc.m_SkeletalAnimationTexture->GetSizeX(), matDesc.m_SkeletalAnimationTexture->GetSizeY());
-	outUniformsMesh.InvSkeletalAnimationTextureDimensions = FVector2f(1.0f) / texDimensions;
-	outUniformsMesh.SkeletalAnimationYOffsetPerTrack = (texDimensions.Y / (float)matDesc.m_SkeletalAnimationCount) * outUniformsMesh.InvSkeletalAnimationTextureDimensions.Y;
+	outUniformsSkelMesh.InvSkeletalAnimationTextureDimensions = FVector2f(1.0f) / texDimensions;
+	outUniformsSkelMesh.SkeletalAnimationYOffsetPerTrack = (texDimensions.Y / (float)matDesc.m_SkeletalAnimationCount) * outUniformsSkelMesh.InvSkeletalAnimationTextureDimensions.Y;
 }
 
 //----------------------------------------------------------------------------
@@ -613,8 +613,8 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_CreateSkelMeshVertexFactory(	CMaterialDes
 #endif // (PK_PREBUILD_BONE_TRANSFORMS != 0)
 
 	FPopcornFXUniforms			vsUniforms;
-	FPopcornFXSkelMeshUniforms	uniformsMesh;
-	_FillUniforms(matDesc, buffersOffset, vsUniforms, uniformsMesh);
+	FPopcornFXSkelMeshUniforms	uniformsSkelMesh;
+	_FillUniforms(matDesc, buffersOffset, vsUniforms, uniformsSkelMesh);
 
 	m_VFData.bInitialized = true;
 
@@ -631,7 +631,7 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_CreateSkelMeshVertexFactory(	CMaterialDes
 		outFactory = outCollectorRes->m_VertexFactory;
 		outFactory->SetData(m_VFData);
 		outFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
-		outFactory->m_SkelMeshVSUniformBuffer = FPopcornFXSkelMeshUniformsRef::CreateUniformBufferImmediate(uniformsMesh, UniformBuffer_SingleFrame);
+		outFactory->m_SkelMeshVSUniformBuffer = FPopcornFXSkelMeshUniformsRef::CreateUniformBufferImmediate(uniformsSkelMesh, UniformBuffer_SingleFrame);
 		PK_ASSERT(!outFactory->IsInitialized());
 		outFactory->InitResource();
 	}
@@ -933,8 +933,8 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext
 		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 
 		FPopcornFXUniforms			uniforms;
-		FPopcornFXSkelMeshUniforms	uniformsMesh;
-		_FillUniforms(matDesc, 0, uniforms, uniformsMesh);
+		FPopcornFXSkelMeshUniforms	uniformsSkelMesh;
+		_FillUniforms(matDesc, 0, uniforms, uniformsSkelMesh);
 
 		FPopcornFXComputeBoneTransformsCS_Params	params;
 		params.m_TotalParticleCount = m_TotalParticleCount;
@@ -942,7 +942,7 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext
 		params.m_BoneMatrices = m_BoneMatrices.UAV;
 		params.m_PrevBoneMatrices = m_MotionBlur ? m_PreviousBoneMatrices.UAV : m_BoneMatrices.UAV;
 		params.m_UniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(uniforms, UniformBuffer_SingleFrame);
-		params.m_MeshUniformBuffer = FPopcornFXSkelMeshUniformsRef::CreateUniformBufferImmediate(uniformsMesh, UniformBuffer_SingleFrame);
+		params.m_MeshUniformBuffer = FPopcornFXSkelMeshUniformsRef::CreateUniformBufferImmediate(uniformsSkelMesh, UniformBuffer_SingleFrame);
 
 		SCOPED_DRAW_EVENT(RHICmdList, PopcornFXComputeBoneTransformsCS);
 		SCOPED_GPU_STAT(RHICmdList, PopcornFXComputeBoneTransformsCS);

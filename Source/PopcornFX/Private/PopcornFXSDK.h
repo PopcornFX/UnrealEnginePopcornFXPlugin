@@ -24,6 +24,12 @@
 #	endif
 #endif // (ENGINE_MAJOR_VERSION == 4)
 
+#if (ENGINE_MAJOR_VERSION == 5)
+#	ifndef PLATFORM_XBOXONE
+#		define PLATFORM_XBOXONE	0
+#	endif
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 #if PLATFORM_WINDOWS
 #	include "Windows/MinimalWindowsApi.h"
 #	include "Windows/PreWindowsApi.h"
