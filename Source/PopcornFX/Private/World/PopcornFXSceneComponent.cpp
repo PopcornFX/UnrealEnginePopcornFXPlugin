@@ -72,9 +72,6 @@ UPopcornFXSceneComponent::UPopcornFXSceneComponent(const FObjectInitializer& PCI
 
 	HeavyDebugMode = EPopcornFXHeavyDebugMode::None;
 	bRender_FreezeBillboardingMatrix = false;
-	bRender_OverrideColorByDrawCall = false;
-	Render_OverrideDebugColorCount = 6;
-	Render_OverrideAllMaterial = null;
 
 	struct FConstructorStatics
 	{

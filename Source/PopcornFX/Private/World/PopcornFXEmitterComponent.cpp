@@ -223,8 +223,6 @@ void	UPopcornFXEmitterComponent::PostEditChangeProperty(FPropertyChangedEvent& p
 	Super::PostEditChangeProperty(propertyChangedEvent); // call internal OnRegister
 
 	const UWorld	*world = GetWorld();
-	PK_ASSERT(IsRegistered() || world == null ||
-			 (world->WorldType == kWorldTypeEditorPreview || world->WorldType == EWorldType::Editor || world->WorldType == EWorldType::PIE));
 
 	CheckForDead(); // we could have not been able to do that when terminated externally
 
@@ -253,8 +251,11 @@ void	UPopcornFXEmitterComponent::PostEditChangeProperty(FPropertyChangedEvent& p
 		}
 	}
 
-	PK_VERIFY(AttributeList->Prepare(Effect)); // make sure everything is up to date, always
-	AttributeList->CheckEmitter(this);
+	if (AttributeList != null)
+	{
+		PK_VERIFY(AttributeList->Prepare(Effect)); // make sure everything is up to date, always
+		AttributeList->CheckEmitter(this);
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -596,6 +597,7 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 		UE_LOG(LogPopcornFXEmitterComponent, Warning/*Error*/, TEXT("Could not StartEmitter '%s'"), *GetFullName());
 		return false;
 	}
+	m_EffectInstancePtr->SetUserData(this);
 
 	m_Started = true;
 	m_Stopped = false;
@@ -691,9 +693,6 @@ void	UPopcornFXEmitterComponent::StopEmitter(bool killParticles)
 	{
 		LLM_SCOPE(ELLMTag::Particles);
 		PK_NAMEDSCOPEDPROFILE_C("UPopcornFXEmitterComponent::StopEmitter", POPCORNFX_UE_PROFILER_COLOR);
-
-		PK_ASSERT(IsRegistered() || world == null ||
-			(world->WorldType == kWorldTypeEditorPreview || world->WorldType == EWorldType::Editor));
 
 		bool		sendEvent = false;
 		if (m_EffectInstancePtr != null && m_Started && !m_Stopped)
@@ -962,7 +961,7 @@ void	UPopcornFXEmitterComponent::UnregisterEventListener(FPopcornFXRaiseEventSig
 
 //----------------------------------------------------------------------------
 
-void	 UPopcornFXEmitterComponent::UnregisterAllEventsListeners()
+void	UPopcornFXEmitterComponent::UnregisterAllEventsListeners()
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	if (m_CurrentScene == null ||
@@ -970,7 +969,7 @@ void	 UPopcornFXEmitterComponent::UnregisterAllEventsListeners()
 		m_EffectInstancePtr == null)
 		return;
 
-	m_CurrentScene->UnregisterAllEventsListeners(Effect, m_EffectInstancePtr->EffectID());
+	m_CurrentScene->UnregisterAllEventListeners(Effect, m_EffectInstancePtr->EffectID());
 }
 
 //----------------------------------------------------------------------------
@@ -1177,8 +1176,7 @@ void	UPopcornFXEmitterComponent::EndPlay(const EEndPlayReason::Type EndPlayReaso
 	Super::EndPlay(EndPlayReason);
 
 	// unregister everything in case the user forgot to do it
-	if (Effect != null && Effect->Effect()->HasRegisteredEvents())
-		UnregisterAllEventsListeners();
+	UnregisterAllEventsListeners();
 
 	TerminateEmitter(bKillParticlesOnDestroy);
 

@@ -54,23 +54,14 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXEffect, Log, All);
 bool	CPopcornFXEffect::RegisterEventCallback(const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback> &callback, const PopcornFX::CStringId &eventNameID)
 {
 	// Register broadcast callback only if this event never got registered
-	if (!m_RegisteredEventNameIDs.Contains(eventNameID) &&
-		!const_cast<PopcornFX::CParticleEffect*>(m_ParticleEffect.Get())->RegisterEventCallback(callback, eventNameID))
+	if (PK_VERIFY(m_ParticleEffect != null))
+		return const_cast<PopcornFX::CParticleEffect*>(m_ParticleEffect.Get())->RegisterEventCallback(callback, eventNameID);
 		return false;
-
-	// add event name ID to keep track of how many effect instance registered to this event
-	if (!PK_VERIFY(m_RegisteredEventNameIDs.PushBack(eventNameID).Valid()))
-		return false;
-
-	return true;
 }
 
 void	CPopcornFXEffect::UnregisterEventCallback(const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback> &callback, const PopcornFX::CStringId &eventNameID)
 {
-	m_RegisteredEventNameIDs.RemoveElement(eventNameID);
-
-	// Unregister broadcast callback only if there is no effect instance registered to it
-	if (!m_RegisteredEventNameIDs.Contains(eventNameID))
+	if (m_ParticleEffect != null)
 		const_cast<PopcornFX::CParticleEffect*>(m_ParticleEffect.Get())->UnregisterEventCallback(callback, eventNameID);
 }
 

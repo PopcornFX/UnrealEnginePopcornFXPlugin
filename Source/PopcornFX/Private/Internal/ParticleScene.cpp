@@ -724,7 +724,6 @@ void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *s
 	if (!PK_VERIFY(m_RenderSubView.BBViews().Count() > 0))
 		return;
 
-	// TODO: Freeze BB matrix for debug
 	m_RenderBatchManager->RenderThread_DrawCalls(m_RenderSubView);
 }
 #endif // RHI_RAYTRACING
@@ -771,6 +770,7 @@ void	CParticleScene::GetDynamicMeshElements(
 		}
 		else
 		{
+			// CPU billboarding only
 			m_RenderSubView.BBView(0).m_BillboardingMatrix = m_FreezedBillboardingMatrix;
 		}
 	}
@@ -2581,9 +2581,12 @@ void	CParticleScene::_Clear_Events()
 {
 	PK_SCOPEDLOCK(m_RaiseEventLock);
 
+	UnregisterAllEventListeners();
+
 	m_PayloadViews.Clean();
 	m_PendingEventAssocs.Clear();
 	m_EventListeners.Clear();
+	m_RegisteredEvents.Clear();
 }
 
 //----------------------------------------------------------------------------
@@ -2862,6 +2865,7 @@ void	CParticleScene::RetrievePayloadElements(const PopcornFX::SPayloadView &srcP
 
 bool	CParticleScene::RegisterEventListener(UPopcornFXEffect* particleEffect, PopcornFX::CEffectID effectID, const PopcornFX::CStringId &eventNameID, FPopcornFXRaiseEventSignature &callback)
 {
+	PK_SCOPEDPROFILE();
 	PK_ASSERT(IsInGameThread());
 
 	if (!PK_VERIFY(m_SceneComponent != null))
@@ -2873,10 +2877,17 @@ bool	CParticleScene::RegisterEventListener(UPopcornFXEffect* particleEffect, Pop
 
 	const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback>	broadcastCallback(this, &CParticleScene::BroadcastEvent);
 
-	if (!particleEffect->Effect()->RegisterEventCallback(broadcastCallback, eventNameID))
+	const SPopcornFXRegisteredEvent	probe(eventNameID, particleEffect);
+	if (!m_RegisteredEvents.Contains(probe))
 	{
-		UE_LOG(LogPopcornFXScene, Warning, TEXT("Register Event Listener: Couldn't register callback to event '%s' on effect '%s'"), eventNameID.ToString().Data(), *particleEffect->GetName());
-		return false;
+		if (!particleEffect->Effect()->RegisterEventCallback(broadcastCallback, eventNameID))
+		{
+			UE_LOG(LogPopcornFXScene, Warning, TEXT("Register Event Listener: Couldn't register callback to event '%s' on effect '%s'"), eventNameID.ToString().Data(), *particleEffect->GetName());
+			return false;
+		}
+		// add event name ID : don't register a callback several times for the same event
+		if (!PK_VERIFY(m_RegisteredEvents.PushBack(probe).Valid()))
+			return false;
 	}
 
 	PopcornFX::CGuid	eventListenerIndex = m_EventListeners.IndexOf(eventNameID);
@@ -2891,10 +2902,12 @@ bool	CParticleScene::RegisterEventListener(UPopcornFXEffect* particleEffect, Pop
 		SPopcornFXEventListener	&eventListener = m_EventListeners[eventListenerIndex];
 
 		if (!PK_VERIFY(eventListener.m_Delegates.PushBack(callback).Valid()) ||
-			!PK_VERIFY(eventListener.m_EffectIDs.PushBack(effectID).Valid()))
+			!PK_VERIFY(eventListener.m_EffectIDs.PushBack(effectID).Valid()) ||
+			!PK_VERIFY(eventListener.m_Effects.PushBack(particleEffect).Valid()))
 			return false;
 
 		PK_ASSERT(eventListener.m_Delegates.Count() == eventListener.m_EffectIDs.Count());
+		PK_ASSERT(eventListener.m_Effects.Count() == eventListener.m_EffectIDs.Count());
 		return true;
 	}
 	return false;
@@ -2904,14 +2917,11 @@ bool	CParticleScene::RegisterEventListener(UPopcornFXEffect* particleEffect, Pop
 
 void	CParticleScene::UnregisterEventListener(UPopcornFXEffect* particleEffect, PopcornFX::CEffectID effectID, const PopcornFX::CStringId &eventNameID, FPopcornFXRaiseEventSignature &callback)
 {
+	PK_SCOPEDPROFILE();
 	PK_ASSERT(IsInGameThread());
 
 	if (m_EventListeners.Empty())
 		return;
-
-	const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback>	broadcastCallback(this, &CParticleScene::BroadcastEvent);
-
-	particleEffect->Effect()->UnregisterEventCallback(broadcastCallback, eventNameID);
 
 	const PopcornFX::CGuid	eventListenerIndex = m_EventListeners.IndexOf(eventNameID);
 	if (eventListenerIndex.Valid())
@@ -2920,6 +2930,7 @@ void	CParticleScene::UnregisterEventListener(UPopcornFXEffect* particleEffect, P
 		const u32				delegateCount = eventListener.m_Delegates.Count();
 
 		PK_ASSERT(eventListener.m_Delegates.Count() == eventListener.m_EffectIDs.Count());
+		PK_ASSERT(eventListener.m_Effects.Count() == eventListener.m_EffectIDs.Count());
 		for (u32 iDelegate = 0; iDelegate < delegateCount; ++iDelegate)
 		{
 			if (eventListener.m_Delegates[iDelegate] == callback)
@@ -2927,17 +2938,23 @@ void	CParticleScene::UnregisterEventListener(UPopcornFXEffect* particleEffect, P
 				PK_ASSERT(effectID == eventListener.m_EffectIDs[iDelegate]); // Should not happen
 				eventListener.m_Delegates.Remove(iDelegate);
 				eventListener.m_EffectIDs.Remove(iDelegate);
+				eventListener.m_Effects.Remove(iDelegate);
 				ClearPendingEvents_NoLock();
 				break;
 			}
+		}
+		if (!eventListener.m_Effects.Contains(particleEffect)) // No more emitters listening to this event, unregister from the effect for this event slot.
+		{
+			particleEffect->Effect()->UnregisterEventCallback(PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback>(this, &CParticleScene::BroadcastEvent), eventNameID);
 		}
 	}
 }
 
 //----------------------------------------------------------------------------
 
-void	CParticleScene::UnregisterAllEventsListeners(UPopcornFXEffect* particleEffect, PopcornFX::CEffectID effectID)
+void	CParticleScene::UnregisterAllEventListeners(UPopcornFXEffect* particleEffect, PopcornFX::CEffectID effectID)
 {
+	PK_SCOPEDPROFILE();
 	PK_ASSERT(IsInGameThread());
 
 	if (m_EventListeners.Empty())
@@ -2945,33 +2962,52 @@ void	CParticleScene::UnregisterAllEventsListeners(UPopcornFXEffect* particleEffe
 
 	const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback>	broadcastCallback(this, &CParticleScene::BroadcastEvent);
 
-	const u32	eventListenersCount = m_EventListeners.Count();
-
-	for (u32 iEventListener = 0; iEventListener < eventListenersCount; ++iEventListener)
+	for (u32 iEventListener = 0; iEventListener < m_EventListeners.Count(); ++iEventListener)
 	{
 		SPopcornFXEventListener	&eventListener = m_EventListeners[iEventListener];
 
-		bool callbackUnregistered = false;
-
 		PK_ASSERT(eventListener.m_Delegates.Count() == eventListener.m_EffectIDs.Count());
-		for (u32 iEffectID = 0; iEffectID < eventListener.m_EffectIDs.Count(); ++iEffectID)
+		PK_ASSERT(eventListener.m_Effects.Count() == eventListener.m_EffectIDs.Count());
+		const PopcornFX::CGuid	eventId = eventListener.m_EffectIDs.IndexOf(effectID);
+		if (eventId.Valid())
 		{
-			if (eventListener.m_EffectIDs[iEffectID] == effectID)
+			eventListener.m_Delegates.Remove(eventId);
+			eventListener.m_EffectIDs.Remove(eventId);
+			eventListener.m_Effects.Remove(eventId);
+		}
+		if (!eventListener.m_Effects.Contains(particleEffect)) // No more emitters listening to this event, unregister from the effect for this event slot.
+		{
+			const PopcornFX::CGuid	rEventId = m_RegisteredEvents.IndexOf(SPopcornFXRegisteredEvent(eventListener.m_EventName, particleEffect));
+			if (rEventId.Valid())
 			{
-				if (!callbackUnregistered)
-				{
-					callbackUnregistered = true;
-
-					particleEffect->Effect()->UnregisterEventCallback(broadcastCallback, eventListener.m_EventName);
-				}
-
-				eventListener.m_Delegates.Remove(iEffectID);
-				eventListener.m_EffectIDs.Remove(iEffectID);
-
-				--iEffectID;
+				m_RegisteredEvents.Remove(rEventId);
+				particleEffect->Effect()->UnregisterEventCallback(broadcastCallback, eventListener.m_EventName);
 			}
 		}
 	}
+	ClearPendingEvents_NoLock();
+}
+
+//----------------------------------------------------------------------------
+
+void	CParticleScene::UnregisterAllEventListeners()
+{
+	PK_SCOPEDPROFILE();
+	PK_ASSERT(IsInGameThread());
+
+	if (m_RegisteredEvents.Empty())
+		return;
+
+	const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback>	broadcastCallback(this, &CParticleScene::BroadcastEvent);
+
+	for (SPopcornFXRegisteredEvent &event : m_RegisteredEvents)
+	{
+		if (event.m_Effect == null)
+			continue;
+		event.m_Effect->Effect()->UnregisterEventCallback(broadcastCallback, event.m_EventName);
+	}
+	m_RegisteredEvents.Clear();
+	m_EventListeners.Clear();
 	ClearPendingEvents_NoLock();
 }
 

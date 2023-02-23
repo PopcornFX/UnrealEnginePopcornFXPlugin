@@ -85,25 +85,9 @@ class POPCORNFX_API UPopcornFXSceneComponent : public UPrimitiveComponent
 	UPROPERTY(Category="PopcornFX SceneDebug", EditAnywhere)
 	TEnumAsByte<EPopcornFXHeavyDebugMode::Type>		HeavyDebugMode;
 
-	/** DEBUG: Freezes the main billboarding matrix. */
+	/** DEBUG: Freezes the main billboarding matrix (CPU billboarding only). */
 	UPROPERTY(Category="PopcornFX SceneDebug", EditAnywhere)
 	uint32									bRender_FreezeBillboardingMatrix : 1;
-
-	/** DEBUG: Overrides Particle Color by a per draw call color. */
-	UPROPERTY(Category="PopcornFX SceneDebug", EditAnywhere)
-	uint32									bRender_OverrideColorByDrawCall : 1;
-
-	/** DEBUG: The number of colors used for Override Color debugs. */
-	UPROPERTY(Category="PopcornFX SceneDebug", EditAnywhere)
-	int32									Render_OverrideDebugColorCount;
-
-	/** DEBUG: Overrides all Particles materials with this one.
-	MUST be compatible for Particle Sprites AND Mesh Particles !
-	(StaticSwitches are not available)
-	*/
-	UPROPERTY(Category="PopcornFX SceneDebug", EditAnywhere)
-	UMaterialInterface						*Render_OverrideAllMaterial;
-
 
 	/** Clears this scene from all existing Particles.
 	Warning : Every emitters registered into this scene will stop to emit, you will need to manually restart your effects */

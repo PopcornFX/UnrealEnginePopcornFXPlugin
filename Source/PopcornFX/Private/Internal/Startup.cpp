@@ -246,6 +246,13 @@ namespace
 		PK_ASSERT_CATCHER_KILLARGS;
 		using namespace PopcornFX;
 
+		// Don't assert when cooking etc.
+		if (IsRunningCommandlet())
+		{
+			g_Asserting = false;
+			return Assert::Result_Skip; // Only log
+		}
+
 		PK_SCOPEDLOCK(g_AssertLock);
 
 		if (g_Asserting) // assert recursion ! break now

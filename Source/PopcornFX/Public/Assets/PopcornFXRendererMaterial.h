@@ -248,8 +248,6 @@ public:
 
 	UPROPERTY()
 	TArray<uint32>				m_SkeletalMeshBoneIndicesReorder;
-	UPROPERTY()
-	uint32						m_SkeletalMeshBoneMapSum;
 
 	UPROPERTY()
 	int32						m_RMId;
