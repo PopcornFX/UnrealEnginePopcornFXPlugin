@@ -446,6 +446,7 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	if (PopcornFXMeshVSUniforms.InDynamicParameter3sOffset != -1)
 		Intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter3sOffset);
 #endif
+	Intermediates.AtlasRect = float4(1, 1, 0, 0); // identity
 	BRANCH
 	if (PopcornFXMeshVSUniforms.InTextureIDsOffset != -1)
 	{

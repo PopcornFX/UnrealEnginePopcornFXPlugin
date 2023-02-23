@@ -15,7 +15,6 @@ public:
 
 	bool									RegisterEventCallback(const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback> &callback, const PopcornFX::CStringId &eventNameID);
 	void									UnregisterEventCallback(const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback> &callback, const PopcornFX::CStringId &eventNameID);
-	bool									HasRegisteredEvents() const { return !m_RegisteredEventNameIDs.Empty(); }
 
 	PopcornFX::PCParticleEffect				ParticleEffect();
 	PopcornFX::PCParticleAttributeList		AttributeList(); // LoadEffectIFN
@@ -25,7 +24,6 @@ public:
 
 private:
 	PopcornFX::PCParticleEffect				m_ParticleEffect;
-	PopcornFX::TArray<PopcornFX::CStringId>	m_RegisteredEventNameIDs;
 
 	friend class UPopcornFXEffect;
 	UPopcornFXEffect						*m_Owner; // No refptr. CPopcornFXEffect is always accessed through the owner. It can't be invalid

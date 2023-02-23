@@ -710,11 +710,11 @@ void	UPopcornFXFile::BeginDestroy()
 
 void	UPopcornFXFile::OnFileUnload()
 {
-#if WITH_EDITOR
 	// Make sure GPU sim tasks associated with this effect are properly flushed before unloading the effect
 	// otherwise, we can have zombie pending tasks executed during the next rendered frame
 	FlushRenderingCommands();
-	
+
+#if WITH_EDITOR
 	m_OnPopcornFXFileUnloaded.Broadcast(this);
 #endif // WITH_EDITOR
 }

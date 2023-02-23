@@ -377,6 +377,7 @@ public:
 		PopcornFX::CStringId					m_EventName;
 		PopcornFX::TArray<RaiseEventDelegate>	m_Delegates; // List of unique delegates
 		PopcornFX::TArray<PopcornFX::CEffectID>	m_EffectIDs; // Can contain same effect ids, but bound to different delegates
+		PopcornFX::TArray<UPopcornFXEffect*>	m_Effects; // List of effects associated to each effect id (!do not deref!)
 
 		SPopcornFXEventListener(const PopcornFX::CStringId &eventName);
 	};
@@ -396,6 +397,24 @@ public:
 		:	m_Event(eventListener)
 		,	m_EffectIDs(effectIDs)
 		,	m_PayloadViewIndex(payloadViewIndex) { }
+	};
+
+	struct	SPopcornFXRegisteredEvent
+	{
+		PopcornFX::CStringId	m_EventName;
+		UPopcornFXEffect		*m_Effect = null;
+
+		SPopcornFXRegisteredEvent(PopcornFX::CStringId eventName, UPopcornFXEffect *effect)
+		:	m_EventName(eventName)
+		,	m_Effect(effect)
+		{
+		}
+
+		bool	operator==(const SPopcornFXRegisteredEvent &other) const
+		{
+			return	m_EventName == other.m_EventName &&
+					m_Effect == other.m_Effect;
+		}
 	};
 
 	struct	SPopcornFXPayloadValue
@@ -447,9 +466,11 @@ public:
 		const PopcornFX::CStringId &eventNameID,
 		class FPopcornFXRaiseEventSignature &callback);
 
-	void	UnregisterAllEventsListeners(
+	void	UnregisterAllEventListeners(
 		UPopcornFXEffect* particleEffect,
 		PopcornFX::CEffectID effectID);
+
+	void	UnregisterAllEventListeners();
 
 	bool	GetPayloadValue(
 		const FName &payloadName,
@@ -486,4 +507,5 @@ private:
 	PopcornFX::TArray<SPopcornFXEventListener>				m_EventListeners;
 	PopcornFX::TChunkedSlotArray<SPopcornFXPayloadView>		m_PayloadViews;
 	PopcornFX::TArray<SPopcornFXEventListenerAssoc>			m_PendingEventAssocs;
+	PopcornFX::TArray<SPopcornFXRegisteredEvent>			m_RegisteredEvents;
 };
