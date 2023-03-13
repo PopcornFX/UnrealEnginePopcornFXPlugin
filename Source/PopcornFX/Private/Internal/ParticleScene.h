@@ -310,6 +310,11 @@ public:
 	struct ID3D11Device				*D3D11_Device() const { PK_ASSERT(D3D11Ready()); return m_D3D11_Device; }
 	struct ID3D11DeviceContext		*D3D11_DeferedContext() const { PK_ASSERT(D3D11Ready()); return m_D3D11_DeferedContext; }
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
+	class FRHIBuffer				*m_D3D11_DummyResource = null;
+	class FRHIUnorderedAccessView	*m_D3D11_DummyView = null;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
+
 private:
 	bool			D3D11_InitIFN();
 	void			D3D11_Destroy();

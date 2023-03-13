@@ -26,15 +26,16 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXEditorSettings, Log, All);
 //----------------------------------------------------------------------------
 
 UPopcornFXSettingsEditor::UPopcornFXSettingsEditor(const FObjectInitializer& PCIP)
-	: Super(PCIP)
+:	Super(PCIP)
 #if WITH_EDITORONLY_DATA
-	, ImportSourcePack("")
-	, bSourcePackFound(false)
-	, bAddSourcePackToMonitoredDirectories(false)
-	, AssetDependenciesAutoImport(EPopcornFXAssetDependenciesAutoImport::Always)
-	, bDebugBakedEffects(false)
-	, bAutoInsertSceneActor(true)
-	, bAlwaysRenderAttributeSamplerShapes(false)
+,	ImportSourcePack("")
+,	bSourcePackFound(false)
+,	bAddSourcePackToMonitoredDirectories(false)
+,	AssetDependenciesAutoImport(EPopcornFXAssetDependenciesAutoImport::Always)
+,	bDebugBakedEffects(false)
+,	bBuildAllDesktopBytecodes(false)
+,	bAutoInsertSceneActor(true)
+,	bAlwaysRenderAttributeSamplerShapes(false)
 #endif // WITH_EDITORONLY_DATA
 {
 	static const FString		kDefaultIncludes[] = {

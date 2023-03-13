@@ -117,9 +117,16 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="Import")
 	TEnumAsByte<EPopcornFXAssetDependenciesAutoImport::Type>	AssetDependenciesAutoImport;
 
-	/** Enables storing baked effects as text (under Saved/PopcornFX/Patched and Saved/PopcornFX/Cooked) */
-	UPROPERTY(Config, EditAnywhere, Category = "Cook")
+	/**
+		Enables storing baked effects as text (under Saved/PopcornFX/Patched and Saved/PopcornFX/Cooked)
+		Note: compilation logs are 'Verbose'. Type in 'Log PopcornFXPlatformCommon Verbose' to get full compilation details.
+	*/
+	UPROPERTY(Config, EditAnywhere, Category="Cook")
 	uint32				bDebugBakedEffects : 1;
+
+	/** If enabled, will build GPU simulated effects for all supported RHIs (D3D11, D3D12) on desktop. */
+	UPROPERTY(Config, EditAnywhere, Category="Cook")
+	uint32				bBuildAllDesktopBytecodes : 1;
 
 	/** If enabled, will automatically create a PopcornFXSceneActor when drag&dropping an emitter into a level with no scene actor available */
 	UPROPERTY(Config, EditAnywhere, Category="Editor")

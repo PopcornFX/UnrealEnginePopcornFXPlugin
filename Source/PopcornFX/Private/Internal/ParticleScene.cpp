@@ -2145,10 +2145,20 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		PK_SCOPEDLOCK(m_UpdateLock);
 		PK_SCOPEDLOCK(m_D3D11_Tasks_Lock);
 
-		// Fake a UAV transition so UE4 is happy, and disables UAV overlap (undefined behavior, generates random artefacts in the D3D11 GPU sim)
+		// Fake a UAV transition so UE is happy, and disables UAV overlap (undefined behavior, generates random artefacts in the D3D11 GPU sim)
 		// This is ugly, but they removed the implementations of FD3D11DynamicRHI::RHIBeginUAVOverlap/RHIEndUAVOverlap in 4.26.
 		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
+		if (self->m_D3D11_DummyResource == null)
+		{
+			check(self->m_D3D11_DummyView == null);
+			self->m_D3D11_DummyResource = new FRHIBuffer();
+			self->m_D3D11_DummyView = new FRHIUnorderedAccessView(self->m_D3D11_DummyResource);
+		}
+		RHICmdList.Transition(FRHITransitionInfo(self->m_D3D11_DummyView, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
+#else
 		RHICmdList.Transition(FRHITransitionInfo((FRHIUnorderedAccessView*)0x1234, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 		RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 
 		for (u32 i = 0; i < m_Exec_D3D11_Tasks.Count(); ++i)
@@ -2189,6 +2199,16 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 			updateManager_D3D11->BindD3D11(null, null);
 		}
 	}
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
+	if (m_D3D11_DummyResource != null)
+	{
+		check(m_D3D11_DummyView != null);
+		m_D3D11_DummyResource->Delete();
+		m_D3D11_DummyResource = null;
+		m_D3D11_DummyView->Delete();
+		m_D3D11_DummyView = null;
+	}
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 	m_D3D11_DeferedContext = null;
 	m_D3D11_Device = null;
 
