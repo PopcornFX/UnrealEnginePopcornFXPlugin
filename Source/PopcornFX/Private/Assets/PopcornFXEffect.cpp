@@ -56,7 +56,7 @@ bool	CPopcornFXEffect::RegisterEventCallback(const PopcornFX::FastDelegate<Popco
 	// Register broadcast callback only if this event never got registered
 	if (PK_VERIFY(m_ParticleEffect != null))
 		return const_cast<PopcornFX::CParticleEffect*>(m_ParticleEffect.Get())->RegisterEventCallback(callback, eventNameID);
-		return false;
+	return false;
 }
 
 void	CPopcornFXEffect::UnregisterEventCallback(const PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback> &callback, const PopcornFX::CStringId &eventNameID)
@@ -363,15 +363,23 @@ namespace
 			PK_VERIFY(buildTags.PushBack(kMac).Valid());
 			PK_VERIFY(buildTags.PushBack(kEditor).Valid());
 
-			// Specific to editor baking, to reduce import times, we only import for a single API.
+			// Specific to editor baking, to reduce import times, we only import for a single API (unless bBuildAllDesktopBytecodes).
 			// This means if the users change the preferred RHI, they will have to reimport all assets,
-			// but it's better than to double the import times in editor
+			// but it's better than to double import times in editor
+			if (FPopcornFXPlugin::Get().SettingsEditor()->bBuildAllDesktopBytecodes)
+			{
+				outBackendAndBuildTags.m_BackendTargets |= 1 << PopcornFX::BackendTarget_D3D12;
+				outBackendAndBuildTags.m_BackendTargets |= 1 << PopcornFX::BackendTarget_D3D11;
+			}
+			else
+			{
 			const FString	hardwareDetails = FHardwareInfo::GetHardwareDetailsString();
 
 			if (hardwareDetails.Contains("D3D12") && FModuleManager::Get().IsModuleLoaded("D3D12RHI"))
 				outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D12;
 			else if (hardwareDetails.Contains("D3D11") && FModuleManager::Get().IsModuleLoaded("D3D11RHI"))
 				outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D11;
+		}
 		}
 		else if (platformName.Contains("Win"))
 		{

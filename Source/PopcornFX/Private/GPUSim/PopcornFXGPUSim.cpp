@@ -62,7 +62,9 @@ bool	_IsGpuSupportedOnPlatform(const EShaderPlatform &platform)
 				 false) && platformSupportsSM5OrEquivalent;
 	}
 #if (ENGINE_MAJOR_VERSION == 5)
-	return platform == SP_PCD3D_SM5 && platformSupportsSM5OrEquivalent;
+	const bool	platformSupportsSM6OrEquivalent = IsFeatureLevelSupported(platform, ERHIFeatureLevel::SM6);
+	return	(platform == SP_PCD3D_SM5 && platformSupportsSM5OrEquivalent) ||
+			(platform == SP_PCD3D_SM6 && platformSupportsSM6OrEquivalent);
 #else
 	return (
 #	if 0
