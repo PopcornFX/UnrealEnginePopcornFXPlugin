@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
-	"Version": 21504,
-	"VersionName": "2.15.4",
+	"Version": 21505,
+	"VersionName": "2.15.5",
 	"FriendlyName": "PopcornFX",
 	"Description": "PopcornFX Realtime Particle Solution integration into Unreal Engine",
 	"Category": "PopcornFX",
