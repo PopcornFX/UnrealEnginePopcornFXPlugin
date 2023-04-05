@@ -302,6 +302,7 @@ public:
 	virtual void					ApplyWorldOffset(const FVector &inOffset, bool worldShift) override;
 
 #if WITH_EDITOR
+	virtual void					TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
 	virtual bool					CanEditChange(const FProperty* InProperty) const override;
 	virtual void					PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 	virtual void					CheckForErrors() override;

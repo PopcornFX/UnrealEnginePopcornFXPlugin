@@ -36,6 +36,7 @@ UPopcornFXSettingsEditor::UPopcornFXSettingsEditor(const FObjectInitializer& PCI
 ,	bBuildAllDesktopBytecodes(false)
 ,	bAutoInsertSceneActor(true)
 ,	bAlwaysRenderAttributeSamplerShapes(false)
+,	bRestartEmitterWhenAttributesChanged(false)
 #endif // WITH_EDITORONLY_DATA
 {
 	static const FString		kDefaultIncludes[] = {

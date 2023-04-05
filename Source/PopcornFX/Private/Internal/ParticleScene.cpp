@@ -249,10 +249,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	// This is actually an error in PopcornFX.Build.cs, PK_HAS_GPU shouldn't be defined on platforms where it's not supported!
 	// See #5574
 	if (updateManager != null)
-	{
-		updateManager->SetPreferredSimLocation(PopcornFX::CParticleUpdateManager_Auto::SimLocation_Auto); // Enable GPU but does not force it
 		SetupPopcornFXRHIAPI(API);
-	}
 #endif
 
 	m_ParticleMediumCollection = PK_NEW(PopcornFX::CParticleMediumCollection(this, updateManager));
@@ -280,9 +277,8 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	if (updateManager != null)
 	{
 #if (PK_HAS_GPU != 0)
-		if (!GPU_InitIFN())
+		GPU_InitIFN();
 #endif // (PK_HAS_GPU != 0)
-			updateManager->SetPreferredSimLocation(PopcornFX::CParticleUpdateManager_Auto::SimLocation_CPU); // Disable GPU sim
 	}
 
 	m_CurrentPayloadView = new SPopcornFXPayloadView();

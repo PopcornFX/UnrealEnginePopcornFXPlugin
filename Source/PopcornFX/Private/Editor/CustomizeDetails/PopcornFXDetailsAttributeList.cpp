@@ -684,7 +684,7 @@ namespace
 				if (m_Traits->VectorDimension > 3)
 					attribValue.m_Data32f[3] = newColor.A;
 				decl->ClampToRangeIFN(attribValue);
-				attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+				attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 			}
 			attrList->PostEditChange();
 		}
@@ -966,7 +966,7 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Commit"));
 
 			attrList->Modify();
-			attrList->SetAttributeDim<bool>(m_Index, dimi, value == ECheckBoxState::Checked);
+			attrList->SetAttributeDim<bool>(m_Index, dimi, value == ECheckBoxState::Checked, true);
 			attrList->PostEditChange();
 		}
 
@@ -991,7 +991,7 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Commit"));
 
 			attrList->Modify();
-			attrList->SetAttributeDim<int32>(m_Index, 0, *selectedItem);
+			attrList->SetAttributeDim<int32>(m_Index, 0, *selectedItem, true);
 			attrList->PostEditChange();
 		}
 
@@ -1007,9 +1007,9 @@ namespace
 			//attrList->Modify();
 
 			if (!m_IsQuaternion)
-				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value);
+				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value, true);
 			else
-				attrList->SetAttributeQuaternionDim(m_Index, dimi, value);
+				attrList->SetAttributeQuaternionDim(m_Index, dimi, value, true);
 		}
 
 		template <typename _Scalar>
@@ -1030,9 +1030,9 @@ namespace
 			attrList->Modify();
 
 			if (!m_IsQuaternion)
-				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value);
+				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value, true);
 			else
-				attrList->SetAttributeQuaternionDim(m_Index, dimi, value);
+				attrList->SetAttributeQuaternionDim(m_Index, dimi, value, true);
 
 			attrList->PostEditChange();
 		}
@@ -1049,7 +1049,7 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeReset", "Attribute Reset"));
 			attrList->SetFlags(RF_Transactional);
 			attrList->Modify();
-			attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&m_Def)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+			attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&m_Def), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 			attrList->PostEditChange();
 			return FReply::Handled();
 		}
@@ -1070,12 +1070,12 @@ namespace
 			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
 				const bool	defaultValue = reinterpret_cast<const bool*>(m_Def.Get<u32>())[dimi];
-				attrList->SetAttributeDim<bool>(m_Index, dimi, defaultValue);
+				attrList->SetAttributeDim<bool>(m_Index, dimi, defaultValue, true);
 			}
 			else
 			{
 				const s32	defaultValue = m_Def.Get<s32>()[dimi];
-				attrList->SetAttributeDim<s32>(m_Index, dimi, defaultValue);
+				attrList->SetAttributeDim<s32>(m_Index, dimi, defaultValue, true);
 			}
 			attrList->PostEditChange();
 			return FReply::Handled();

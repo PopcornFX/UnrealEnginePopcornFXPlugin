@@ -808,7 +808,6 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 		return false;
 	cookery.MapOven("pkfx", ovenIdParticle);
 	cookery.m_DstPackPaths.PushBack(defaultTarget);
-	cookery.m_PreferredSimLocation = PopcornFX::SSimDispatchHint::Location_CPU; // Only compile gpu sim bytecodes for layers set to run on GPU
 	cookery.AddOvenFlags(PopcornFX::COven::Flags_BakeMemoryVersion);
 
 	if (!forEditor)

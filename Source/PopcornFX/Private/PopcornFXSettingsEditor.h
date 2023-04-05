@@ -135,6 +135,10 @@ public:
 	/** Check this to always render the attribute sampler shapes debug, even when they are not selected */
 	UPROPERTY(Config, EditAnywhere, Category="Debug")
 	uint32				bAlwaysRenderAttributeSamplerShapes : 1;
+
+	/** Check this to restart effects when their attributes are modified via the details panel (useful when tweaking attributes for infinite particles) */
+	UPROPERTY(Config, EditAnywhere, Category="Debug")
+	uint32				bRestartEmitterWhenAttributesChanged : 1;
 #endif // WITH_EDITORONLY_DATA
 
 #if WITH_EDITOR
