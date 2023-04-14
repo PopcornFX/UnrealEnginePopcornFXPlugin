@@ -711,11 +711,12 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUE
 
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices + buffersOffset), sectionPCount);
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
 			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
 #else
 			rayTracingInstance.BuildInstanceMaskAndFlags();
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 
@@ -751,11 +752,12 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUE
 		{
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices), m_TotalParticleCount);
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
 			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
 #else
 			rayTracingInstance.BuildInstanceMaskAndFlags();
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 		}

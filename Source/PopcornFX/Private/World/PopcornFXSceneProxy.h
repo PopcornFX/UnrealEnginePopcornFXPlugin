@@ -7,7 +7,6 @@
 
 #include "PopcornFXMinimal.h"
 
-#include "Render/PopcornFXVertexFactory.h"
 #include "Render/RendererSubView.h"
 #include "PopcornFXSceneComponent.h"
 

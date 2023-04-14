@@ -82,7 +82,11 @@ namespace
 
 	void	_SetStaticSwitch(FStaticParameterSet &params, FName name, bool value)
 	{
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+		for (int32 i = 0; i < params.StaticSwitchParameters.Num(); ++i)
+		{
+			FStaticSwitchParameter		&param  = params.StaticSwitchParameters[i];
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 1)
 		for (int32 i = 0; i < params.EditorOnly.StaticSwitchParameters.Num(); ++i)
 		{
 			FStaticSwitchParameter		&param  = params.EditorOnly.StaticSwitchParameters[i];
@@ -100,7 +104,9 @@ namespace
 				return;
 			}
 		}
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+		new (params.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 1)
 		new (params.EditorOnly.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???
 #else
 		new (params.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???

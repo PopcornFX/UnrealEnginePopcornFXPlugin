@@ -29,6 +29,7 @@
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "PopcornFXStats.h"
 
+#include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceConstant.h"
 
@@ -295,8 +296,8 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 				UE_LOG(LogRenderBatchManager, Warning, TEXT("Couldn't create compatible render policy for material: invalid material."));
 				return null;
 			}
-			hasVolumeMaterial = rendererSubMat->MaterialType == EPopcornFXMaterialType::Billboard_SixWayLightmap ||
-				material->MaterialDomain == MD_Volume;
+			hasVolumeMaterial =	rendererSubMat->MaterialType == EPopcornFXMaterialType::Billboard_SixWayLightmap ||
+								material->MaterialDomain == MD_Volume;
 
 			switch (rendererType)
 			{

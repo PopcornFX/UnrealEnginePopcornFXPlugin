@@ -15,6 +15,7 @@
 
 #include "Slate/SceneViewport.h"
 #include "SCommonEditorViewportToolbarBase.h"
+#include "Materials/Material.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/TextureCube.h"

@@ -1249,11 +1249,12 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 					}
 				);
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
 				rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
 #else
 				rayTracingInstance.BuildInstanceMaskAndFlags();
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 				view->OutRayTracingInstances()->Add(rayTracingInstance);
 			}
 			else

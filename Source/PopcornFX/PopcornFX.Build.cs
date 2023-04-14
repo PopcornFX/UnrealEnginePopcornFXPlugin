@@ -53,15 +53,6 @@ namespace UnrealBuildTool.Rules
 				AddDefinition(definition + "=0");
 		}
 
-		private string			WindowsPlatform_GetVisualStudioCompilerVersionName_Prefer2015()
-		{
-			string		vs_version = Target.WindowsPlatform.GetVisualStudioCompilerVersionName().ToString();
-			if (vs_version.Equals("2017")) // vs2017 is compatible with vs2015 libs, so use vs2015
-				return "2015";
-			else
-				return vs_version;
-		}
-
 		private void	AddDefinition(string def)
 		{
 			PublicDefinitions.Add(def);
@@ -239,7 +230,7 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.Win32)
 			{
-				libPrefix = clientLibDir + "vs" + WindowsPlatform_GetVisualStudioCompilerVersionName_Prefer2015() + "_Win32/";
+				libPrefix = clientLibDir + "vs2017_Win32/";
 				libExt = ".lib";
 			}
 			else
@@ -247,7 +238,7 @@ namespace UnrealBuildTool.Rules
 			if (Target.Platform == UnrealTargetPlatform.Win64 ||
 				isWinUNKNOWN) // Win32 UNKNOWN (WINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP), just link with the same libs as Win64
 			{
-				libPrefix = clientLibDir + "vs" + WindowsPlatform_GetVisualStudioCompilerVersionName_Prefer2015() + "_x64/";
+				libPrefix = clientLibDir + "vs2017_x64/";
 				libExt = ".lib";
 			}
 			else if (Target.Platform == UnrealTargetPlatform.Mac)
@@ -258,7 +249,7 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.XboxOne)
 			{
-				libPrefix = clientLibDir + "vs2015_Durango/";
+				libPrefix = clientLibDir + "vs2017_Durango/";
 				libExt = ".lib";
 			}
 #endif // !UE_5_0_OR_LATER
@@ -275,7 +266,7 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.PS4)
 			{
-				libPrefix = clientLibDir + "vs2015_ORBIS/";
+				libPrefix = clientLibDir + "vs2017_ORBIS/";
 				// "vs" + WindowsPlatform.GetVisualStudioCompilerVersionName(); // error (exception) on >= 4.16
 				libExt = ".a";
 			}
@@ -321,7 +312,7 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.Switch)
 			{
-				libPrefix = clientLibDir + "vs2015_NX64/";
+				libPrefix = clientLibDir + "vs2017_NX64/";
 				libExt = ".a";
 			}
 #endif // !UE_5_0_OR_LATER

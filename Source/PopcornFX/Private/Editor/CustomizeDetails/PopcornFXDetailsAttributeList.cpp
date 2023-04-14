@@ -645,7 +645,11 @@ namespace
 				pickerArgs.sRGBOverride = false;//sRGBOverride;
 				pickerArgs.DisplayGamma = TAttribute<float>::Create(TAttribute<float>::FGetter::CreateUObject(GEngine, &UEngine::GetDisplayGamma));
 				pickerArgs.OnColorCommitted = FOnLinearColorValueChanged::CreateSP(this, &SAttributeDesc::OnSetColorFromColorPicker);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+				pickerArgs.InitialColor = initialColor;
+#else
 				pickerArgs.InitialColorOverride = initialColor;
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 				//pickerArgs.ParentWidget = parent;
 				//pickerArgs.OptionalOwningDetailsView = parent;
 			}

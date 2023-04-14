@@ -7,6 +7,7 @@
 
 #include "PopcornFXMinimal.h"
 
+#include "RHIDefinitions.h"
 #include "RenderResource.h"
 #include "VertexFactory.h"
 
