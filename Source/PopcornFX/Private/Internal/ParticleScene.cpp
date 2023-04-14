@@ -1634,9 +1634,14 @@ void	CParticleScene::RayTracePacket(
 		filterData.Word3 |= EPDF_ComplexCollision;
 
 	EQueryFlags						queryFlags = EQueryFlags::AnyHit | EQueryFlags::PreFilter;
-	FQueryFilterData				queryFilterData = ChaosInterface::MakeQueryFilterData(filterData, queryFlags, FCollisionQueryParams());
-	FQueryDebugParams				debugParams;
-	FCollisionShape					sphere;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+	ChaosInterface::FQueryFilterData	queryFilterData = ChaosInterface::MakeQueryFilterData(filterData, queryFlags, FCollisionQueryParams());
+	ChaosInterface::FQueryDebugParams	debugParams;
+#else
+	FQueryFilterData					queryFilterData = ChaosInterface::MakeQueryFilterData(filterData, queryFlags, FCollisionQueryParams());
+	FQueryDebugParams					debugParams;
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+	FCollisionShape						sphere;
 
 	// Note: There doesn't seem to be a lock necessary for the Chaos accel struct
 	{

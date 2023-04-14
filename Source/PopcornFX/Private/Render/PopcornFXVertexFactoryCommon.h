@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "RHIDefinitions.h"
 #include "RenderResource.h"
 #include "VertexFactory.h"
 

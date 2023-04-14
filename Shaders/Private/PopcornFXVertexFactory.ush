@@ -89,7 +89,7 @@ struct FVertexFactoryInterpolantsVSToPS
 	float3					Normal					: TEXCOORD3;
 	float3					Tangent					: TEXCOORD4;
 	float4					UVFactors				: TEXCOORD5;
-	float4					UVScalesAndOffsets		: TEXCOORD9; // TEXCOORD6-8 are reserved
+	float4					UVScalesAndOffsets		: TEXCOORD10; // TEXCOORD6-9 are reserved
 	
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
 	nointerpolation float4	DynamicParameter 		: PARTICLE_DYNAMIC_PARAM0;
