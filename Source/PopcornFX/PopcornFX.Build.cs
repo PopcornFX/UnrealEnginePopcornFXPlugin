@@ -446,6 +446,14 @@ namespace UnrealBuildTool.Rules
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "NVAftermath");
 				else
 					AddDefinition("NV_AFTERMATH=0");
+				
+#if UE_5_2_OR_LATER
+				// D3D12RHIPrivate.h
+				if (Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
+					PublicDefinitions.Add("INTEL_EXTENSIONS=1");
+				else
+					PublicDefinitions.Add("INTEL_EXTENSIONS=0");
+#endif // UE_5_2_OR_LATER
 
 				// TODO: Is this still required ?
 				AddDefinition("PK_PARTICLES_UPDATER_USE_D3D12=1");
