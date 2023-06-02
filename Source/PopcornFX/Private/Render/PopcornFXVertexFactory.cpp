@@ -27,8 +27,8 @@ void	FPopcornFXVertexFactory::_SetupStream(	u32								attributeIndex,
 {
 	if (!buffer.Valid())
 	{
-		FVertexStreamComponent NullColorComponent(&GNullColorVertexBuffer, 0, 0, VET_Color);
-		decl.Add(AccessStreamComponent(NullColorComponent, attributeIndex));
+		FVertexStreamComponent	nullComponent(&GNullVertexBuffer, 0, 0, type);
+		decl.Add(AccessStreamComponent(nullComponent, attributeIndex));
 		return;
 	}
 
