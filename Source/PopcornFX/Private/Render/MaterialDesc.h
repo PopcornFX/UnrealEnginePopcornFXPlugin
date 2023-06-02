@@ -46,9 +46,10 @@ public:
 	virtual void	Clear();
 
 public:
-	UPopcornFXRendererMaterial			*m_RendererMaterial = null;
-	PopcornFX::ERendererClass			m_RendererClass;
-	PopcornFX::PCRendererDataBase		m_Renderer = null;
+	// Note: should be refactored, render thread should have no need to maintain a weak pointer to the uasset.
+	TWeakObjectPtr<UPopcornFXRendererMaterial>	m_RendererMaterial;
+	PopcornFX::ERendererClass					m_RendererClass;
+	PopcornFX::PCRendererDataBase				m_Renderer = null;
 
 	CSoundDescriptorPoolCollection		*m_SoundPoolCollection = null;
 

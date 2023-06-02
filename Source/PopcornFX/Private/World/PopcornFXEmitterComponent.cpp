@@ -41,6 +41,8 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXEmitterComponent, Log, All);
 
 //----------------------------------------------------------------------------
 
+#define HEAVY_DEBUG	0
+
 // static
 UPopcornFXEmitterComponent	*UPopcornFXEmitterComponent::CreateStandaloneEmitterComponent(UPopcornFXEffect* effect, APopcornFXSceneActor *scene, UWorld* world, AActor* actor, bool bAutoDestroy)
 {
@@ -80,6 +82,7 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 	, m_Stopped(false)
 	, m_DiedThisFrame(false)
 	, m_TeleportThisFrame(false)
+	, m_Destroyed(false)
 #if WITH_EDITOR
 	, m_ReplayAfterDead(false)
 #endif
@@ -128,7 +131,6 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 	//UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("EMITTERCOMP ctor attrlist %p"), AttributeList);
 
 	AttributeList->SetFlags(RF_Transactional);
-
 	AttributeList->CheckEmitter(this);
 
 	bAutoDestroy = false;
@@ -141,7 +143,26 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 
 UPopcornFXEmitterComponent::~UPopcornFXEmitterComponent()
 {
-	//PopcornFX::CLog::Log(PK_INFO, "UPopcornFXEmitterComponent::~UPopcornFXEmitterComponent %p List %p ", this, AttributeList);
+	check(IsInGameThread());
+
+#if HEAVY_DEBUG
+	UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::dtor '%p'"), this);
+#endif // HEAVY_DEBUG
+
+#if 0
+#if defined(PK_DEBUG)
+	if (m_CurrentScene != null)
+		m_CurrentScene->RegisterDestroyedEmitter(this);
+#endif // defined(PK_DEBUG)
+#endif // 0
+	
+	// Last-minute terminate call. we need to unregister from the owner scene.
+	TerminateEmitter();
+
+	check(m_EffectInstancePtr == null);
+	check(m_Started == false);
+	check(!SelfSceneIsRegistered());
+	check(!SelfSceneIsPreInitRegistered());
 }
 
 //----------------------------------------------------------------------------
@@ -384,26 +405,6 @@ const UObject	*UPopcornFXEmitterComponent::AdditionalStatObject() const
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXEmitterComponent::EmitterBeginPlayIFN()
-{
-	if ((!bPlayOnLoad || bHasAlreadyPlayOnLoad)
-#if WITH_EDITOR
-		&& !m_ReplayAfterDead
-#endif
-		)
-		return;
-
-#if WITH_EDITOR
-	m_ReplayAfterDead = false;
-#endif
-	bHasAlreadyPlayOnLoad = true;
-
-	RestartEmitter();
-	return;
-}
-
-//----------------------------------------------------------------------------
-
 UPopcornFXEmitterComponent	*UPopcornFXEmitterComponent::CopyAndStartEmitterAtLocation(
 	FVector location,
 	FRotator rotation,
@@ -530,6 +531,12 @@ bool	UPopcornFXEmitterComponent::SetEffect(UPopcornFXEffect *effect, bool startE
 
 bool	UPopcornFXEmitterComponent::StartEmitter()
 {
+	if (m_Destroyed || IsPendingKill() || m_DiedThisFrame)
+	{
+		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Could not StartEmitter '%s' of effect '%s': emitter was destroyed"), *GetFullName(), *Effect->GetPathName());
+		return false;
+	}
+
 	const UWorld	*world = GetWorld();
 	if (!FApp::CanEverRender() || (world != null && world->IsNetMode(NM_DedicatedServer)))
 		return true;
@@ -612,6 +619,7 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 	effectStartCtl.m_PrewarmTime = prewarmTime;
 
 	m_LastFrameUpdate = 0;
+	m_StartFrameUpdate = GFrameCounter;
 
 	CParticleScene			*particleScene = m_CurrentScene;
 	PK_ASSERT(particleScene != null);
@@ -623,6 +631,11 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 		UE_LOG(LogPopcornFXEmitterComponent, Warning/*Error*/, TEXT("Could not StartEmitter '%s'"), *GetFullName());
 		return false;
 	}
+
+#if HEAVY_DEBUG
+	UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::StartEmitter '%p' - '%p' - '%s'"), this, m_EffectInstancePtr.Get(), *Effect->GetPathName());
+#endif
+
 	m_EffectInstancePtr->SetUserData(this);
 
 	m_Started = true;
@@ -658,6 +671,9 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 	// actual spawn
 	if (!m_EffectInstancePtr->Start(effectStartCtl))
 	{
+#if HEAVY_DEBUG
+		UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::StartEmitter FAILED '%p' - '%p'"), this, m_EffectInstancePtr.Get());
+#endif
 		m_Started = false;
 		m_Stopped = true;
 		return false;
@@ -679,6 +695,12 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 			}
 		}
 	}
+	else
+	{
+#if HEAVY_DEBUG
+		UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::StartEmitter DIE first frame '%p'"), this);
+#endif
+	}
 
 	const FVector			rotation = GetComponentTransform().GetRotation().GetRotationAxis();
 	OnEmitterStart.Broadcast(this, GetComponentTransform().GetLocation(), rotation);
@@ -691,8 +713,24 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 
 //----------------------------------------------------------------------------
 
+void	UPopcornFXEmitterComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+	check(IsInGameThread());
+	TerminateEmitter(bKillParticlesOnDestroy);
+
+	m_Destroyed = true;
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
+
+//----------------------------------------------------------------------------
+
 void	UPopcornFXEmitterComponent::RestartEmitter(bool killParticles)
 {
+	if (m_Destroyed || IsPendingKill() || m_DiedThisFrame)
+	{
+		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Could not RestartEmitter '%s' of effect '%s': emitter was destroyed"), *GetFullName(), *Effect->GetPathName());
+		return;
+	}
 	const UWorld	*world = GetWorld();
 	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
 	{
@@ -723,6 +761,9 @@ void	UPopcornFXEmitterComponent::StopEmitter(bool killParticles)
 		bool		sendEvent = false;
 		if (m_EffectInstancePtr != null && m_Started && !m_Stopped)
 		{
+#if HEAVY_DEBUG
+			UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::StopEmitter %s '%p' - '%p' - '%s'"), m_StartFrameUpdate == GFrameCounter ? L"(first frame)" : L"", this, m_EffectInstancePtr.Get(), IsValid(Effect) ? *Effect->GetPathName() : L"");
+#endif
 			if (killParticles)
 				KillParticles();
 			else
@@ -749,6 +790,11 @@ void	UPopcornFXEmitterComponent::StopEmitter(bool killParticles)
 
 bool	UPopcornFXEmitterComponent::ToggleEmitter(bool startEmitter, bool killParticles)
 {
+	if (m_Destroyed || IsPendingKill() || m_DiedThisFrame)
+	{
+		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Could not ToggleEmitter '%s' of effect '%s': emitter was destroyed"), *GetFullName(), *Effect->GetPathName());
+		return false;
+	}
 	const UWorld	*world = GetWorld();
 	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
 	{
@@ -782,6 +828,10 @@ void	UPopcornFXEmitterComponent::TerminateEmitter(bool killParticles)
 	if (m_EffectInstancePtr != null)
 	{
 		PK_ASSERT(FPopcornFXPlugin::IsMainThread()); // cannot be called async
+
+#if HEAVY_DEBUG
+		UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::TerminateEmitter %s '%p' - '%p' - '%s'"), m_StartFrameUpdate == GFrameCounter ? L"(first frame)" : L"", this, m_EffectInstancePtr.Get(), IsValid(Effect) ? *Effect->GetPathName() : L"");
+#endif
 
 		if (IsValid(AttributeList)) // something can go wrong when deleting stuff
 			AttributeList->CheckEmitter(this);
@@ -819,6 +869,7 @@ void	UPopcornFXEmitterComponent::TerminateEmitter(bool killParticles)
 	CheckForDead(); // can call OnEmissionStops
 
 	PK_ASSERT(!SelfSceneIsRegistered());
+	PK_ASSERT(!SelfSceneIsPreInitRegistered());
 	PK_ASSERT(m_EffectInstancePtr == null);
 	PK_ASSERT(!m_Started);
 
@@ -853,6 +904,10 @@ void	UPopcornFXEmitterComponent::KillParticles()
 			AttributeList->CheckEmitter(this);
 			m_EffectInstancePtr->KillDeferred();
 			PK_ASSERT(m_CurrentScene != null);
+
+#if HEAVY_DEBUG
+			UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::KillParticles %s '%p' - '%p' - '%s'"), m_StartFrameUpdate == GFrameCounter ? L"(first frame)" : L"", this, m_EffectInstancePtr.Get(), IsValid(Effect) ? *Effect->GetPathName() : L"");
+#endif
 
 			const FVector			rotation = GetComponentTransform().GetRotation().GetRotationAxis();
 			OnEmitterKillParticles.Broadcast(this, GetComponentTransform().GetLocation(), rotation);
@@ -1025,258 +1080,6 @@ void	UPopcornFXEmitterComponent::PostLoad()
 	LLM_SCOPE(ELLMTag::Particles);
 	Super::PostLoad();
 }
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::BeginDestroy()
-{
-	LLM_SCOPE(ELLMTag::Particles);
-
-	if (m_Scene_PreInitEmitterId != PopcornFX::CGuid::INVALID)
-		SelfPreInitSceneUnregister();
-
-	PK_ASSERT(IsInGameThread());
-	TerminateEmitter(bKillParticlesOnDestroy);
-	//UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("EMITTERCOMP %p BeginDestroy %p"), this, AttributeList);
-	//if (AttributeList != null && AttributeList->IsValidLowLevel())
-	//{
-	//	//UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("EMITTERCOMP %p force BeginDestroy attr list %p"), this, AttributeList);
-	//	AttributeList->ConditionalBeginDestroy();
-	//}
-	Super::BeginDestroy();
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::OnRegister()
-{
-	LLM_SCOPE(ELLMTag::Particles);
-
-	UWorld	*world = GetWorld();
-	check(world != nullptr);
-
-	if (bAutoManageAttachment && !IsActive())
-	{
-		// Detach from current parent, we are supposed to wait for activation.
-		if (GetAttachParent() != null)
-		{
-			// If no auto attach parent override, use the current parent when we activate
-			if (!AutoAttachParent.IsValid())
-			{
-				AutoAttachParent = GetAttachParent();
-			}
-			// If no auto attach socket override, use current socket when we activate
-			if (AutoAttachSocketName == NAME_None)
-			{
-				AutoAttachSocketName = GetAttachSocketName();
-			}
-
-			// If in a game world, detach now if necessary. Activation will cause auto-attachment.
-			if (world->IsGameWorld())
-			{
-				// Prevent attachment before Super::OnRegister() tries to attach us, since we only attach when activated.
-				if (GetAttachParent()->GetAttachChildren().Contains(this))
-				{
-					// Only detach if we are not about to auto attach to the same target, that would be wasteful.
-					if (!bPlayOnLoad ||
-						(AutoAttachLocationRule != EAttachmentRule::KeepRelative && AutoAttachRotationRule != EAttachmentRule::KeepRelative && AutoAttachScaleRule != EAttachmentRule::KeepRelative) ||
-						AutoAttachSocketName != GetAttachSocketName() ||
-						AutoAttachParent != GetAttachParent())
-					{
-						DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepRelative, false));
-					}
-				}
-				else
-				{
-					SetupAttachment(null, NAME_None);
-				}
-			}
-		}
-
-		m_SavedAutoAttachRelativeLocation = GetRelativeLocation();
-		m_SavedAutoAttachRelativeRotation = GetRelativeRotation();
-		m_SavedAutoAttachRelativeScale3D = GetRelativeScale3D();
-	}
-
-	// Keep Super::OnRegister in between the auto attachment system and the rest.
-	Super::OnRegister();
-
-	// Sometimes UE reflection breaks connection with the underlying AttributeList member, not sure why.
-	// Returning here instead of crashing below, and UE properly re-registers the component later on..
-	// Ugly but does the trick (there is probably wrong done plugin side that causes this issue)
-	if (AttributeList == null)
-		return;
-
-	// Avoids Prepare call on the attribute list before the PostEditChangeProperty is called
-	// This is due to "ReRegister()" called before the PostEditChange is broadcasted.
-	if (Effect == null)
-		return;
-
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		PK_ASSERT(!IsTemplate());
-
-		//UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("EMITTERCOMP %p post load attr list %p"), this, AttributeList);
-
-		if (Effect != null)
-		{
-			Effect->ConditionalPostLoad();
-			check(AttributeList != null);
-			AttributeList->ConditionalPostLoad();
-			AttributeList->CheckEmitter(this);
-			PK_VERIFY(AttributeList->Prepare(Effect));
-		}
-
-		AttributeList->CheckEmitter(this);
-
-		// We need to do that again (PostLoad not called when spawned on the fly)
-		check(AttributeList != null);
-		PK_VERIFY(AttributeList->Prepare(Effect));
-	}
-
-#if WITH_EDITOR
-	Effect->m_OnPopcornFXFileUnloaded.Remove(m_OnPopcornFXFileUnloadedHandle);
-	m_OnPopcornFXFileUnloadedHandle = Effect->m_OnPopcornFXFileUnloaded.AddUObject(this, &UPopcornFXEmitterComponent::OnPopcornFXFileUnloaded);
-#endif // WITH_EDITOR
-
-	if (ResolveScene(true) && m_Scene_PreInitEmitterId == PopcornFX::CGuid::INVALID)
-	{
-		SelfPreInitSceneRegister();
-	}
-}
-
-//----------------------------------------------------------------------------
-
-#if WITH_EDITOR
-void	UPopcornFXEmitterComponent::_OnSceneLoaded(APopcornFXSceneActor *sceneActor)
-{
-	EmitterBeginPlayIFN();
-	PK_ASSERT(Scene == null || Scene == sceneActor);
-	m_WaitForSceneDelegateHandle.Reset();
-	return;
-}
-#endif // WITH_EDITOR
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::OnUnregister()
-{
-	LLM_SCOPE(ELLMTag::Particles);
-	if (m_Scene_PreInitEmitterId != PopcornFX::CGuid::INVALID)
-		SelfPreInitSceneUnregister();
-
-#if WITH_EDITOR
-	m_ReplayAfterDead = IsEmitterEmitting();
-#endif
-	TerminateEmitter(bKillParticlesOnDestroy);
-
-	Super::OnUnregister();
-
-	bHasAlreadyPlayOnLoad = false;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::BeginPlay()
-{
-	LLM_SCOPE(ELLMTag::Particles);
-	if (!ResolveScene(true))
-	{
-		// ResolveScene has logged a warning ifn
-	}
-
-	Super::BeginPlay();
-
-	if (m_CurrentScene != null && m_Scene_PreInitEmitterId == PopcornFX::CGuid::INVALID)
-	{
-		SelfPreInitSceneRegister();
-	}
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	LLM_SCOPE(ELLMTag::Particles);
-
-	Super::EndPlay(EndPlayReason);
-
-	// unregister everything in case the user forgot to do it
-	UnregisterAllEventsListeners();
-
-	TerminateEmitter(bKillParticlesOnDestroy);
-
-	bHasAlreadyPlayOnLoad = false;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::_OnDeathNotifier(const PopcornFX::PParticleEffectInstance & instance)
-{
-	PK_ASSERT(m_EffectInstancePtr == instance.Get());
-
-	m_DiedThisFrame = true;
-
-	if (m_EffectInstancePtr != null)
-		m_EffectInstancePtr->m_DeathNotifier -= PopcornFX::FastDelegate<void(const PopcornFX::PParticleEffectInstance &)>(this, &UPopcornFXEmitterComponent::_OnDeathNotifier);
-
-	m_EffectInstancePtr = null;
-	m_Started = false;
-	m_Stopped = false;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::CheckForDead()
-{
-	LLM_SCOPE(ELLMTag::Particles);
-	if (m_DiedThisFrame)
-	{
-		m_DiedThisFrame = false;
-
-		if (SelfSceneIsRegistered())
-		{
-			SelfSceneUnregister();
-		}
-
-		// if effect dies, need to unregister all events listeners
-		UnregisterAllEventsListeners();
-
-		if (bAutoDestroy != 0)
-		{
-			// Avoids nested DestroyComponent()
-			if (IsRegistered())
-				DestroyComponent();
-		}
-		else
-		{
-			if (bAutoManageAttachment)
-			{
-				CancelAutoAttachment();
-			}
-			if (Effect != null && !Effect->HasAnyFlags(RF_BeginDestroyed))
-			{
-#if WITH_EDITOR
-				if (m_ReplayAfterDead)
-				{
-					Effect->m_OnPopcornFXFileLoaded.Remove(m_OnPopcornFXFileLoadedHandle);
-					m_OnPopcornFXFileLoadedHandle = Effect->m_OnPopcornFXFileLoaded.AddUObject(this, &UPopcornFXEmitterComponent::OnPopcornFXFileLoaded);
-				}
-				else
-#endif
-				{
-					if (OnEmissionStops.IsBound())
-					{
-						const FVector			rotation = GetComponentTransform().GetRotation().GetRotationAxis();
-						OnEmissionStops.Broadcast(this, GetComponentTransform().GetLocation(), rotation);
-					}
-				}
-			}
-		}
-	}
-}
-
-
 //----------------------------------------------------------------------------
 
 // Compute particle system bounds
@@ -1328,79 +1131,6 @@ void	UPopcornFXEmitterComponent::ApplyWorldOffset(const FVector &inOffset, bool 
 	previousTr = currentTr;
 	currentVel = CFloat3::ZERO;
 	previousVel = currentVel;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::Scene_OnPreInitRegistered(CParticleScene *scene, uint32 selfIdInPreInit)
-{
-	PK_ASSERT(!IsTemplate());
-
-	PK_ASSERT(scene != null);
-	PK_ASSERT(m_CurrentScene == scene);
-	PK_ASSERT(selfIdInPreInit != PopcornFX::CGuid::INVALID);
-
-	PK_ASSERT(m_Scene_PreInitEmitterId == PopcornFX::CGuid::INVALID);
-	m_Scene_PreInitEmitterId = selfIdInPreInit;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::Scene_OnPreInitUnregistered(CParticleScene *scene)
-{
-	PK_ASSERT(!IsTemplate());
-
-	PK_ASSERT(scene != null);
-	PK_ASSERT(m_CurrentScene == scene);
-
-	PK_ASSERT(m_Scene_PreInitEmitterId != PopcornFX::CGuid::INVALID);
-
-	m_Scene_PreInitEmitterId = PopcornFX::CGuid::INVALID;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::Scene_OnRegistered(CParticleScene *scene, uint32 selfIdInScene)
-{
-	PK_ASSERT(!IsTemplate());
-
-	PK_ASSERT(scene != null);
-	PK_ASSERT(m_CurrentScene == scene);
-	PK_ASSERT(selfIdInScene != PopcornFX::CGuid::INVALID);
-
-	PK_ASSERT(m_Scene_EmitterId == PopcornFX::CGuid::INVALID);
-	m_Scene_EmitterId = selfIdInScene;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::Scene_OnUnregistered(CParticleScene *scene)
-{
-	PK_ASSERT(!IsTemplate());
-
-	PK_ASSERT(scene != null);
-	PK_ASSERT(m_CurrentScene == scene);
-
-	PK_ASSERT(m_Scene_EmitterId != PopcornFX::CGuid::INVALID);
-
-	m_Scene_EmitterId = PopcornFX::CGuid::INVALID;
-	m_CurrentScene = null;
-
-	// !! make sure we are unregisterd (if not, infinite recusre)
-	PK_ASSERT(!SelfSceneIsRegistered());
-	if (!SelfSceneIsRegistered())
-		TerminateEmitter(bKillParticlesOnDestroy);
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::Scene_InitForUpdate(CParticleScene *scene)
-{
-	PK_ASSERT(scene != null);
-	PK_ASSERT(m_CurrentScene == scene);
-
-	SelfPreInitSceneUnregister();
-	EmitterBeginPlayIFN();
 }
 
 //----------------------------------------------------------------------------
@@ -1516,68 +1246,6 @@ void	UPopcornFXEmitterComponent::Scene_PostUpdate(CParticleScene *scene, float d
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXEmitterComponent::SelfSceneIsRegistered() const
-{
-	return m_Scene_EmitterId != PopcornFX::CGuid::INVALID && m_CurrentScene != null;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXEmitterComponent::SelfPreInitSceneRegister()
-{
-	if (!SelfSceneIsRegistered()) // safeguard against UE random order of calling OnRegister/BeginPlay
-	{
-		PK_ASSERT(!IsTemplate());
-
-		if (m_CurrentScene != null)
-			return m_CurrentScene->Emitter_PreInitRegister(this);
-
-		return false;
-	}
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::SelfPreInitSceneUnregister()
-{
-	PK_ASSERT(!IsTemplate());
-
-	if (m_CurrentScene != null)
-		m_CurrentScene->Emitter_PreInitUnregister(this);
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXEmitterComponent::SelfSceneRegister()
-{
-	PK_ASSERT(!IsTemplate());
-
-	PK_ASSERT(!SelfSceneIsRegistered());
-	if (m_CurrentScene != null)
-		m_CurrentScene->Emitter_Register(this);
-	bool		ok = false;
-	if (SelfSceneIsRegistered())
-	{
-		ok = true;
-	}
-	return ok;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::SelfSceneUnregister()
-{
-	PK_ASSERT(!IsTemplate());
-
-	PK_ASSERT(SelfSceneIsRegistered());
-	if (m_CurrentScene != null)
-		m_CurrentScene->Emitter_Unregister(this);
-	PK_ASSERT(!SelfSceneIsRegistered());
-}
-
-//----------------------------------------------------------------------------
-
 #if WITH_EDITOR
 
 void	UPopcornFXEmitterComponent::OnPopcornFXFileUnloaded(const UPopcornFXFile *file)
@@ -1618,6 +1286,444 @@ void	UPopcornFXEmitterComponent::OnPopcornFXFileLoaded(const UPopcornFXFile *fil
 #endif
 
 //----------------------------------------------------------------------------
+//
+//	OnRegister / BeginPlay: delay register "pre init" into owner scene to delay emitter start to the next owner scene actor update
+//
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::OnRegister()
+{
+	LLM_SCOPE(ELLMTag::Particles);
+
+	UWorld	*world = GetWorld();
+	check(world != nullptr);
+
+	if (bAutoManageAttachment && !IsActive())
+	{
+		// Detach from current parent, we are supposed to wait for activation.
+		if (GetAttachParent() != null)
+		{
+			// If no auto attach parent override, use the current parent when we activate
+			if (!AutoAttachParent.IsValid())
+			{
+				AutoAttachParent = GetAttachParent();
+			}
+			// If no auto attach socket override, use current socket when we activate
+			if (AutoAttachSocketName == NAME_None)
+			{
+				AutoAttachSocketName = GetAttachSocketName();
+			}
+
+			// If in a game world, detach now if necessary. Activation will cause auto-attachment.
+			if (world->IsGameWorld())
+			{
+				// Prevent attachment before Super::OnRegister() tries to attach us, since we only attach when activated.
+				if (GetAttachParent()->GetAttachChildren().Contains(this))
+				{
+					// Only detach if we are not about to auto attach to the same target, that would be wasteful.
+					if (!bPlayOnLoad ||
+						(AutoAttachLocationRule != EAttachmentRule::KeepRelative && AutoAttachRotationRule != EAttachmentRule::KeepRelative && AutoAttachScaleRule != EAttachmentRule::KeepRelative) ||
+						AutoAttachSocketName != GetAttachSocketName() ||
+						AutoAttachParent != GetAttachParent())
+					{
+						DetachFromComponent(FDetachmentTransformRules(EDetachmentRule::KeepRelative, false));
+					}
+				}
+				else
+				{
+					SetupAttachment(null, NAME_None);
+				}
+			}
+		}
+
+		m_SavedAutoAttachRelativeLocation = GetRelativeLocation();
+		m_SavedAutoAttachRelativeRotation = GetRelativeRotation();
+		m_SavedAutoAttachRelativeScale3D = GetRelativeScale3D();
+	}
+
+	// Keep Super::OnRegister in between the auto attachment system and the rest.
+	Super::OnRegister();
+
+	// Sometimes UE reflection breaks connection with the underlying AttributeList member, not sure why.
+	// Returning here instead of crashing below, and UE properly re-registers the component later on..
+	// Ugly but does the trick (there is probably wrong done plugin side that causes this issue)
+	if (AttributeList == null)
+		return;
+
+	// Avoids Prepare call on the attribute list before the PostEditChangeProperty is called
+	// This is due to "ReRegister()" called before the PostEditChange is broadcasted.
+	if (Effect == null)
+		return;
+
+	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
+	{
+		PK_ASSERT(!IsTemplate());
+
+		//UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("EMITTERCOMP %p post load attr list %p"), this, AttributeList);
+
+		if (Effect != null)
+		{
+			Effect->ConditionalPostLoad();
+			check(AttributeList != null);
+			AttributeList->ConditionalPostLoad();
+			AttributeList->CheckEmitter(this);
+			PK_VERIFY(AttributeList->Prepare(Effect));
+		}
+
+		AttributeList->CheckEmitter(this);
+
+		// We need to do that again (PostLoad not called when spawned on the fly)
+		check(AttributeList != null);
+		PK_VERIFY(AttributeList->Prepare(Effect));
+	}
+
+#if WITH_EDITOR
+	Effect->m_OnPopcornFXFileUnloaded.Remove(m_OnPopcornFXFileUnloadedHandle);
+	m_OnPopcornFXFileUnloadedHandle = Effect->m_OnPopcornFXFileUnloaded.AddUObject(this, &UPopcornFXEmitterComponent::OnPopcornFXFileUnloaded);
+#endif // WITH_EDITOR
+
+	if (ResolveScene(true) && m_Scene_PreInitEmitterId == PopcornFX::CGuid::INVALID)
+	{
+		SelfPreInitSceneRegister();
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::BeginPlay()
+{
+	LLM_SCOPE(ELLMTag::Particles);
+	if (!ResolveScene(true))
+	{
+		// ResolveScene has logged a warning ifn
+	}
+
+	Super::BeginPlay();
+
+	if (m_CurrentScene != null && m_Scene_PreInitEmitterId == PopcornFX::CGuid::INVALID)
+	{
+		SelfPreInitSceneRegister();
+	}
+}
+
+//----------------------------------------------------------------------------
+//
+//	PreInitRegister functions - when owner scene actor update kicks in, will start the emitter
+//
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXEmitterComponent::SelfSceneIsPreInitRegistered() const
+{
+	return m_Scene_PreInitEmitterId != PopcornFX::CGuid::INVALID && m_CurrentScene != null;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXEmitterComponent::SelfPreInitSceneRegister()
+{
+	if (!SelfSceneIsRegistered()) // safeguard against UE random order of calling OnRegister/BeginPlay
+	{
+		PK_ASSERT(!IsTemplate());
+
+		if (m_CurrentScene != null)
+			return m_CurrentScene->Emitter_PreInitRegister(this);
+
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::SelfPreInitSceneUnregister()
+{
+	PK_ASSERT(!IsTemplate());
+
+	if (m_CurrentScene != null)
+		m_CurrentScene->Emitter_PreInitUnregister(this);
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::Scene_OnPreInitRegistered(CParticleScene *scene, uint32 selfIdInPreInit)
+{
+	PK_ASSERT(!IsTemplate());
+
+	PK_ASSERT(scene != null);
+	PK_ASSERT(m_CurrentScene == scene);
+	PK_ASSERT(selfIdInPreInit != PopcornFX::CGuid::INVALID);
+
+	PK_ASSERT(m_Scene_PreInitEmitterId == PopcornFX::CGuid::INVALID);
+	m_Scene_PreInitEmitterId = selfIdInPreInit;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::Scene_OnPreInitUnregistered(CParticleScene *scene)
+{
+	PK_ASSERT(!IsTemplate());
+
+	PK_ASSERT(scene != null);
+	PK_ASSERT(m_CurrentScene == scene);
+
+	PK_ASSERT(m_Scene_PreInitEmitterId != PopcornFX::CGuid::INVALID);
+
+	m_Scene_PreInitEmitterId = PopcornFX::CGuid::INVALID;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::Scene_InitForUpdate(CParticleScene *scene)
+{
+	PK_ASSERT(scene != null);
+	PK_ASSERT(m_CurrentScene == scene);
+
+	SelfPreInitSceneUnregister();
+	EmitterBeginPlayIFN();
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::EmitterBeginPlayIFN()
+{
+	if ((!bPlayOnLoad || bHasAlreadyPlayOnLoad)
+#if WITH_EDITOR
+		&& !m_ReplayAfterDead
+#endif
+		)
+		return;
+
+#if WITH_EDITOR
+	m_ReplayAfterDead = false;
+#endif
+	bHasAlreadyPlayOnLoad = true;
+
+	RestartEmitter();
+	return;
+}
+
+//----------------------------------------------------------------------------
+
+#if WITH_EDITOR
+void	UPopcornFXEmitterComponent::_OnSceneLoaded(APopcornFXSceneActor *sceneActor)
+{
+	EmitterBeginPlayIFN();
+	PK_ASSERT(Scene == null || Scene == sceneActor);
+	m_WaitForSceneDelegateHandle.Reset();
+	return;
+}
+#endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+//
+//	Emitter scene register functions (when emitter is started)
+//
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXEmitterComponent::SelfSceneIsRegistered() const
+{
+	return m_Scene_EmitterId != PopcornFX::CGuid::INVALID && m_CurrentScene != null;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXEmitterComponent::SelfSceneRegister()
+{
+	PK_ASSERT(!IsTemplate());
+
+	PK_ASSERT(!SelfSceneIsRegistered());
+	if (m_CurrentScene != null)
+		m_CurrentScene->Emitter_Register(this);
+	bool		ok = false;
+	if (SelfSceneIsRegistered())
+	{
+		ok = true;
+	}
+	return ok;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::SelfSceneUnregister()
+{
+	PK_ASSERT(!IsTemplate());
+
+	PK_ASSERT(SelfSceneIsRegistered());
+	if (m_CurrentScene != null)
+		m_CurrentScene->Emitter_Unregister(this);
+	PK_ASSERT(!SelfSceneIsRegistered());
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::Scene_OnRegistered(CParticleScene *scene, uint32 selfIdInScene)
+{
+	PK_ASSERT(!IsTemplate());
+
+	PK_ASSERT(scene != null);
+	PK_ASSERT(m_CurrentScene == scene);
+	PK_ASSERT(selfIdInScene != PopcornFX::CGuid::INVALID);
+
+	PK_ASSERT(m_Scene_EmitterId == PopcornFX::CGuid::INVALID);
+	m_Scene_EmitterId = selfIdInScene;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::Scene_OnUnregistered(CParticleScene *scene)
+{
+	PK_ASSERT(!IsTemplate());
+
+	PK_ASSERT(scene != null);
+	PK_ASSERT(m_CurrentScene == scene);
+
+	PK_ASSERT(m_Scene_EmitterId != PopcornFX::CGuid::INVALID);
+
+	m_Scene_EmitterId = PopcornFX::CGuid::INVALID;
+	m_CurrentScene = null;
+
+	// !! make sure we are unregisterd (if not, infinite recusre)
+	PK_ASSERT(!SelfSceneIsRegistered());
+	if (!SelfSceneIsRegistered())
+		TerminateEmitter(bKillParticlesOnDestroy);
+}
+
+//----------------------------------------------------------------------------
+//
+//	CParticleEffectInstance death notifier & game thread emitter wrapper update
+//
+//----------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::_OnDeathNotifier(const PopcornFX::PParticleEffectInstance & instance)
+{
+	PK_ASSERT(m_EffectInstancePtr == instance.Get());
+
+	m_DiedThisFrame = true;
+
+	if (m_EffectInstancePtr != null)
+		m_EffectInstancePtr->m_DeathNotifier -= PopcornFX::FastDelegate<void(const PopcornFX::PParticleEffectInstance &)>(this, &UPopcornFXEmitterComponent::_OnDeathNotifier);
+
+	m_EffectInstancePtr = null;
+	m_Started = false;
+	m_Stopped = false;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::CheckForDead()
+{
+	LLM_SCOPE(ELLMTag::Particles);
+	if (m_DiedThisFrame)
+	{
+		m_DiedThisFrame = false;
+
+		if (SelfSceneIsRegistered())
+		{
+			SelfSceneUnregister();
+		}
+
+		// if effect dies, need to unregister all events listeners
+		UnregisterAllEventsListeners();
+
+		if (bAutoDestroy != 0)
+		{
+			// Avoids nested DestroyComponent()
+			if (IsRegistered())
+				DestroyComponent();
+		}
+		else
+		{
+			if (bAutoManageAttachment)
+			{
+				CancelAutoAttachment();
+			}
+			if (Effect != null && !Effect->HasAnyFlags(RF_BeginDestroyed))
+			{
+#if WITH_EDITOR
+				if (m_ReplayAfterDead)
+				{
+					Effect->m_OnPopcornFXFileLoaded.Remove(m_OnPopcornFXFileLoadedHandle);
+					m_OnPopcornFXFileLoadedHandle = Effect->m_OnPopcornFXFileLoaded.AddUObject(this, &UPopcornFXEmitterComponent::OnPopcornFXFileLoaded);
+				}
+				else
+#endif
+				{
+					if (OnEmissionStops.IsBound())
+					{
+						const FVector			rotation = GetComponentTransform().GetRotation().GetRotationAxis();
+						OnEmissionStops.Broadcast(this, GetComponentTransform().GetLocation(), rotation);
+					}
+				}
+			}
+		}
+	}
+}
+
+//----------------------------------------------------------------------------
+//
+//	Emitter destroy entry points
+//
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::BeginDestroy()
+{
+	LLM_SCOPE(ELLMTag::Particles);
+	Super::BeginDestroy();
+
+#if HEAVY_DEBUG
+	UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::BeginDestroy '%p' - '%p'"), this, m_EffectInstancePtr.Get());
+#endif
+
+	PK_ASSERT(IsInGameThread());
+	TerminateEmitter(bKillParticlesOnDestroy);
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::OnUnregister()
+{
+	LLM_SCOPE(ELLMTag::Particles);
+	Super::OnUnregister();
+
+#if HEAVY_DEBUG
+	UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::OnUnregister '%p' - '%p'"), this, m_EffectInstancePtr.Get());
+#endif
+
+#if WITH_EDITOR
+	m_ReplayAfterDead = IsEmitterEmitting();
+#endif
+	TerminateEmitter(bKillParticlesOnDestroy);
+
+	bHasAlreadyPlayOnLoad = false;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	LLM_SCOPE(ELLMTag::Particles);
+
+	Super::EndPlay(EndPlayReason);
+
+#if HEAVY_DEBUG
+	UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::EndPlay '%p' - '%p'"), this, m_EffectInstancePtr.Get());
+#endif
+
+	// unregister everything in case the user forgot to do it
+	UnregisterAllEventsListeners();
+
+	TerminateEmitter(bKillParticlesOnDestroy);
+
+	bHasAlreadyPlayOnLoad = false;
+}
+
+//----------------------------------------------------------------------------
+//
+//	Auto attachment
+//
+//----------------------------------------------------------------------------
 
 void	UPopcornFXEmitterComponent::SetAutoAttachmentParameters(USceneComponent *parent, FName socketName, EAttachmentRule locationRule, EAttachmentRule rotationRule, EAttachmentRule scaleRule)
 {
@@ -1648,4 +1754,5 @@ void	UPopcornFXEmitterComponent::CancelAutoAttachment()
 }
 
 //----------------------------------------------------------------------------
+
 #undef LOCTEXT_NAMESPACE

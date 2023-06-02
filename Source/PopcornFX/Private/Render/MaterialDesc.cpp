@@ -110,9 +110,8 @@ bool	CRendererCache::GameThread_ResolveRenderer(PopcornFX::PCRendererDataBase re
 
 	if (m_GameThreadDesc.HasMaterial())
 	{
-		UPopcornFXRendererMaterial	*rendererMat = ResolveCachedMaterial(renderer.Get(), particleDesc);
-		m_GameThreadDesc.m_RendererMaterial = rendererMat;
-		return rendererMat != null;
+		m_GameThreadDesc.m_RendererMaterial = ResolveCachedMaterial(renderer.Get(), particleDesc);
+		return m_GameThreadDesc.m_RendererMaterial.IsValid();
 	}
 	return true; // Light, sound
 }
@@ -123,8 +122,8 @@ void	CRendererCache::BuildCacheInfos_SkeletalMesh()
 {
 	PK_ASSERT(m_GameThreadDesc.m_SkeletalMesh != null);
 	PK_ASSERT(m_GameThreadDesc.m_RendererMaterial != null);
-	const FSkeletalMeshRenderData	*renderData = m_GameThreadDesc.m_SkeletalMesh->GetResourceForRendering();
-	FPopcornFXSubRendererMaterial	*rendererSubMat = m_GameThreadDesc.m_RendererMaterial->GetSubMaterial(0);
+	const FSkeletalMeshRenderData		*renderData = m_GameThreadDesc.m_SkeletalMesh->GetResourceForRendering();
+	const FPopcornFXSubRendererMaterial	*rendererSubMat = m_GameThreadDesc.m_RendererMaterial->GetSubMaterial(0);
 	PK_ASSERT(rendererSubMat != null);
 
 	if (renderData != null)
@@ -152,8 +151,8 @@ void	CRendererCache::BuildCacheInfos_StaticMesh()
 {
 	PK_ASSERT(m_GameThreadDesc.m_StaticMesh != null);
 	PK_ASSERT(m_GameThreadDesc.m_RendererMaterial != null);
-	const FStaticMeshRenderData		*renderData = m_GameThreadDesc.m_StaticMesh->GetRenderData();
-	FPopcornFXSubRendererMaterial	*rendererSubMat = m_GameThreadDesc.m_RendererMaterial->GetSubMaterial(0);
+	const FStaticMeshRenderData			*renderData = m_GameThreadDesc.m_StaticMesh->GetRenderData();
+	const FPopcornFXSubRendererMaterial	*rendererSubMat = m_GameThreadDesc.m_RendererMaterial->GetSubMaterial(0);
 	PK_ASSERT(rendererSubMat != null);
 
 	if (renderData != null)

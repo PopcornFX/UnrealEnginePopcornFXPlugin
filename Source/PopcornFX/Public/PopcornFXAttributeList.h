@@ -315,7 +315,7 @@ public:
 	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere, BlueprintReadOnly, EditFixedSize)
 	TArray<uint8>						m_AttributesRawData;
 
-	const class UPopcornFXEmitterComponent	*m_Owner = nullptr;
+	TWeakObjectPtr<const UPopcornFXEmitterComponent>	m_Owner;
 
-	void								CheckEmitter(const class UPopcornFXEmitterComponent *emitter);
+	void								CheckEmitter(const UPopcornFXEmitterComponent *emitter);
 };

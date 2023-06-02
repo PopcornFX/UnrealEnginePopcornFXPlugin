@@ -295,6 +295,7 @@ public:
 	virtual void					OnRegister() override;
 	virtual void					OnUnregister() override;
 	virtual void					BeginPlay() override;
+	virtual void					OnComponentDestroyed(bool bDestroyingHierarchy) override;
 	virtual void					EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual FBoxSphereBounds		CalcBounds(const FTransform &localToWorld) const override;
 
@@ -335,6 +336,7 @@ private:
 	void							CheckForDead();
 
 	bool							SelfSceneIsRegistered() const;
+	bool							SelfSceneIsPreInitRegistered() const;
 	bool							SelfPreInitSceneRegister();
 	void							SelfPreInitSceneUnregister();
 	bool							SelfSceneRegister();
@@ -351,6 +353,7 @@ private:
 	bool							m_Stopped;
 	bool							m_DiedThisFrame;
 	bool							m_TeleportThisFrame;
+	bool							m_Destroyed;
 
 	bool							m_DidAutoAttach;
 	FVector							m_SavedAutoAttachRelativeLocation;
@@ -371,4 +374,5 @@ private:
 	FVector3f						m_PreviousWorldVelocity;
 
 	uint64							m_LastFrameUpdate;
+	uint64							m_StartFrameUpdate;
 };

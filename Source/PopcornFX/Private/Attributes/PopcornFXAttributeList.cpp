@@ -54,13 +54,13 @@ using PopcornFX::PCShapeDescriptor;
 
 uint32		ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType)
 {
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box			== (u32)CShapeDescriptor::ShapeBox);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere		== (u32)CShapeDescriptor::ShapeSphere);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box					== (u32)CShapeDescriptor::ShapeBox);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere				== (u32)CShapeDescriptor::ShapeSphere);
 	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Ellipsoid	== (u32)CShapeDescriptor::ShapeEllipsoid);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder		== (u32)CShapeDescriptor::ShapeCylinder);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule		== (u32)CShapeDescriptor::ShapeCapsule);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone			== (u32)CShapeDescriptor::ShapeCone);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh			== (u32)CShapeDescriptor::ShapeMesh);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder				== (u32)CShapeDescriptor::ShapeCylinder);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule				== (u32)CShapeDescriptor::ShapeCapsule);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone					== (u32)CShapeDescriptor::ShapeCone);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh					== (u32)CShapeDescriptor::ShapeMesh);
 	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeMeshCollection);
 	return static_cast<CShapeDescriptor::EShapeType>(ueShapeType);
 }
@@ -281,6 +281,7 @@ UPopcornFXAttributeList::UPopcornFXAttributeList(const FObjectInitializer& PCIP)
 #if WITH_EDITORONLY_DATA
 ,	m_ColumnWidth(0.65f)
 #endif // WITH_EDITORONLY_DATA
+,	m_Owner(null)
 {
 	SetFlags(RF_Transactional);
 }
@@ -292,7 +293,7 @@ bool	UPopcornFXAttributeList::CheckDataIntegrity() const
 	bool	ok = true;
 
 	ok &= PK_VERIFY(m_AttributesRawData.Num() == m_Attributes.Num() * kAttributeSize);
-	if (m_Owner != null && m_Owner->IsEmitterStarted())
+	if (m_Owner.IsValid() && m_Owner->IsEmitterStarted())
 	{
 		PopcornFX::CParticleEffectInstance	*effectInstance = m_Owner->_GetEffectInstance();
 
@@ -942,7 +943,7 @@ void	UPopcornFXAttributeList::RestoreAttributesFromCachedRawData(const TArray<ui
 	PopcornFX::Mem::Copy(m_AttributesRawData.GetData(), rawData.GetData(), coveredBytes);
 
 	if (m_Owner != null)
-		_RefreshAttributes(m_Owner);
+		_RefreshAttributes(m_Owner.Get());
 }
 
 //----------------------------------------------------------------------------
@@ -969,7 +970,7 @@ void	UPopcornFXAttributeList::ResetToDefaultValues(UPopcornFXEffect *effect)
 	m_AttributesRawData = defRawData;
 
 	if (m_Owner != null)
-		_RefreshAttributes(m_Owner);
+		_RefreshAttributes(m_Owner.Get());
 
 	for (int32 i = 0; i < m_Samplers.Num(); ++i)
 		m_Samplers[i].ResetValue();
@@ -1080,7 +1081,7 @@ void	UPopcornFXAttributeList::BeginDestroy()
 void	UPopcornFXAttributeList::PostEditUndo()
 {
 	if (m_Owner != null)
-		_RefreshAttributes(m_Owner);
+		_RefreshAttributes(m_Owner.Get());
 	Super::PostEditUndo();
 }
 
@@ -1093,7 +1094,7 @@ void	UPopcornFXAttributeList::Scene_PreUpdate(UPopcornFXEmitterComponent *emitte
 	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeList::Scene_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
 
 	PK_ASSERT(emitter != null);
-	PK_ASSERT(m_Owner == null || emitter == m_Owner);
+	PK_ASSERT(!m_Owner.IsValid() || emitter == m_Owner);
 	m_Owner = emitter;
 
 	for (int32 sampleri = 0; sampleri < m_Samplers.Num(); ++sampleri)
@@ -1130,7 +1131,7 @@ void	UPopcornFXAttributeList::AttributeSamplers_IndirectSelectedThisTick(UPopcor
 bool	UPopcornFXAttributeList::SetAttributeSampler(FName samplerName, AActor *actor, FName propertyName)
 {
 	// The actual UPopcornFXAttributeSampler will be resolved later
-	if (m_Owner != null && m_Owner->IsEmitterStarted())
+	if (m_Owner.IsValid() && m_Owner->IsEmitterStarted())
 	{
 		UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("SetAttributeSampler cannot be called on started emitters."));
 		return false;
@@ -1161,7 +1162,7 @@ void	UPopcornFXAttributeList::GetAttribute(uint32 attributeId, FPopcornFXAttribu
 	PopcornFX::SAttributesContainer_SAttrib	&_outAttribute = *reinterpret_cast<PopcornFX::SAttributesContainer_SAttrib*>(&outAttribute);
 
 	const PopcornFX::EBaseTypeID	typeID = (PopcornFX::EBaseTypeID)m_Attributes[attributeId].AttributeBaseTypeID();
-	if (m_Owner != null && m_Owner->IsEmitterStarted())
+	if (m_Owner.IsValid() && m_Owner->IsEmitterStarted())
 	{
 		PopcornFX::CParticleEffectInstance	*effectInstance = m_Owner->_GetEffectInstance();
 
@@ -1189,7 +1190,7 @@ void	UPopcornFXAttributeList::SetAttribute(uint32 attributeId, const FPopcornFXA
 	const PopcornFX::SAttributesContainer_SAttrib	&_value = *reinterpret_cast<const PopcornFX::SAttributesContainer_SAttrib*>(&value);
 
 	const PopcornFX::EBaseTypeID	typeID = (PopcornFX::EBaseTypeID)m_Attributes[attributeId].AttributeBaseTypeID();
-	if (m_Owner != null && m_Owner->IsEmitterStarted())
+	if (m_Owner.IsValid() && m_Owner->IsEmitterStarted())
 	{
 		PopcornFX::CParticleEffectInstance	*effectInstance = m_Owner->_GetEffectInstance();
 
@@ -1331,11 +1332,11 @@ void	UPopcornFXAttributeList::_RefreshAttributes(const UPopcornFXEmitterComponen
 	DBG_HERE();
 
 	PK_ASSERT(emitter != null);
-	PK_ASSERT(m_Owner == null || emitter == m_Owner);
+	PK_ASSERT(!m_Owner.IsValid() || emitter == m_Owner);
 	m_Owner = emitter;
 
 	// If the emitter is running, set its attributes from serialized attributes
-	if (!PK_VERIFY(m_Owner != null))
+	if (!PK_VERIFY(m_Owner.IsValid()))
 		return;
 	PK_ASSERT(CheckDataIntegrity());
 
@@ -1369,7 +1370,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeList::_RefreshAttributeSamplers", POPCORNFX_UE_PROFILER_COLOR);
 
 	PK_ASSERT(emitter != null);
-	PK_ASSERT(m_Owner == null || emitter == m_Owner);
+	PK_ASSERT(!m_Owner.IsValid() || emitter == m_Owner);
 	m_Owner = emitter;
 
 	if (!PK_VERIFY(emitter != null))
@@ -1384,7 +1385,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 	if (m_Samplers.Num() == 0)
 		return;
 
-	if (m_Owner == null || !m_Owner->IsEmitterStarted())
+	if (!m_Owner.IsValid() || !m_Owner->IsEmitterStarted())
 		return;
 	PopcornFX::CParticleEffectInstance	*effectInstance = m_Owner->_GetEffectInstance();
 	if (!PK_VERIFY(effectInstance != null))
@@ -1439,12 +1440,10 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeList::CheckEmitter(const class UPopcornFXEmitterComponent *emitter)
+void	UPopcornFXAttributeList::CheckEmitter(const UPopcornFXEmitterComponent *emitter)
 {
-	PK_ASSERT(emitter != null);
-#if 0 // We can't trust this when UE is doing its garbage collect
-	PK_ASSERT(m_Owner == null || m_Owner == emitter);
-#endif
+	check(emitter != null);
+	//check(!m_Owner.IsValid() || m_Owner == emitter);
 	m_Owner = emitter;
 }
 
