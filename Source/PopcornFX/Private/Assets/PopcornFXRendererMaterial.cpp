@@ -154,9 +154,10 @@ namespace
 #if WITH_EDITOR
 	bool		RM_Setup_Billboard(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Billboard)
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Billboard)
 			return false;
-		const PopcornFX::CRendererDataBillboard	*renderer = static_cast<const PopcornFX::CRendererDataBillboard*>(rendererBase);
+		const PopcornFX::CRendererDataBillboard	*renderer = static_cast<const PopcornFX::CRendererDataBillboard*>(_rendererBase);
 		if (renderer == null)
 			return false;
 		self->SubMaterials.SetNum(1);
@@ -311,7 +312,7 @@ namespace
 		mat.SortIndices =	(mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit) ||
 							mat.MaterialType == EPopcornFXMaterialType::Billboard_SixWayLightmap;
 
-		mat.BuildDynamicParameterMask(decl);
+		mat.BuildDynamicParameterMask(_rendererBase, decl);
 		return true;
 	}
 
@@ -371,9 +372,10 @@ namespace
 #if WITH_EDITOR
 	bool		RM_Setup_Ribbon(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Ribbon)
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Ribbon)
 			return false;
-		const PopcornFX::CRendererDataRibbon	*renderer = static_cast<const PopcornFX::CRendererDataRibbon*>(rendererBase);
+		const PopcornFX::CRendererDataRibbon	*renderer = static_cast<const PopcornFX::CRendererDataRibbon*>(_rendererBase);
 		if (renderer == null)
 			return false;
 		self->SubMaterials.SetNum(1);
@@ -509,15 +511,16 @@ namespace
 		mat.MaterialType = finalMatType;
 		mat.SortIndices = mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
 
-		mat.BuildDynamicParameterMask(decl);
+		mat.BuildDynamicParameterMask(_rendererBase, decl);
 		return true;
 	}
 
 	bool		RM_Setup_Mesh(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Mesh)
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Mesh)
 			return false;
-		const PopcornFX::CRendererDataMesh	*renderer = static_cast<const PopcornFX::CRendererDataMesh*>(rendererBase);
+		const PopcornFX::CRendererDataMesh	*renderer = static_cast<const PopcornFX::CRendererDataMesh*>(_rendererBase);
 		if (renderer == null)
 			return false;
 
@@ -724,7 +727,7 @@ namespace
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
 			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 
-		mat.BuildDynamicParameterMask(decl);
+		mat.BuildDynamicParameterMask(_rendererBase, decl);
 		return true;
 	}
 
@@ -802,10 +805,11 @@ namespace
 
 	bool		RM_Setup_Triangle(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
-		if (static_cast<const PopcornFX::CRendererDataBase*>(rendererBase)->m_RendererType != PopcornFX::Renderer_Triangle)
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Triangle)
 			return false;
 
-		const PopcornFX::CRendererDataTriangle	*renderer = static_cast<const PopcornFX::CRendererDataTriangle*>(rendererBase);
+		const PopcornFX::CRendererDataTriangle	*renderer = static_cast<const PopcornFX::CRendererDataTriangle*>(_rendererBase);
 		if (renderer == null)
 			return false;
 
@@ -916,7 +920,7 @@ namespace
 		mat.MaterialType = finalMatType;
 		mat.SortIndices = mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
 
-		mat.BuildDynamicParameterMask(decl);
+		mat.BuildDynamicParameterMask(_rendererBase, decl);
 		return true;
 	}
 
@@ -1231,10 +1235,22 @@ bool	FPopcornFXSubRendererMaterial::BuildSkelMeshBoneIndicesReorder()
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXSubRendererMaterial::BuildDynamicParameterMask(const PopcornFX::SRendererDeclaration &decl)
+void	FPopcornFXSubRendererMaterial::BuildDynamicParameterMask(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::SRendererDeclaration &decl)
 {
-	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput0()))
-		DynamicParameterMask |= 0x1;
+	// Note: ShaderInput0 is mapped to DynamicParameter0 only for mesh particles (currently other renderers reserve it for the texture ID & alpha remap cursor in .xy)
+	// This means that currently mesh renderers do not support alpha remap and linear/mv atlas blending
+	if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
+	{
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput0()))
+			DynamicParameterMask |= 0x1;
+	}
+	else
+	{
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()) ||
+			SoftAnimBlending || MotionVectorsBlending) // Atlas enabled, with motion vectors blending or linear frame blending
+			DynamicParameterMask |= 0x1;
+	}
+
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput1()))
 		DynamicParameterMask |= 0x2;
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput2()))

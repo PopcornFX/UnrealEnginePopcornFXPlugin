@@ -13,6 +13,7 @@
 namespace PopcornFX
 {
 	struct	SRendererDeclaration;
+	class	CRendererDataBase;
 }
 
 class	UMaterialInterface;
@@ -262,7 +263,7 @@ public:
 	bool				_ResetDefaultMaterial_NoReload();
 	UMaterialInterface	*FindDefaultMaterial() const;
 	bool				BuildSkelMeshBoneIndicesReorder();
-	void				BuildDynamicParameterMask(const PopcornFX::SRendererDeclaration &decl);
+	void				BuildDynamicParameterMask(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::SRendererDeclaration &decl);
 	void				RenameDependenciesIFN(UObject* oldAsset, UObject* newAsset);
 #endif
 
