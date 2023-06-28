@@ -77,6 +77,8 @@ CBatchDrawer_Ribbon_CPUBB::~CBatchDrawer_Ribbon_CPUBB()
 	PK_ASSERT(!m_Tangents.Valid());
 	PK_ASSERT(!m_Texcoords.Valid());
 	PK_ASSERT(!m_AtlasIDs.Valid());
+	PK_ASSERT(!m_UVRemaps.Valid());
+	PK_ASSERT(!m_UVFactors.Valid());
 
 	PK_ASSERT(!m_SimData.Valid());
 
@@ -86,6 +88,7 @@ CBatchDrawer_Ribbon_CPUBB::~CBatchDrawer_Ribbon_CPUBB()
 		PK_ASSERT(!m_ViewDependents[iView].m_Positions.Valid());
 		PK_ASSERT(!m_ViewDependents[iView].m_Normals.Valid());
 		PK_ASSERT(!m_ViewDependents[iView].m_Tangents.Valid());
+		PK_ASSERT(!m_ViewDependents[iView].m_UVFactors.Valid());
 	}
 }
 
@@ -99,6 +102,7 @@ bool	CBatchDrawer_Ribbon_CPUBB::Setup(const PopcornFX::CRendererDataBase *render
 	m_NeedsBTN = renderer->m_RendererCache->m_Flags.m_HasNormal;
 	m_SecondUVSet = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending && renderer->m_RendererCache->m_Flags.m_HasUV;
 	m_RibbonCorrectDeformation = renderer->m_RendererCache->m_Flags.m_HasRibbonCorrectDeformation;
+	m_FlipUVs = renderer->m_RendererCache->m_Flags.m_RotateTexture;
 	return true;
 }
 
@@ -396,6 +400,8 @@ void	CBatchDrawer_Ribbon_CPUBB::_ClearBuffers()
 	m_Tangents.UnmapAndClear();
 	m_Texcoords.UnmapAndClear();
 	m_AtlasIDs.UnmapAndClear();
+	m_UVRemaps.UnmapAndClear();
+	m_UVFactors.UnmapAndClear();
 
 	m_SimData.UnmapAndClear();
 
@@ -578,6 +584,7 @@ bool	CBatchDrawer_Ribbon_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const
 			dstView.m_Exec_PNT.m_UVFactors4 = uvFactors;
 		}
 	}
+	m_BBJobs_Ribbon.m_Exec_Texcoords.m_ForUVFactor = hasUVFactors;
 	return true;
 }
 
@@ -649,6 +656,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 		const bool	fullViewIndependent = viewDep == null;
 		const bool	viewIndependentIndices = (fullViewIndependent && m_Indices.Valid()) || (!fullViewIndependent && !viewDep->m_Indices.Valid());
 		const bool	viewIndependentPNT = (fullViewIndependent && m_Positions.Valid()) || (!fullViewIndependent && !viewDep->m_Positions.Valid());
+		const bool	viewIndependentUVFactors = (fullViewIndependent && m_UVFactors.Valid()) || (!fullViewIndependent && !viewDep->m_UVFactors.Valid());
 
 		// This should never happen
 		if (!viewIndependentIndices && (viewDep == null || !viewDep->m_Indices.Valid()))
@@ -678,6 +686,8 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vertexFactory->m_Normals.Setup(viewIndependentPNT ? m_Normals : viewDep->m_Normals);
 			vertexFactory->m_Tangents.Setup(viewIndependentPNT ? m_Tangents : viewDep->m_Tangents);
 
+			vertexFactory->m_UVFactors.Setup(viewIndependentUVFactors ? m_UVFactors : viewDep->m_UVFactors);
+			vertexFactory->m_UVScalesAndOffsets.Setup(m_UVRemaps);
 
 			FPopcornFXUniforms					vsUniforms;
 			FPopcornFXBillboardVSUniforms		vsUniformsbillboard;
@@ -696,7 +706,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vsUniformsbillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
 
 			commonUniformsBillboard.HasSecondUVSet = m_SecondUVSet;
-			commonUniformsBillboard.FlipUVs = false;
+			commonUniformsBillboard.FlipUVs = m_FlipUVs;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = m_RibbonCorrectDeformation;
 

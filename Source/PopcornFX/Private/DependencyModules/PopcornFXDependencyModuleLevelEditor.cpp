@@ -119,7 +119,7 @@ void	FPopcornFXDependencyModuleLevelEditor::FillPopcornFXMenu(FMenuBuilder &menu
 
 		menuBuilder.AddMenuEntry(
 			LOCTEXT("WikiTitle", "Plugin Wiki"),
-			LOCTEXT("WikiTooltip", "Opens the PopcornFX UE4 plugin wiki"),
+			LOCTEXT("WikiTooltip", "Opens the PopcornFX UE plugin wiki"),
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.BrowseDocumentation"),
 #else
