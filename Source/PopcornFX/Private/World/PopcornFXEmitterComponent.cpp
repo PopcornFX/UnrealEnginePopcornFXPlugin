@@ -120,8 +120,6 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 
 	AttributeList = CreateDefaultSubobject<UPopcornFXAttributeList>("AttributeList");
 
-	//UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("EMITTERCOMP ctor attrlist %p"), AttributeList);
-
 	AttributeList->SetFlags(RF_Transactional);
 	AttributeList->CheckEmitter(this);
 
@@ -140,16 +138,6 @@ UPopcornFXEmitterComponent::~UPopcornFXEmitterComponent()
 #if HEAVY_DEBUG
 	UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::dtor '%p'"), this);
 #endif // HEAVY_DEBUG
-
-#if 0
-#if defined(PK_DEBUG)
-	if (m_CurrentScene != null)
-		m_CurrentScene->RegisterDestroyedEmitter(this);
-#endif // defined(PK_DEBUG)
-#endif // 0
-	
-	// Last-minute terminate call. we need to unregister from the owner scene.
-	TerminateEmitter();
 
 	check(m_EffectInstancePtr == null);
 	check(m_Started == false);
@@ -198,8 +186,6 @@ bool	UPopcornFXEmitterComponent::ResolveScene(bool warnIFN)
 				SpawnPreviewSceneIFN(world);
 #endif // WITH_EDITOR
 		}
-		//if (!found)
-		//	UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Emitter '%s': scene '%s' not found"), *GetFullName(), *(SceneName.ToString()));
 	}
 
 	m_CurrentScene = Scene != null ? Scene->ParticleScene() : null;
@@ -272,11 +258,8 @@ void	UPopcornFXEmitterComponent::PostEditChangeProperty(FPropertyChangedEvent& p
 		}
 	}
 
-	if (AttributeList != null)
-	{
-		PK_VERIFY(AttributeList->Prepare(Effect)); // make sure everything is up to date, always
+	if (IsValid(AttributeList))
 		AttributeList->CheckEmitter(this);
-	}
 }
 
 //----------------------------------------------------------------------------
@@ -505,7 +488,11 @@ bool	UPopcornFXEmitterComponent::SetEffect(UPopcornFXEffect *effect, bool startE
 
 bool	UPopcornFXEmitterComponent::StartEmitter()
 {
-	if (m_Destroyed || IsPendingKill() || m_DiedThisFrame)
+#if (ENGINE_MAJOR_VERSION == 5)
+	if (m_Destroyed || m_DiedThisFrame || !IsValid(this))
+#else
+	if (m_Destroyed || m_DiedThisFrame || IsPendingKill())
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	{
 		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Could not StartEmitter '%s' of effect '%s': emitter was destroyed"), *GetFullName(), *Effect->GetPathName());
 		return false;
@@ -620,10 +607,11 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 	UPopcornFXAttributeList		*attributeList = GetAttributeList();
 	PK_ASSERT(attributeList != null);
 
-	if (attributeList != null)
+	if (IsValid(attributeList))
+	{
 		attributeList->RefreshAttributes(this);
-	if (attributeList != null)
 		attributeList->RefreshAttributeSamplers(this, true);
+	}
 
 	AActor	*owner = GetOwner();
 	bool	isVisible = IsVisible();
@@ -700,7 +688,11 @@ void	UPopcornFXEmitterComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 
 void	UPopcornFXEmitterComponent::RestartEmitter(bool killParticles)
 {
-	if (m_Destroyed || IsPendingKill() || m_DiedThisFrame)
+#if (ENGINE_MAJOR_VERSION == 5)
+	if (m_Destroyed || m_DiedThisFrame || !IsValid(this))
+#else
+	if (m_Destroyed || m_DiedThisFrame || IsPendingKill())
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	{
 		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Could not RestartEmitter '%s' of effect '%s': emitter was destroyed"), *GetFullName(), *Effect->GetPathName());
 		return;
@@ -764,7 +756,11 @@ void	UPopcornFXEmitterComponent::StopEmitter(bool killParticles)
 
 bool	UPopcornFXEmitterComponent::ToggleEmitter(bool startEmitter, bool killParticles)
 {
-	if (m_Destroyed || IsPendingKill() || m_DiedThisFrame)
+#if (ENGINE_MAJOR_VERSION == 5)
+	if (m_Destroyed || m_DiedThisFrame || !IsValid(this))
+#else
+	if (m_Destroyed || m_DiedThisFrame || IsPendingKill())
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	{
 		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Could not ToggleEmitter '%s' of effect '%s': emitter was destroyed"), *GetFullName(), *Effect->GetPathName());
 		return false;
@@ -841,6 +837,12 @@ void	UPopcornFXEmitterComponent::TerminateEmitter(bool killParticles)
 	}
 
 	CheckForDead(); // can call OnEmissionStops
+
+	// Force unregister
+	if (SelfSceneIsRegistered())
+		SelfSceneUnregister();
+	if (SelfSceneIsPreInitRegistered())
+		SelfPreInitSceneUnregister();
 
 	PK_ASSERT(!SelfSceneIsRegistered());
 	PK_ASSERT(!SelfSceneIsPreInitRegistered());
@@ -1321,7 +1323,7 @@ void	UPopcornFXEmitterComponent::OnRegister()
 	// Sometimes UE reflection breaks connection with the underlying AttributeList member, not sure why.
 	// Returning here instead of crashing below, and UE properly re-registers the component later on..
 	// Ugly but does the trick (there is probably wrong done plugin side that causes this issue)
-	if (AttributeList == null)
+	if (!IsValid(AttributeList))
 		return;
 
 	// Avoids Prepare call on the attribute list before the PostEditChangeProperty is called
@@ -1593,10 +1595,11 @@ void	UPopcornFXEmitterComponent::CheckForDead()
 	{
 		m_DiedThisFrame = false;
 
+		// Instance died: unregister from the scene
 		if (SelfSceneIsRegistered())
-		{
 			SelfSceneUnregister();
-		}
+		if (SelfSceneIsPreInitRegistered())
+			SelfPreInitSceneUnregister();
 
 		// if effect dies, need to unregister all events listeners
 		UnregisterAllEventsListeners();

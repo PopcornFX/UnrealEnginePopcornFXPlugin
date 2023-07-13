@@ -933,6 +933,8 @@ void	UPopcornFXMesh::WriteMesh()
 	if (m_ResourceMesh != null)
 	{
 		PopcornFX::SMeshWriteSettings	writeSettings;
+		writeSettings.m_Tangents = PopcornFX::SVStreamCode::Type_F32;
+
 		const PopcornFX::CString		pkPath = PkPath(); // char* -> CString
 
 		bool	success = false;
