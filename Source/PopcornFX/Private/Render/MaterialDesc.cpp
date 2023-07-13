@@ -212,31 +212,21 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 
 	if (renderer->m_RendererType == PopcornFX::Renderer_Billboard)
 	{
-		const PopcornFX::SRendererFeaturePropertyValue	*flipUVs = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_FlipUVs());
-
-		if (flipUVs != null && flipUVs->ValueB())
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_FlipUVs()))
 		{
-			m_Flags.m_FlipU = true;
+			m_Flags.m_FlipU = false;
 			m_Flags.m_FlipV = true;
 		}
 	}
 	else if (renderer->m_RendererType == PopcornFX::Renderer_Ribbon)
 	{
-		const PopcornFX::SRendererFeaturePropertyValue	*textureUVs = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_TextureUVs());
-
-		if (textureUVs != null && textureUVs->ValueB())
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_TextureUVs()))
 		{
-			const PopcornFX::SRendererFeaturePropertyValue	*flipU = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipU());
-			const PopcornFX::SRendererFeaturePropertyValue	*flipV = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipV());
-			const PopcornFX::SRendererFeaturePropertyValue	*rotateTexture = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_TextureUVs_RotateTexture());
-
-			m_Flags.m_FlipU = flipU != null ? flipU->ValueB() : false;
-			m_Flags.m_FlipV = flipV != null ? flipV->ValueB() : false;
-			m_Flags.m_RotateTexture = rotateTexture != null ? rotateTexture->ValueB() : false;
+			m_Flags.m_FlipU = renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipU(), false);
+			m_Flags.m_FlipV = renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipV(), false);
+			m_Flags.m_RotateTexture = renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_RotateTexture(), false);
 		}
-
-		const PopcornFX::SRendererFeaturePropertyValue	*correctDeformation = renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
-		m_Flags.m_HasRibbonCorrectDeformation = correctDeformation != null ? correctDeformation->ValueB() : false;
+		m_Flags.m_HasRibbonCorrectDeformation = renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
 	}
 	else if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
 	{
@@ -412,13 +402,7 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 				return false;
 		}
 		else
-		{
-			const PopcornFX::SRendererFeaturePropertyValue	*lightsTranslucent = m_Renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_LightTranslucent());
-			m_LightsTranslucent = lightsTranslucent != null ? lightsTranslucent->ValueB() : false;
-
-			const PopcornFX::SRendererFeaturePropertyValue	*castShadows = m_Renderer->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows());
-			m_CastShadows = castShadows != null ? castShadows->ValueB() : false;
-		}
+			m_LightsTranslucent = m_Renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LightTranslucent());
 	}
 	else
 	{

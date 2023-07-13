@@ -87,6 +87,7 @@ private:
 	bool							m_SecondUVSet = false;
 	bool							m_NeedsBTN = false;
 	bool							m_RibbonCorrectDeformation = false;
+	bool							m_FlipUVs = false;
 
 	// View independent buffers
 	CPooledIndexBuffer				m_Indices;
