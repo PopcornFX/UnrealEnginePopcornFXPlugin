@@ -83,8 +83,8 @@ struct FVertexFactoryIntermediates
 
 struct FVertexFactoryInterpolantsVSToPS
 {
-	nointerpolation float4	ParticleColor			: TEXCOORD0;
-	nointerpolation float3	ParticleEmissiveColor	: TEXCOORD1;
+	float4					ParticleColor			: TEXCOORD0;
+	float3					ParticleEmissiveColor	: TEXCOORD1;
 	float4					TexCoord				: TEXCOORD2;
 	float3					Normal					: TEXCOORD3;
 	float3					Tangent					: TEXCOORD4;
@@ -92,16 +92,16 @@ struct FVertexFactoryInterpolantsVSToPS
 	float4					UVScalesAndOffsets		: TEXCOORD10; // TEXCOORD6-9 are reserved
 	
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
-	nointerpolation float4	DynamicParameter 		: PARTICLE_DYNAMIC_PARAM0;
+	float4					DynamicParameter 		: PARTICLE_DYNAMIC_PARAM0;
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 2)
-	nointerpolation float4	DynamicParameter1 		: PARTICLE_DYNAMIC_PARAM1;
+	float4					DynamicParameter1 		: PARTICLE_DYNAMIC_PARAM1;
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 4)
-	nointerpolation float4	DynamicParameter2 		: PARTICLE_DYNAMIC_PARAM2;
+	float4					DynamicParameter2 		: PARTICLE_DYNAMIC_PARAM2;
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 8)
-	nointerpolation float4	DynamicParameter3 		: PARTICLE_DYNAMIC_PARAM3;
+	float4					DynamicParameter3 		: PARTICLE_DYNAMIC_PARAM3;
 #endif
 
 #if INSTANCED_STEREO
