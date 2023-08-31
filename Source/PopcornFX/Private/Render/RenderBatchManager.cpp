@@ -639,7 +639,11 @@ void	CRenderBatchManager::GameThread_EndUpdate(PopcornFX::CRendererSubView &upda
 		m_UE_UpdateThreadRenderContext.m_RendererSubView = &updateView;
 		m_UE_UpdateThreadRenderContext.SetWorld(world);
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		m_CurrentFeatureLevel = world->GetFeatureLevel();
+#else
 		m_CurrentFeatureLevel = world->FeatureLevel;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 		PopcornFX::SSceneView	dummyView;
 		m_UE_UpdateThreadRenderContext.m_Views = TStridedMemoryView<PopcornFX::SSceneView>(dummyView);

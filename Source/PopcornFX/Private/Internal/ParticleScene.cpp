@@ -231,12 +231,12 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	SUERenderContext::ERHIAPI		API = SUERenderContext::_Unsupported;
 
 #define	PK_NEW_UPDATER_IFN(__name) \
-	m_Enable ## __name = FModuleManager::Get().IsModuleLoaded(PK_STRINGIFY(__name) "RHI") && hardwareDetails.Contains(PK_STRINGIFY(__name)); \
-	if (m_Enable ## __name) \
+	m_Enable##__name = FModuleManager::Get().IsModuleLoaded(PK_STRINGIFY(__name) "RHI") && hardwareDetails.Contains(PK_STRINGIFY(__name)); \
+	if (m_Enable##__name) \
 	{ \
 		PK_ASSERT(updateManager == null); \
-		updateManager = PopcornFX::CParticleUpdateManager_Auto::New(PopcornFX::Context ## __name); \
-		API = SUERenderContext:: ## __name; \
+		updateManager = PopcornFX::CParticleUpdateManager_Auto::New(PopcornFX::Context##__name); \
+		API = SUERenderContext::__name; \
 	} \
 
 #	if (PK_GPU_D3D11 == 1)
@@ -2157,8 +2157,17 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		if (self->m_D3D11_DummyResource == null)
 		{
 			check(self->m_D3D11_DummyView == null);
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferDesc());
+			self->m_D3D11_DummyResource->AddRef();
+
+			FRHIViewDesc	viewDesc;
+			viewDesc.Common.ViewType = FRHIViewDesc::EViewType::BufferUAV;
+			self->m_D3D11_DummyView = new FRHIUnorderedAccessView(self->m_D3D11_DummyResource, viewDesc);
+#else
 			self->m_D3D11_DummyResource = new FRHIBuffer();
 			self->m_D3D11_DummyView = new FRHIUnorderedAccessView(self->m_D3D11_DummyResource);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 		RHICmdList.Transition(FRHITransitionInfo(self->m_D3D11_DummyView, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 #else
@@ -2205,13 +2214,18 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 		}
 	}
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
-	if (m_D3D11_DummyResource != null)
+	if (m_D3D11_DummyResource != null && m_D3D11_DummyView != null)
 	{
-		check(m_D3D11_DummyView != null);
-		m_D3D11_DummyResource->Delete();
-		m_D3D11_DummyResource = null;
+		// Delete view, release resource for proper ref count tracking.
 		m_D3D11_DummyView->Delete();
+		m_D3D11_DummyResource->Release();
 		m_D3D11_DummyView = null;
+		m_D3D11_DummyResource = null;
+	}
+	else
+	{
+		check(m_D3D11_DummyResource == null);
+		check(m_D3D11_DummyView == null);
 	}
 #endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 	m_D3D11_DeferedContext = null;

@@ -189,41 +189,35 @@ void		APopcornFXAttributeSamplerActor::ReloadSprite()
 	FString		spritePath;
 	if (m_IsValidSpecializedActor)
 	{
-		FString				spriteName;
+		FString	spriteName;
 		switch (m_SamplerComponentType)
 		{
 		case	EPopcornFXAttributeSamplerComponentType::Shape:
-		{
-			const UPopcornFXAttributeSamplerShape	*shape = Cast<UPopcornFXAttributeSamplerShape>(Sampler);
-			if (shape != null)
-				spriteName = ResolveAttribSamplerShapeNodeName(shape->ShapeType);
-			else
-				spriteName = "CParticleSamplerShape";
+			spriteName = "AttributeSampler_Shape";
 			break;
-		}
 		case	EPopcornFXAttributeSamplerComponentType::SkinnedMesh:
-			spriteName = "CParticleSamplerSkinnedMesh";
+			spriteName = "AttributeSampler_SkeletalMesh";
 			break;
 		case	EPopcornFXAttributeSamplerComponentType::Image:
-			spriteName = "CParticleSamplerTexture";
+			spriteName = "AttributeSampler_Image";
 			break;
 		case	EPopcornFXAttributeSamplerComponentType::AnimTrack:
-			spriteName = "CParticleSamplerAnimTrack";
+			spriteName = "Attributesampler_AnimTrack";
 			break;
 		case EPopcornFXAttributeSamplerComponentType::Curve:
-			spriteName = "CParticleSamplerCurve";
+			spriteName = "AttributeSampler_Curve";
 			break;
 		case	EPopcornFXAttributeSamplerComponentType::Text:
-			spriteName = "CParticleSamplerText";
+			spriteName = "AttributeSampler_Text";
 			break;
 		case	EPopcornFXAttributeSamplerComponentType::Turbulence:
-			spriteName = "CParticleSamplerProceduralTurbulence";
+			spriteName = "AttributeSampler_VectorField";
 			break;
 		default:
-			spriteName = "CParticleSamplerShape";
+			spriteName = "AttributeSampler_Shape";
 			break;
 		}
-		spritePath = "/PopcornFX/SlateBrushes/" + spriteName + "_med." + spriteName + "_med";
+		spritePath = "/PopcornFX/SlateBrushes/" + spriteName + "." + spriteName;
 	}
 	else
 	{
@@ -2265,7 +2259,11 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 
 			m_Data->m_Desc->SetupD3D12Resources(imageResource,
 												m_Data->m_TextureResource_D3D12->Dimensions(),
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+												UE::DXGIUtilities::FindShaderResourceFormat(imageResource->GetDesc().Format, sRGB),
+#else
 												FindShaderResourceDXGIFormat(imageResource->GetDesc().Format, sRGB),
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 												imageAtlasResource,
 												atlasRectCount);
 		}

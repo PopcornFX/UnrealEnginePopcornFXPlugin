@@ -25,7 +25,11 @@ void	FPopcornFXVertexBuffer::ReleaseRHI()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+void	FPopcornFXVertexBuffer::InitRHI(FRHICommandListBase &RHICmdList)
+#else
 void	FPopcornFXVertexBuffer::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	m_UAV = null;
 	m_SRV = null;
@@ -49,7 +53,11 @@ void	FPopcornFXVertexBuffer::InitRHI()
 		}
 		else
 			usage |= BUF_Dynamic;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		VertexBufferRHI = RHICmdList.CreateVertexBuffer(m_CapacityInBytes, usage, emptyInformations);
+#else
 		VertexBufferRHI = RHICreateVertexBuffer(m_CapacityInBytes, usage, emptyInformations);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		if (!PK_VERIFY(IsValidRef(VertexBufferRHI)))
 			m_CapacityInBytes = 0;
 	}
@@ -84,10 +92,18 @@ bool	FPopcornFXVertexBuffer::HardResize(u32 sizeInBytes)
 	PK_ASSERT(m_CapacityInBytes == 0);
 	const u32		capacity = PopcornFX::Mem::Align<Alignment>(sizeInBytes);
 	m_CapacityInBytes = capacity;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+	if (!IsInitialized())
+		InitResource(RHICmdList);
+	else
+		UpdateRHI(RHICmdList);
+#else
 	if (!IsInitialized())
 		InitResource();
 	else
 		UpdateRHI();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	return m_CapacityInBytes == capacity;
 }
 
@@ -112,7 +128,9 @@ void	*FPopcornFXVertexBuffer::RawMap(u32 count, u32 stride)
 	void	*map;
 	{
 		PK_NAMEDSCOPEDPROFILE("FPopcornFXVertexBuffer::RawMap RHILockVertexBuffer");
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		map = FRHICommandListExecutor::GetImmediateCommandList().LockBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		map = RHILockBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
 #else
 		map = RHILockVertexBuffer(VertexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
@@ -130,7 +148,9 @@ void	FPopcornFXVertexBuffer::Unmap()
 {
 	if (Mappable() && Mapped())
 	{
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		FRHICommandListExecutor::GetImmediateCommandList().UnlockBuffer(VertexBufferRHI);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		RHIUnlockBuffer(VertexBufferRHI);
 #else
 		RHIUnlockVertexBuffer(VertexBufferRHI);
@@ -147,7 +167,11 @@ const FUnorderedAccessViewRHIRef	&FPopcornFXVertexBuffer::UAV()
 	PK_ASSERT(UsedAsUAV());
 	if (!IsValidRef(m_UAV))
 	{
-		m_UAV = /*My_*/RHICreateUnorderedAccessView(VertexBufferRHI, PF_R32_UINT);
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(VertexBufferRHI, PF_R32_UINT);
+#else
+		m_UAV = RHICreateUnorderedAccessView(VertexBufferRHI, PF_R32_UINT);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 	PK_ASSERT(IsValidRef(m_UAV));
 #else
@@ -163,7 +187,11 @@ const FShaderResourceViewRHIRef		&FPopcornFXVertexBuffer::SRV()
 	PK_ASSERT(UsedAsSRV());
 	if (!IsValidRef(m_SRV))
 	{
-		m_SRV = /*My_*/RHICreateShaderResourceView(VertexBufferRHI, sizeof(u32), PF_R32_UINT);
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		m_SRV = FRHICommandListExecutor::GetImmediateCommandList().CreateShaderResourceView(VertexBufferRHI, sizeof(u32), PF_R32_UINT);
+#else
+		m_SRV = RHICreateShaderResourceView(VertexBufferRHI, sizeof(u32), PF_R32_UINT);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 	PK_ASSERT(IsValidRef(m_SRV));
 	return m_SRV;
@@ -186,7 +214,11 @@ void	FPopcornFXIndexBuffer::ReleaseRHI()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+void	FPopcornFXIndexBuffer::InitRHI(FRHICommandListBase &RHICmdList)
+#else
 void	FPopcornFXIndexBuffer::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	m_UAV = null;
 	m_SRV = null;
@@ -215,7 +247,11 @@ void	FPopcornFXIndexBuffer::InitRHI()
 		}
 		else
 			usage |= BUF_Dynamic;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		IndexBufferRHI = RHICmdList.CreateIndexBuffer(Stride(), m_Capacity * Stride(), usage, emptyInformations);
+#else
 		IndexBufferRHI = RHICreateIndexBuffer(Stride(), m_Capacity * Stride(), usage, emptyInformations);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		if (!PK_VERIFY(IsValidRef(IndexBufferRHI)))
 		{
 			m_Capacity = 0;
@@ -255,10 +291,18 @@ bool	FPopcornFXIndexBuffer::HardResize(u32 count)
 		return false;
 	const u32		capacity = PopcornFX::Mem::Align<Alignment>(count);
 	m_Capacity = capacity;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+	if (!IsInitialized())
+		InitResource(RHICmdList);
+	else
+		UpdateRHI(RHICmdList);
+#else
 	if (!IsInitialized())
 		InitResource();
 	else
 		UpdateRHI();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	return m_Capacity == capacity;
 }
 
@@ -281,7 +325,9 @@ void	*FPopcornFXIndexBuffer::RawMap(u32 countToMap)
 	void	*map;
 	{
 		PK_NAMEDSCOPEDPROFILE("FPopcornFXIndexBuffer::RawMap RHILockBuffer");
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		map = FRHICommandListExecutor::GetImmediateCommandList().LockBuffer(IndexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		map = RHILockBuffer(IndexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
 #else
 		map = RHILockIndexBuffer(IndexBufferRHI, 0, sizeToMap, RLM_WriteOnly);
@@ -299,7 +345,9 @@ void	FPopcornFXIndexBuffer::Unmap()
 {
 	if (Mappable() && Mapped())
 	{
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		FRHICommandListExecutor::GetImmediateCommandList().UnlockBuffer(IndexBufferRHI);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		RHIUnlockBuffer(IndexBufferRHI);
 #else
 		RHIUnlockIndexBuffer(IndexBufferRHI);
@@ -315,7 +363,13 @@ const FUnorderedAccessViewRHIRef	&FPopcornFXIndexBuffer::UAV()
 #if (PK_HAS_GPU != 0)
 	PK_ASSERT(UsedAsUAV());
 	if (!IsValidRef(m_UAV))
-		m_UAV = /*My_*/RHICreateUnorderedAccessView(IndexBufferRHI, PF_R32_UINT);
+	{
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(IndexBufferRHI, PF_R32_UINT);
+#else
+		m_UAV = RHICreateUnorderedAccessView(IndexBufferRHI, PF_R32_UINT);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	}
 	PK_ASSERT(IsValidRef(m_UAV));
 #else
 	PK_ASSERT_NOT_REACHED();

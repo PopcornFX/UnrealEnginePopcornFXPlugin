@@ -96,12 +96,20 @@ void	FPopcornFXMeshVertexFactory::SetData(const FDataType& InData)
 {
 	check(IsInRenderingThread());
 	Data = InData;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
+#else
 	UpdateRHI();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+void	FPopcornFXMeshVertexFactory::InitRHI(FRHICommandListBase &RHICmdList)
+#else
 void	FPopcornFXMeshVertexFactory::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	FVertexDeclarationElementList Elements;
 

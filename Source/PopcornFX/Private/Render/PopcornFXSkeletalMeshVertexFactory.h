@@ -156,7 +156,11 @@ public:
 	static bool			ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters);
 	static bool			IsCompatible(UMaterialInterface *material);
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void		InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
 	virtual void		InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	void				SetData(const FDataType& InData);
 	const FDataType		&GetData() const { return Data; }
 

@@ -10,7 +10,8 @@
 
 #include "Styling/SlateStyleRegistry.h"
 
-#define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush( m_StyleSet->RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__ )
+#define IMAGE_BRUSH( RelativePath, ... ) FSlateImageBrush(m_StyleSet->RootToContentDir(RelativePath, TEXT(".png")), __VA_ARGS__ )
+#define CORE_IMAGE_BRUSH_SVG( RelativePath, ... ) FSlateVectorImageBrush(m_StyleSet->RootToCoreContentDir(RelativePath, TEXT(".svg")), __VA_ARGS__)
 #define IMAGE_PLUGIN_BRUSH( RelativePath, ... ) FSlateImageBrush( FPopcornFXStyle::InContent(RelativePath, ".png"), __VA_ARGS__ )
 
 //----------------------------------------------------------------------------
@@ -43,20 +44,17 @@ void	FPopcornFXStyle::Initialize()
 		m_StyleSet->Set("ClassIcon.PopcornFXFile", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_16x"), Icon16x16));
 		m_StyleSet->Set("ClassThumbnail.PopcornFXFile", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_64x"), Icon64x64));
 
-		m_StyleSet->Set("ClassIcon.PopcornFXEffect", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_pkfx_16x"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXEffect", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_pkfx_64x"), Icon64x64));
+		m_StyleSet->Set("ClassIcon.PopcornFXEffect", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_Effect"), Icon16x16));
+		m_StyleSet->Set("ClassThumbnail.PopcornFXEffect", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_Effect"), Icon64x64));
 
-		m_StyleSet->Set("ClassIcon.PopcornFXTextureAtlas", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_pkat_16x"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXTextureAtlas", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_pkat_64x"), Icon64x64));
+		m_StyleSet->Set("ClassIcon.PopcornFXTextureAtlas", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_Atlas"), Icon16x16));
+		m_StyleSet->Set("ClassThumbnail.PopcornFXTextureAtlas", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_Atlas"), Icon64x64));
 
-		m_StyleSet->Set("ClassIcon.PopcornFXAnimTrack", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_Pkan_16x"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXAnimTrack", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_Pkan_64x"), Icon64x64));
+		m_StyleSet->Set("ClassIcon.PopcornFXAnimTrack", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_AnimTrack"), Icon16x16));
+		m_StyleSet->Set("ClassThumbnail.PopcornFXAnimTrack", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_AnimTrack"), Icon64x64));
 
-		m_StyleSet->Set("ClassIcon.PopcornFXSimulationCache", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_Pksc_16x"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXSimulationCache", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_Pksc_64x"), Icon64x64));
-
-		m_StyleSet->Set("ClassIcon.PopcornFXFont", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_Pkfm_16x"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXFont", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_Pkfm_64x"), Icon64x64));
+		m_StyleSet->Set("ClassIcon.PopcornFXFont", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_Font"), Icon16x16));
+		m_StyleSet->Set("ClassThumbnail.PopcornFXFont", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/Resource_Font"), Icon64x64));
 
 		m_StyleSet->Set("ClassIcon.PopcornFXEmitter", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_16x"), Icon16x16));
 		m_StyleSet->Set("ClassThumbnail.PopcornFXEmitter", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_64x"), Icon64x64));
@@ -73,11 +71,11 @@ void	FPopcornFXStyle::Initialize()
 		m_StyleSet->Set("ClassIcon.PopcornFXEmitterComponent", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_16x"), Icon16x16));
 		m_StyleSet->Set("ClassThumbnail.PopcornFXEmitterComponent", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/icon_PopcornFX_Logo_64x"), Icon64x64));
 
-		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/CParticleSamplerShape.med"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/CParticleSamplerShape.med"), Icon64x64));
+		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon16x16));
+		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon64x64));
 
-		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/CParticleSamplerShape.med"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/CParticleSamplerShape.med"), Icon64x64));
+		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon16x16));
+		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon64x64));
 
 		m_StyleSet->Set("PopcornFX.BadIcon32", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon32x32));
 
@@ -87,25 +85,26 @@ void	FPopcornFXStyle::Initialize()
 		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon16x16));
 		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon64x64));
 
-#define ATTRIBSAMPLER_STYLE(__name, __image)																				\
-		m_StyleSet->Set("ClassIcon." __name "", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/") TEXT(__image) TEXT(".med"), Icon16x16));				\
-		m_StyleSet->Set("ClassThumbnail." __name "", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/") TEXT(__image) TEXT(".med"), Icon64x64));		\
-		m_StyleSet->Set("ClassIcon." __name "Actor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/") TEXT(__image) TEXT(".med"), Icon16x16));		\
-		m_StyleSet->Set("ClassThumbnail." __name "Actor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/") TEXT(__image) TEXT(".med"), Icon64x64));
+#define ATTRIBSAMPLER_STYLE(__name, __iconName, __imagePath) \
+		m_StyleSet->Set("ClassIcon." __name "", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon16x16)); \
+		m_StyleSet->Set("ClassThumbnail." __name "", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon64x64)); \
+		m_StyleSet->Set("ClassIcon." __name "Actor", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon16x16)); \
+		m_StyleSet->Set("ClassThumbnail." __name "Actor", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon64x64)); \
+		m_StyleSet->Set("PopcornFX.Node." __iconName, new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon32x32))
 
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerShape", "CParticleSamplerShape");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerImage", "CParticleSamplerTexture");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerAnimTrack", "CParticleSamplerAnimTrack");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerCurve", "CParticleSamplerCurve");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerText", "CParticleSamplerText");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerVectorField", "CParticleSamplerProceduralTurbulence");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerSkinnedMesh", "CParticleSamplerSkinnedMesh");
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerShape", "AttributeSampler_Shape", "SlateBrushes/AttributeSampler_Shape");
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerSkinnedMesh", "AttributeSampler_SkeletalMesh", "SlateBrushes/AttributeSampler_SkeletalMesh");
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerImage", "AttributeSampler_Image", "SlateBrushes/AttributeSampler_Image");
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerAnimTrack", "Attributesampler_AnimTrack", "SlateBrushes/Attributesampler_AnimTrack");
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerCurve", "AttributeSampler_Curve", "SlateBrushes/AttributeSampler_Curve");
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerText", "AttributeSampler_Text", "SlateBrushes/AttributeSampler_Text");
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerVectorField", "AttributeSampler_VectorField", "SlateBrushes/AttributeSampler_VectorField");
 
 #undef ATTRIBSAMPLER_STYPE
 
 		// No actor, is a component only
-		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerCurveDynamic", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/CParticleSamplerCurve.med"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerCurveDynamic", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/CParticleSamplerCurve.med"), Icon64x64));
+		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerCurveDynamic", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Curve"), Icon16x16));
+		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerCurveDynamic", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Curve"), Icon64x64));
 
 		m_StyleSet->Set("PopcornFX.Attribute.F1", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeF1"), Icon32x32));
 		m_StyleSet->Set("PopcornFX.Attribute.F2", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeF2"), Icon32x32));
@@ -142,26 +141,6 @@ void	FPopcornFXStyle::Initialize()
 
 		m_StyleSet->Set("PopcornFXLevelEditor.OpenSourcePack", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/LevelEditor_OpenSourcePack_40x"), Icon40x40));
 		m_StyleSet->Set("PopcornFXLevelEditor.OpenSourcePack.Small", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/LevelEditor_OpenSourcePack_20x"), Icon20x20));
-
-#define STYLE_PKFX_NODE(__node)		\
-		m_StyleSet->Set("PopcornFX.Node." __node, new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/") TEXT(__node) TEXT(".med"), Icon32x32))
-
-		STYLE_PKFX_NODE("CParticleSamplerCurve");
-		STYLE_PKFX_NODE("CParticleSamplerProceduralTurbulence");
-		STYLE_PKFX_NODE("CParticleSamplerShape");
-		STYLE_PKFX_NODE("CParticleSamplerTexture");
-		STYLE_PKFX_NODE("CParticleSamplerAnimTrack");
-		STYLE_PKFX_NODE("CParticleSamplerText");
-		STYLE_PKFX_NODE("CShapeDescriptor_Box");
-		STYLE_PKFX_NODE("CShapeDescriptor_Capsule");
-		STYLE_PKFX_NODE("CShapeDescriptor_MeshCollection");
-		STYLE_PKFX_NODE("CShapeDescriptor_Ellipsoid");
-		STYLE_PKFX_NODE("CShapeDescriptor_Cone");
-		STYLE_PKFX_NODE("CShapeDescriptor_Cylinder");
-		STYLE_PKFX_NODE("CShapeDescriptor_Mesh");
-		STYLE_PKFX_NODE("CShapeDescriptor_Sphere");
-
-#undef STYLE_PKFX_NODE
 
 		FSlateStyleRegistry::RegisterSlateStyle(*m_StyleSet.Get());
 	}

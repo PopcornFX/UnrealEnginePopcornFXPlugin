@@ -59,6 +59,10 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<c
 	const u32		bytes = rects.CoveredBytes();
 	const bool		empty = m_AtlasBuffer_Raw == null;
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+#endif
+
 	if (empty || bytes > m_AtlasBufferCapacity)
 	{
 		m_AtlasBufferCapacity = PopcornFX::Mem::Align<0x100>(bytes + 0x10);
@@ -70,12 +74,16 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<c
 #endif // (ENGINE_MAJOR_VERSION == 5)
 		const EBufferUsageFlags	usage = BUF_Static | BUF_ShaderResource;
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		m_AtlasBuffer_Raw = RHICmdList.CreateVertexBuffer(m_AtlasBufferCapacity, usage, info);
+		m_AtlasBufferSRV = RHICmdList.CreateShaderResourceView(m_AtlasBuffer_Raw, sizeof(CFloat4), PF_A32B32G32R32F);
+#else
 		m_AtlasBuffer_Raw = RHICreateVertexBuffer(m_AtlasBufferCapacity, usage, info);
-		if (!PK_VERIFY(IsValidRef(m_AtlasBuffer_Raw)))
-			return false;
 		m_AtlasBufferSRV = RHICreateShaderResourceView(m_AtlasBuffer_Raw, sizeof(CFloat4), PF_A32B32G32R32F);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
-		if (!PK_VERIFY(IsValidRef(m_AtlasBufferSRV)))
+		if (!PK_VERIFY(IsValidRef(m_AtlasBuffer_Raw)) ||
+			!PK_VERIFY(IsValidRef(m_AtlasBufferSRV)))
 			return false;
 	}
 	else
@@ -83,19 +91,25 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<c
 		PK_ASSERT(m_AtlasBufferSRV != null);
 	}
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	void	*map = RHICmdList.LockBuffer(m_AtlasBuffer_Raw, 0, bytes, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5)
 	void	*map = RHILockBuffer(m_AtlasBuffer_Raw, 0, bytes, RLM_WriteOnly);
 #else
 	void	*map = RHILockVertexBuffer(m_AtlasBuffer_Raw, 0, bytes, RLM_WriteOnly);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	if (!PK_VERIFY(map != null))
 		return false;
+
 	PopcornFX::Mem::Copy(map, rects.Data(), bytes);
-#if (ENGINE_MAJOR_VERSION == 5)
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	RHICmdList.UnlockBuffer(m_AtlasBuffer_Raw);
+#elif (ENGINE_MAJOR_VERSION == 5)
 	RHIUnlockBuffer(m_AtlasBuffer_Raw);
 #else
 	RHIUnlockVertexBuffer(m_AtlasBuffer_Raw);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 	m_AtlasRectsCount = rects.Count();
 	return true;
@@ -119,19 +133,18 @@ bool	FPopcornFXDrawRequestsBuffer::LoadIFN()
 #endif // (ENGINE_MAJOR_VERSION == 5)
 		const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+		m_DrawRequestsBuffer = RHICmdList.CreateVertexBuffer(totalByteCount, usage, info);
+		m_DrawRequestsBufferSRV = RHICmdList.CreateShaderResourceView(m_DrawRequestsBuffer, sizeof(PopcornFX::Drawers::SBillboardDrawRequest), PF_A32B32G32R32F);
+#else
 		m_DrawRequestsBuffer = RHICreateVertexBuffer(totalByteCount, usage, info);
-		if (!PK_VERIFY(IsValidRef(m_DrawRequestsBuffer)))
-		{
-			UE_LOG(LogVertexBillboardingPolicy, Error, TEXT("Couldn't create draw requests structured buffer"));
-			return false;
-		}
 		m_DrawRequestsBufferSRV = RHICreateShaderResourceView(m_DrawRequestsBuffer, sizeof(PopcornFX::Drawers::SBillboardDrawRequest), PF_A32B32G32R32F);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
-		if (!PK_VERIFY(IsValidRef(m_DrawRequestsBufferSRV)))
-		{
-			UE_LOG(LogVertexBillboardingPolicy, Error, TEXT("Invalid draw requests structured buffer ref"));
+		if (!PK_VERIFY(IsValidRef(m_DrawRequestsBuffer)) ||
+			!PK_VERIFY(IsValidRef(m_DrawRequestsBufferSRV)))
 			return false;
-		}
 	}
 	else
 	{
@@ -157,11 +170,13 @@ bool	FPopcornFXDrawRequestsBuffer::Map(PopcornFX::TMemoryView<PopcornFX::Drawers
 	}
 	m_Mapped = true;
 	const u32	totalByteCount = elementCount * sizeof(PopcornFX::Drawers::SBillboardDrawRequest); // Is not exposed yet to PK-RenderHelpers
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	void		*mappedBuffer = FRHICommandListExecutor::GetImmediateCommandList().LockBuffer(m_DrawRequestsBuffer, 0, totalByteCount, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5)
 	void		*mappedBuffer = RHILockBuffer(m_DrawRequestsBuffer, 0, totalByteCount, RLM_WriteOnly);
 #else
 	void		*mappedBuffer = RHILockVertexBuffer(m_DrawRequestsBuffer, 0, totalByteCount, RLM_WriteOnly);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	if (!PK_VERIFY(mappedBuffer != null))
 	{
 		outView.Clear();
@@ -179,11 +194,13 @@ void	FPopcornFXDrawRequestsBuffer::Unmap()
 	if (m_Mapped)
 	{
 		m_Mapped = false;
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		FRHICommandListExecutor::GetImmediateCommandList().UnlockBuffer(m_DrawRequestsBuffer);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		RHIUnlockBuffer(m_DrawRequestsBuffer);
 #else
 		RHIUnlockVertexBuffer(m_DrawRequestsBuffer);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 }
 
@@ -197,7 +214,6 @@ class FPopcornFXGPUBillboardCollector : public FOneFrameResource
 {
 public:
 	FPopcornFXGPUVertexFactory		*m_VertexFactory = null;
-	//	CPooledIndexBuffer				m_IndexBufferForRefCount;
 
 	FPopcornFXGPUBillboardCollector() { }
 	~FPopcornFXGPUBillboardCollector()
@@ -220,19 +236,26 @@ public:
 class	FPopcornFXGPUParticlesIndexBuffer : public FIndexBuffer
 {
 public:
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override
+#else
 	virtual void	InitRHI() override
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	{
 		const uint32			sizeInBytes = sizeof(u16) * 12;
 		const uint32			stride = sizeof(u16);
 		FRHIResourceCreateInfo	info(TEXT("PopcornFXGPUParticlesIndexBuffer"));
 
 		void	*data = null;
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		IndexBufferRHI = RHICmdList.CreateBuffer(sizeInBytes, BUF_Static | BUF_IndexBuffer, stride, ERHIAccess::VertexOrIndexBuffer, info);
+		data = RHICmdList.LockBuffer(IndexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		IndexBufferRHI = RHICreateBuffer(sizeInBytes, BUF_Static | BUF_IndexBuffer, stride, ERHIAccess::VertexOrIndexBuffer, info);
 		data = RHILockBuffer(IndexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
 #else
 		IndexBufferRHI = RHICreateAndLockIndexBuffer(stride, sizeInBytes, BUF_Static, info, data);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 		u16*	indices = (u16*)data;
 
@@ -249,11 +272,13 @@ public:
 		indices[10] = 4;
 		indices[11] = 2;
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		RHICmdList.UnlockBuffer(IndexBufferRHI);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		RHIUnlockBuffer(IndexBufferRHI);
 #else
 		RHIUnlockIndexBuffer(IndexBufferRHI);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 };
 
@@ -499,11 +524,13 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 	if (IsRayTracingEnabled() && !m_RTBuffers_Initialized)
 	{
 		// Will be resized if necessary
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		m_RayTracingDynamicVertexBuffer.Initialize(FRHICommandListExecutor::GetImmediateCommandList(), TEXT("PopcornFXRayTracingDynamicVertexBuffer"), 4, 256, PF_R32_FLOAT, BUF_UnorderedAccess | BUF_ShaderResource);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		m_RayTracingDynamicVertexBuffer.Initialize(TEXT("PopcornFXRayTracingDynamicVertexBuffer"), 4, 256, PF_R32_FLOAT, BUF_UnorderedAccess | BUF_ShaderResource);
 #else
 		m_RayTracingDynamicVertexBuffer.Initialize(4, 256, PF_R32_FLOAT, BUF_UnorderedAccess | BUF_ShaderResource, TEXT("RayTracingDynamicVertexBuffer"));
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 		FRayTracingGeometryInitializer	initializer;
 		initializer.IndexBuffer = null;
@@ -512,7 +539,11 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 		initializer.bAllowUpdate = false; // fully dynamic geom
 
 		m_RayTracingGeometry.SetInitializer(initializer);
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		m_RayTracingGeometry.InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
 		m_RayTracingGeometry.InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 		m_RTBuffers_Initialized = true;
 	}
@@ -535,11 +566,13 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 			m_DrawIndirectArgsCapacity = drawPass.m_DrawRequests.Count(); // One per draw request
 			m_DrawIndirectBuffer.Release();
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			m_DrawIndirectBuffer.Initialize(FRHICommandListExecutor::GetImmediateCommandList(), TEXT("PopcornFXGPUDrawIndirectArgs"), sizeof(u32), m_DrawIndirectArgsCapacity * POPCORNFX_INDIRECT_ARGS_ARG_COUNT, EPixelFormat::PF_R32_UINT, BUF_Static | BUF_DrawIndirect);
+#elif (ENGINE_MAJOR_VERSION == 5)
 			m_DrawIndirectBuffer.Initialize(TEXT("PopcornFXGPUDrawIndirectArgs"), sizeof(u32), m_DrawIndirectArgsCapacity * POPCORNFX_INDIRECT_ARGS_ARG_COUNT, EPixelFormat::PF_R32_UINT, BUF_Static | BUF_DrawIndirect);
 #else
 			m_DrawIndirectBuffer.Initialize(sizeof(u32), m_DrawIndirectArgsCapacity * POPCORNFX_INDIRECT_ARGS_ARG_COUNT, EPixelFormat::PF_R32_UINT, BUF_Static | BUF_DrawIndirect, TEXT("PopcornFXGPUDrawIndirectArgs"));
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 		// TODO: Sort for gpu particles
 		if (drawPass.m_IsNewFrame ||
@@ -1172,7 +1205,11 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 				vertexFactory->m_GPUBillboardVSUniformBuffer = FPopcornFXGPUBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsGPUBillboard, UniformBuffer_SingleFrame);
 
 				PK_ASSERT(!vertexFactory->IsInitialized());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+				vertexFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
 				vertexFactory->InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			}
 
 			if (!PK_VERIFY(vertexFactory->IsInitialized()))

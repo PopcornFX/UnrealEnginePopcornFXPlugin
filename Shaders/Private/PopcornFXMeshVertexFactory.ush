@@ -67,7 +67,7 @@ struct FVertexFactoryInterpolantsVSToPS
 #endif
 	nointerpolation float4	EmissiveColor : COLOR6;
 
-	nointerpolation float	VATCursor : PARTICLE_TIME;
+	nointerpolation float	Cursor : PARTICLE_TIME;
 
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	nointerpolation float4	DynamicParameter0 : COLOR2;
@@ -118,7 +118,8 @@ struct FVertexFactoryIntermediates
 
 	float4	EmissiveColor;
 
-	float	VATCursor;
+	/** VAT or AlphaRemap cursor */
+	float	Cursor;
 	
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	float4	DynamicParameter0;
@@ -198,7 +199,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	Result.Particle.SubUVLerp = Interpolants.AtlasRect.y;
 	Result.Particle.Size = Interpolants.AtlasRect.zw;
 #endif
-	Result.Particle.RelativeTime = Interpolants.VATCursor;
+	Result.Particle.RelativeTime = Interpolants.Cursor;
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
 	Result.Particle.DynamicParameterValidMask = PopcornFXUniforms.DynamicParameterMask;
@@ -300,7 +301,12 @@ float4x4 InverseTransform(float4x4 InTransform)
 /** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
 FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal)
 {
-	FMaterialVertexParameters Result = (FMaterialVertexParameters)0;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	FMaterialVertexParameters	Result = MakeInitializedMaterialVertexParameters();
+#else
+	FMaterialVertexParameters	Result = (FMaterialVertexParameters)0;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+
 #if (ENGINE_MAJOR_VERSION == 5)
 	Result.SceneData = Intermediates.SceneData;
 #endif // (ENGINE_MAJOR_VERSION == 5)
@@ -316,7 +322,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.SubUVLerp = Intermediates.AtlasRect.y;
 	Result.Particle.Size = Intermediates.AtlasRect.zw;
 #endif
-	Result.Particle.RelativeTime = Intermediates.VATCursor;
+	Result.Particle.RelativeTime = Intermediates.Cursor;
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
 	Result.Particle.DynamicParameterValidMask = PopcornFXUniforms.DynamicParameterMask;
@@ -422,9 +428,14 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	BRANCH
 	if (PopcornFXMeshVSUniforms.InEmissiveColorsOffset != -1)
 		Intermediates.EmissiveColor = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InEmissiveColorsOffset);
+
+	// Cursor sent through RelativeTime (either one)
 	BRANCH
 	if (PopcornFXMeshVSUniforms.InVATCursorsOffset != -1)
-		Intermediates.VATCursor = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InVATCursorsOffset);
+		Intermediates.Cursor = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InVATCursorsOffset);
+	BRANCH
+	if (PopcornFXMeshVSUniforms.InAlphaCursorsOffset != -1)
+		Intermediates.Cursor = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InAlphaCursorsOffset);
 
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	BRANCH
@@ -577,7 +588,7 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 	Interpolants.ParticleColor = Intermediates.ParticleColor;
 #endif
 	Interpolants.EmissiveColor = Intermediates.EmissiveColor;
-	Interpolants.VATCursor = Intermediates.VATCursor;
+	Interpolants.Cursor = Intermediates.Cursor;
 
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	Interpolants.DynamicParameter0 = Intermediates.DynamicParameter0;

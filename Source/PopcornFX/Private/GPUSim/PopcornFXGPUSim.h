@@ -38,17 +38,6 @@
 
 	void							SetupPopcornFXRHIAPI(uint32 API);
 
-	// RHICreateShaderResourceView + handles Byte Access Buffers
-	FShaderResourceViewRHIRef		My_RHICreateShaderResourceView(FVBRHIParamRef VertexBufferRHI, uint32 Stride, uint8 Format);
-
-	// RHICreateUnorderedAccessView
-	FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView(FVBRHIParamRef VertexBufferRHI, uint8 Format);
-
-#if (ENGINE_MAJOR_VERSION == 4)
-	// RHICreateUnorderedAccessView for index buffers
-	FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView(FIBRHIParamRef IndexBufferRHI, uint8 Format);
-#endif // (ENGINE_MAJOR_VERSION == 4)
-
 	template <typename _Type, uint32 _Stride>
 	FShaderResourceViewRHIRef		StreamBufferSRVToRHI(const PopcornFX::CParticleStreamToRender &stream_GPU, PopcornFX::CGuid streamId, PopcornFX::CGuid &offset);
 

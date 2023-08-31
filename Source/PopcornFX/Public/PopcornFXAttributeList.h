@@ -15,7 +15,6 @@ class	UPopcornFXAttribSamplerInterface;
 class	UPopcornFXEmitterComponent;
 
 uint32				ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType);
-const char			*ResolveAttribSamplerShapeNodeName(EPopcornFXAttribSamplerShapeType::Type shapeType);
 
 #if WITH_EDITORONLY_DATA
 UENUM()

@@ -169,7 +169,11 @@ public:
 	FPopcornFXVertexDeclaration() {}
 	virtual		~FPopcornFXVertexDeclaration() {}
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override
+#else
 	virtual void	InitDynamicRHI() override
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	{
 		FVertexDeclarationElementList	vDecl;
 
@@ -177,7 +181,11 @@ public:
 		VertexDeclarationRHI = PipelineStateCache::GetOrCreateVertexDeclaration(vDecl);
 	}
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	ReleaseRHI() override
+#else
 	virtual void	ReleaseDynamicRHI() override
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	{
 		VertexDeclarationRHI.SafeRelease();
 	}
@@ -193,13 +201,20 @@ static TGlobalResource<FPopcornFXVertexDeclaration>		GPopcornFXBillboardsParticl
 class	FPopcornFXGPUParticlesTexCoordVertexBuffer : public FVertexBuffer
 {
 public:
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override
+#else
 	virtual void	InitRHI() override
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	{
 		const u32				sizeInBytes = sizeof(CFloat2) * 6;
 		FRHIResourceCreateInfo	info(TEXT("PopcornFX Texcoords buffer"));
 
 		void	*data = null;
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		VertexBufferRHI = RHICmdList.CreateBuffer(sizeInBytes, BUF_Static | BUF_VertexBuffer, sizeof(CFloat2), ERHIAccess::VertexOrIndexBuffer, info);
+		data = RHICmdList.LockBuffer(VertexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		VertexBufferRHI = RHICreateBuffer(sizeInBytes, BUF_Static | BUF_VertexBuffer, sizeof(CFloat2), ERHIAccess::VertexOrIndexBuffer, info);
 		data = RHILockBuffer(VertexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
 #else
@@ -215,7 +230,9 @@ public:
 		vertices[4] = CFloat2(0.0f, 2.0f); // Capsule up
 		vertices[5] = CFloat2(0.0f, -2.0f); // Capsule down
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		RHICmdList.UnlockBuffer(VertexBufferRHI);
+#elif (ENGINE_MAJOR_VERSION == 5)
 		RHIUnlockBuffer(VertexBufferRHI);
 #else
 		RHIUnlockVertexBuffer(VertexBufferRHI);
@@ -227,7 +244,11 @@ TGlobalResource<FPopcornFXGPUParticlesTexCoordVertexBuffer>	GPopcornFXGPUParticl
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+void	FPopcornFXGPUVertexFactory::InitRHI(FRHICommandListBase &RHICmdList)
+#else
 void	FPopcornFXGPUVertexFactory::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	const bool	bInstanced = true; // Supported everyone since 4.25
 

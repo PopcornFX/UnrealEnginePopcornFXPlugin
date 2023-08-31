@@ -112,7 +112,11 @@ bool	FPopcornFXVertexFactory::IsCompatible(UMaterialInterface *material)
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+void	FPopcornFXVertexFactory::InitRHI(FRHICommandListBase &RHICmdList)
+#else
 void	FPopcornFXVertexFactory::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	FVertexDeclarationElementList	vDeclElements;
 	Streams.Empty();
