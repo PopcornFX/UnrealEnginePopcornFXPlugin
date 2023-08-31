@@ -428,7 +428,7 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 													"\n"
 													"Continue anyway ?\n"), FText::FromString(sourceAssetPath), FText::FromString(SourcePackRootDir));
 
-			return FMessageDialog::Open(EAppMsgType::YesNo, msg, &title) == EAppReturnType::Yes;
+			return OpenMessageBox(EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
 		}
 		return true;
 	}
@@ -477,7 +477,7 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 				LOCTEXT("PopcornFXSourcePackFoundMsg",
 				"Source PopcornFX Project found and saved.\n\nProject Settings > PopcornFX > Source PopcornFX Project path\n\nis now {0}\n"),
 				FText::FromString(ImportSourcePack));
-		FMessageDialog::Open(EAppMsgType::Ok, text, &title);
+		OpenMessageBox(EAppMsgType::Ok, text, title);
 
 		SaveConfig(); // Force save
 		return true;
@@ -501,7 +501,7 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 									Project Settings > PopcornFX > Source PopcornFX Project path\n\
 									\n\
 									Continue anyway ?\n");
-		return FMessageDialog::Open(EAppMsgType::YesNo, msg, &title) == EAppReturnType::Yes;
+		return OpenMessageBox(EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
 	}
 	return false;
 }

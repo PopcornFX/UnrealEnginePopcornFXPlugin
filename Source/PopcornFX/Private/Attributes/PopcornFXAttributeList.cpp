@@ -65,36 +65,6 @@ uint32		ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType)
 	return static_cast<CShapeDescriptor::EShapeType>(ueShapeType);
 }
 
-namespace
-{
-	const char		*_ResolveAttribSamplerShapeNodeName(CShapeDescriptor::EShapeType shapeType)
-	{
-		switch (shapeType)
-		{
-		case PopcornFX::CShapeDescriptor::ShapeBox:
-			return "CShapeDescriptor_Box";
-		case PopcornFX::CShapeDescriptor::ShapeSphere:
-			return "CShapeDescriptor_Sphere";
-		case PopcornFX::CShapeDescriptor::ShapeEllipsoid:
-			return "CShapeDescriptor_Ellipsoid";
-		case PopcornFX::CShapeDescriptor::ShapeCylinder:
-			return "CShapeDescriptor_Cylinder";
-		case PopcornFX::CShapeDescriptor::ShapeCapsule:
-			return "CShapeDescriptor_Capsule";
-		case PopcornFX::CShapeDescriptor::ShapeCone:
-			return "CShapeDescriptor_Cone";
-		case PopcornFX::CShapeDescriptor::ShapeMesh:
-			return "CShapeDescriptor_Mesh";
-		case PopcornFX::CShapeDescriptor::ShapeMeshCollection:
-			return "CShapeDescriptor_MeshCollection";
-		default:
-			break;
-		}
-		PK_ASSERT_NOT_REACHED();
-		return "CParticleSamplerShape";
-	}
-}
-
 //----------------------------------------------------------------------------
 //
 //
@@ -126,13 +96,6 @@ EPopcornFXAttributeSamplerType::Type	ResolveAttribSamplerType(const PopcornFX::C
 	}
 	PK_ASSERT_NOT_REACHED();
 	return EPopcornFXAttributeSamplerType::None;
-}
-
-//----------------------------------------------------------------------------
-
-const char		*ResolveAttribSamplerShapeNodeName(EPopcornFXAttribSamplerShapeType::Type shapeType)
-{
-	return _ResolveAttribSamplerShapeNodeName((CShapeDescriptor::EShapeType)ToPkShapeType(shapeType));
 }
 
 //----------------------------------------------------------------------------

@@ -253,7 +253,7 @@ PopcornFX::CImage	*CResourceHandlerImage_UE::NewFromPath(const PopcornFX::CStrin
 
 		const FText		title = FText::FromString(FString("PopcornFX: Texture used for sampling"));
 		const FText		message = FText::Format(FText::FromString(FString("Texture \"{0}\" is used for CPU sampling so its LOD Group will be set to 'ColorLookupTable'.\n")), FText::FromString(texture->GetPathName()));
-		FMessageDialog::Open(EAppMsgType::Ok, message, &title);
+		OpenMessageBox(EAppMsgType::Ok, message, title);
 		{
 			texture->Modify();
 			texture->MipGenSettings = TMGS_NoMipmaps;

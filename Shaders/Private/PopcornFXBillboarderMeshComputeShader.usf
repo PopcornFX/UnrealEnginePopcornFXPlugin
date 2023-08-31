@@ -12,42 +12,16 @@ PopcornFXBillboarderBillboardComputeShader.usf: Billboard renderer compute shade
 #if COMPILER_HLSL
 
 RWByteAddressBuffer		OutMatrices;
-RWByteAddressBuffer		OutColors;
-RWByteAddressBuffer		OutVATCursors;
-RWByteAddressBuffer		OutDynamicParameter0s;
-RWByteAddressBuffer		OutDynamicParameter1s;
-RWByteAddressBuffer		OutDynamicParameter2s;
-//RWByteAddressBuffer		OutDynamicParameter3s;
-
 ByteAddressBuffer		InSimData;
 
 uint					InPositionsOffset;
 uint					InOrientationsOffset;
 uint					InScalesOffset;
-uint					InColorsOffset;
-uint					InVATCursorsOffset;
-uint					InDynamicParameter0sOffset;
-uint					InDynamicParameter1sOffset;
-uint					InDynamicParameter2sOffset;
-//uint					InDynamicParameter3sOffset;
 
-float4		DefaultInPositions;
-float4		DefaultInOrientations;
-float4		DefaultInScales;
-float4		DefaultInColors;
-float4		DefaultInVATCursors;
-float4		DefaultInDynamicParameter0s;
-float4		DefaultInDynamicParameter1s;
-float4		DefaultInDynamicParameter2s;
-//float4		DefaultInDynamicParameter3s;
+float					PositionsScale;
 
-float		PositionsScale;
-
-uint		OutputMask;
-uint		InputMask;
-
-uint		InputOffset;
-uint		OutputVertexOffset;
+uint					InputOffset;
+uint					OutputVertexOffset;
 
 uint					HasLiveParticleCount;
 ByteAddressBuffer		LiveParticleCount;
@@ -69,131 +43,42 @@ void		Billboard(uint3 DTid : SV_DispatchThreadID)
 		}
 	}
 		
-	if (OutputMask & MASK_OutMatrices)
-	{
-		const float3	center = asfloat(InSimData.Load3(InPositionsOffset + inputi * 12));
+	const float3	center = asfloat(InSimData.Load3(InPositionsOffset + inputi * 12));
 
-		float3	r0 = float3(1, 0, 0);
-		float3	r1 = float3(0, 1, 0);
-		float3	r2 = float3(0, 0, 1);
-			
-		float4	q;
-		if (InputMask & MASK_InOrientations)
-		{
-			q = asfloat(InSimData.Load4(InOrientationsOffset + inputi * 16));
-			
-			// Construct from quaternion
-			r0 = float3(1 - 2 * (q.y * q.y + q.z * q.z),
-							2 * (q.y * q.x + q.z * q.w),
-							2 * (q.z * q.x - q.y * q.w));
-							
-			r1 = float3(	2 * (q.x * q.y - q.z * q.w),
-						1 - 2 * (q.z * q.z + q.x * q.x),
-							2 * (q.z * q.y + q.x * q.w));
-							
-			r2 = float3(	2 * (q.x * q.z + q.y * q.w),
-							2 * (q.y * q.z - q.x * q.w),
-						1 - 2 * (q.y * q.y + q.x * q.x));
-		}
-		//else
-		//	q = DefaultInOrientations;
-	    
-		float3	scale;
-		if (InputMask & MASK_InScales)
-			scale = asfloat(InSimData.Load(InScalesOffset + inputi * 4));
-		else
-			scale = DefaultInScales.x;
+	float3	r0 = float3(1, 0, 0);
+	float3	r1 = float3(0, 1, 0);
+	float3	r2 = float3(0, 0, 1);
 		
-		float4	m0 = float4(r0 * scale, 				0) * uniformScale;
-		float4	m1 = float4(r1 * scale, 				0) * uniformScale;
-		float4	m2 = float4(r2 * scale, 				0) * uniformScale;
-		float4	m3 = float4(center * PositionsScale, 	1) * uniformScale;
+	float4	q;
+	{
+		q = asfloat(InSimData.Load4(InOrientationsOffset + inputi * 16));
 		
-		const uint		addr = vstart * 64;
-		OutMatrices.Store4(addr + 0 * 16, asint(m0));
-		OutMatrices.Store4(addr + 1 * 16, asint(m1));
-		OutMatrices.Store4(addr + 2 * 16, asint(m2));
-		OutMatrices.Store4(addr + 3 * 16, asint(m3));
+		// Construct from quaternion
+		r0 = float3(1 - 2 * (q.y * q.y + q.z * q.z),
+						2 * (q.y * q.x + q.z * q.w),
+						2 * (q.z * q.x - q.y * q.w));
+						
+		r1 = float3(	2 * (q.x * q.y - q.z * q.w),
+					1 - 2 * (q.z * q.z + q.x * q.x),
+						2 * (q.z * q.y + q.x * q.w));
+						
+		r2 = float3(	2 * (q.x * q.z + q.y * q.w),
+						2 * (q.y * q.z - q.x * q.w),
+					1 - 2 * (q.y * q.y + q.x * q.x));
 	}
 	
-	if (OutputMask & MASK_OutColors)
-	{
-		float4			color;
-		if (InputMask & MASK_InColors)
-			color = asfloat(InSimData.Load4(InColorsOffset + globali * 16));
-		else
-			color = DefaultInColors;
-		color *= uniformScale;
-
-#if PK_BILLBOARDER_CS_OUTPUT_PACK_COLOR_F16
-		const uint		addr = vstart * 8;
-		uint4			colori4 = f32tof16(color);
-		uint2			colorPacked = uint2(
-			colori4.x | (colori4.y << 16),
-			colori4.z | (colori4.w << 16)
-		);
-		OutColors.Store2(addr + 0 * 8, asint(colorPacked));
-#else
-		const uint		addr = vstart * 16;
-		OutColors.Store4(addr + 0 * 16, asint(color));
-#endif
-	}
+	float3	scale = asfloat(InSimData.Load(InScalesOffset + inputi * 4));
 	
-	if (OutputMask & MASK_OutVATCursors)
-	{
-		float			param;
-		if (InputMask & MASK_InVATCursors)
-			param = asfloat(InSimData.Load(InVATCursorsOffset + globali * 4));
-		else
-			param = DefaultInVATCursors;
-			
-		const uint		addr = vstart * 4;
-		OutVATCursors.Store4(addr + 0 * 4, asint(param));
-	}
-	if (OutputMask & MASK_OutDynamicParameter0s)
-	{
-		float4			param;
-		if (InputMask & MASK_InDynamicParameter0s)
-			param = asfloat(InSimData.Load4(InDynamicParameter0sOffset + globali * 16));
-		else
-			param = DefaultInDynamicParameter0s;
-			
-		const uint		addr = vstart * 16;
-		OutDynamicParameter0s.Store4(addr + 0 * 16, asint(param));
-	}
-	if (OutputMask & MASK_OutDynamicParameter1s)
-	{
-		float4			param;
-		if (InputMask & MASK_InDynamicParameter1s)
-			param = asfloat(InSimData.Load4(InDynamicParameter1sOffset + globali * 16));
-		else
-			param = DefaultInDynamicParameter1s;
-			
-		const uint		addr = vstart * 16;
-		OutDynamicParameter1s.Store4(addr + 0 * 16, asint(param));
-	}
-	if (OutputMask & MASK_OutDynamicParameter2s)
-	{
-		float4			param;
-		if (InputMask & MASK_InDynamicParameter2s)
-			param = asfloat(InSimData.Load4(InDynamicParameter2sOffset + globali * 16));
-		else
-			param = DefaultInDynamicParameter2s;
-			
-		const uint		addr = vstart * 16;
-		OutDynamicParameter2s.Store4(addr + 0 * 16, asint(param));
-	}
-	//if (OutputMask & MASK_OutDynamicParameter3s)
-	//{
-	//	float4			param;
-	//	if (InputMask & MASK_InDynamicParameter3s)
-	//		param = asfloat(InSimData.Load4(InDynamicParameter3sOffset + globali * 16));
-	//	else
-	//		param = DefaultInDynamicParameter3s;
-	//		
-	//	const uint		addr = vstart * 16;
-	//	OutDynamicParameter3s.Store4(addr + 0 * 16, asint(param));
-	//}
+	float4	m0 = float4(r0 * scale, 				0) * uniformScale;
+	float4	m1 = float4(r1 * scale, 				0) * uniformScale;
+	float4	m2 = float4(r2 * scale, 				0) * uniformScale;
+	float4	m3 = float4(center * PositionsScale, 	1) * uniformScale;
+	
+	const uint		addr = vstart * 64;
+	OutMatrices.Store4(addr + 0 * 16, asint(m0));
+	OutMatrices.Store4(addr + 1 * 16, asint(m1));
+	OutMatrices.Store4(addr + 2 * 16, asint(m2));
+	OutMatrices.Store4(addr + 3 * 16, asint(m3));
 }
 
 #endif // COMPILER_HLSL

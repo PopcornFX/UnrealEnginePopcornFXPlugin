@@ -87,8 +87,12 @@ public:
 	const FShaderResourceViewRHIRef			&SRV();
 
 protected:
-	virtual void	ReleaseRHI() override;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
 	virtual void	InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	ReleaseRHI() override;
 
 private:
 
@@ -119,8 +123,12 @@ public:
 		: m_Capacity(0), m_Flags(0), m_AllocatedCount(0), m_CurrentMap(null)
 	{ }
 
-	virtual void	ReleaseRHI() override;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
 	virtual void	InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	ReleaseRHI() override;
 
 	bool			Large() const { return m_Flags & Flag_Large; }
 	u32				Stride() const { return Large() ? sizeof(u32) : sizeof(u16); }

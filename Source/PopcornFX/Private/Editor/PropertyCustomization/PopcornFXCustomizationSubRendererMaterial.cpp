@@ -88,6 +88,9 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 	m_Thumbs[Thumb_Emissive].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureEmissive)).ToSharedRef();
 	m_Thumbs[Thumb_Emissive].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureEmissive, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
+	m_Thumbs[Thumb_AlphaRemap].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureAlphaRemapper)).ToSharedRef();
+	m_Thumbs[Thumb_AlphaRemap].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureAlphaRemapper, 64, 64, CustomizationUtils.GetThumbnailPool()));
+
 	m_Thumbs[Thumb_MotionVectors].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureMotionVectors)).ToSharedRef();
 	m_Thumbs[Thumb_MotionVectors].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureMotionVectors, 64, 64, CustomizationUtils.GetThumbnailPool()));
 

@@ -110,6 +110,10 @@ struct	FVertexFactoryInterpolantsVSToPS
 	nointerpolation float2	ParticleSize						: PARTICLE_SIZE;
 #endif
 
+#if USE_PARTICLE_SPRITE_ROTATION
+	nointerpolation float	ParticleRotation					: PARTICLE_SPRITE_ROTATION;
+#endif
+
 #if INSTANCED_STEREO
 	nointerpolation uint EyeIndex : PACKED_EYE_INDEX;
 #endif // (INSTANCED_STEREO)
@@ -140,7 +144,11 @@ FVertexFactoryIntermediates		GetVertexFactoryIntermediates(FVertexFactoryInput I
 
 FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal)
 {
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	FMaterialVertexParameters	VertexParameters = MakeInitializedMaterialVertexParameters();
+#else
 	FMaterialVertexParameters	VertexParameters = (FMaterialVertexParameters)0;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 #if NUM_MATERIAL_TEXCOORDS_VERTEX
 #	if NUM_MATERIAL_TEXCOORDS_VERTEX >= 1
@@ -222,6 +230,10 @@ FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input,
 	VertexParameters.Particle.Size = Intermediates.ParticleSize;
 #endif
 
+#if USE_PARTICLE_SPRITE_ROTATION
+	VertexParameters.Particle.SpriteRotation = Intermediates.ParticleRotation;
+#endif
+
 	return VertexParameters;
 }
 
@@ -271,6 +283,10 @@ FVertexFactoryInterpolantsVSToPS	VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 
 #if USE_PARTICLE_SIZE
 	Interpolants.ParticleSize = Intermediates.ParticleSize;
+#endif
+
+#if USE_PARTICLE_SPRITE_ROTATION
+	Interpolants.ParticleRotation = Intermediates.ParticleRotation;
 #endif
 
 	//Interpolants.LightingPositionOffset = Interpolants.LightingPositionOffset; TODO
@@ -344,6 +360,10 @@ FMaterialPixelParameters	GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 
 #if USE_PARTICLE_SIZE
 	PixelParameters.Particle.Size = Interpolants.ParticleSize;
+#endif
+
+#if USE_PARTICLE_SPRITE_ROTATION
+	PixelParameters.Particle.SpriteRotation = Interpolants.ParticleRotation;
 #endif
 
 #if USE_PARTICLE_RANDOM
@@ -504,6 +524,10 @@ FVertexFactoryInterpolantsVSToDS	VertexFactoryInterpolate(FVertexFactoryInterpol
 
 #if USE_PARTICLE_SIZE
 	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.ParticleSize);
+#endif
+
+#if USE_PARTICLE_SPRITE_ROTATION
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.ParticleRotation);
 #endif
 
 #if USE_PARTICLE_RANDOM

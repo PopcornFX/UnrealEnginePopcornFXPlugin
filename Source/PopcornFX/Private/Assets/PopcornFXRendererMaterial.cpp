@@ -233,7 +233,7 @@ namespace
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
@@ -437,7 +437,7 @@ namespace
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
@@ -617,7 +617,7 @@ namespace
 				!_IsVATTextureConfigured(mat.VATTexturePosition))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTexturePosition->GetPathName()));
-				if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTexturePosition->Modify();
 					mat.VATTexturePosition->Filter = TF_Nearest;
@@ -627,7 +627,7 @@ namespace
 				!_IsVATTextureConfigured(mat.VATTextureNormal))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTextureNormal->GetPathName()));
-				if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTextureNormal->Modify();
 					mat.VATTextureNormal->Filter = TF_Nearest;
@@ -637,7 +637,7 @@ namespace
 				!_IsVATTextureConfigured(mat.VATTextureColor))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTextureColor->GetPathName()));
-				if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTextureColor->Modify();
 					mat.VATTextureColor->Filter = TF_Nearest;
@@ -647,7 +647,7 @@ namespace
 				!_IsVATTextureConfigured(mat.VATTextureRotation))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTextureRotation->GetPathName()));
-				if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTextureRotation->Modify();
 					mat.VATTextureRotation->Filter = TF_Nearest;
@@ -668,7 +668,7 @@ namespace
 					!_IsVATMeshConfigured(mat.StaticMesh))
 				{
 					const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Mesh \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings settings?"), FText::FromString(mat.StaticMesh->GetPathName()));
-					if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+					if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 					{
 						mat.StaticMesh->Modify();
 						mat.StaticMesh->GetSourceModel(0).BuildSettings.bUseFullPrecisionUVs = true;
@@ -677,6 +677,12 @@ namespace
 					}
 				}
 			}
+		}
+		else
+		{
+			// Alpha remap only supported for non VAT materials.
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+				mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 		}
 		if (skelMesh && mat.SkeletalMesh != null)
 		{
@@ -713,7 +719,13 @@ namespace
 			if (fluidVAT || softVAT || rigidVAT)
 				return false; // unsupported
 			else
-				mat.MaterialType = EPopcornFXMaterialType::Mesh_Additive;
+			{
+				// For now, only support unlit alpha blended & additive meshes.
+				if (decl.GetPropertyValue_Enum<PopcornFX::BasicRendererProperties::ETransparentType>(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), PopcornFX::BasicRendererProperties::Additive) == PopcornFX::BasicRendererProperties::AlphaBlend)
+					mat.MaterialType = EPopcornFXMaterialType::Mesh_AlphaBlend;
+				else
+					mat.MaterialType = EPopcornFXMaterialType::Mesh_Additive;
+			}
 
 			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
 			mat.Lit = false;
@@ -866,7 +878,7 @@ namespace
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (FMessageDialog::Open(EAppMsgType::YesNo, message, &title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;

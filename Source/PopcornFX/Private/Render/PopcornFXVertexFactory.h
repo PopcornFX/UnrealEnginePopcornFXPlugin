@@ -76,7 +76,11 @@ public:
 	static bool			IsCompatible(UMaterialInterface *material);
 
 	/** FRenderResource interface */
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void							InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
 	virtual void							InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 	/** Does the vertex factory supports tesselation shaders */
 	static bool								SupportsTessellationShaders() { return false; }

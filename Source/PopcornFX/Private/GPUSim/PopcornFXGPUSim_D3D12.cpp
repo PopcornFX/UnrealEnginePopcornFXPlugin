@@ -170,7 +170,11 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 #if (ENGINE_MAJOR_VERSION == 5)
 	, Desc(InDesc)
 	, HeapType(InHeapType)
+#	if (ENGINE_MINOR_VERSION >= 3)
+	, PlaneCount(UE::DXGIUtilities::GetPlaneCount(Desc.Format))
+#	else
 	, PlaneCount(::GetPlaneCount(Desc.Format))
+#	endif
 	, bRequiresResourceStateTracking(true)
 	, bDepthStencil(false)
 	, bDeferDelete(true)
@@ -281,13 +285,7 @@ ID3D12Device* FD3D12Device::GetDevice()
 
 //----------------------------------------------------------------------------
 
-FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D12(FVBRHIParamRef VertexBufferRHI, uint8 Format)
-{
-	return RHICreateUnorderedAccessView(VertexBufferRHI, Format);
-}
-
-//----------------------------------------------------------------------------
-
+#if (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MAJOR_VERSION < 3)
 // Source/Runtime/D3D12RHI/Private/D3D12UAV.cpp
 
 template<typename ResourceType>
@@ -303,55 +301,7 @@ inline FD3D12UnorderedAccessView* CreateUAV(D3D12_UNORDERED_ACCESS_VIEW_DESC& De
 		return new FD3D12UnorderedAccessView(Device, Desc, Resource->ResourceLocation, CounterResource);
 	});
 }
-
-//----------------------------------------------------------------------------
-
-#if (ENGINE_MAJOR_VERSION == 4)
-//
-// UAV from Index Buffer
-//
-FUnorderedAccessViewRHIRef		My_RHICreateUnorderedAccessView_D3D12(FIBRHIParamRef /*Index*/BufferRHI, uint8 Format)
-{
-#if (ENGINE_MAJOR_VERSION == 5)
-	FD3D12Buffer* IndexBuffer = FD3D12DynamicRHI::ResourceCast(/*Index*/BufferRHI);
-#else
-	FD3D12IndexBuffer* IndexBuffer = FD3D12DynamicRHI::ResourceCast(/*Index*/BufferRHI);
-#endif // (ENGINE_MAJOR_VERSION == 5)
-	FD3D12ResourceLocation& Location = IndexBuffer->ResourceLocation;
-
-	const D3D12_RESOURCE_DESC& BufferDesc = Location.GetResource()->GetDesc();
-	const uint64 effectiveBufferSize = Location.GetSize();
-
-	const uint32 BufferUsage = IndexBuffer->GetUsage();
-	const bool bByteAccessBuffer = (BufferUsage & BUF_ByteAddressBuffer) != 0;
-
-	D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
-	UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-	UAVDesc.Format = FindUnorderedAccessDXGIFormat((DXGI_FORMAT)GPixelFormats[Format].PlatformFormat);
-	UAVDesc.Buffer.FirstElement = Location.GetOffsetFromBaseOfResource();
-
-	UAVDesc.Buffer.NumElements = effectiveBufferSize / GPixelFormats[Format].BlockBytes;
-	UAVDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-	UAVDesc.Buffer.CounterOffsetInBytes = 0;
-	UAVDesc.Buffer.StructureByteStride = 0;
-
-	if (bByteAccessBuffer)
-	{
-		UAVDesc.Buffer.Flags |= D3D12_BUFFER_UAV_FLAG_RAW;
-		UAVDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-		UAVDesc.Buffer.NumElements = effectiveBufferSize / 4;
-		UAVDesc.Buffer.FirstElement /= 4;
-	}
-
-	else
-	{
-		UAVDesc.Buffer.NumElements = effectiveBufferSize / GPixelFormats[Format].BlockBytes;
-		UAVDesc.Buffer.FirstElement /= GPixelFormats[Format].BlockBytes;
-	}
-
-	return CreateUAV(UAVDesc, IndexBuffer);
-}
-#endif // (ENGINE_MAJOR_VERSION == 4)
+#endif // (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MAJOR_VERSION < 3)
 
 //----------------------------------------------------------------------------
 //
@@ -370,8 +320,13 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamB
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 	PK_ASSERT(bufferD3D12 != null);
-	FShaderResourceViewRHIRef	srv = RHICreateShaderResourceView(bufferD3D12, sizeof(uint32), pixelFormat);
-	return srv;
+
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
+	FRHICommandListBase			&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+	return RHICmdList.CreateShaderResourceView(bufferD3D12, sizeof(uint32), pixelFormat);
+#else
+	return RHICreateShaderResourceView(bufferD3D12, sizeof(uint32), pixelFormat);
+#endif
 }
 
 //----------------------------------------------------------------------------
@@ -405,7 +360,11 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuff
 #if (ENGINE_MAJOR_VERSION == 5)
 	FD3D12Buffer			*buffer = adapter->CreateLinkedObject<FD3D12Buffer>(device->GetVisibilityMask(), [&](FD3D12Device* device)
 		{
+#if (ENGINE_MINOR_VERSION >= 3)
+			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, FRHIBufferDesc(stream->m_ByteSize, stride, bufferUsage));
+#else
 			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, stream->m_ByteSize, bufferUsage, stride);
+#endif // (ENGINE_MINOR_VERSION >= 3)
 			return newBuffer;
 		});
 #else

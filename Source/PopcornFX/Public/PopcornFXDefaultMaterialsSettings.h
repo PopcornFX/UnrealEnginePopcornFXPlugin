@@ -71,6 +71,10 @@ struct FPopcornFXDefaultMaterialsSettings
 	UPROPERTY(Config, EditAnywhere, Category="Default Materials", meta=(AllowedClasses="MaterialInterface"))
 	FSoftObjectPath			Material_Mesh_Additive;
 
+	/** AlphaBlend Mesh Default Material. */
+	UPROPERTY(Config, EditAnywhere, Category="Default Materials", meta=(AllowedClasses="MaterialInterface"))
+	FSoftObjectPath			Material_Mesh_AlphaBlend;
+
 	/** Distortion Mesh Default Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Default Materials", meta=(AllowedClasses="MaterialInterface"))
 	FSoftObjectPath			Material_Mesh_Distortion;

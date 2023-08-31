@@ -258,28 +258,56 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchGenIndiceBatch(FRHICommandList&
 
 	PK_ASSERT(params.m_Count > 0);
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
 	SetComputePipelineState(RHICmdList, shader);
 #else
 	RHICmdList.SetComputeShader(shader);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	FRHIBatchedShaderParameters	&batchedParameters = RHICmdList.GetScratchShaderParameters();
+#endif
 
 	if (PK_VERIFY(genKeys->InPositions.IsBound()) &&
 		PK_VERIFY(IsValidRef(params.m_InputPositions)))
+	{
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		SetSRVParameter(batchedParameters, genKeys->InPositions, params.m_InputPositions);
+#else
 		RHICmdList.SetShaderResourceViewParameter(shader, genKeys->InPositions.GetBaseIndex(), params.m_InputPositions);
-	SetShaderValue(RHICmdList, shader, genKeys->InPositionsOffset, params.m_InputPositionsOffset);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	}
 
 	if (PK_VERIFY(genKeys->OutKeys.IsBound()))
 	{
-		//RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, m_Keys[m_CurrBuff]->UAV());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		SetUAVParameter(batchedParameters, genKeys->OutKeys, m_Keys[m_CurrBuff]->UAV());
+#else
 		RHICmdList.SetUAVParameter(shader, genKeys->OutKeys.GetBaseIndex(), m_Keys[m_CurrBuff]->UAV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 
 	if (PK_VERIFY(genKeys->OutValues.IsBound()))
 	{
-		//RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, m_Values[m_CurrBuff]->UAV());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		SetUAVParameter(batchedParameters, genKeys->OutValues, m_Values[m_CurrBuff]->UAV());
+#else
 		RHICmdList.SetUAVParameter(shader, genKeys->OutValues.GetBaseIndex(), m_Values[m_CurrBuff]->UAV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	SetShaderValue(batchedParameters, genKeys->InPositionsOffset, params.m_InputPositionsOffset);
+
+	SetShaderValue(batchedParameters, genKeys->TotalCount, params.m_Count);
+	SetShaderValue(batchedParameters, genKeys->SortOrigin, ToUE(params.m_SortOrigin));
+	SetShaderValue(batchedParameters, genKeys->IndexStart, params.m_IndexStart);
+	SetShaderValue(batchedParameters, genKeys->IndexStep, params.m_IndexStep);
+	SetShaderValue(batchedParameters, genKeys->InputOffset, params.m_InputOffset);
+
+	SetShaderValue(batchedParameters, genKeys->OutputOffset, m_CurrGenOutputOffset);
+#else
+	SetShaderValue(RHICmdList, shader, genKeys->InPositionsOffset, params.m_InputPositionsOffset);
 
 	SetShaderValue(RHICmdList, shader, genKeys->TotalCount, params.m_Count);
 	SetShaderValue(RHICmdList, shader, genKeys->SortOrigin, ToUE(params.m_SortOrigin));
@@ -288,8 +316,13 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchGenIndiceBatch(FRHICommandList&
 	SetShaderValue(RHICmdList, shader, genKeys->InputOffset, params.m_InputOffset);
 
 	SetShaderValue(RHICmdList, shader, genKeys->OutputOffset, m_CurrGenOutputOffset);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	m_CurrGenOutputOffset += params.m_Count;
 	PK_ASSERT(m_CurrGenOutputOffset <= m_TotalCount);
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	RHICmdList.SetBatchedShaderParameters(shader, batchedParameters);
+#endif
 
 	{
 		const uint32	threadGroupCount = PopcornFX::Mem::Align(params.m_Count, CS_SORT_THREADGROUP_SIZE) / CS_SORT_THREADGROUP_SIZE;
@@ -301,18 +334,24 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchGenIndiceBatch(FRHICommandList&
 
 	if (genKeys->OutValues.IsBound())
 	{
-		//RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, m_Keys[m_CurrBuff]->UAV());
+#if (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 		RHICmdList.SetUAVParameter(shader, genKeys->OutValues.GetBaseIndex(), nullUAV);
+#endif // (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 	}
 
 	if (genKeys->OutKeys.IsBound())
 	{
-		//RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, m_Values[m_CurrBuff]->UAV());
+#if (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 		RHICmdList.SetUAVParameter(shader, genKeys->OutKeys.GetBaseIndex(), nullUAV);
+#endif // (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 	}
 
 	if (genKeys->InPositions.IsBound())
+	{
+#if (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 		RHICmdList.SetShaderResourceViewParameter(shader, genKeys->InPositions.GetBaseIndex(), nullSRV);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -342,6 +381,10 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 	FUAVRHIParamRef		nullUAV = FUAVRHIParamRef();
 	FSRVRHIParamRef		nullSRV = FSRVRHIParamRef();
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	FRHIBatchedShaderParameters	&batchedParameters = RHICmdList.GetScratchShaderParameters();
+#endif
+
 	for (u32 bitOffset = 0; bitOffset < 16; bitOffset += 1)
 	{
 		//----------------------------------------------------------------------------
@@ -354,20 +397,38 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 #endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 		if (PK_VERIFY(upSweep->InKeys.IsBound()))
+		{
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetSRVParameter(batchedParameters, upSweep->InKeys, m_Keys[m_CurrBuff]->SRV());
+#else
 			RHICmdList.SetShaderResourceViewParameter(upSweepShader, upSweep->InKeys.GetBaseIndex(), m_Keys[m_CurrBuff]->SRV());
+#endif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		}
 		if (PK_VERIFY(upSweep->OutOffsets.IsBound()))
 		{
-			//RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, m_Cache->UAV());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetUAVParameter(batchedParameters, upSweep->OutOffsets, m_Cache->UAV());
+#else
 			RHICmdList.SetUAVParameter(upSweepShader, upSweep->OutOffsets.GetBaseIndex(), m_Cache->UAV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		SetShaderValue(batchedParameters, upSweep->KeyBitOffset, bitOffset);
+#else
 		SetShaderValue(RHICmdList, upSweepShader, upSweep->KeyBitOffset, bitOffset);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		RHICmdList.SetBatchedShaderParameters(upSweepShader, batchedParameters);
+#endif
 
 		{
 			SCOPED_DRAW_EVENT(RHICmdList, PopcornFXSortComputeShader_Sorter_Sort_UpSweep);
 			RHICmdList.DispatchComputeShader(threadGroupCount, 1, 1);
 		}
 
+#if (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 		if (upSweep->InKeys.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(upSweepShader, upSweep->InKeys.GetBaseIndex(), nullSRV);
 		if (upSweep->OutOffsets.IsBound())
@@ -375,6 +436,7 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 			//RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, m_Cache->UAV());
 			RHICmdList.SetUAVParameter(upSweepShader, upSweep->OutOffsets.GetBaseIndex(), nullUAV);
 		}
+#endif // (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 
 		//----------------------------------------------------------------------------
 		// Up Sweep Offsets
@@ -386,22 +448,35 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 
 		if (PK_VERIFY(upSweepOffsets->InOutOffsets.IsBound()))
 		{
-			//RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, m_Cache->UAV());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetUAVParameter(batchedParameters, upSweepOffsets->InOutOffsets, m_Cache->UAV());
+#else
 			RHICmdList.SetUAVParameter(upSweepOffsetsShader, upSweepOffsets->InOutOffsets.GetBaseIndex(), m_Cache->UAV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		SetShaderValue(batchedParameters, upSweepOffsets->GroupCount, threadGroupCount);
+#else
 		SetShaderValue(RHICmdList, upSweepOffsetsShader, upSweepOffsets->GroupCount, threadGroupCount);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		RHICmdList.SetBatchedShaderParameters(upSweepOffsetsShader, batchedParameters);
+#endif
 
 		{
 			SCOPED_DRAW_EVENT(RHICmdList, PopcornFXSortComputeShader_Sorter_Sort_UpSweepOffsets);
 			RHICmdList.DispatchComputeShader(1, 1, 1);
 		}
 
+#if (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 		if (upSweepOffsets->InOutOffsets.IsBound())
 		{
 			//RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, m_Cache->UAV());
 			RHICmdList.SetUAVParameter(upSweepOffsetsShader, upSweepOffsets->InOutOffsets.GetBaseIndex(), nullUAV);
 		}
+#endif // (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 
 		//----------------------------------------------------------------------------
 		// Down Sweep
@@ -412,34 +487,68 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 #endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 		if (PK_VERIFY(downSweep->InOffsets.IsBound()))
+		{
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetSRVParameter(batchedParameters, downSweep->InOffsets, m_Cache->SRV());
+#else
 			RHICmdList.SetShaderResourceViewParameter(downSweepShader, downSweep->InOffsets.GetBaseIndex(), m_Cache->SRV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		}
 
 		if (PK_VERIFY(downSweep->InKeys.IsBound()))
+		{
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetSRVParameter(batchedParameters, downSweep->InKeys, m_Keys[m_CurrBuff]->SRV());
+#else
 			RHICmdList.SetShaderResourceViewParameter(downSweepShader, downSweep->InKeys.GetBaseIndex(), m_Keys[m_CurrBuff]->SRV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		}
 		if (PK_VERIFY(downSweep->InValues.IsBound()))
+		{
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetSRVParameter(batchedParameters, downSweep->InValues, m_Values[m_CurrBuff]->SRV());
+#else
 			RHICmdList.SetShaderResourceViewParameter(downSweepShader, downSweep->InValues.GetBaseIndex(), m_Values[m_CurrBuff]->SRV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		}
 
 		m_CurrBuff = (m_CurrBuff + 1) % PK_ARRAY_COUNT(m_Keys);
 
 		if (PK_VERIFY(downSweep->OutKeys.IsBound()))
 		{
-			//RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, m_Keys[m_CurrBuff]->UAV());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetUAVParameter(batchedParameters, downSweep->OutKeys, m_Keys[m_CurrBuff]->UAV());
+#else
 			RHICmdList.SetUAVParameter(downSweepShader, downSweep->OutKeys.GetBaseIndex(), m_Keys[m_CurrBuff]->UAV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 		if (PK_VERIFY(downSweep->OutValues.IsBound()))
 		{
-			//RHICmdList.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, m_Values[m_CurrBuff]->UAV());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			SetUAVParameter(batchedParameters, downSweep->OutValues, m_Values[m_CurrBuff]->UAV());
+#else
 			RHICmdList.SetUAVParameter(downSweepShader, downSweep->OutValues.GetBaseIndex(), m_Values[m_CurrBuff]->UAV());
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		SetShaderValue(batchedParameters, downSweep->KeyBitOffset, bitOffset);
+		SetShaderValue(batchedParameters, downSweep->GroupCount, threadGroupCount);
+#else
 		SetShaderValue(RHICmdList, downSweepShader, downSweep->KeyBitOffset, bitOffset);
 		SetShaderValue(RHICmdList, downSweepShader, downSweep->GroupCount, threadGroupCount);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		RHICmdList.SetBatchedShaderParameters(downSweepShader, batchedParameters);
+#endif
 
 		{
 			SCOPED_DRAW_EVENT(RHICmdList, PopcornFXSortComputeShader_Sorter_Sort_DownSweep);
 			RHICmdList.DispatchComputeShader(threadGroupCount, 1, 1);
 		}
 
+#if (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 		if (downSweep->InOffsets.IsBound())
 			RHICmdList.SetShaderResourceViewParameter(downSweepShader, downSweep->InOffsets.GetBaseIndex(), nullSRV);
 		if (downSweep->InKeys.IsBound())
@@ -456,6 +565,7 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 			//RHICmdList.TransitionResource(EResourceTransitionAccess::EReadable, EResourceTransitionPipeline::EComputeToCompute, m_Values[m_CurrBuff]->UAV());
 			RHICmdList.SetUAVParameter(downSweepShader, downSweep->OutValues.GetBaseIndex(), nullUAV);
 		}
+#endif // (ENGINE_MAJOR_VERSION != 5) || (ENGINE_MINOR_VERSION < 3)
 	}
 }
 

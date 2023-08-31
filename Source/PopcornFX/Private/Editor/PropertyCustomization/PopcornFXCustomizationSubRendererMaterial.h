@@ -41,6 +41,7 @@ private:
 		Thumb_Diffuse = 0,
 		Thumb_DiffuseRamp,
 		Thumb_Emissive,
+		Thumb_AlphaRemap,
 		Thumb_MotionVectors,
 		Thumb_SixWay_RLTS,
 		Thumb_SixWay_BBF,

@@ -226,7 +226,6 @@ namespace UnrealBuildTool.Rules
 
 			string		libPrefix = "";
 			string		libExt = "";
-			bool		processLibs = true;
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.Win32)
 			{
@@ -282,27 +281,10 @@ namespace UnrealBuildTool.Rules
 				libPrefix = clientLibDir + "gmake_ios64/lib";
 				libExt = ".a";
 			}
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-			else if (Target.Platform == UnrealTargetPlatform.Lumin)
+			else if (Target.Platform == UnrealTargetPlatform.Android)
 			{
 				libPrefix = clientLibDir + "gmake_android64/lib";
 				libExt = ".a";
-			}
-#endif // !UE_5_0_OR_LATER
-			else if (Target.Platform == UnrealTargetPlatform.Android)
-			{
-				processLibs = false;
-				foreach (string lib in PkLibs)
-				{
-#if !UE_5_0_OR_LATER // armv7 dropped with UE5
-					// Multiple Architectures ! (armeabi, arm64)
-					// Using PublicLibraryPaths so ld will "skipping incompatible" libraries
-					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android/lib" + lib + "_" + configShort + ".a");     // armv7 (armeabi)
-#endif
-					PublicAdditionalLibraries.Add(clientLibDir + "gmake_android64/lib" + lib + "_" + configShort + ".a");   // armv8 (arm64)
-				}
-				libPrefix = "";
-				libExt = "";
 			}
 			else if (Target.Platform == UnrealTargetPlatform.Linux)
 			{
@@ -323,12 +305,9 @@ namespace UnrealBuildTool.Rules
 			}
 
 			Log("SDK " + CurrentSDK + " - " +  String.Join(", ", PublicAdditionalLibraries) + "" + libPrefix + " ... _" + configShort + libExt);
-			if (processLibs)
+			foreach (string lib in PkLibs)
 			{
-				foreach (string lib in PkLibs)
-				{
-					PublicAdditionalLibraries.Add(libPrefix + lib + "_" + configShort + libExt);
-				}
+				PublicAdditionalLibraries.Add(libPrefix + lib + "_" + configShort + libExt);
 			}
 
 			if (Target.bBuildEditor == true)
@@ -443,9 +422,20 @@ namespace UnrealBuildTool.Rules
 					Target.Platform == UnrealTargetPlatform.Win32 ||
 #endif // !UE_5_0_OR_LATER // Support dropped with UE5
 					Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
+				{
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "NVAftermath");
+#if UE_5_3_OR_LATER
+					AddEngineThirdPartyPrivateStaticDependencies(Target, "NVAPI");
+					AddEngineThirdPartyPrivateStaticDependencies(Target, "IntelExtensionsFramework");
+#endif // UE_5_3_OR_LATER
+				}
 				else
+				{
 					AddDefinition("NV_AFTERMATH=0");
+#if UE_5_3_OR_LATER
+					AddDefinition("WITH_NVAPI=0");
+#endif // UE_5_3_OR_LATER
+				}
 				
 #if UE_5_2_OR_LATER
 				// D3D12RHIPrivate.h
@@ -557,15 +547,10 @@ namespace UnrealBuildTool.Rules
 #else
 			bool compileWithPhysX = false;
 #endif // !UE_5_1_OR_LATER
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-			if (Target.Platform == UnrealTargetPlatform.Lumin)
-				compileWithPhysX = false;
-#endif // UE_5_0_OR_LATER
 			if (compileWithPhysX)
 				PrivateDependencyModuleNames.Add("PhysX");
 			if (Target.bBuildEditor)
 			{
-				//AddDefinition("MY_WITH_EDITOR=1");
 				PrivateDependencyModuleNames.AddRange(
 					new string[]
 					{

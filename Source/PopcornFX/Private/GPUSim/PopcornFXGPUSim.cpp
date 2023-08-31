@@ -79,56 +79,6 @@ bool	_IsGpuSupportedOnPlatform(const EShaderPlatform &platform)
 
 //----------------------------------------------------------------------------
 
-FShaderResourceViewRHIRef	My_RHICreateShaderResourceView(FVBRHIParamRef VertexBufferRHI, uint32 Stride, uint8 Format)
-{
-#if (PK_GPU_D3D11 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D11)
-		return My_RHICreateShaderResourceView_D3D11(VertexBufferRHI, Stride, Format);
-#endif // (PK_GPU_D3D11 == 1)
-#if (PK_GPU_D3D12 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
-		return RHICreateShaderResourceView(VertexBufferRHI, Stride, Format);
-#endif // (PK_GPU_D3D12 == 1)
-	PK_ASSERT_NOT_REACHED();
-	return null;
-}
-
-//----------------------------------------------------------------------------
-
-FUnorderedAccessViewRHIRef	My_RHICreateUnorderedAccessView(FVBRHIParamRef BufferRHI, uint8 Format)
-{
-#if (PK_GPU_D3D11 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D11)
-		return My_RHICreateUnorderedAccessView_D3D11(BufferRHI, Format);
-#endif // (PK_GPU_D3D11 == 1)
-#if (PK_GPU_D3D12 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
-		return My_RHICreateUnorderedAccessView_D3D12(BufferRHI, Format);
-#endif // (PK_GPU_D3D12 == 1)
-	PK_ASSERT_NOT_REACHED();
-	return null;
-}
-
-//----------------------------------------------------------------------------
-
-#if (ENGINE_MAJOR_VERSION == 4)
-FUnorderedAccessViewRHIRef	My_RHICreateUnorderedAccessView(FIBRHIParamRef IndexBufferRHI, uint8 Format)
-{
-#if (PK_GPU_D3D11 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D11)
-		return My_RHICreateUnorderedAccessView_D3D11(IndexBufferRHI, Format);
-#endif // (PK_GPU_D3D11 == 1)
-#if (PK_GPU_D3D12 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
-		return My_RHICreateUnorderedAccessView_D3D12(IndexBufferRHI, Format);
-#endif // (PK_GPU_D3D12 == 1)
-	PK_ASSERT_NOT_REACHED();
-	return null;
-}
-#endif // (ENGINE_MAJOR_VERSION == 4)
-
-//----------------------------------------------------------------------------
-
 bool	StreamBufferByteOffset(const PopcornFX::CParticleStreamToRender_GPU &stream_GPU, PopcornFX::CGuid streamId, u32 &streamOffset)
 {
 	PK_ASSERT(streamId.Valid());

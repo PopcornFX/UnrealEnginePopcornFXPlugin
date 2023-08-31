@@ -14,6 +14,7 @@ PopcornFXGPUBillboard.ush: GPU billboarder code
 #define USE_PARTICLE_TIME (NEEDS_PARTICLE_TIME)
 #define USE_PARTICLE_SIZE (NEEDS_PARTICLE_SIZE)
 #define USE_PARTICLE_RANDOM (NEEDS_PARTICLE_RANDOM)
+#define USE_PARTICLE_SPRITE_ROTATION (NEEDS_PARTICLE_SPRITE_ROTATION)
 
 #if (COMPUTESHADER || RAYHITGROUPSHADER) && !MATERIAL_TWOSIDED
 #	define	FLIP_BILLBOARDING_AXIS	0
@@ -44,6 +45,11 @@ struct	FVertexFactoryIntermediates
 #if USE_PARTICLE_SIZE
 	float2		ParticleSize; // UE units
 #endif
+
+#if USE_PARTICLE_SPRITE_ROTATION
+	float		ParticleRotation; // rads
+#endif
+
 	float4		ParticleColor;
 	float3		ParticleEmissiveColor;
 
@@ -112,9 +118,8 @@ float3	PopcornFXSideAxisFromNrmUp(float3 nrm, float3 upAxis)
 
 //----------------------------------------------------------------------------
 
-void	RotateTangents(uint particleID, inout float3 xAxis, inout float3 yAxis)
+void	RotateTangents(uint particleID, float rotation, inout float3 xAxis, inout float3 yAxis)
 {
-	const float	rotation = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InRotationsOffset);
 	float		rotCos;
 	float		rotSin;
 
@@ -162,6 +167,8 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	else
 		radius = PKSimData_Load2f(particleID, PopcornFXGPUBillboardVSUniforms.InSize2sOffset);
 
+	float			rotation = 0.0f;
+
 	float3			xAxis = float3(0.0f, 0.0f, 0.0f);
 	float3			yAxis = float3(0.0f, 0.0f, 0.0f);
 	float3			planeNormal = float3(0.0f, 0.0f, 0.0f);
@@ -183,11 +190,13 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	{
 	case	BILLBOARD_ScreenAligned:
 	{
+		rotation = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InRotationsOffset); // rad
+
 		xAxis = ResolvedView.ViewRight;
 		yAxis = ResolvedView.ViewUp;
 		planeNormal = -ResolvedView.ViewForward;
 
-		RotateTangents(particleID, xAxis, yAxis);
+		RotateTangents(particleID, rotation, xAxis, yAxis);
 
 		// Apply radius after rotation, otherwise float2 sizes are incorrect
 		xAxis *= radius.x;
@@ -196,6 +205,8 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	}
 	case	BILLBOARD_ViewposAligned:
 	{
+		rotation = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InRotationsOffset); // rad
+
 		const float3	camToParticle = normalize(worldPos - worldCameraOrigin);
 		const float3	upAxis = float3(0.0f, camToParticle.z * 0.01f, 1.0f);
 
@@ -203,7 +214,7 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 		yAxis = myCross(xAxis, camToParticle);
 		planeNormal = -camToParticle;
 
-		RotateTangents(particleID, xAxis, yAxis);
+		RotateTangents(particleID, rotation, xAxis, yAxis);
 
 		// Apply radius after rotation, otherwise float2 sizes are incorrect
 		xAxis *= radius.x;
@@ -248,6 +259,8 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	}
 	case	BILLBOARD_PlaneAligned:
 	{
+		rotation = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InRotationsOffset); // rad
+
 		const float3	axisUp = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InAxis0sOffset);
 		const float3	axisNrm = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InAxis1sOffset);
 
@@ -255,7 +268,7 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 		yAxis = myCross(xAxis, axisNrm);
 		planeNormal = axisNrm;
 
-		RotateTangents(particleID, xAxis, yAxis);
+		RotateTangents(particleID, rotation, xAxis, yAxis);
 
 		// Apply radius after rotation, otherwise float2 sizes are incorrect
 		xAxis *= radius.x;
@@ -291,6 +304,9 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 #endif
 #if USE_PARTICLE_SIZE
 	intermediates.ParticleSize = radius * 2.0f * GLOBAL_SCALE;
+#endif
+#if USE_PARTICLE_SPRITE_ROTATION
+	intermediates.ParticleRotation = rotation;
 #endif
 
 	BRANCH

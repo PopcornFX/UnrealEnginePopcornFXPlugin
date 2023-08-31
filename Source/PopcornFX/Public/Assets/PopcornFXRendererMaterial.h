@@ -6,7 +6,7 @@
 #pragma once
 
 #include "RenderCommandFence.h"
-#include "Launch/Resources/Version.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 #include "PopcornFXRendererMaterial.generated.h"
 
@@ -40,6 +40,7 @@ class	UPopcornFXTextureAtlas;
 		X_POPCORNFX_MATERIAL_TYPE(Billboard_VolumetricFog)			\
 		X_POPCORNFX_MATERIAL_TYPE(Billboard_SixWayLightmap)			\
 		X_POPCORNFX_MATERIAL_TYPE(Mesh_Additive)					\
+		X_POPCORNFX_MATERIAL_TYPE(Mesh_AlphaBlend)					\
 		X_POPCORNFX_MATERIAL_TYPE(Mesh_Distortion)					\
 		X_POPCORNFX_MATERIAL_TYPE(Mesh_Solid)						\
 		X_POPCORNFX_MATERIAL_TYPE(Mesh_Solid_Lit)					\
@@ -78,6 +79,7 @@ namespace EPopcornFXMaterialType
 		Billboard_SixWayLightmap,
 
 		Mesh_Additive,
+		Mesh_AlphaBlend,
 		Mesh_Distortion,
 		Mesh_Solid,
 		Mesh_Solid_Lit,
@@ -107,7 +109,6 @@ namespace EPopcornFXMaterialType
 
 extern const EPopcornFXMaterialType::Type		kTransparentBillboard_Material_ToUE[4];
 extern const EPopcornFXMaterialType::Type		kOpaqueBillboard_Material_ToUE[2];
-extern const EPopcornFXMaterialType::Type		kTransparentMesh_Material_ToUE[4];
 extern const EPopcornFXMaterialType::Type		kOpaqueMesh_Material_ToUE[2];
 
 USTRUCT(BlueprintType)

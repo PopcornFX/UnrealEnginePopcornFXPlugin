@@ -84,26 +84,17 @@ namespace
 		switch (samplerType)
 		{
 			case	EPopcornFXAttributeSamplerType::Shape:
-				{
-					const PopcornFX::CParticleSamplerDescriptor	*desc = sampler->GetSamplerDefaultDescriptor().Get();
-					if (desc == null || !PK_VERIFY(desc->SamplerTypeID() == PopcornFX::CParticleSamplerDescriptor_Shape::SamplerTypeID()))
-						return "CParticleSamplerShape";
-
-					const PopcornFX::CParticleSamplerDescriptor_Shape_Default	*shapeDesc = PopcornFX::checked_cast<const PopcornFX::CParticleSamplerDescriptor_Shape_Default*>(desc);
-					if (!PK_VERIFY(shapeDesc->m_Shape != null))
-						return "CParticleSamplerShape";
-					return ResolveAttribSamplerShapeNodeName(ToUEShapeType(shapeDesc->m_Shape->ShapeType()));
-				}
+				return "AttributeSampler_Shape";
 			case	EPopcornFXAttributeSamplerType::Curve:
-				return "CParticleSamplerCurve";
+				return "AttributeSampler_Curve";
 			case	EPopcornFXAttributeSamplerType::Image:
-				return "CParticleSamplerTexture";
+				return "AttributeSampler_Image";
 			case	EPopcornFXAttributeSamplerType::AnimTrack:
-				return "CParticleSamplerAnimTrack";
+				return "Attributesampler_AnimTrack";
 			case	EPopcornFXAttributeSamplerType::Text:
-				return "CParticleSamplerText";
+				return "AttributeSampler_Text";
 			case	EPopcornFXAttributeSamplerType::Turbulence:
-				return "CParticleSamplerProceduralTurbulence";
+				return "AttributeSampler_VectorField";
 			default:
 				PK_ASSERT_NOT_REACHED();
 				return null;

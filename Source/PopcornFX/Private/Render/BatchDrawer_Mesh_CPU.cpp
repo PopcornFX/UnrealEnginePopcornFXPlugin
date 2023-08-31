@@ -493,7 +493,12 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 		outFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
 		outFactory->m_MeshVSUniformBuffer = FPopcornFXMeshVSUniformsRef::CreateUniformBufferImmediate(vsUniformsMesh, UniformBuffer_SingleFrame);
 		PK_ASSERT(!outFactory->IsInitialized());
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		outFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
 		outFactory->InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 }
 

@@ -50,13 +50,15 @@ namespace
 		const PopcornFX::CString	&packPath = pack->Path();
 		if (!rawFilePath.StartsWith(packPath.Data()))
 		{
+#if WITH_EDITOR
 			if (!IsRunningCommandlet()) // We don't want this error to fail the packaging
 			{
 				FText	title = LOCTEXT("import_outside_mountpoint_title", "PopcornFX: Invalid file location");
 				FText	finalText = FText::FromString(FString::Printf(TEXT("The PopcornFX file '%s' is outside the mount point of the PopcornFX pack '%s'"), ANSI_TO_TCHAR(rawFilePath.Data()), ANSI_TO_TCHAR(packPath.Data())));
 
-				FMessageDialog::Open(EAppMsgType::Ok, finalText, &title);
+				OpenMessageBox(EAppMsgType::Ok, finalText, title);
 			}
+#endif // WITH_EDITOR
 			return null;
 		}
 
@@ -113,9 +115,7 @@ bool	UPopcornFXFile::ImportFile(const FString &inFilePath)
 
 bool	UPopcornFXFile::_ImportFile(const FString &inFilePath)
 {
-#if WITH_EDITOR
 	Modify();
-#endif
 
 	const FString		filePath = inFilePath;
 
@@ -159,7 +159,7 @@ bool	UPopcornFXFile::_ImportFile(const FString &inFilePath)
 					LOCTEXT("PopcornFXCannotImportBakedText",
 					"Please import the original source file of:\n\n{0}\n\nThen, PopcornFX Plugin and UE will take care of properly baking it.\n"),
 					FText::FromString(filePath));
-				FMessageDialog::Open(EAppMsgType::Ok, msg, &title);
+				OpenMessageBox(EAppMsgType::Ok, msg, title);
 				FPopcornFXPlugin::Get().UnloadPkFile(this); // unload via this method (SetInternalUserData(null))
 				return false;
 			}
@@ -384,7 +384,7 @@ void	UPopcornFXFile::AskImportAssetDependenciesIFN()
 			doImport = true;
 		else
 		{
-			EAppReturnType::Type	response = FMessageDialog::Open(EAppMsgType::YesNoYesAll, FText::FromString(msg), &title);
+			const EAppReturnType::Type	response = OpenMessageBox(EAppMsgType::YesNoYesAll, FText::FromString(msg), title);
 			if (response == EAppReturnType::YesAll)
 			{
 				FPopcornFXPlugin::SetAskImportAssetDependencies_YesAll(true);
