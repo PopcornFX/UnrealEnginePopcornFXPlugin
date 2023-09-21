@@ -8,6 +8,7 @@
 #include "GPUSim/PopcornFXGPUSim.h"
 #include "Render/PopcornFXShaderUtils.h"
 
+#include "PipelineStateCache.h"
 #include "ShaderParameterUtils.h"
 #include "SceneUtils.h"
 
@@ -258,7 +259,7 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchGenIndiceBatch(FRHICommandList&
 
 	PK_ASSERT(params.m_Count > 0);
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5)
 	SetComputePipelineState(RHICmdList, shader);
 #else
 	RHICmdList.SetComputeShader(shader);
@@ -390,11 +391,11 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 		//----------------------------------------------------------------------------
 		// Up Sweep
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 		SetComputePipelineState(RHICmdList, upSweepShader);
 #else
 		RHICmdList.SetComputeShader(upSweepShader);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 		if (PK_VERIFY(upSweep->InKeys.IsBound()))
 		{
@@ -440,11 +441,11 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 
 		//----------------------------------------------------------------------------
 		// Up Sweep Offsets
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 		SetComputePipelineState(RHICmdList, upSweepOffsetsShader);
 #else
 		RHICmdList.SetComputeShader(upSweepOffsetsShader);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 		if (PK_VERIFY(upSweepOffsets->InOutOffsets.IsBound()))
 		{
@@ -480,11 +481,11 @@ void	FPopcornFXSortComputeShader_Sorter::DispatchSort(FRHICommandList& RHICmdLis
 
 		//----------------------------------------------------------------------------
 		// Down Sweep
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 		SetComputePipelineState(RHICmdList, downSweepShader);
 #else
 		RHICmdList.SetComputeShader(downSweepShader);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 		if (PK_VERIFY(downSweep->InOffsets.IsBound()))
 		{

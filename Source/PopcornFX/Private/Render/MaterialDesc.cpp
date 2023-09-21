@@ -20,6 +20,10 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceConstant.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "Materials/MaterialRenderProxy.h"
+#	include "MaterialDomain.h"
+#endif
 #include "MaterialShared.h"
 
 #include <pk_particles/include/Renderers/ps_renderer_sound.h>

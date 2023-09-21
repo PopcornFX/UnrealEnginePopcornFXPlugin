@@ -7,6 +7,7 @@
 #include "RenderBatchManager.h"
 #include "SceneManagement.h"
 #include "MaterialDesc.h"
+#include "SceneInterface.h"
 
 #include "Engine/Engine.h"
 #include "World/PopcornFXSceneProxy.h"
@@ -103,6 +104,12 @@ bool	CBatchDrawer_Ribbon_CPUBB::Setup(const PopcornFX::CRendererDataBase *render
 	m_SecondUVSet = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending && renderer->m_RendererCache->m_Flags.m_HasUV;
 	m_RibbonCorrectDeformation = renderer->m_RendererCache->m_Flags.m_HasRibbonCorrectDeformation;
 	m_FlipUVs = renderer->m_RendererCache->m_Flags.m_RotateTexture;
+
+	const PopcornFX::ERibbonMode	mode = renderer->m_Declaration.GetPropertyValue_Enum<PopcornFX::ERibbonMode>(PopcornFX::BasicRendererProperties::SID_BillboardingMode(), PopcornFX::RibbonMode_ViewposAligned);
+	if (mode == PopcornFX::RibbonMode_SideAxisAlignedTube)
+		m_VPP = (renderer->m_Declaration.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_GeometryRibbon_SegmentCount(), 8) + 1) * 2;
+	else if (mode == PopcornFX::RibbonMode_SideAxisAlignedMultiPlane)
+		m_VPP = renderer->m_Declaration.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_GeometryRibbon_PlaneCount(), 2) * 4;
 	return true;
 }
 
@@ -697,7 +704,10 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vsUniforms.DynamicParameterMask = matDesc.m_DynamicParameterMask;
 
 			vsUniformsbillboard.RendererType = static_cast<u32>(PopcornFX::Renderer_Ribbon);
+			vsUniformsbillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsbillboard.CapsulesOffset = 0;
+			vsUniformsbillboard.TubesPlanesOffset = m_VPP > 0 ? 0 : vsUniformsbillboard.TotalParticleCount; // For now, no batching of tube/multiplane ribbons with quad bb modes
+			vsUniformsbillboard.VPP = m_VPP;
 			vsUniformsbillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
 			vsUniformsbillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
 			vsUniformsbillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
@@ -746,11 +756,11 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 		meshElement.MaxVertexIndex = m_TotalVertexCount - 1;
 
 		FDynamicPrimitiveUniformBuffer	&dynamicPrimitiveUniformBuffer = collector->AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
 #else
 		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, drawsVelocity, outputVelocity);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		meshElement.PrimitiveUniformBuffer = dynamicPrimitiveUniformBuffer.UniformBuffer.GetUniformBufferRHI();
 
 		PK_ASSERT(meshElement.NumPrimitives > 0);

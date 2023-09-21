@@ -29,9 +29,14 @@
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "PopcornFXStats.h"
 
+#include "Engine/World.h"
+
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceConstant.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "MaterialDomain.h"
+#endif
 
 #if POPCORNFX_RENDER_DEBUG
 #	include "PopcornFXSceneComponent.h"

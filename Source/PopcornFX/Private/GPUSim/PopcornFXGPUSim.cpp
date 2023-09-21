@@ -13,6 +13,13 @@
 	PK_STATIC_ASSERT(false);
 #endif
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "DataDrivenShaderPlatformInfo.h"
+#	if (ENGINE_MINOR_VERSION >= 3)
+#		include "RHIStaticShaderPlatformNames.h"
+#	endif
+#endif
+
 #include <pk_kernel/include/kr_thread_pool.h>
 #include <pk_particles/include/ps_stream_to_render.h>
 

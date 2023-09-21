@@ -28,6 +28,9 @@
 #	ifndef PLATFORM_XBOXONE
 #		define PLATFORM_XBOXONE	0
 #	endif
+#	if (ENGINE_MINOR_VERSION < 1)
+#		error PopcornFX Plugin only supported in UE5 >= 5.1
+#	endif
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if PLATFORM_WINDOWS

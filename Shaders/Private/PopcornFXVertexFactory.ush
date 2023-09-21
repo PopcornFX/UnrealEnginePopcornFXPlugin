@@ -265,8 +265,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
-	uint	vertexID = Input.VertexId;
-	uint	particleID = 0;
+	uint		particleID = 0;
+	const int	vertexID = Input.VertexId;
+	const int	vpp = PopcornFXBillboardVSUniforms.VPP; // Note: if tube/multiplane with differing vertex count end up being batched, this won't work.
+	const int	vppHalf = vpp / 2 - 1;
 	switch (PopcornFXBillboardVSUniforms.RendererType)
 	{
 	case	Renderer_Billboard:
@@ -279,9 +281,20 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	}
 	case	Renderer_Ribbon:
 	{
-		// First two vertices within a quad: grab the current particle, last two: grab the next one
-		// Clamps to the total particle count to avoid overflowing the GPU sim buffers
-		particleID = min(vertexID / 4 + saturate((int)vertexID % 4 - 1), PopcornFXBillboardVSUniforms.TotalParticleCount - 1);
+		if (vertexID < PopcornFXBillboardVSUniforms.TubesPlanesOffset * 4) // No tube/multiplane batching yet with quad bb modes, but this might come.
+		{
+			// First two vertices within a quad: grab the current particle, last two: grab the next one
+			// Clamps to the total particle count to avoid overflowing the GPU sim buffers
+			particleID = min(vertexID / 4 + saturate(vertexID % 4 - 1), PopcornFXBillboardVSUniforms.TotalParticleCount - 1);
+		}
+		else
+		{
+			// First n (n being segmentCount/planeCount + 1) vertices: grab the current particle, last n: grab the next one
+			// Clamps to the total particle count to avoid overflowing the GPU sim buffers
+			particleID = min(PopcornFXBillboardVSUniforms.TubesPlanesOffset + (vertexID - (PopcornFXBillboardVSUniforms.TubesPlanesOffset * 4)) / vpp +
+							saturate(vertexID % vpp - vppHalf),
+							PopcornFXBillboardVSUniforms.TotalParticleCount - 1);
+		}
 		break;
 	}
 	case	Renderer_Triangle:

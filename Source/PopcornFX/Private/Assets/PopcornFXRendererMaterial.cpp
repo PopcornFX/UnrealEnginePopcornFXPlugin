@@ -15,6 +15,10 @@
 #include "Engine/Texture2D.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/SkeletalMesh.h"
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "Engine/SkinnedAssetCommon.h"
+#endif
+#include "MaterialShared.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_base_object/include/hbo_handler.h>
@@ -86,7 +90,7 @@ namespace
 		for (int32 i = 0; i < params.StaticSwitchParameters.Num(); ++i)
 		{
 			FStaticSwitchParameter		&param  = params.StaticSwitchParameters[i];
-#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 1)
+#elif (ENGINE_MAJOR_VERSION == 5)
 		for (int32 i = 0; i < params.EditorOnly.StaticSwitchParameters.Num(); ++i)
 		{
 			FStaticSwitchParameter		&param  = params.EditorOnly.StaticSwitchParameters[i];
@@ -94,7 +98,7 @@ namespace
 		for (int32 i = 0; i < params.StaticSwitchParameters.Num(); ++i)
 		{
 			FStaticSwitchParameter		&param  = params.StaticSwitchParameters[i];
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif
 
 			if (param.ParameterInfo.Name == name)
 			{

@@ -16,6 +16,11 @@
 #include "MaterialShared.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
+#include "MeshDrawShaderBindings.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "MaterialDomain.h"
+#	include "DataDrivenShaderPlatformInfo.h"
+#endif
 
 IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, "PopcornFXGPUBillboardVSUniforms");
 

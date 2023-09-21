@@ -16,6 +16,8 @@
 #	include "Editor/PopcornFXEffectEditor.h"
 #endif
 
+#include "ShaderCore.h"
+
 #include "EngineModule.h"
 #include "Engine/Texture.h"
 #include "Engine/StaticMesh.h"

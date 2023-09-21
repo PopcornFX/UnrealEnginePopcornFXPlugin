@@ -102,8 +102,11 @@ FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamB
 	PK_ASSERT((desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) != 0); // is BUF_ShaderResource
 	PK_ASSERT((desc.Usage & D3D11_USAGE_DYNAMIC) == 0); // no BUF_AnyDynamic
 	PK_ASSERT((desc.CPUAccessFlags) == 0); // no BUF_AnyDynamic
-
-	const EBufferUsageFlags		bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
+	
+	// Fixed #12899: removed BUF_UnorderedAccess | BUF_ByteAddressBuffer from the buffer usage, as it leads to crashes on some AMD GPU hardware.
+	// The driver does not properly set the buffer stride as it considers it raw (although the buffer isn't bound as a raw buffer).
+	// The BUF_UnorderedAccess could technically be left active, but none of the UE plugin shaders are binding any of the PK sim streams as UAV anyways.
+	const EBufferUsageFlags		bufferUsage = BUF_ShaderResource;
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferDesc(bytes, stride, bufferUsage));
 #elif (ENGINE_MAJOR_VERSION == 5)
