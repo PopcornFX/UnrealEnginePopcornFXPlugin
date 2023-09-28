@@ -135,13 +135,13 @@ namespace	PopcornFXPinDataType
 	// Removes leading "EPopcornFXPinFieldType::" if nessecary for Pin value
 	FString		GetPinValueName(EPopcornFXPinDataType::Type value)
 	{
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		static const TCHAR	kEnumName[] = TEXT("/Script/PopcornFX.EPopcornFXPinDataType");
 		UEnum				*pinTypeEnum = FindObject<UEnum>(null, kEnumName, true);
 #else
 		static const TCHAR	kEnumName[] = TEXT("EPopcornFXPinDataType");
 		UEnum				*pinTypeEnum = FindObject<UEnum>(ANY_PACKAGE, kEnumName, true);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		check(pinTypeEnum);
 		FString		name = pinTypeEnum->GetNameByValue(value).ToString();
 		static const TCHAR	kEnumNameDoubleColon[] = TEXT("EPopcornFXPinDataType::");

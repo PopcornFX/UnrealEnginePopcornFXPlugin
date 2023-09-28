@@ -194,19 +194,19 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 					// too slow
 					.Visibility(this, &FPopcornFXCustomizationSubRendererMaterial::GetResetVisibility)
 					.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 					.ButtonStyle(FAppStyle::Get(), "NoBorder")
 #else
 					.ButtonStyle(FEditorStyle::Get(), "NoBorder")
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 					.Content()
 					[
 						SNew(SImage)
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
 #else
 						.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 					]
 				]
 		]

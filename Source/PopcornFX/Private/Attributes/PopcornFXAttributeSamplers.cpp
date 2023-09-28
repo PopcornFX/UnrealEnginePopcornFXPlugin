@@ -35,6 +35,7 @@
 #include "Curves/RichCurve.h"
 #include "Engine/Texture.h"
 #include "Engine/Texture2D.h"
+#include "UObject/Package.h"
 
 #if WITH_EDITOR
 #	include "Editor.h"

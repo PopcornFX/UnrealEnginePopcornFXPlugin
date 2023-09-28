@@ -11,11 +11,11 @@
 #include "AssetToolsModule.h"
 #include "UObject/NameTypes.h"
 #include "FileHelpers.h"
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #	include "AssetRegistry/AssetRegistryModule.h"
 #else
 #	include "AssetRegistryModule.h"
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #include "IAssetTools.h"
 #include "Factories/Factory.h"
 #include "Editor.h"
