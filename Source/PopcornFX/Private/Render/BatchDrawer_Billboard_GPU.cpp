@@ -114,6 +114,7 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<c
 	m_AtlasRectsCount = rects.Count();
 	return true;
 }
+
 //----------------------------------------------------------------------------
 //
 //	FPopcornFXDrawRequestsBuffer
@@ -203,6 +204,50 @@ void	FPopcornFXDrawRequestsBuffer::Unmap()
 #endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 }
+
+//----------------------------------------------------------------------------
+//
+//	FNullFloat4Buffer
+//
+//----------------------------------------------------------------------------
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+void	FNullFloat4Buffer::InitRHI(FRHICommandListBase &RHICmdList)
+#else
+void	FNullFloat4Buffer::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+{
+	// Note: buffer is not initialized, only meant to calm down UE not letting bind null descriptors.
+	// Draw calls binding this null buffer will access its data.
+
+	const u32	totalByteCount = 4 * sizeof(float); // Whatever
+#if (ENGINE_MAJOR_VERSION == 5)
+	FRHIResourceCreateInfo	info(TEXT("PopcornFX Null Float4 buffer"));
+#else
+	FRHIResourceCreateInfo	info;
+#endif // (ENGINE_MAJOR_VERSION == 5)
+	const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	VertexBufferRHI = RHICmdList.CreateBuffer(totalByteCount, usage, 0, ERHIAccess::VertexOrIndexBuffer | ERHIAccess::SRVMask, info);
+	SRV = RHICmdList.CreateShaderResourceView(VertexBufferRHI, sizeof(CFloat4), PF_A32B32G32R32F);
+#else
+	VertexBufferRHI = RHICreateVertexBuffer(totalByteCount, usage, info); // TODO: Stride
+	SRV = RHICreateShaderResourceView(VertexBufferRHI, sizeof(CFloat4), PF_A32B32G32R32F);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+}
+
+//----------------------------------------------------------------------------
+
+void	FNullFloat4Buffer::ReleaseRHI()
+{
+	SRV.SafeRelease();
+	FVertexBuffer::ReleaseRHI();
+}
+
+//----------------------------------------------------------------------------
+
+TGlobalResource<FNullFloat4Buffer>	GPopcornFXNullFloat4Buffer;
 
 //----------------------------------------------------------------------------
 //
@@ -904,7 +949,7 @@ bool	CBatchDrawer_Billboard_GPUBB::LaunchCustomTasks(PopcornFX::SRenderContext &
 			if (renderContext.m_API == SUERenderContext::D3D11)
 			{
 				const PopcornFX::CParticleStreamToRender_D3D11	&stream_D3D11 = static_cast<const PopcornFX::CParticleStreamToRender_D3D11&>(dr.StreamToRender());
-				copyParams.m_LiveParticleCount = StreamBufferSRVToRHI(&stream_D3D11.StreamSizeBuf(), sizeof(u32) * 4, sizeof(u32), PF_R32_UINT);
+				copyParams.m_LiveParticleCount = StreamBufferSRVToRHI(&stream_D3D11.StreamSizeBuf(), sizeof(u32), PF_R32_UINT /* debug layer errors if not specified correctly */);
 			}
 #endif
 #if (PK_GPU_D3D12 == 1)
@@ -1066,14 +1111,14 @@ bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_GPU(u32									drId,
 	if (renderContext.m_API == SUERenderContext::D3D11)
 	{
 		const PopcornFX::CParticleStreamToRender_D3D11	&stream_D3D11 = static_cast<const PopcornFX::CParticleStreamToRender_D3D11&>(dr->StreamToRender());
-		m_SimDataSRVRef = StreamBufferSRVToRHI(&stream_D3D11.StreamBuffer(), stream_D3D11.StreamSizeEst(), sizeof(float), PF_R32_UINT);
+		m_SimDataSRVRef = StreamBufferSRVToRHI(&stream_D3D11.StreamBuffer(), sizeof(float), PF_R32_UINT /* debug layer errors if not specified correctly */);
 	}
 #endif
 #if (PK_GPU_D3D12 == 1)
 	if (renderContext.m_API == SUERenderContext::D3D12)
 	{
 		const PopcornFX::CParticleStreamToRender_D3D12	&stream_D3D12 = static_cast<const PopcornFX::CParticleStreamToRender_D3D12&>(dr->StreamToRender());
-		m_SimDataSRVRef = StreamBufferSRVToRHI(&stream_D3D12.StreamBuffer(), sizeof(u32));
+		m_SimDataSRVRef = StreamBufferSRVToRHI(&stream_D3D12.StreamBuffer(), sizeof(float));
 	}
 #endif
 	PK_ASSERT(m_SimDataSRVRef.IsValid());
@@ -1191,15 +1236,8 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 				vsUniformsGPUBillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.AtlasRectCount = m_AtlasRects.m_AtlasRectsCount;
 
-				if (m_AtlasRects.m_AtlasBufferSRV != null)
-					vsUniformsGPUBillboard.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV;
-				else
-					vsUniformsGPUBillboard.AtlasBuffer = vsUniforms.InSimData; // Dummy SRV
-
-				if (gpuStorage)
-					vsUniformsGPUBillboard.DrawRequests = vsUniforms.InSimData;
-				else
-					vsUniformsGPUBillboard.DrawRequests = m_DrawRequests.m_DrawRequestsBufferSRV; // Dummy SRV
+				vsUniformsGPUBillboard.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV == null ? GPopcornFXNullFloat4Buffer.SRV : m_AtlasRects.m_AtlasBufferSRV;
+				vsUniformsGPUBillboard.DrawRequests = gpuStorage ? GPopcornFXNullFloat4Buffer.SRV : m_DrawRequests.m_DrawRequestsBufferSRV;
 
 				vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
 				vertexFactory->m_GPUBillboardVSUniformBuffer = FPopcornFXGPUBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsGPUBillboard, UniformBuffer_SingleFrame);

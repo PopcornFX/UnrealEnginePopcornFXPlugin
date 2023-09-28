@@ -661,6 +661,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vsUniforms.DynamicParameterMask = matDesc.m_DynamicParameterMask;
 
 			vsUniformsBillboard.RendererType = static_cast<u32>(PopcornFX::Renderer_Billboard);
+			vsUniformsBillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsBillboard.CapsulesOffset = m_CapsulesOffset;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();

@@ -160,6 +160,16 @@ namespace	D3D12RHI
 
 //----------------------------------------------------------------------------
 
+namespace	D3D12RHI
+{
+	void VerifyD3D12Result(HRESULT Result, const ANSICHAR* Code, const ANSICHAR* Filename, uint32 Line, ID3D12Device* Device, FString Message)
+	{
+		check(FAILED(Result));
+	}
+}
+
+//----------------------------------------------------------------------------
+
 FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	FRHIGPUMask VisibleNodes,
 	ID3D12Resource* InResource,

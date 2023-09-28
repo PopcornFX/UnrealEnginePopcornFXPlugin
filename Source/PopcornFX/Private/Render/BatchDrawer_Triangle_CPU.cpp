@@ -573,6 +573,7 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 			vsUniforms.DynamicParameterMask = matDesc.m_DynamicParameterMask;
 
 			vsUniformsBillboard.RendererType = static_cast<u32>(PopcornFX::Renderer_Triangle);
+			vsUniformsBillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
 			vsUniformsBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();

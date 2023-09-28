@@ -18,8 +18,11 @@ class	FPopcornFXUniforms;
 class	FPopcornFXGPUBillboardVSUniforms;
 
 //----------------------------------------------------------------------------
+//
+//	Atlas buffer (holds CRectangleList rects)
+//
+//----------------------------------------------------------------------------
 
-PK_FIXME("Should be build from PopcornFXFile")
 struct	FPopcornFXAtlasRectsVertexBuffer
 {
 	//FStructuredBufferRHIRef			m_AtlasBuffer_Structured;
@@ -48,6 +51,10 @@ private:
 };
 
 //----------------------------------------------------------------------------
+//
+//	Draw requests buffer (holds batching data, not currently supported by the GPU sim)
+//
+//----------------------------------------------------------------------------
 
 struct	FPopcornFXDrawRequestsBuffer
 {
@@ -71,6 +78,31 @@ private:
 	bool	m_Mapped = false;
 };
 
+//----------------------------------------------------------------------------
+//
+//	Null Float4 buffer
+//
+//----------------------------------------------------------------------------
+
+class	FNullFloat4Buffer : public FVertexBuffer
+{
+public:
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
+	virtual void	InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	ReleaseRHI() override;
+
+	FShaderResourceViewRHIRef	SRV;
+};
+
+extern TGlobalResource<FNullFloat4Buffer>	GPopcornFXNullFloat4Buffer;
+
+//----------------------------------------------------------------------------
+// 
+//	Drawer
+// 
 //----------------------------------------------------------------------------
 
 class	CBatchDrawer_Billboard_GPUBB : public PopcornFX::CRendererBatchJobs_Billboard_GPUBB
