@@ -12,6 +12,11 @@
 #include "MaterialShared.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/Material.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "MaterialDomain.h"
+#	include "DataDrivenShaderPlatformInfo.h"
+#	include "GlobalRenderResources.h"
+#endif
 
 #include "MeshMaterialShader.h"
 

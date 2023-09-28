@@ -50,6 +50,9 @@
 #	include "PBDRigidsSolver.h"
 #	include "Chaos/ChaosScene.h"
 #	include "Chaos/PBDRigidsEvolutionGBF.h"
+
+#	include "Physics/Experimental/PhysScene_Chaos.h"
+#	include "PhysicsInterfaceDeclaresCore.h"
 #endif
 
 #include "Collision.h"
@@ -61,6 +64,7 @@
 #include "RenderingThread.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
@@ -68,7 +72,10 @@
 #if WITH_EDITOR
 #	include "Editor.h"
 #	include "LevelEditorViewport.h"
+#	include "Settings/LevelEditorViewportSettings.h"
 #endif // WITH_EDITOR
+
+#include "UnrealClient.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_particles/include/ps_mediums.h>

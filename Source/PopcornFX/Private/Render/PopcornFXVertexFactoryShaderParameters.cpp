@@ -12,6 +12,7 @@
 #include "ShaderParameterUtils.h"
 #include "MeshBatch.h"
 #include "MeshMaterialShader.h"
+#include "MeshDrawShaderBindings.h"
 
 #include "PopcornFXSDK.h"
 

@@ -63,23 +63,23 @@ void	UpdateBufferStats(TRefCountPtr<ID3D11Buffer> Buffer, bool bAllocating) { }
 //
 //----------------------------------------------------------------------------
 
-FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 bytes, u32 stride, u8 pixelFormat)
+FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride, u8 pixelFormat)
 {
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
 	FRHICommandListBase			&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 #endif
 
 #if (ENGINE_MAJOR_VERSION == 5)
-	FD3D11Buffer				*buffer = static_cast<FD3D11Buffer*>(StreamBufferResourceToRHI(stream, bytes, stride));
+	FD3D11Buffer				*buffer = static_cast<FD3D11Buffer*>(StreamBufferResourceToRHI(stream, stride));
 #else
-	FD3D11VertexBuffer			*buffer = static_cast<FD3D11VertexBuffer*>(StreamBufferResourceToRHI(stream, bytes, stride));
+	FD3D11VertexBuffer			*buffer = static_cast<FD3D11VertexBuffer*>(StreamBufferResourceToRHI(stream, stride));
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 	check(pixelFormat != PF_Unknown);
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	return RHICmdList.CreateShaderResourceView(buffer, FRHIViewDesc::CreateBufferSRV()
 		.SetTypeFromBuffer(buffer)
-		.SetStride(stride));
+		.SetFormat((EPixelFormat)pixelFormat));
 #else
 	// Create a new SRV from resource
 	return RHICreateShaderResourceView(buffer, stride, pixelFormat);
@@ -89,9 +89,9 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamB
 //----------------------------------------------------------------------------
 
 #if (ENGINE_MAJOR_VERSION == 5)
-FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 bytes, u32 stride)
+FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride)
 #else
-FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 bytes, u32 stride)
+FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride)
 #endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	D3D11_BUFFER_DESC	desc;
@@ -103,15 +103,20 @@ FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamB
 	PK_ASSERT((desc.Usage & D3D11_USAGE_DYNAMIC) == 0); // no BUF_AnyDynamic
 	PK_ASSERT((desc.CPUAccessFlags) == 0); // no BUF_AnyDynamic
 
-	const EBufferUsageFlags		bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
+	// TODO: Unify SParticleStreamBuffer_D3D11 with other APIs, just provide a m_ByteSize member..
+	const u32	sizeInBytes = desc.ByteWidth;
+
+	// Fixed #12899: removed BUF_UnorderedAccess | BUF_ByteAddressBuffer from the buffer usage, as it leads to crashes on some AMD GPU hardware.
+	// The driver does not properly set the buffer stride as it considers it raw (although the buffer isn't bound as a raw buffer).
+	// The BUF_UnorderedAccess could technically be left active, but none of the UE plugin shaders are binding any of the PK sim streams as UAV anyways.
+	const EBufferUsageFlags		bufferUsage = BUF_ShaderResource;
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
-	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferDesc(bytes, stride, bufferUsage));
+	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferDesc(sizeInBytes, stride, bufferUsage));
 #elif (ENGINE_MAJOR_VERSION == 5)
-	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, bytes, bufferUsage, stride);
+	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, sizeInBytes, bufferUsage, stride);
 #else
-	FD3D11VertexBuffer			*buffer = new FD3D11VertexBuffer(stream->m_Buffer, bytes, bufferUsage);
+	FD3D11VertexBuffer			*buffer = new FD3D11VertexBuffer(stream->m_Buffer, sizeInBytes, bufferUsage);
 #endif // (ENGINE_MAJOR_VERSION == 5)
-	PK_ASSERT(_PopcornFXD3DGetRefCount(*(buffer->Resource)) > 1); // Referenced here and by PopcornFX
 
 	return buffer;
 }

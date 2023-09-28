@@ -13,6 +13,13 @@
 	PK_STATIC_ASSERT(false);
 #endif
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "DataDrivenShaderPlatformInfo.h"
+#	if (ENGINE_MINOR_VERSION >= 3)
+#		include "RHIStaticShaderPlatformNames.h"
+#	endif
+#endif
+
 #include <pk_kernel/include/kr_thread_pool.h>
 #include <pk_particles/include/ps_stream_to_render.h>
 
@@ -87,60 +94,5 @@ bool	StreamBufferByteOffset(const PopcornFX::CParticleStreamToRender_GPU &stream
 	streamOffset = _streamOffset;
 	return _streamOffset.Valid();
 }
-
-//----------------------------------------------------------------------------
-
-template <typename _Type, u32 _Stride>
-FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::CParticleStreamToRender &stream_GPU, PopcornFX::CGuid streamId, PopcornFX::CGuid &streamOffset)
-{
-	PK_ASSERT(streamId.Valid());
-
-#if (PK_GPU_D3D11 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D11)
-	{
-		const PopcornFX::CParticleStreamToRender_D3D11	&stream = static_cast<const PopcornFX::CParticleStreamToRender_D3D11&>(stream_GPU);
-
-		streamOffset = stream.StreamOffset(streamId);
-		return StreamBufferSRVToRHI(&stream.StreamBuffer(), stream.StreamSizeEst() * _Stride, _Stride/*, DXGI_FORMAT_UNKNOWN*/);
-	}
-#endif // (PK_GPU_D3D11 == 1)
-#if (PK_GPU_D3D12 == 1)
-	if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
-	{
-		const PopcornFX::CParticleStreamToRender_D3D12	&stream = static_cast<const PopcornFX::CParticleStreamToRender_D3D12&>(stream_GPU);
-
-		streamOffset = stream.StreamOffset(streamId);
-		return StreamBufferSRVToRHI(&stream.StreamBuffer(), stream.StreamSizeEst() * _Stride);
-	}
-#endif // (PK_GPU_D3D12 == 1)
-	PK_ASSERT_NOT_REACHED();
-	return null;
-}
-
-#define DEFINE_StreamBufferSRVToRHI(__type, __stride) \
-	template FShaderResourceViewRHIRef		StreamBufferSRVToRHI<__type, __stride>(const PopcornFX::CParticleStreamToRender &stream_GPU, PopcornFX::CGuid streamId, PopcornFX::CGuid &streamOffset)
-
-DEFINE_StreamBufferSRVToRHI(CFloat4, 16);
-DEFINE_StreamBufferSRVToRHI(CFloat3, 12);
-DEFINE_StreamBufferSRVToRHI(CFloat2, 8);
-DEFINE_StreamBufferSRVToRHI(float, 4);
-#undef DEFINE_StreamBufferSRVToRHI
-
-//----------------------------------------------------------------------------
-//
-//		D3D
-//
-//----------------------------------------------------------------------------
-
-#if (PK_GPU_D3D11 == 1 || PK_GPU_D3D12 == 1)
-
-uint32	_PopcornFXD3DGetRefCount(IUnknown &res)
-{
-	uint32		count = res.AddRef();
-	res.Release();
-	return count - 1;
-}
-
-#endif // (PK_GPU_D3D11 == 1 || PK_GPU_D3D12 == 1)
 
 #endif // (PK_HAS_GPU != 0)

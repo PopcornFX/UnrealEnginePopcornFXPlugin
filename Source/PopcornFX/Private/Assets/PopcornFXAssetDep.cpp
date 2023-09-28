@@ -12,6 +12,7 @@
 #include "Assets/PopcornFXFont.h"
 #include "Assets/PopcornFXAnimTrack.h"
 #include "Assets/PopcornFXSimulationCache.h"
+#include "AssetRegistry/AssetData.h"
 
 #include "Internal/FileSystemController_UE.h"
 

@@ -14,6 +14,8 @@
 #include "PopcornFXStats.h"
 #include "Assets/PopcornFXEffectPriv.h"
 
+#include "Engine/World.h"
+
 #include "Engine/CollisionProfile.h"
 
 #include "PopcornFXSDK.h"

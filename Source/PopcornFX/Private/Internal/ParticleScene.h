@@ -52,6 +52,8 @@ namespace	physx
 	struct	PxRaycastHit;
 	class	PxScene;
 }
+#else
+#	include "Chaos/ChaosScene.h"
 #endif // PK_WITH_PHYSX
 
 FWD_PK_API_BEGIN

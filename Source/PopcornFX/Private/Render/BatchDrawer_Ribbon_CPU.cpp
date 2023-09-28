@@ -7,6 +7,7 @@
 #include "RenderBatchManager.h"
 #include "SceneManagement.h"
 #include "MaterialDesc.h"
+#include "SceneInterface.h"
 
 #include "Engine/Engine.h"
 #include "World/PopcornFXSceneProxy.h"
@@ -698,6 +699,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 
 			vsUniformsbillboard.RendererType = static_cast<u32>(PopcornFX::Renderer_Ribbon);
 			vsUniformsbillboard.CapsulesOffset = 0;
+			vsUniformsbillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsbillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
 			vsUniformsbillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
 			vsUniformsbillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();

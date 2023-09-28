@@ -12,6 +12,8 @@
 #include "PopcornFXSettings.h"
 #include "PopcornFXStats.h"
 
+#include "Templates/ScopedCallback.h"
+
 #include "GenericPlatform/GenericPlatformMemory.h"
 #include "HAL/PlatformAffinity.h"
 #include "Misc/ConfigCacheIni.h"

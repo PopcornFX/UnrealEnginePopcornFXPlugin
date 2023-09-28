@@ -12,6 +12,7 @@
 #include "Engine/Canvas.h"
 #include "Debug/DebugDrawService.h"
 #include "Engine/Engine.h"
+#include "UObject/UObjectIterator.h"
 
 #include "PopcornFXSceneComponent.h"
 

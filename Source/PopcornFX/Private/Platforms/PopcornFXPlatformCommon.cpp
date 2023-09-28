@@ -18,9 +18,17 @@
 #	include "ShaderCompilerCore.h"
 #	include "Misc/FileHelper.h"
 
+#	if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#		include "ShaderPreprocessTypes.h"
+#	endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+
 #	include <pk_engine_utils/include/eu_random.h>
 #	include <pk_maths/include/pk_maths_random.h>
 #endif // (PK_COMPILE_GPU != 0)
+
+#if (PKFX_COMMON_NewImageFromTexture != 0)
+#	include "TextureResource.h"
+#endif
 
 #include <pk_maths/include/pk_numeric_tools_int.h>
 
@@ -35,7 +43,7 @@ PopcornFX::CImage		*_CreateFallbackImage()
 	const PopcornFX::CUint3				size(16, 16, 1);
 	const PopcornFX::CImage::EFormat	format = PopcornFX::CImage::Format_BGRA8;
 
-	const u32						bufferSize = PopcornFX::CImage::GetFormatPixelBufferSizeInBytes(format, size);
+	const u32							bufferSize = PopcornFX::CImage::GetFormatPixelBufferSizeInBytes(format, size);
 	PopcornFX::PRefCountedMemoryBuffer	dstBuffer = PopcornFX::CRefCountedMemoryBuffer::AllocAligned(bufferSize, 0x80);
 	if (!PK_VERIFY(dstBuffer != null))
 		return null;
@@ -314,9 +322,20 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 #endif // (ENGINE_MAJOR_VERSION == 5)
 			}
 
-			FShaderCompilerOutput	output;
-			const FString			workingDirectory;
+			FShaderCompilerOutput		output;
+			const FString				workingDirectory;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+			FShaderPreprocessOutput		preprocessorOutput;
+			FShaderCompilerEnvironment	mergedEnvironment;
+			if (!shaderFormat->PreprocessShader(input, mergedEnvironment, preprocessorOutput))
+			{
+				UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed preprocessing shader for %s"), ANSI_TO_TCHAR(apiName.Data()));
+				return false;
+			}
+			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output, workingDirectory);
+#else
 			shaderFormat->CompileShader(shaderFormatName, input, output, workingDirectory);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 			if (output.bSucceeded)
 			{

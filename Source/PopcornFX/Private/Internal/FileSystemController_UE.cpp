@@ -228,6 +228,11 @@ CFileSystemController_UE::~CFileSystemController_UE()
 
 PopcornFX::PFileStream		CFileSystemController_UE::OpenStream(const CString &path, IFileSystem::EAccessPolicy mode, bool pathNotVirtual)
 {
+	if (!IsInGameThread())
+	{
+		CLog::Log(PK_INFO, "CFileSystemController_UE OpenStream: cannot load UE packages outside the main thread ('%s' pathNotVirtual:%d)", path.Data(), pathNotVirtual);
+		return null;
+	}
 	CFileStreamFS_UE	*fs = CFileStreamFS_UE::Open(this, path, pathNotVirtual, mode);
 	if (fs != null)
 		FS_DEBUG_LOG(PK_INFO, "CFileSystemController_UE OpenStream OK '%s' pathNotVirtual:%d", path.Data(), pathNotVirtual);
@@ -240,6 +245,11 @@ PopcornFX::PFileStream		CFileSystemController_UE::OpenStream(const CString &path
 
 bool	CFileSystemController_UE::Exists(const CString &path, bool pathNotVirtual /*= false*/)
 {
+	if (!IsInGameThread())
+	{
+		CLog::Log(PK_INFO, "CFileSystemController_UE Exists: cannot load UE packages outside the main thread ('%s' pathNotVirtual:%d)", path.Data(), pathNotVirtual);
+		return false;
+	}
 	UObject			*uobject = LoadUObject(path, pathNotVirtual);
 	if (uobject != null)
 		FS_DEBUG_LOG(PK_INFO, "CFileSystemController_UE Exists OK '%s' pathNotVirtual:%d", path.Data(), pathNotVirtual);

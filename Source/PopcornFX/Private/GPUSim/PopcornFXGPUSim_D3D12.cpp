@@ -150,6 +150,16 @@ void FD3D12ResourceLocation::SetResource(FD3D12Resource* Value)
 
 //----------------------------------------------------------------------------
 
+namespace	D3D12RHI
+{
+	void VerifyD3D12Result(HRESULT Result, const ANSICHAR* Code, const ANSICHAR* Filename, uint32 Line, ID3D12Device* Device, FString Message)
+	{
+		check(FAILED(Result));
+	}
+}
+
+//----------------------------------------------------------------------------
+
 FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	FRHIGPUMask VisibleNodes,
 	ID3D12Resource* InResource,
@@ -206,24 +216,35 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	}
 
 	InitalizeResourceState(InitialState, InResourceStateMode, InDefaultResourceState);
-}
-
-namespace	D3D12RHI
-{
-	void VerifyD3D12Result(HRESULT Result, const ANSICHAR* Code, const ANSICHAR* Filename, uint32 Line, ID3D12Device* Device, FString Message)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	if (!IsPlacedResource())
 	{
-		check(FAILED(Result));
+		ResidencyHandle = MakeUnique<FD3D12ResidencyHandle>();
 	}
+
+	if (Desc.bReservedResource)
+	{
+		checkf(Heap == nullptr, TEXT("Reserved resources are not expected to have a heap"));
+		ReservedResourceData = MakeUnique<FD3D12ReservedResourceData>();
+	}
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 
 //----------------------------------------------------------------------------
 
 FD3D12Resource::~FD3D12Resource()
 {
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	if (!IsPlacedResource() && D3DX12Residency::IsInitialized(*ResidencyHandle))
+	{
+		D3DX12Residency::EndTrackingObject(GetParentDevice()->GetResidencyManager(), *ResidencyHandle);
+	}
+#else
 	if (D3DX12Residency::IsInitialized(ResidencyHandle))
 	{
 		D3DX12Residency::EndTrackingObject(GetParentDevice()->GetResidencyManager(), ResidencyHandle);
 	}
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 
 //----------------------------------------------------------------------------
@@ -352,7 +373,10 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuff
 	FD3D12DynamicRHI	*dynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
 	FD3D12Device		*device = dynamicRHI->GetAdapter().GetDevice(0);
 
-	const EBufferUsageFlags			bufferUsage = BUF_UnorderedAccess | BUF_ByteAddressBuffer | BUF_ShaderResource;
+	// Fixed #12899: removed BUF_UnorderedAccess | BUF_ByteAddressBuffer from the buffer usage, as it leads to crashes on some AMD GPU hardware.
+	// The driver does not properly set the buffer stride as it considers it raw (although the buffer isn't bound as a raw buffer).
+	// The BUF_UnorderedAccess could technically be left active, but none of the UE plugin shaders are binding any of the PK sim streams as UAV anyways.
+	const EBufferUsageFlags			bufferUsage = BUF_ShaderResource;
 	const D3D12_RESOURCE_STATES		resourceState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
 	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource, resourceState, ED3D12ResourceStateMode::Default, resourceState, desc, NULL, D3D12_HEAP_TYPE_DEFAULT);

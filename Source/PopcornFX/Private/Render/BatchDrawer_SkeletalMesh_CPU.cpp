@@ -10,6 +10,11 @@
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "Rendering/SkeletalMeshLODRenderData.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/Texture2D.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
+#	include "Engine/SkinnedAssetCommon.h"
+#endif
+#include "RHIStaticStates.h"
 
 #include "Engine/Engine.h"
 #include "World/PopcornFXSceneProxy.h"
