@@ -297,7 +297,7 @@ void	UPopcornFXEmitterComponent::SpawnPreviewSceneIFN(UWorld *world)
 	{
 		FActorSpawnParameters	params;
 
-		params.ObjectFlags = RF_Public | RF_Transactional;
+		params.ObjectFlags = RF_Transactional;
 		// ! Do not force the name !
 		// Or UE will magicaly just return the last deleted Actor with the same name !
 		//params.Name = SceneName;

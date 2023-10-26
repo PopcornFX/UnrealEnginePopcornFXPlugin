@@ -141,11 +141,11 @@ void FD3D12ResourceLocation::SetResource(FD3D12Resource* Value)
 	}
 
 	UnderlyingResource = Value;
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 	ResidencyHandle = &UnderlyingResource->GetResidencyHandle();
 #else
 	ResidencyHandle = UnderlyingResource->GetResidencyHandle();
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
