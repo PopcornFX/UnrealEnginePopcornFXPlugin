@@ -30,7 +30,7 @@ FWD_PK_API_END
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 #	define PKFX_COMMON_NewImageFromTexture		1
 #else
 #	if PLATFORM_PS4 || PLATFORM_XBOXONE
@@ -38,7 +38,7 @@ FWD_PK_API_END
 #	else
 #	define PKFX_COMMON_NewImageFromTexture		1
 #	endif // PLATFORM_PS4 || PLATFORM_XBOXONE
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 //----------------------------------------------------------------------------
 

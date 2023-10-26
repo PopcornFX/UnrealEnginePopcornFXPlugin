@@ -90,6 +90,14 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 	bAutoActivate = true;
 	//SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 
+#if WITH_EDITOR
+	// UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bRunOnAnyThread = false;
+	PrimaryComponentTick.bAllowTickOnDedicatedServer = false;
+	bTickInEditor = true;
+#endif // WITH_EDITOR
+
 	bPlayOnLoad = true;
 	bKillParticlesOnDestroy = false;
 
@@ -210,6 +218,24 @@ PopcornFX::CParticleEffectInstance	*UPopcornFXEmitterComponent::_GetEffectInstan
 //----------------------------------------------------------------------------
 #if WITH_EDITOR
 
+void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction)
+{
+	Super::TickComponent(deltaTime, tickType, thisTickFunction);
+
+	// UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
+	// Emitters don't tick outside editor
+	if (PK_VERIFY(AttributeList != null))
+	{
+		if (m_Started &&
+			AttributeList->GetRestartEmitter())
+		{
+			RestartEmitter(true);
+		}
+	}
+}
+
+//----------------------------------------------------------------------------
+
 bool	UPopcornFXEmitterComponent::CanEditChange(const FProperty* InProperty) const
 {
 	if (InProperty)
@@ -271,7 +297,7 @@ void	UPopcornFXEmitterComponent::SpawnPreviewSceneIFN(UWorld *world)
 	{
 		FActorSpawnParameters	params;
 
-		params.ObjectFlags = RF_Public | RF_Transactional;
+		params.ObjectFlags = RF_Transactional;
 		// ! Do not force the name !
 		// Or UE will magicaly just return the last deleted Actor with the same name !
 		//params.Name = SceneName;

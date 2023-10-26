@@ -98,7 +98,7 @@ void	APopcornFXHUDProfiler::DrawBar(float minX, float maxX, float yPos, float cu
 {
 	const float		clampedCursor = FMath::Clamp(cursor, 0.0f, 1.0f);
 	const float		sizeX = (maxX - minX) * clampedCursor;
-	FLinearColor	color(clampedCursor, 1.f - clampedCursor, 0.f, 0.6f);
+	FLinearColor	color(clampedCursor, 1.f - clampedCursor, 0.f, 0.8f);
 	{
 		FCanvasTileItem	tile(FVector2D(minX, yPos), FVector2D(sizeX, thickness), color);
 		tile.BlendMode = SE_BLEND_AlphaBlend;
@@ -129,7 +129,7 @@ void	APopcornFXHUDProfiler::DrawDebugHUD(UCanvas* inCanvas, APlayerController* p
 
 	// Grab all medium collections from the world
 	PopcornFX::TArray<CParticleScene::SPopcornFXEffectTimings>	allSceneTimings;
-	double														totalUpdateTime = 0.0;
+	double														wallUpdateTimeCPU = 0.0;
 	u32															totalParticleCount_CPU = 0;
 	u32															totalParticleCount_GPU = 0;
 	u32															totalInstanceCount = 0;
@@ -141,7 +141,7 @@ void	APopcornFXHUDProfiler::DrawDebugHUD(UCanvas* inCanvas, APlayerController* p
 		if (sceneComp->ParticleScene() == null)
 			continue;
 		allSceneTimings.Merge(sceneComp->ParticleScene()->EffectTimings());
-		totalUpdateTime += sceneComp->ParticleScene()->MediumCollectionUpdateTime();
+		wallUpdateTimeCPU += sceneComp->ParticleScene()->MediumCollectionUpdateTime();
 		totalParticleCount_CPU += sceneComp->ParticleScene()->MediumCollectionParticleCount_CPU();
 		totalParticleCount_GPU += sceneComp->ParticleScene()->MediumCollectionParticleCount_GPU();
 		totalInstanceCount += sceneComp->ParticleScene()->MediumCollectionInstanceCount();
@@ -170,10 +170,19 @@ void	APopcornFXHUDProfiler::DrawDebugHUD(UCanvas* inCanvas, APlayerController* p
 	const u32										frameCount = settings->HUD_UpdateTimeFrameCount;
 	const EPopcornFXEffectsProfilerSortMode::Type	sortMode = settings->EffectsProfilerSortMode;
 
+	// Sum flat times:
 	double	totalTime = 0.0;
+	double	totalTimeCPU = 0.0;
+	double	totalTimeGPU = 0.0;
 	for (u32 iTiming = 0; iTiming < allSceneTimings.Count(); ++iTiming)
+	{
 		totalTime += allSceneTimings[iTiming].TotalTime() / frameCount;
-	const float	timeNormalizer = totalUpdateTime / totalTime;
+		totalTimeCPU += allSceneTimings[iTiming].TotalTimeCPU() / frameCount;
+		totalTimeGPU += allSceneTimings[iTiming].TotalTimeGPU() / frameCount; // Note: not this frame's gpu time, 2-4 frames delay
+	}
+	// Always display gpu flat time, we won't extract hardware specs here.
+	// This normalizes effect flat time against CPU wall time (time between mediumCollection->Update() and mediumCollection->UpdateFence())
+	const float	timeNormalizerCPU = wallUpdateTimeCPU / totalTimeCPU;
 
 	switch (sortMode)
 	{
@@ -192,31 +201,41 @@ void	APopcornFXHUDProfiler::DrawDebugHUD(UCanvas* inCanvas, APlayerController* p
 
 	Canvas->SetDrawColor(255, 255, 255, 255);
 
-	UFont				*font = GEngine->GetSmallFont();
-	FFontRenderInfo		fri = Canvas->CreateFontRenderInfo(true, true);
-	FFontRenderInfo		friNoShadow = Canvas->CreateFontRenderInfo(true, false);
+	const UFont				*font = GEngine->GetSmallFont();
+	const FFontRenderInfo	fri = Canvas->CreateFontRenderInfo(true, true);
+	const FFontRenderInfo	friNoShadow = Canvas->CreateFontRenderInfo(true, false);
 
-	FString		title = TEXT("PopcornFX Effects Profiler");
-	float	titleWidth;
-	float	lineHeight;
+	const FString	title = TEXT("PopcornFX Effects Profiler");
+	float			titleWidth;
+	float			lineHeight;
 	Canvas->StrLen(font, title, titleWidth, lineHeight);
 
 	float			yPos = Canvas->SizeY * screenRatio;
-	float			maxyPos = Canvas->SizeY * (1.f - screenRatio);
 	float			xPos = yPos;
+	const float		maxyPos = Canvas->SizeY * (1.f - screenRatio);
 
 	Canvas->DrawText(font, title, xPos, yPos, 1.f, 1.f, fri);
 	yPos += lineHeight;
 
+	const bool		hasGPU = totalTimeGPU > 0.0f;
+
 	const float		relTimexPos = xPos + 0;
-	const float		timexPos = relTimexPos + 60;
-	const float		pCountCPUxPos = timexPos + 60;
+	const float		relTimeCPUxPos = relTimexPos + 60;
+	const float		relTimeGPUxPos = relTimeCPUxPos + 60;
+	const float		timexPos = (hasGPU ? relTimeGPUxPos : relTimexPos) + 60;
+	const float		timeCPUxPos = timexPos + 60;
+	const float		timeGPUxPos = timeCPUxPos + 60;
+	const float		pCountCPUxPos = (hasGPU ? timeGPUxPos : timexPos) + 60;
 	const float		pCountGPUxPos = pCountCPUxPos + 70;
-	const float		iCountxPos = pCountGPUxPos + 70;
+	const float		iCountxPos = (hasGPU ? pCountGPUxPos : pCountCPUxPos) + 70;
 	const float		effectPathxPos = iCountxPos + 60;
 
+	const float		TimeLimitPerEffectSeconds = settings->TimeLimitPerEffect * 0.001f;
 	const float		CPUTimeLimitPerEffectSeconds = settings->CPUTimeLimitPerEffect * 0.001f;
+	const float		GPUTimeLimitPerEffectSeconds = settings->GPUTimeLimitPerEffect * 0.001f;
+	const float		TimeLimitTotalSeconds = settings->TimeLimitTotal * 0.001f;
 	const float		CPUTimeLimitTotalSeconds = settings->CPUTimeLimitTotal * 0.001f;
+	const float		GPUTimeLimitTotalSeconds = settings->GPUTimeLimitTotal * 0.001f;
 
 	const u32		CPUParticleCountLimitPerEffect = settings->CPUParticleCountLimitPerEffect;
 	const u32		GPUParticleCountLimitPerEffect = settings->GPUParticleCountLimitPerEffect;
@@ -224,48 +243,86 @@ void	APopcornFXHUDProfiler::DrawDebugHUD(UCanvas* inCanvas, APlayerController* p
 	const u32		CPUParticleCountLimitTotal = settings->CPUParticleCountLimitTotal;
 	const u32		GPUParticleCountLimitTotal = settings->GPUParticleCountLimitTotal;
 
+	// Draw summary
+
 	Canvas->DrawText(font, FString::Printf(TEXT("Timings are averaged over %d frames"), frameCount), relTimexPos, yPos, 1.f, 1.f, fri);
 	yPos += lineHeight;
 
-	Canvas->DrawText(font, FString::Printf(TEXT("Total:")), relTimexPos, yPos, 1.f, 1.f, fri);
 	Canvas->DrawText(font, FString::Printf(TEXT("Total time")), timexPos, yPos, 1.f, 1.f, fri);
 	Canvas->DrawText(font, FString::Printf(TEXT("CPU count")), pCountCPUxPos, yPos, 1.f, 1.f, fri);
-	Canvas->DrawText(font, FString::Printf(TEXT("GPU count")), pCountGPUxPos, yPos, 1.f, 1.f, fri);
 	Canvas->DrawText(font, FString::Printf(TEXT("Instances")), iCountxPos, yPos, 1.f, 1.f, fri);
+	if (hasGPU)
+	{
+		Canvas->DrawText(font, FString::Printf(TEXT("Total CPU")), timeCPUxPos, yPos, 1.f, 1.f, fri);
+		Canvas->DrawText(font, FString::Printf(TEXT("Total GPU")), timeGPUxPos, yPos, 1.f, 1.f, fri);
+		Canvas->DrawText(font, FString::Printf(TEXT("GPU count")), pCountGPUxPos, yPos, 1.f, 1.f, fri);
+	}
 	yPos += lineHeight;
 
-	const PopcornFX::Units::SValueAndNamedUnit	readableTotalTime = PopcornFX::Units::AutoscaleTime(totalUpdateTime, 0.5f);
-	Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalTime.m_Value, ANSI_TO_TCHAR(readableTotalTime.m_UnitName)), timexPos, yPos, 1.f, 1.f, friNoShadow);
-	Canvas->DrawText(font, FString::Printf(TEXT("%d"), totalParticleCount_CPU), pCountCPUxPos, yPos, 1.f, 1.f, fri);
-	Canvas->DrawText(font, FString::Printf(TEXT("%d"), totalParticleCount_GPU), pCountGPUxPos, yPos, 1.f, 1.f, fri);
-	Canvas->DrawText(font, FString::Printf(TEXT("%d"), totalInstanceCount), iCountxPos, yPos, 1.f, 1.f, fri);
-	DrawBar(timexPos, pCountCPUxPos - 1, yPos, totalUpdateTime / CPUTimeLimitTotalSeconds, lineHeight);
-	DrawBar(pCountCPUxPos, pCountGPUxPos - 1, yPos, (float)totalParticleCount_CPU / (float)CPUParticleCountLimitTotal, lineHeight);
-	DrawBar(pCountGPUxPos, iCountxPos - 1, yPos, (float)totalParticleCount_GPU / (float)GPUParticleCountLimitTotal, lineHeight);
+	// Timings
+	{
+		const PopcornFX::Units::SValueAndNamedUnit	readableTotalTime = PopcornFX::Units::AutoscaleTime(wallUpdateTimeCPU, 0.5f);
+		const PopcornFX::Units::SValueAndNamedUnit	readableTotalTimeCPU = PopcornFX::Units::AutoscaleTime(wallUpdateTimeCPU, 0.5f);
+		//const PopcornFX::Units::SValueAndNamedUnit	readableTotalTimeGPU = PopcornFX::Units::AutoscaleTime(totalUpdateTimeGPU, 0.5f);
+		DrawBar(timexPos, timeCPUxPos - 1, yPos, wallUpdateTimeCPU / TimeLimitTotalSeconds, lineHeight);
+		Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalTime.m_Value, ANSI_TO_TCHAR(readableTotalTime.m_UnitName)), timexPos, yPos, 1.f, 1.f, friNoShadow);
+		if (hasGPU)
+		{
+			DrawBar(timeCPUxPos, timeGPUxPos - 1, yPos, wallUpdateTimeCPU / CPUTimeLimitTotalSeconds, lineHeight);
+			Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalTimeCPU.m_Value, ANSI_TO_TCHAR(readableTotalTimeCPU.m_UnitName)), timeCPUxPos, yPos, 1.f, 1.f, friNoShadow);
+			//DrawBar(timeGPUxPos, pCountCPUxPos - 1, yPos, totalUpdateTimeGPU / GPUTimeLimitTotalSeconds, lineHeight);
+			//Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalTimeGPU.m_Value, ANSI_TO_TCHAR(readableTotalTimeGPU.m_UnitName)), timeGPUxPos, yPos, 1.f, 1.f, friNoShadow);
+		}
+	}
+	// Counts
+	{
+		DrawBar(pCountCPUxPos, pCountGPUxPos - 1, yPos, (float)totalParticleCount_CPU / (float)CPUParticleCountLimitTotal, lineHeight);
+		Canvas->DrawText(font, FString::Printf(TEXT("%d"), totalParticleCount_CPU), pCountCPUxPos, yPos, 1.f, 1.f, fri);
+		if (hasGPU)
+		{
+			DrawBar(pCountGPUxPos, iCountxPos - 1, yPos, (float)totalParticleCount_GPU / (float)GPUParticleCountLimitTotal, lineHeight);
+			Canvas->DrawText(font, FString::Printf(TEXT("%d"), totalParticleCount_GPU), pCountGPUxPos, yPos, 1.f, 1.f, fri);
+		}
+
+		Canvas->DrawText(font, FString::Printf(TEXT("%d"), totalInstanceCount), iCountxPos, yPos, 1.f, 1.f, fri);
+	}
 	yPos += lineHeight;
 
 	if (totalTime > 0.0f && !allSceneTimings.Empty())
 	{
-		Canvas->DrawText(font, TEXT("%CPU"), relTimexPos, yPos, 1.f, 1.f, fri);
+		Canvas->DrawText(font, TEXT("%"), relTimexPos, yPos, 1.f, 1.f, fri);
+		if (hasGPU)
+		{
+			Canvas->DrawText(font, TEXT("%CPU"), relTimeCPUxPos, yPos, 1.f, 1.f, fri);
+			Canvas->DrawText(font, TEXT("%GPU"), relTimeGPUxPos, yPos, 1.f, 1.f, fri);
+			Canvas->DrawText(font, TEXT("Est. CPU"), timeCPUxPos, yPos, 1.f, 1.f, fri);
+			Canvas->DrawText(font, TEXT("Est. GPU"), timeGPUxPos, yPos, 1.f, 1.f, fri);
+			Canvas->DrawText(font, TEXT("GPU count"), pCountGPUxPos, yPos, 1.f, 1.f, fri);
+		}
 		Canvas->DrawText(font, TEXT("Est. time"), timexPos, yPos, 1.f, 1.f, fri);
 		Canvas->DrawText(font, TEXT("CPU count"), pCountCPUxPos, yPos, 1.f, 1.f, fri);
-		Canvas->DrawText(font, TEXT("GPU count"), pCountGPUxPos, yPos, 1.f, 1.f, fri);
 		Canvas->DrawText(font, TEXT("Instances"), iCountxPos, yPos, 1.f, 1.f, fri);
 		Canvas->DrawText(font, TEXT("Effect path"), effectPathxPos, yPos, 1.f, 1.f, fri);
 		yPos += lineHeight;
 
 		const float			maxDrawyPos = maxyPos - lineHeight * 2; // 2 last total lines
 		double				displayedTotalTime = 0.0f;
+		double				displayedTotalTimeCPU = 0.0f;
+		double				displayedTotalTimeGPU = 0.0f;
 		u32					displayedTotalPCount_CPU = 0;
 		u32					displayedTotalPCount_GPU = 0;
 		u32					displayedTotalICount = 0;
 		for (u32 iTiming = 0; iTiming < allSceneTimings.Count(); ++iTiming)
 		{
 			const float	effectTime = allSceneTimings[iTiming].TotalTime() / frameCount;
+			const float	effectTimeCPU = allSceneTimings[iTiming].TotalTimeCPU() / frameCount;
+			const float	effectTimeGPU = allSceneTimings[iTiming].TotalTimeGPU() / frameCount;
 			const u32	effectCPUPCount = allSceneTimings[iTiming].TotalParticleCount_CPU() / frameCount;
 			const u32	effectGPUPCount = allSceneTimings[iTiming].TotalParticleCount_GPU() / frameCount;
 			const u32	effectInstanceCount = allSceneTimings[iTiming].TotalInstanceCount()/* / frameCount */; // Not averaged
 			const float	effectTimeRelative = (effectTime / totalTime) * 100.0f;
+			const float	effectTimeRelativeCPU = totalTimeCPU > 0.0 ? (effectTimeCPU / totalTimeCPU) * 100.0f : 0.0f;
+			const float	effectTimeRelativeGPU = totalTimeGPU > 0.0 ? (effectTimeGPU / totalTimeGPU) * 100.0f : 0.0f;
 
 			if (effectTimeRelative < hideBelowPerc)
 			{
@@ -273,29 +330,61 @@ void	APopcornFXHUDProfiler::DrawDebugHUD(UCanvas* inCanvas, APlayerController* p
 					continue;
 				break; // We know all following will be lower
 			}
-			DrawBar(relTimexPos, timexPos - 1, yPos, effectTimeRelative / 100.0f, lineHeight);
-
-			Canvas->DrawText(font, FString::Printf(TEXT("%.1f"), effectTimeRelative), relTimexPos, yPos, 1.f, 1.f, friNoShadow);
-
 			displayedTotalTime += effectTime;
+			displayedTotalTimeCPU += effectTimeCPU;
+			displayedTotalTimeGPU += effectTimeGPU;
 			displayedTotalPCount_CPU += effectCPUPCount;
 			displayedTotalPCount_GPU += effectGPUPCount;
 			displayedTotalICount += effectInstanceCount;
-			const PopcornFX::Units::SValueAndNamedUnit	readableTime = PopcornFX::Units::AutoscaleTime(effectTime * timeNormalizer, 0.5f);
-			const PopcornFX::Units::SValueAndNamedUnit	readableTimeFlat = PopcornFX::Units::AutoscaleTime(effectTime, 0.5f);
 
-			Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTime.m_Value, ANSI_TO_TCHAR(readableTime.m_UnitName)), timexPos, yPos, 1.f, 1.f, friNoShadow);
-			DrawBar(timexPos, pCountCPUxPos - 1, yPos, (float)(effectTime * timeNormalizer) / (float)CPUTimeLimitPerEffectSeconds, lineHeight);
+			// Relative time
+			{
+				DrawBar(relTimexPos, relTimeCPUxPos - 1, yPos, effectTimeRelative / 100.0f, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%.1f"), effectTimeRelative), relTimexPos, yPos, 1.f, 1.f, friNoShadow);
+				if (hasGPU)
+				{
+					DrawBar(relTimeCPUxPos, relTimeGPUxPos - 1, yPos, effectTimeRelativeCPU / 100.0f, lineHeight);
+					Canvas->DrawText(font, FString::Printf(TEXT("%.1f"), effectTimeRelativeCPU), relTimeCPUxPos, yPos, 1.f, 1.f, friNoShadow);
+					DrawBar(relTimeGPUxPos, timexPos - 1, yPos, effectTimeRelativeGPU / 100.0f, lineHeight);
+					Canvas->DrawText(font, FString::Printf(TEXT("%.1f"), effectTimeRelativeGPU), relTimeGPUxPos, yPos, 1.f, 1.f, friNoShadow);
+				}
+			}
 
-			Canvas->DrawText(font, FString::Printf(TEXT("%d"), effectCPUPCount), pCountCPUxPos, yPos, 1.f, 1.f, friNoShadow);
-			DrawBar(pCountCPUxPos, pCountGPUxPos - 1, yPos, (float)effectCPUPCount / (float)CPUParticleCountLimitPerEffect, lineHeight);
+			// Timings
+			{
+				const float									timeTotalCPU = effectTimeCPU * timeNormalizerCPU;
+				const float									timeTotalGPU = effectTimeGPU;
+				const float									timeTotal = timeTotalCPU + timeTotalGPU;
+				const PopcornFX::Units::SValueAndNamedUnit	readableTime = PopcornFX::Units::AutoscaleTime(timeTotal, 0.5f);
+				const PopcornFX::Units::SValueAndNamedUnit	readableTimeCPU = PopcornFX::Units::AutoscaleTime(timeTotalCPU, 0.5f);
+				const PopcornFX::Units::SValueAndNamedUnit	readableTimeGPU = PopcornFX::Units::AutoscaleTime(timeTotalGPU, 0.5f);
 
-			Canvas->DrawText(font, FString::Printf(TEXT("%d"), effectGPUPCount), pCountGPUxPos, yPos, 1.f, 1.f, friNoShadow);
-			DrawBar(pCountGPUxPos, iCountxPos - 1, yPos, (float)effectGPUPCount / (float)GPUParticleCountLimitPerEffect, lineHeight);
+				DrawBar(timexPos, timeCPUxPos - 1, yPos, timeTotal / TimeLimitPerEffectSeconds, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTime.m_Value, ANSI_TO_TCHAR(readableTime.m_UnitName)), timexPos, yPos, 1.f, 1.f, friNoShadow);
+				if (hasGPU)
+				{
+					DrawBar(timeCPUxPos, timeGPUxPos - 1, yPos, timeTotalCPU / CPUTimeLimitPerEffectSeconds, lineHeight);
+					Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTimeCPU.m_Value, ANSI_TO_TCHAR(readableTimeCPU.m_UnitName)), timeCPUxPos, yPos, 1.f, 1.f, friNoShadow);
+					DrawBar(timeGPUxPos, pCountCPUxPos - 1, yPos, timeTotalGPU / GPUTimeLimitPerEffectSeconds, lineHeight);
+					Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTimeGPU.m_Value, ANSI_TO_TCHAR(readableTimeGPU.m_UnitName)), timeGPUxPos, yPos, 1.f, 1.f, friNoShadow);
+				}
+			}
 
-			Canvas->DrawText(font, FString::Printf(TEXT("%d"), effectInstanceCount), iCountxPos, yPos, 1.f, 1.f, friNoShadow);
+			// Counts
+			{
+				DrawBar(pCountCPUxPos, pCountGPUxPos - 1, yPos, (float)effectCPUPCount / (float)CPUParticleCountLimitPerEffect, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%d"), effectCPUPCount), pCountCPUxPos, yPos, 1.f, 1.f, friNoShadow);
+				if (hasGPU)
+				{
+					DrawBar(pCountGPUxPos, iCountxPos - 1, yPos, (float)effectGPUPCount / (float)GPUParticleCountLimitPerEffect, lineHeight);
+					Canvas->DrawText(font, FString::Printf(TEXT("%d"), effectGPUPCount), pCountGPUxPos, yPos, 1.f, 1.f, friNoShadow);
+				}
 
-			Canvas->DrawText(font, FString::Printf(TEXT("%s"), ANSI_TO_TCHAR(allSceneTimings[iTiming].m_EffectPath.Data())), effectPathxPos, yPos, 1.f, 1.f, friNoShadow);
+				Canvas->DrawText(font, FString::Printf(TEXT("%d"), effectInstanceCount), iCountxPos, yPos, 1.f, 1.f, friNoShadow);
+			}
+
+			// Effect path
+			Canvas->DrawText(font, FString::Printf(TEXT("%s"), ANSI_TO_TCHAR(allSceneTimings[iTiming].m_EffectPath.Data())), effectPathxPos, yPos, 1.f, 1.f, fri);
 
 			yPos += lineHeight;
 			if (yPos > maxDrawyPos)
@@ -304,21 +393,54 @@ void	APopcornFXHUDProfiler::DrawDebugHUD(UCanvas* inCanvas, APlayerController* p
 
 		yPos += lineHeight / 2;
 
-		const float		displayedEffectsPercentage = 100.0f * (displayedTotalTime / totalTime);
+		const float		displayedEffectsPercentage = totalTime > 0.0 ? 100.0f * (displayedTotalTime / totalTime) : 0.0f;
+		const float		displayedEffectsPercentageCPU = totalTimeCPU > 0.0 ? 100.0f * (displayedTotalTimeCPU / totalTimeCPU) : 0.0f;
+		const float		displayedEffectsPercentageGPU = totalTimeGPU > 0.0 ? 100.0f * (displayedTotalTimeGPU / totalTimeGPU) : 0.0f;
 
-		DrawBar(relTimexPos, timexPos - 1, yPos, displayedEffectsPercentage / 100.0f, lineHeight);
-		Canvas->DrawText(font, FString::Printf(TEXT("%5.1f"), displayedEffectsPercentage), relTimexPos, yPos, 1.f, 1.f, friNoShadow);
+		// Relative time
+		{
+			DrawBar(relTimexPos, relTimeCPUxPos - 1, yPos, displayedEffectsPercentage / 100.0f, lineHeight);
+			Canvas->DrawText(font, FString::Printf(TEXT("%5.1f"), displayedEffectsPercentage), relTimexPos, yPos, 1.f, 1.f, friNoShadow);
+			if (hasGPU)
+			{
+				DrawBar(relTimeCPUxPos, relTimeGPUxPos - 1, yPos, displayedEffectsPercentageCPU / 100.0f, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%5.1f"), displayedEffectsPercentageCPU), relTimeCPUxPos, yPos, 1.f, 1.f, friNoShadow);
+				DrawBar(relTimeGPUxPos, timexPos - 1, yPos, displayedEffectsPercentageGPU / 100.0f, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%5.1f"), displayedEffectsPercentageGPU), relTimeGPUxPos, yPos, 1.f, 1.f, friNoShadow);
+			}
+		}
 
-		const PopcornFX::Units::SValueAndNamedUnit	readableTotalDisplayedTime = PopcornFX::Units::AutoscaleTime(displayedTotalTime * timeNormalizer, 0.5f);
-		const PopcornFX::Units::SValueAndNamedUnit	readableTotalDisplayedTimeFlat = PopcornFX::Units::AutoscaleTime(displayedTotalTime, 0.5f);
-		Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalDisplayedTime.m_Value, ANSI_TO_TCHAR(readableTotalDisplayedTime.m_UnitName)), timexPos, yPos, 1.f, 1.f, friNoShadow);
-		DrawBar(timexPos, pCountCPUxPos - 1, yPos, (float)(displayedTotalTime * timeNormalizer) / (float)CPUTimeLimitTotalSeconds, lineHeight);
+		// Timings
+		{
+			const float									timeTotalCPU = displayedTotalTimeCPU * timeNormalizerCPU;
+			const float									timeTotalGPU = displayedTotalTimeGPU;
+			const float									timeTotal = timeTotalCPU + timeTotalGPU;
+			const PopcornFX::Units::SValueAndNamedUnit	readableTotalDisplayedTime = PopcornFX::Units::AutoscaleTime(timeTotal, 0.5f);
+			const PopcornFX::Units::SValueAndNamedUnit	readableTotalDisplayedTimeCPU = PopcornFX::Units::AutoscaleTime(timeTotalCPU, 0.5f);
+			const PopcornFX::Units::SValueAndNamedUnit	readableTotalDisplayedTimeGPU = PopcornFX::Units::AutoscaleTime(timeTotalGPU, 0.5f);
+			DrawBar(timexPos, timeCPUxPos - 1, yPos, timeTotal / TimeLimitTotalSeconds, lineHeight);
+			Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalDisplayedTime.m_Value, ANSI_TO_TCHAR(readableTotalDisplayedTime.m_UnitName)), timexPos, yPos, 1.f, 1.f, friNoShadow);
+			if (hasGPU)
+			{
+				DrawBar(timeCPUxPos, timeGPUxPos - 1, yPos, timeTotalCPU / CPUTimeLimitTotalSeconds, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalDisplayedTimeCPU.m_Value, ANSI_TO_TCHAR(readableTotalDisplayedTimeCPU.m_UnitName)), timeCPUxPos, yPos, 1.f, 1.f, friNoShadow);
+				DrawBar(timeGPUxPos, pCountCPUxPos - 1, yPos, timeTotalGPU / GPUTimeLimitTotalSeconds, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%.1f %s"), readableTotalDisplayedTimeGPU.m_Value, ANSI_TO_TCHAR(readableTotalDisplayedTimeGPU.m_UnitName)), timeGPUxPos, yPos, 1.f, 1.f, friNoShadow);
+			}
+		}
 
-		Canvas->DrawText(font, FString::Printf(TEXT("%d"), displayedTotalPCount_CPU), pCountCPUxPos, yPos, 1.f, 1.f, friNoShadow);
-		DrawBar(pCountCPUxPos, pCountGPUxPos - 1, yPos, (float)displayedTotalPCount_CPU / (float)CPUParticleCountLimitTotal, lineHeight);
-		Canvas->DrawText(font, FString::Printf(TEXT("%d"), displayedTotalPCount_GPU), pCountGPUxPos, yPos, 1.f, 1.f, friNoShadow);
-		DrawBar(pCountGPUxPos, iCountxPos - 1, yPos, (float)displayedTotalPCount_GPU / (float)GPUParticleCountLimitTotal, lineHeight);
-		Canvas->DrawText(font, FString::Printf(TEXT("%d"), displayedTotalICount), iCountxPos, yPos, 1.f, 1.f, friNoShadow);
+		// Counts
+		{
+			DrawBar(pCountCPUxPos, pCountGPUxPos - 1, yPos, (float)displayedTotalPCount_CPU / (float)CPUParticleCountLimitTotal, lineHeight);
+			Canvas->DrawText(font, FString::Printf(TEXT("%d"), displayedTotalPCount_CPU), pCountCPUxPos, yPos, 1.f, 1.f, friNoShadow);
+			if (hasGPU)
+			{
+				DrawBar(pCountGPUxPos, iCountxPos - 1, yPos, (float)displayedTotalPCount_GPU / (float)GPUParticleCountLimitTotal, lineHeight);
+				Canvas->DrawText(font, FString::Printf(TEXT("%d"), displayedTotalPCount_GPU), pCountGPUxPos, yPos, 1.f, 1.f, friNoShadow);
+			}
+
+			Canvas->DrawText(font, FString::Printf(TEXT("%d"), displayedTotalICount), iCountxPos, yPos, 1.f, 1.f, friNoShadow);
+		}
 
 		Canvas->DrawText(font, TEXT("Effects timings displayed here"), effectPathxPos, yPos, 1.f, 1.f, fri);
 	}

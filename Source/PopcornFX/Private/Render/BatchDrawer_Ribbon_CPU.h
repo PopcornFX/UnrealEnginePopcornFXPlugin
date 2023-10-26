@@ -81,6 +81,8 @@ private:
 	u32								m_TotalIndexCount = 0;
 	u32								m_RealViewCount = 0;
 
+	u8								m_VPP = 0;
+
 	ERHIFeatureLevel::Type			m_FeatureLevel = ERHIFeatureLevel::Num;
 
 	// UserData used to bind shader uniforms (Billboard & Ribbon)

@@ -392,11 +392,11 @@ namespace
 
 				TSharedPtr<SSplitter>		inlineSplitter;
 				SAssignNew(inlineSplitter, SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 				.Style(FAppStyle::Get(), "DetailsView.Splitter")
 #else
 				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				.PhysicalSplitterHandleSize(1.0f)
 				.HitDetectionSplitterHandleSize(5.0f)
 					+ SSplitter::Slot()
@@ -439,11 +439,11 @@ namespace
 						.Padding(0.0f, 2.0f)
 						[
 							SNew(SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 							.Style(FAppStyle::Get(), "DetailsView.Splitter")
 #else
 							.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 							.PhysicalSplitterHandleSize(1.0f)
 							.HitDetectionSplitterHandleSize(5.0f)
 								+ SSplitter::Slot()
@@ -679,7 +679,7 @@ namespace
 				if (m_Traits->VectorDimension > 3)
 					attribValue.m_Data32f[3] = newColor.A;
 				decl->ClampToRangeIFN(attribValue);
-				attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+				attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 			}
 			attrList->PostEditChange();
 		}
@@ -879,19 +879,19 @@ namespace
 				.OnClicked(this, &TSelf::OnDimResetClicked, dimi)
 				.Visibility(this, &TSelf::GetDimResetVisibility, dimi)
 				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 				.ButtonStyle(FAppStyle::Get(), "NoBorder")
 #else
 				.ButtonStyle(FEditorStyle::Get(), "NoBorder")
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				.Content()
 				[
 					SNew(SImage)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 					.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
 #else
 					.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				];
 		}
 
@@ -901,19 +901,19 @@ namespace
 				.OnClicked(this, &TSelf::OnResetClicked)
 				.Visibility(this, &TSelf::GetResetVisibility)
 				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 				.ButtonStyle(FAppStyle::Get(), "NoBorder")
 #else
 				.ButtonStyle(FEditorStyle::Get(), "NoBorder")
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				.Content()
 				[
 					SNew(SImage)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 					.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
 #else
 					.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				];
 		}
 
@@ -961,7 +961,7 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Commit"));
 
 			attrList->Modify();
-			attrList->SetAttributeDim<bool>(m_Index, dimi, value == ECheckBoxState::Checked);
+			attrList->SetAttributeDim<bool>(m_Index, dimi, value == ECheckBoxState::Checked, true);
 			attrList->PostEditChange();
 		}
 
@@ -986,7 +986,7 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Commit"));
 
 			attrList->Modify();
-			attrList->SetAttributeDim<int32>(m_Index, 0, *selectedItem);
+			attrList->SetAttributeDim<int32>(m_Index, 0, *selectedItem, true);
 			attrList->PostEditChange();
 		}
 
@@ -1002,9 +1002,9 @@ namespace
 			//attrList->Modify();
 
 			if (!m_IsQuaternion)
-				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value);
+				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value, true);
 			else
-				attrList->SetAttributeQuaternionDim(m_Index, dimi, value);
+				attrList->SetAttributeQuaternionDim(m_Index, dimi, value, true);
 		}
 
 		template <typename _Scalar>
@@ -1025,9 +1025,9 @@ namespace
 			attrList->Modify();
 
 			if (!m_IsQuaternion)
-				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value);
+				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value, true);
 			else
-				attrList->SetAttributeQuaternionDim(m_Index, dimi, value);
+				attrList->SetAttributeQuaternionDim(m_Index, dimi, value, true);
 
 			attrList->PostEditChange();
 		}
@@ -1044,7 +1044,7 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeReset", "Attribute Reset"));
 			attrList->SetFlags(RF_Transactional);
 			attrList->Modify();
-			attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&m_Def)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+			attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&m_Def), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 			attrList->PostEditChange();
 			return FReply::Handled();
 		}
@@ -1065,12 +1065,12 @@ namespace
 			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
 				const bool	defaultValue = reinterpret_cast<const bool*>(m_Def.Get<u32>())[dimi];
-				attrList->SetAttributeDim<bool>(m_Index, dimi, defaultValue);
+				attrList->SetAttributeDim<bool>(m_Index, dimi, defaultValue, true);
 			}
 			else
 			{
 				const s32	defaultValue = m_Def.Get<s32>()[dimi];
-				attrList->SetAttributeDim<s32>(m_Index, dimi, defaultValue);
+				attrList->SetAttributeDim<s32>(m_Index, dimi, defaultValue, true);
 			}
 			attrList->PostEditChange();
 			return FReply::Handled();
@@ -1272,11 +1272,11 @@ namespace
 
 				TSharedPtr<SSplitter>	inlineSplitter;
 				SAssignNew(inlineSplitter, SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 				.Style(FAppStyle::Get(), "DetailsView.Splitter")
 #else
 				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				.PhysicalSplitterHandleSize(1.0f)
 				.HitDetectionSplitterHandleSize(5.0f)
 					+ SSplitter::Slot()
@@ -1353,11 +1353,11 @@ namespace
 					.FillHeight(1.0f)
 					[
 						SNew(SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 						.Style(FAppStyle::Get(), "DetailsView.Splitter")
 #else
 						.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 						.PhysicalSplitterHandleSize(1.0f)
 						.HitDetectionSplitterHandleSize(5.0f)
 							+ SSplitter::Slot()
@@ -1624,11 +1624,11 @@ namespace
 					[
 						SNew(STextBlock)
 						.Text(m_CategoryName)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
 #else
 						.Font(FEditorStyle::GetFontStyle("PropertyWindow.NormalFont"))
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 					]
 				]
 			]

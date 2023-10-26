@@ -32,7 +32,7 @@ APopcornFXWaitForScene	*APopcornFXWaitForScene::GetOrCreate(UWorld *world, FName
 		return actor;
 
 	FActorSpawnParameters		params;
-	params.ObjectFlags = RF_Public | RF_Transient; // | RF_Transactional;
+	params.ObjectFlags = RF_Transient; // | RF_Transactional;
 
 	// ! Do not force the name !
 	// Or UE will magicaly just return the last deleted Actor with the same name !
