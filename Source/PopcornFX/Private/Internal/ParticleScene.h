@@ -33,13 +33,13 @@
 class	UPopcornFXSceneComponent;
 class	FPopcornFXSceneProxy;
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #	define PK_WITH_PHYSX	0
 #	define PK_WITH_CHAOS	1
 #else
 #	define PK_WITH_PHYSX	PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
 #	define PK_WITH_CHAOS	!(PK_WITH_PHYSX) && WITH_CHAOS
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 // The plugin doesn't support both being active at the same time.
 #if PK_WITH_PHYSX && PK_WITH_CHAOS
@@ -312,10 +312,10 @@ public:
 	struct ID3D11Device				*D3D11_Device() const { PK_ASSERT(D3D11Ready()); return m_D3D11_Device; }
 	struct ID3D11DeviceContext		*D3D11_DeferedContext() const { PK_ASSERT(D3D11Ready()); return m_D3D11_DeferedContext; }
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 	class FRHIBuffer				*m_D3D11_DummyResource = null;
 	class FRHIUnorderedAccessView	*m_D3D11_DummyView = null;
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 
 private:
 	bool			D3D11_InitIFN();

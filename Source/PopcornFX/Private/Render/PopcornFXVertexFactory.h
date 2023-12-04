@@ -25,8 +25,6 @@ class UMaterialInterface;
 BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardVSUniforms, POPCORNFX_API)
 	SHADER_PARAMETER(uint32, RendererType)
 	SHADER_PARAMETER(uint32, CapsulesOffset)
-	SHADER_PARAMETER(uint32, TubesPlanesOffset)
-	SHADER_PARAMETER(uint32, VPP)
 	SHADER_PARAMETER(uint32, TotalParticleCount)
 	//SHADER_PARAMETER(int, InTextureIDsOffset)
 	SHADER_PARAMETER(int32, InColorsOffset)

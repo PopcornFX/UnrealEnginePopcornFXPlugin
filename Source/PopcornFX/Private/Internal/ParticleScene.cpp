@@ -1377,7 +1377,7 @@ public:
 		return ECollisionQueryHitType::Block;
 	}
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	virtual ECollisionQueryHitType PostFilter(const FCollisionFilterData &filterData, const ChaosInterface::FPTQueryHit &hit) override { return ECollisionQueryHitType::Block; }
 	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticleHandle &actor)
 	{
@@ -1391,7 +1391,7 @@ public:
 	virtual PxQueryHitType::Enum	preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
 	virtual PxQueryHitType::Enum	postFilter(const PxFilterData& filterData, const PxQueryHit& hit) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
 #	endif // PHYSICS_INTERFACE_PHYSX
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 };
 #endif
 
@@ -2160,7 +2160,7 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		// Fake a UAV transition so UE is happy, and disables UAV overlap (undefined behavior, generates random artefacts in the D3D11 GPU sim)
 		// This is ugly, but they removed the implementations of FD3D11DynamicRHI::RHIBeginUAVOverlap/RHIEndUAVOverlap in 4.26.
 		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 		if (self->m_D3D11_DummyResource == null)
 		{
 			check(self->m_D3D11_DummyView == null);
@@ -2179,7 +2179,7 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		RHICmdList.Transition(FRHITransitionInfo(self->m_D3D11_DummyView, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 #else
 		RHICmdList.Transition(FRHITransitionInfo((FRHIUnorderedAccessView*)0x1234, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 		RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 
 		for (u32 i = 0; i < m_Exec_D3D11_Tasks.Count(); ++i)
@@ -2220,7 +2220,7 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 			updateManager_D3D11->BindD3D11(null, null);
 		}
 	}
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 	if (m_D3D11_DummyResource != null && m_D3D11_DummyView != null)
 	{
 		// Delete view, release resource for proper ref count tracking.
@@ -2234,7 +2234,7 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 		check(m_D3D11_DummyResource == null);
 		check(m_D3D11_DummyView == null);
 	}
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 	m_D3D11_DeferedContext = null;
 	m_D3D11_Device = null;
 
@@ -2399,13 +2399,13 @@ static void		_D3D12_ExecuteTasksArray(CParticleScene *self)
 	auto			&m_Exec_D3D12_Tasks = self->m_Exec_D3D12_Tasks;
 	//auto			&m_UpdateLock = self->m_UpdateLock;
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	ID3D12CommandQueue	*commandQueue = GetID3D12DynamicRHI()->RHIGetCommandQueue();
 #else
 	PK_RELEASE_ASSERT(GDynamicRHI != null);
 	FD3D12DynamicRHI	*dynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
 	ID3D12CommandQueue	*commandQueue = dynamicRHI->RHIGetD3DCommandQueue(); // Returns the direct command queue
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 	// TODO: Investigate performance when using the compute command queue
 

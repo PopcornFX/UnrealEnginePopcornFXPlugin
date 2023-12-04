@@ -625,11 +625,11 @@ namespace
 {
 	const TArray<int32>		&GetMasterBoneMap(const USkinnedMeshComponent *skinnedMesh)
 	{
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		return skinnedMesh->GetLeaderBoneMap();
 #else
 		return skinnedMesh->GetMasterBoneMap();
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	}
 
 	const TArray<FSkelMeshRenderSection>	&GetSections(const FSkeletalMeshLODRenderData *lodRenderData)
@@ -672,11 +672,11 @@ namespace
 			m_SkinnedMeshComponent = skinnedMesh;
 			if (m_SkinnedMeshComponent == null)
 				return false;
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			m_SkeletalMesh = Cast<USkeletalMesh>(m_SkinnedMeshComponent->GetSkinnedAsset());
 #else
 			m_SkeletalMesh = m_SkinnedMeshComponent->SkeletalMesh;
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			if (m_SkeletalMesh == null)
 				return false;
 
@@ -743,19 +743,19 @@ namespace
 			}
 		}
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		const USkinnedMeshComponent	*masterPoseComponent = buildDesc.m_SkinnedMeshComponent->LeaderPoseComponent.Get();
 #else
 		const USkinnedMeshComponent	*masterPoseComponent = buildDesc.m_SkinnedMeshComponent->MasterPoseComponent.Get();
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		const bool					hasMasterPoseComponent = masterPoseComponent != null;
 		if (hasMasterPoseComponent)
 		{
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 			PK_ASSERT(GetMasterBoneMap(buildDesc.m_SkinnedMeshComponent).Num() == SkeletalMeshRefSkeleton(Cast<USkeletalMesh>(buildDesc.m_SkinnedMeshComponent->GetSkinnedAsset())).GetNum());
 #else
 			PK_ASSERT(GetMasterBoneMap(buildDesc.m_SkinnedMeshComponent).Num() == SkeletalMeshRefSkeleton(buildDesc.m_SkinnedMeshComponent->SkeletalMesh).GetNum());
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		}
 
 		PK_ONLY_IF_ASSERTS(u32 totalVertices = 0);
@@ -899,11 +899,11 @@ bool	UPopcornFXAttributeSamplerSkinnedMesh::BuildInitialPose()
 
 	if (buildDesc.m_LODRenderData->SkinWeightVertexBuffer.GetBoneInfluenceType() == UnlimitedBoneInfluence)
 	{
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		UE_LOG(LogPopcornFXAttributeSamplerSkinned, Warning, TEXT("Cannot build mesh '%s' for sampling: Unlimited bone influences not supported for sampling"), *buildDesc.m_SkinnedMeshComponent->GetSkinnedAsset()->GetName());
 #else
 		UE_LOG(LogPopcornFXAttributeSamplerSkinned, Warning, TEXT("Cannot build mesh '%s' for sampling: Unlimited bone influences not supported for sampling"), *buildDesc.m_SkinnedMeshComponent->SkeletalMesh->GetName());
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		return false;
 	}
 

@@ -498,6 +498,7 @@ bool	CMaterialDesc_RenderThread::ValidForRendering() const
 {
 	if (m_MaterialInterface == null ||
 		m_MaterialRenderProxy == null ||
+		m_RendererMaterial == null ||
 		/* m_MaterialRenderProxy->IsDeleted() || */
 		!m_MaterialRenderProxy->IsInitialized())
 		return false;
