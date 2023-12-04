@@ -90,14 +90,6 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 	bAutoActivate = true;
 	//SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 
-#if WITH_EDITOR
-	// UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
-	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.bRunOnAnyThread = false;
-	PrimaryComponentTick.bAllowTickOnDedicatedServer = false;
-	bTickInEditor = true;
-#endif // WITH_EDITOR
-
 	bPlayOnLoad = true;
 	bKillParticlesOnDestroy = false;
 
@@ -217,24 +209,6 @@ PopcornFX::CParticleEffectInstance	*UPopcornFXEmitterComponent::_GetEffectInstan
 
 //----------------------------------------------------------------------------
 #if WITH_EDITOR
-
-void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction)
-{
-	Super::TickComponent(deltaTime, tickType, thisTickFunction);
-
-	// UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
-	// Emitters don't tick outside editor
-	if (PK_VERIFY(AttributeList != null))
-	{
-		if (m_Started &&
-			AttributeList->GetRestartEmitter())
-		{
-			RestartEmitter(true);
-		}
-	}
-}
-
-//----------------------------------------------------------------------------
 
 bool	UPopcornFXEmitterComponent::CanEditChange(const FProperty* InProperty) const
 {

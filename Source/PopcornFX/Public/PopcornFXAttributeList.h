@@ -223,9 +223,6 @@ public:
 	float			GetColumnWidth() const { return m_ColumnWidth; }
 	void			SetColumnWidth(float width) { m_ColumnWidth = width; }
 
-	// Gets & resets restart state
-	bool			GetRestartEmitter() { const bool restartEmitter = m_RestartEmitter; m_RestartEmitter = false; return restartEmitter; }
-
 	uint32			GetCategoryCount() const { return m_Categories.Num(); }
 	FName			GetCategoryName(uint32 categoryId) const { return m_Categories[categoryId]; }
 	bool			IsCategoryExpanded(uint32 categoryId) const;
@@ -249,15 +246,15 @@ public:
 	const void											*GetParticleSampler(UPopcornFXEffect *effect, uint32 samplerId) const;
 #endif
 	void												GetAttribute(uint32 attributeId, FPopcornFXAttributeValue &outValue) const;
-	void												SetAttribute(uint32 attributeId, const FPopcornFXAttributeValue &value, bool fromUI = false);
+	void												SetAttribute(uint32 attributeId, const FPopcornFXAttributeValue &value);
 
 	bool												SetAttributeSampler(FName samplerName, AActor *actor, FName propertyName);
 
 #if WITH_EDITOR
 	float												GetAttributeQuaternionDim(uint32 attributeId, uint32 dim);
-	void												SetAttributeQuaternionDim(uint32 attributeId, uint32 dim, float value, bool fromUI = false);
+	void												SetAttributeQuaternionDim(uint32 attributeId, uint32 dim, float value);
 
-	template<typename _Scalar> void						SetAttributeDim(uint32 attributeId, uint32 dim, _Scalar value, bool fromUI = false);
+	template<typename _Scalar> void						SetAttributeDim(uint32 attributeId, uint32 dim, _Scalar value);
 	template<typename _Scalar> _Scalar					GetAttributeDim(uint32 attributeId, uint32 dim);
 #endif // WITH_EDITOR
 
@@ -306,8 +303,6 @@ private:
 
 	UPROPERTY(Transient)
 	float								m_ColumnWidth;
-
-	bool								m_RestartEmitter = false; // UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
 #endif // WITH_EDITORONLY_DATA
 
 public:

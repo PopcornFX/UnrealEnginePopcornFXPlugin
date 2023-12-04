@@ -34,8 +34,8 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeList, Log, All);
 #if WITH_EDITOR
 template float	UPopcornFXAttributeList::GetAttributeDim<float>(uint32, uint32);
 template int32	UPopcornFXAttributeList::GetAttributeDim<int32>(uint32, uint32);
-template void	UPopcornFXAttributeList::SetAttributeDim<float>(uint32, uint32, float, bool);
-template void	UPopcornFXAttributeList::SetAttributeDim<int32>(uint32, uint32, int32, bool);
+template void	UPopcornFXAttributeList::SetAttributeDim<float>(uint32, uint32, float);
+template void	UPopcornFXAttributeList::SetAttributeDim<int32>(uint32, uint32, int32);
 #endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
@@ -1141,12 +1141,11 @@ void	UPopcornFXAttributeList::GetAttribute(uint32 attributeId, FPopcornFXAttribu
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeList::SetAttribute(uint32 attributeId, const FPopcornFXAttributeValue &value, bool fromUI/* = false*/)
+void	UPopcornFXAttributeList::SetAttribute(uint32 attributeId, const FPopcornFXAttributeValue &value)
 {
 #if WITH_EDITOR
 	if (!PK_VERIFY(attributeId < (u32)m_Attributes.Num()))
 		return;
-	m_RestartEmitter |= fromUI && FPopcornFXPlugin::Get().SettingsEditor()->bRestartEmitterWhenAttributesChanged;
 #else
 	check(attributeId < (u32)m_Attributes.Num());
 #endif
@@ -1222,7 +1221,7 @@ float UPopcornFXAttributeList::GetAttributeQuaternionDim(uint32 attributeId, uin
 
 //----------------------------------------------------------------------------
 
-void UPopcornFXAttributeList::SetAttributeQuaternionDim(uint32 attributeId, uint32 dim, float value, bool fromUI/* = false*/)
+void UPopcornFXAttributeList::SetAttributeQuaternionDim(uint32 attributeId, uint32 dim, float value)
 {
 #if WITH_EDITOR
 	if (!PK_VERIFY(attributeId < (u32)m_Attributes.Num()))
@@ -1245,13 +1244,13 @@ void UPopcornFXAttributeList::SetAttributeQuaternionDim(uint32 attributeId, uint
 	newValue.m_Data32f[2] = quaternion.Z;
 	newValue.m_Data32f[3] = quaternion.W;
 
-	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 }
 
 //----------------------------------------------------------------------------
 
 template<typename _Scalar>
-void	UPopcornFXAttributeList::SetAttributeDim(uint32 attributeId, uint32 dim, _Scalar value, bool fromUI/* = false*/)
+void	UPopcornFXAttributeList::SetAttributeDim(uint32 attributeId, uint32 dim, _Scalar value)
 {
 #if WITH_EDITOR
 	if (!PK_VERIFY(attributeId < (u32)m_Attributes.Num()))
@@ -1263,13 +1262,13 @@ void	UPopcornFXAttributeList::SetAttributeDim(uint32 attributeId, uint32 dim, _S
 	PopcornFX::SAttributesContainer_SAttrib	newValue = AttributeRawDataAttributes(this)[attributeId];
 	newValue.Get<_Scalar>()[dim] = value;
 
-	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 }
 
 //----------------------------------------------------------------------------
 
 template <>
-void	UPopcornFXAttributeList::SetAttributeDim<bool>(uint32 attributeId, uint32 dim, bool value, bool fromUI/* = false*/)
+void	UPopcornFXAttributeList::SetAttributeDim<bool>(uint32 attributeId, uint32 dim, bool value)
 {
 #if WITH_EDITOR
 	if (!PK_VERIFY(attributeId < (u32)m_Attributes.Num()))
@@ -1281,7 +1280,7 @@ void	UPopcornFXAttributeList::SetAttributeDim<bool>(uint32 attributeId, uint32 d
 	PopcornFX::SAttributesContainer_SAttrib	newValue = AttributeRawDataAttributes(this)[attributeId];
 	reinterpret_cast<bool*>(newValue.Get<uint32>())[dim] = value;
 
-	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 }
 
 #endif // WITH_EDITOR

@@ -256,7 +256,10 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	// This is actually an error in PopcornFX.Build.cs, PK_HAS_GPU shouldn't be defined on platforms where it's not supported!
 	// See #5574
 	if (updateManager != null)
+	{
+		updateManager->SetPreferredSimLocation(PopcornFX::CParticleUpdateManager_Auto::SimLocation_Auto); // Enable GPU but does not force it
 		SetupPopcornFXRHIAPI(API);
+	}
 #endif
 
 	m_ParticleMediumCollection = PK_NEW(PopcornFX::CParticleMediumCollection(this, updateManager));
@@ -284,8 +287,9 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	if (updateManager != null)
 	{
 #if (PK_HAS_GPU != 0)
-		GPU_InitIFN();
+		if (!GPU_InitIFN())
 #endif // (PK_HAS_GPU != 0)
+			updateManager->SetPreferredSimLocation(PopcornFX::CParticleUpdateManager_Auto::SimLocation_CPU); // Disable GPU sim
 	}
 
 	m_CurrentPayloadView = new SPopcornFXPayloadView();
@@ -586,8 +590,9 @@ void	CParticleScene::StartUpdate(float dt)
 #if	(PK_PARTICLES_HAS_STATS != 0)
 		if (FPopcornFXPlugin::Get().EffectsProfilerActive())
 		{
-			for (const PopcornFX::PParticleMedium &medium : m_ParticleMediumCollection->_ActiveMediums_NoLock())
+			for (u32 iMedium = 0; iMedium < m_ParticleMediumCollection->Mediums().Count(); iMedium++)
 			{
+				const PopcornFX::CParticleMedium	*medium = m_ParticleMediumCollection->Mediums()[iMedium].Get();
 				const PopcornFX::CMediumStats		*mediumStats = medium->Stats();
 				const PopcornFX::CParticleEffect	*effect = medium->Descriptor()->ParentEffect();
 
@@ -1372,7 +1377,7 @@ public:
 		return ECollisionQueryHitType::Block;
 	}
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	virtual ECollisionQueryHitType PostFilter(const FCollisionFilterData &filterData, const ChaosInterface::FPTQueryHit &hit) override { return ECollisionQueryHitType::Block; }
 	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticleHandle &actor)
 	{
@@ -1386,7 +1391,7 @@ public:
 	virtual PxQueryHitType::Enum	preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
 	virtual PxQueryHitType::Enum	postFilter(const PxFilterData& filterData, const PxQueryHit& hit) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
 #	endif // PHYSICS_INTERFACE_PHYSX
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 };
 #endif
 
@@ -2155,7 +2160,7 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		// Fake a UAV transition so UE is happy, and disables UAV overlap (undefined behavior, generates random artefacts in the D3D11 GPU sim)
 		// This is ugly, but they removed the implementations of FD3D11DynamicRHI::RHIBeginUAVOverlap/RHIEndUAVOverlap in 4.26.
 		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 		if (self->m_D3D11_DummyResource == null)
 		{
 			check(self->m_D3D11_DummyView == null);
@@ -2174,7 +2179,7 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		RHICmdList.Transition(FRHITransitionInfo(self->m_D3D11_DummyView, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
 #else
 		RHICmdList.Transition(FRHITransitionInfo((FRHIUnorderedAccessView*)0x1234, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 		RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 
 		for (u32 i = 0; i < m_Exec_D3D11_Tasks.Count(); ++i)
@@ -2215,7 +2220,7 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 			updateManager_D3D11->BindD3D11(null, null);
 		}
 	}
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 	if (m_D3D11_DummyResource != null && m_D3D11_DummyView != null)
 	{
 		// Delete view, release resource for proper ref count tracking.
@@ -2229,7 +2234,7 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 		check(m_D3D11_DummyResource == null);
 		check(m_D3D11_DummyView == null);
 	}
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
 	m_D3D11_DeferedContext = null;
 	m_D3D11_Device = null;
 
@@ -2358,12 +2363,9 @@ namespace
 
 	struct SFetchD3D12Context
 	{
-		bool							volatile	m_Finished = false;
-		struct ID3D12Device				* volatile	m_Device = null;
-#if	(PK_PARTICLES_HAS_STATS != 0)
-		struct ID3D12CommandQueue		* volatile	m_DirectCommandQueue = null;
-#endif // (PK_PARTICLES_HAS_STATS != 0)
-		struct ID3D12CommandQueue		* volatile	m_CopyCommandQueue = null;
+		bool							volatile m_Finished = false;
+		struct ID3D12Device				* volatile m_Device = null;
+		struct ID3D12CommandQueue		* volatile m_CopyCommandQueue = null;
 
 		void		Fetch()
 		{
@@ -2375,14 +2377,6 @@ namespace
 #if 0
 			m_CopyCommandQueue = dynamicRHI->GetAdapter().GetDevice(0)->GetD3DCommandQueue(ED3D12CommandQueueType::Copy);
 #endif
-
-#if	(PK_PARTICLES_HAS_STATS != 0)
-#	if (ENGINE_MAJOR_VERSION == 5)
-			m_DirectCommandQueue = GetID3D12DynamicRHI()->RHIGetCommandQueue();
-#	else
-			m_DirectCommandQueue = dynamicRHI->RHIGetD3DCommandQueue(); // Returns the direct command queue
-#	endif // (ENGINE_MAJOR_VERSION == 5)
-#endif // (PK_PARTICLES_HAS_STATS != 0)
 			if (!PK_VERIFY(m_Device != null))
 			{
 				m_Finished = true;
@@ -2405,13 +2399,13 @@ static void		_D3D12_ExecuteTasksArray(CParticleScene *self)
 	auto			&m_Exec_D3D12_Tasks = self->m_Exec_D3D12_Tasks;
 	//auto			&m_UpdateLock = self->m_UpdateLock;
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	ID3D12CommandQueue	*commandQueue = GetID3D12DynamicRHI()->RHIGetCommandQueue();
 #else
 	PK_RELEASE_ASSERT(GDynamicRHI != null);
 	FD3D12DynamicRHI	*dynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
 	ID3D12CommandQueue	*commandQueue = dynamicRHI->RHIGetD3DCommandQueue(); // Returns the direct command queue
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 
 	// TODO: Investigate performance when using the compute command queue
 
@@ -2489,20 +2483,8 @@ bool	CParticleScene::D3D12_InitIFN()
 		return false;
 	}
 
-	// Get info from command queue
-	const D3D12_COMMAND_LIST_TYPE	queueType = D3D12_COMMAND_LIST_TYPE_DIRECT; // We're currently submitting in the gfx queue (_D3D12_ExecuteTasksArray)
-	u64								queueTimestampFrequency = 0;
-#if	(PK_PARTICLES_HAS_STATS != 0)
-	fetch->m_DirectCommandQueue->GetTimestampFrequency(&queueTimestampFrequency);
-#endif // (PK_PARTICLES_HAS_STATS != 0)
-
 	m_D3D12_Device = fetch->m_Device;
-	const PopcornFX::SD3D12Context	context(	m_D3D12_Device, // Device used by runtime to allocate resources
-												fetch->m_CopyCommandQueue, // Copy command queue used by runtime by resource handlers
-												&D3D12SerializeRootSignature, // Required to link internal kernels
-												PopcornFX::CParticleUpdateManager_D3D12::CbEnqueueTask(this, &CParticleScene::D3D12_EnqueueTask), // Enqueue cb
-												queueType,
-												queueTimestampFrequency); // Queue frequency, used to collect GPU timings (disabled in retail).
+	PopcornFX::SD3D12Context	context(m_D3D12_Device, fetch->m_CopyCommandQueue, &D3D12SerializeRootSignature, PopcornFX::CParticleUpdateManager_D3D12::CbEnqueueTask(this, &CParticleScene::D3D12_EnqueueTask));
 	delete fetch;
 
 	if (!PK_VERIFY(updateManager_D3D12->BindContext(context)))
