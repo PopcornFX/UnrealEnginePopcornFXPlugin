@@ -530,11 +530,11 @@ namespace
 
 	PopcornFX::Threads::PAbstractPool	_CreateThreadPool_UE_Auto()
 	{
-		bool	useUETaskGraph = false;
-		GConfig->GetBool(TEXT("PopcornFX"), TEXT("bUseUETaskGraph"), useUETaskGraph, GEngineIni);
+		bool	usePopcornFXTP = false;
+		GConfig->GetBool(TEXT("PopcornFX"), TEXT("bUsePopcornFXWTP"), usePopcornFXTP, GEngineIni);
 
 		const bool	forceUETaskGraph = false;
-		if (useUETaskGraph || forceUETaskGraph)
+		if (!usePopcornFXTP || forceUETaskGraph)
 		{
 			// Directly use UE's task graph system
 			CWorkerThreadPool_UE	*pool = PK_NEW(CWorkerThreadPool_UE);
@@ -761,12 +761,12 @@ bool	PopcornFXStartup()
 	kernelConfiguration.m_DefaultAllocator_OutOfMemory = &PopcornFX_AllocFailed;
 
 #if (KR_PROFILER_ENABLED != 0)
-	bool	useUETaskGraph = false;
+	bool	usePopcornFXTP = false;
 	bool	recordProfileMarkers = false;
-	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bUseUETaskGraph"), useUETaskGraph, GEngineIni);
+	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bUsePopcornFXWTP"), usePopcornFXTP, GEngineIni);
 	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bRecordProfileMarkers"), recordProfileMarkers, GEngineIni);
 
-	if (!useUETaskGraph)
+	if (usePopcornFXTP)
 		recordProfileMarkers = false;
 	if (recordProfileMarkers)
 	{

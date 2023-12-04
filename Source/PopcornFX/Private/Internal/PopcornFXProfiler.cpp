@@ -386,12 +386,12 @@ void	CPopcornFXProfiler::_End_RecordAndSaveProfilerReport()
 
 static void		_PopcornFXProfilerStartRecord(const TArray<FString>& args, UWorld* world)
 {
-	bool	useUETaskGraph = false; // TODO: Store that globally in plugin
+	bool	usePopcornFXTP = false; // TODO: Store that globally in plugin
 	bool	recordProfileMarkers = false;
-	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bUseUETaskGraph"), useUETaskGraph, GEngineIni);
+	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bUsePopcornFXWTP"), usePopcornFXTP, GEngineIni);
 	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bRecordProfileMarkers"), recordProfileMarkers, GEngineIni);
 
-	if (!useUETaskGraph)
+	if (usePopcornFXTP)
 		recordProfileMarkers = false;
 	if (!recordProfileMarkers) // Either .pkpr, or UE insights
 	{

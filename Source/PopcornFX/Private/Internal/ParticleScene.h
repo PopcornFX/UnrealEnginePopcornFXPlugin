@@ -151,7 +151,9 @@ public:
 		u32									m_TotalParticleCount_GPU = 0;
 		u32									m_InstanceCount = 0;
 
-		float			TotalTime() const { return m_TotalStatsReport.m_PipelineStages[PopcornFX::SEvolveStatsReport::PipelineStage_Total].m_Time; }
+		float			TotalTime() const { return TotalTimeCPU() + TotalTimeGPU(); }
+		float			TotalTimeCPU() const { return m_TotalStatsReport.m_PipelineStages[PopcornFX::SEvolveStatsReport::PipelineStage_Total].m_Time; }
+		float			TotalTimeGPU() const { return m_TotalStatsReport.m_PipelineStages[PopcornFX::SEvolveStatsReport::PipelineStage_Total + PopcornFX::SEvolveStatsReport::__MaxPipelineStages].m_Time; }
 		u32				TotalParticleCount_CPU() const { return m_TotalParticleCount_CPU; }
 		u32				TotalParticleCount_GPU() const { return m_TotalParticleCount_GPU; }
 		u32				TotalParticleCount() const { return m_TotalParticleCount_CPU + m_TotalParticleCount_GPU; }

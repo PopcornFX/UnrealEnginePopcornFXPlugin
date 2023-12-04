@@ -259,13 +259,29 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Materials")
 	FPopcornFXDefaultMaterialsSettings	DefaultMaterials;
 
+	/** Time limit per effect in miliseconds (does not affect simulated effects yet) */
+	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
+	float						TimeLimitPerEffect;
+
 	/** CPU time limit per effect in miliseconds (does not affect simulated effects yet) */
 	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
 	float						CPUTimeLimitPerEffect;
 
+	/** GPU time limit per effect in miliseconds (does not affect simulated effects yet) */
+	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
+	float						GPUTimeLimitPerEffect;
+
+	/** Time limit in miliseconds (does not affect simulated effects yet) */
+	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
+	float						TimeLimitTotal;
+
 	/** CPU time limit in miliseconds (does not affect simulated effects yet) */
 	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
 	float						CPUTimeLimitTotal;
+
+	/** GPU time limit in miliseconds (does not affect simulated effects yet) */
+	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
+	float						GPUTimeLimitTotal;
 
 	/** CPU particle count limit per effect (does not affect simulated effects yet) */
 	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
