@@ -33,13 +33,13 @@
 class	UPopcornFXSceneComponent;
 class	FPopcornFXSceneProxy;
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 #	define PK_WITH_PHYSX	0
 #	define PK_WITH_CHAOS	1
 #else
 #	define PK_WITH_PHYSX	PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
 #	define PK_WITH_CHAOS	!(PK_WITH_PHYSX) && WITH_CHAOS
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 // The plugin doesn't support both being active at the same time.
 #if PK_WITH_PHYSX && PK_WITH_CHAOS
@@ -153,7 +153,7 @@ public:
 
 		float			TotalTime() const { return TotalTimeCPU() + TotalTimeGPU(); }
 		float			TotalTimeCPU() const { return m_TotalStatsReport.m_PipelineStages[PopcornFX::SEvolveStatsReport::PipelineStage_Total].m_Time; }
-		float			TotalTimeGPU() const { return m_TotalStatsReport.m_PipelineStages[PopcornFX::SEvolveStatsReport::PipelineStage_Total + PopcornFX::SEvolveStatsReport::__MaxPipelineStages].m_Time; }
+		float			TotalTimeGPU() const { return m_TotalStatsReport.m_PipelineStages[PopcornFX::SEvolveStatsReport::PipelineStage_TotalGPU].m_Time; }
 		u32				TotalParticleCount_CPU() const { return m_TotalParticleCount_CPU; }
 		u32				TotalParticleCount_GPU() const { return m_TotalParticleCount_GPU; }
 		u32				TotalParticleCount() const { return m_TotalParticleCount_CPU + m_TotalParticleCount_GPU; }
@@ -314,10 +314,10 @@ public:
 	struct ID3D11Device				*D3D11_Device() const { PK_ASSERT(D3D11Ready()); return m_D3D11_Device; }
 	struct ID3D11DeviceContext		*D3D11_DeferedContext() const { PK_ASSERT(D3D11Ready()); return m_D3D11_DeferedContext; }
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 	class FRHIBuffer				*m_D3D11_DummyResource = null;
 	class FRHIUnorderedAccessView	*m_D3D11_DummyView = null;
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 private:
 	bool			D3D11_InitIFN();

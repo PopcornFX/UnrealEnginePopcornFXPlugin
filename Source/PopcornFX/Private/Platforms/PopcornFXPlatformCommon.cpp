@@ -420,12 +420,12 @@ namespace
 								PopcornFX::CMessageStream								&outMessages)
 	{
 		TArray<uint32>	compilerFlags;
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 		return CompileComputeShaderForAPI(source, buildInfos, "D3D12", SP_PCD3D_SM6, "DXBC", compilerFlags, outBytecode, outMessages);
 #else
 		compilerFlags.Add(CFLAG_ForceDXC); // Force SM6.0
 		return CompileComputeShaderForAPI(source, buildInfos, "D3D12", SP_PCD3D_SM5, "DXBC", compilerFlags, outBytecode, outMessages);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	}
 }
 

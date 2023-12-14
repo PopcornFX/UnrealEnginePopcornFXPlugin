@@ -191,11 +191,11 @@ void	FPopcornFXEffectEditor::FillEffectToolbar(FToolBarBuilder &toolbarBuilder)
 					.ToolTipText(LOCTEXT("DelayTooltip", "Time before the emitter restarts"))
 					.MinValue(0.0f)
 					.MaxValue(20.0f)
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#if (ENGINE_MAJOR_VERSION == 5)
 					.Font(FAppStyle::GetFontStyle(TEXT("MenuItem.Font")))
 #else
 					.Font(FEditorStyle::GetFontStyle(TEXT("MenuItem.Font")))
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 					.Value(PreviewViewport.Get(), &SPopcornFXEffectPreviewViewport::OnGetLoopDelayValue)
 					.OnValueChanged(PreviewViewport.Get(), &SPopcornFXEffectPreviewViewport::OnLoopDelayValueChanged)
 				]
