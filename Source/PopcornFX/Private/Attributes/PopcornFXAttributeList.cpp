@@ -212,6 +212,20 @@ UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveAttributeSampler(UPop
 		FObjectPropertyBase		*prop = FindFProperty<FObjectPropertyBase>(parentActor->GetClass(), m_AttributeSamplerComponentProperty);
 		if (prop != null)
 			attrib = Cast<UPopcornFXAttributeSampler>(prop->GetObjectPropertyValue_InContainer(parentActor));
+		else
+		{
+			// If we can't find it in the properties, try and find it in the actor components.
+			TArray<UActorComponent *>	components;
+			parentActor->GetComponents(UPopcornFXAttributeSampler::StaticClass(), components, false);
+			for (UActorComponent	*component : components)
+			{
+				if (component->GetFName() == m_AttributeSamplerComponentProperty)
+				{
+					attrib = Cast<UPopcornFXAttributeSampler>(component);
+					break;
+				}
+			}
+		}
 	}
 	else
 	{
