@@ -1258,21 +1258,21 @@ void	FPopcornFXSubRendererMaterial::BuildDynamicParameterMask(const PopcornFX::C
 	if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput0()))
-			DynamicParameterMask |= 0x1;
+			DynamicParameterMask |= 0x000F;
 	}
 	else
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()) ||
 			SoftAnimBlending || MotionVectorsBlending) // Atlas enabled, with motion vectors blending or linear frame blending
-			DynamicParameterMask |= 0x1;
+			DynamicParameterMask |= 0x0003;
 	}
 
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput1()))
-		DynamicParameterMask |= 0x2;
+		DynamicParameterMask |= 0x00F0;
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput2()))
-		DynamicParameterMask |= 0x4;
+		DynamicParameterMask |= 0x0F00;
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput3()))
-		DynamicParameterMask |= 0x8;
+		DynamicParameterMask |= 0xF000;
 }
 
 #endif // WITH_EDITOR
