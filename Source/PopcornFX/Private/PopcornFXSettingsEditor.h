@@ -78,21 +78,31 @@ public:
 	UPROPERTY(Config, VisibleAnywhere, Category="SourcePack", DisplayName="Resolved Project File path")
 	FString				SourcePackProjectFile;
 
+	FString				AbsSourcePackProjectFile;
+
 	/** Plugin internal: resolved root dir */
 	UPROPERTY(Config, VisibleAnywhere, Category="SourcePack", DisplayName="Resolved Root directory")
 	FString				SourcePackRootDir;
+
+	FString				AbsSourcePackRootDir;
 
 	/** Plugin internal: resolved library dir */
 	UPROPERTY(Config, VisibleAnywhere, Category="SourcePack", DisplayName="Resolved Root directory")
 	FString				SourcePackLibraryDir;
 
+	FString				AbsSourcePackLibraryDir;
+
 	/** Plugin internal: resolved thumbnails dir */
 	UPROPERTY(Config, VisibleAnywhere, Category="SourcePack", DisplayName="Resolved Thumbnails directory")
 	FString				SourcePackThumbnailsDir;
 
+	FString				AbsSourcePackThumbnailsDir;
+
 	/** Plugin internal: resolved cache dir */
 	UPROPERTY(Config, VisibleAnywhere, Category="SourcePack", DisplayName="Resolved Cache directory")
 	FString				SourcePackCacheDir;
+
+	FString				AbsSourcePackCacheDir;
 
 	/**
 	Enables auto reimport/mirroring of Source PopcornFX Project assets.
@@ -139,6 +149,9 @@ public:
 	/** Check this to restart effects when their attributes are modified via the details panel (useful when tweaking attributes for infinite particles) */
 	UPROPERTY(Config, EditAnywhere, Category="Debug")
 	uint32				bRestartEmitterWhenAttributesChanged : 1;
+
+private:
+	virtual void		PostInitProperties() override;
 #endif // WITH_EDITORONLY_DATA
 
 #if WITH_EDITOR
@@ -146,13 +159,10 @@ public:
 	void				UpdateSourcePack();
 	//bool				ResolveSourcePackFromFilePathIFP(const FString &inFilePath);
 
-	bool				ValidSourcePack() const { return !SourcePackRootDir.IsEmpty() && bSourcePackFound != 0; }
+	bool				ValidSourcePack() const { return !AbsSourcePackRootDir.IsEmpty() && bSourcePackFound != 0; }
 	bool				AskForAValidSourcePackForIFN(const FString &sourceAssetPath);
 
-	static FString		FixAndAppendPopcornFXProjectFileName(const FString &path);
-
 private:
-	virtual void		PostLoad() override;
 	virtual void		PreEditChange(FProperty *propertyAboutToChange) override;
 	virtual void		PostEditChangeProperty(struct FPropertyChangedEvent& propertyChangedEvent) override;
 

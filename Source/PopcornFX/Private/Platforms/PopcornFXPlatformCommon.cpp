@@ -237,7 +237,7 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 
 	if (!modules.Num())
 	{
-		UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: No target shader formats found"), ANSI_TO_TCHAR(apiName.Data()));
+		UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: No target shader formats found"), *ToUE(apiName));
 		return false;
 	}
 
@@ -290,17 +290,17 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 																"// Layer: %s\n"
 																"// Shader built for API: %s\n"
 																"// Build tags: %s\n"
-																"// Shader kernel stage: %s\n"
-																, buildInfos.m_SourceEffect.Empty() ? "<not-available>" : buildInfos.m_SourceEffect.ToString().Data()
-																, buildInfos.m_SourceLayerName.Empty() ? "<not-available>" : buildInfos.m_SourceLayerName.ToString().Data()
-																, apiName.Data()
-																, allBuildTags.Data()
-																, kKernelStageNames[buildInfos.m_KernelStage]));
+																"// Shader kernel stage: %s\n",
+																buildInfos.m_SourceEffect.Empty() ? "<not-available>" : buildInfos.m_SourceEffect.ToString().Data(),
+																buildInfos.m_SourceLayerName.Empty() ? "<not-available>" : buildInfos.m_SourceLayerName.ToString().Data(),
+																apiName.Data(),
+																allBuildTags.Data(),
+																kKernelStageNames[buildInfos.m_KernelStage]));
 			}
 
-			if (!FFileHelper::SaveStringToFile(ANSI_TO_TCHAR(finalSource.Data()), *srcFilePath))
+			if (!FFileHelper::SaveStringToFile(ToUE(finalSource), *srcFilePath))
 			{
-				UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't create temp source file"), ANSI_TO_TCHAR(apiName.Data()));
+				UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't create temp source file"), *ToUE(apiName));
 				return false;
 			}
 
@@ -329,7 +329,7 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 			FShaderCompilerEnvironment	mergedEnvironment;
 			if (!shaderFormat->PreprocessShader(input, mergedEnvironment, preprocessorOutput))
 			{
-				UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed preprocessing shader for %s"), ANSI_TO_TCHAR(apiName.Data()));
+				UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed preprocessing shader for %s"), *ToUE(apiName));
 				return false;
 			}
 			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output, workingDirectory);
@@ -350,14 +350,14 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 					if (shaderCodeStart >= fullShaderCodeEnd ||
 						(fullShaderCodeEnd - shaderCodeStart) < bytecodeMagic.Length())
 					{
-						UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't find %s header"), ANSI_TO_TCHAR(apiName.Data()), ANSI_TO_TCHAR(bytecodeMagic.Data()));
+						UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't find %s header"), *ToUE(apiName), *ToUE(bytecodeMagic));
 						return false;
 					}
 					for (u32 i = 0; i < bytecodeMagic.Length(); ++i)
 					{
 						if (shaderCodeStart[i] != bytecodeMagic[i])
 						{
-							UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't find %s header"), ANSI_TO_TCHAR(apiName.Data()), ANSI_TO_TCHAR(bytecodeMagic.Data()));
+							UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't find %s header"), *ToUE(apiName), *ToUE(bytecodeMagic));
 							return false;
 						}
 					}
@@ -380,14 +380,14 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				{
 					const FString	errorString = error.GetErrorString();
 					if (!errorString.IsEmpty())
-						UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: '%s'"), ANSI_TO_TCHAR(apiName.Data()), *errorString);
+						UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: '%s'"), *ToUE(apiName), *errorString);
 				}
 				return false;
 			}
 		}
 	}
 
-	UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't find shader compiler module"), ANSI_TO_TCHAR(apiName.Data()));
+	UE_LOG(LogPopcornFXPlatformCommon, Verbose, TEXT("Failed compiling bytecodes for %s: couldn't find shader compiler module"), *ToUE(apiName));
 	return false;
 }
 #endif // (PK_COMPILE_GPU != 0)

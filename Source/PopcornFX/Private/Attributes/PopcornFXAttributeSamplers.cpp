@@ -13,6 +13,7 @@
 #include "PopcornFXAttributeSamplerShape.h"
 #include "PopcornFXAttributeSamplerSkinnedMesh.h"
 #include "PopcornFXAttributeSamplerImage.h"
+#include "PopcornFXAttributeSamplerGrid.h"
 #include "PopcornFXAttributeSamplerText.h"
 #include "PopcornFXAttributeSamplerCurve.h"
 #include "PopcornFXAttributeSamplerCurveDynamic.h"
@@ -22,6 +23,7 @@
 #include "Assets/PopcornFXMesh.h"
 #include "Assets/PopcornFXTextureAtlas.h"
 #include "Internal/ResourceHandlerImage_UE.h"
+#include "Platforms/PopcornFXPlatform.h"
 
 #include "Components/SplineComponent.h"
 #include "Components/BillboardComponent.h"
@@ -33,6 +35,10 @@
 #include "VectorField/VectorFieldStatic.h"
 #include "Serialization/BulkData.h"
 #include "Curves/RichCurve.h"
+#include "Engine/VolumeTexture.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Engine/TextureRenderTargetVolume.h"
 #include "Engine/Texture.h"
 #include "Engine/Texture2D.h"
 #include "UObject/Package.h"
@@ -62,6 +68,7 @@
 #if (PK_GPU_D3D12 != 0)
 #	include <pk_particles/include/Samplers/D3D12/image_gpu_d3d12.h>
 #	include <pk_particles/include/Samplers/D3D12/rectangle_list_gpu_d3d12.h>
+
 #	include "Windows/HideWindowsPlatformTypes.h"
 #	include "D3D12RHIPrivate.h"
 #	include "D3D12Util.h"
@@ -97,7 +104,6 @@ APopcornFXAttributeSamplerActor::APopcornFXAttributeSamplerActor(const FObjectIn
 			{}
 		};
 		static FConstructorStatics ConstructorStatics;
-		// SpriteComponent->RelativeScale3D = FVector(0.5f, 0.5f, 0.5f);
 
 		SpriteComponent->SetRelativeScale3D(FVector(1.5f));
 		SpriteComponent->bHiddenInGame = true;
@@ -153,6 +159,12 @@ APopcornFXAttributeSamplerImageActor::APopcornFXAttributeSamplerImageActor(const
 	_CtorRootSamplerComponent(PCIP, EPopcornFXAttributeSamplerComponentType::Image);
 }
 
+APopcornFXAttributeSamplerGridActor::APopcornFXAttributeSamplerGridActor(const FObjectInitializer &PCIP)
+:	Super(PCIP)
+{
+	_CtorRootSamplerComponent(PCIP, EPopcornFXAttributeSamplerComponentType::Grid);
+}
+
 APopcornFXAttributeSamplerCurveActor::APopcornFXAttributeSamplerCurveActor(const FObjectInitializer &PCIP)
 :	Super(PCIP)
 {
@@ -203,6 +215,9 @@ void		APopcornFXAttributeSamplerActor::ReloadSprite()
 			break;
 		case	EPopcornFXAttributeSamplerComponentType::Image:
 			spriteName = "AttributeSampler_Image";
+			break;
+		case	EPopcornFXAttributeSamplerComponentType::Grid:
+			spriteName = "AttributeSampler_Image"; //"AttributeSampler_Grid"; // TODO: Grid icon
 			break;
 		case	EPopcornFXAttributeSamplerComponentType::AnimTrack:
 			spriteName = "Attributesampler_AnimTrack";
@@ -271,7 +286,7 @@ void	APopcornFXAttributeSamplerActor::PostRegisterAllComponents()
 
 //----------------------------------------------------------------------------
 
-void		APopcornFXAttributeSamplerActor::PostLoad()
+void	APopcornFXAttributeSamplerActor::PostLoad()
 {
 	Super::PostLoad();
 #if WITH_EDITOR
@@ -286,7 +301,7 @@ void		APopcornFXAttributeSamplerActor::PostLoad()
 
 //----------------------------------------------------------------------------
 
-void		APopcornFXAttributeSamplerActor::PostActorCreated()
+void	APopcornFXAttributeSamplerActor::PostActorCreated()
 {
 	Super::PostActorCreated();
 #if WITH_EDITOR
@@ -301,7 +316,7 @@ void		APopcornFXAttributeSamplerActor::PostActorCreated()
 //----------------------------------------------------------------------------
 
 // static
-UClass		*UPopcornFXAttributeSampler::SamplerComponentClass(EPopcornFXAttributeSamplerComponentType::Type type)
+UClass	*UPopcornFXAttributeSampler::SamplerComponentClass(EPopcornFXAttributeSamplerComponentType::Type type)
 {
 	switch (type)
 	{
@@ -311,6 +326,8 @@ UClass		*UPopcornFXAttributeSampler::SamplerComponentClass(EPopcornFXAttributeSa
 		return UPopcornFXAttributeSamplerSkinnedMesh::StaticClass();
 	case	EPopcornFXAttributeSamplerComponentType::Image:
 		return UPopcornFXAttributeSamplerImage::StaticClass();
+	case	EPopcornFXAttributeSamplerComponentType::Grid:
+		return UPopcornFXAttributeSamplerGrid::StaticClass();
 	case	EPopcornFXAttributeSamplerComponentType::Curve:
 		return UPopcornFXAttributeSamplerCurve::StaticClass();
 	case	EPopcornFXAttributeSamplerComponentType::AnimTrack:
@@ -1976,7 +1993,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerText::_AttribSa
 		// @TODO kerning
 		PopcornFX::CFontMetrics		*fontMetrics = null;
 		bool						useKerning = false;
-		if (!PK_VERIFY(m_Data->m_Desc->_Setup(TCHAR_TO_ANSI(*Text), fontMetrics, useKerning)))
+		if (!PK_VERIFY(m_Data->m_Desc->_Setup(ToPk(Text), fontMetrics, useKerning)))
 			return null;
 		m_Data->m_NeedsReload = false;
 	}
@@ -2069,13 +2086,10 @@ void	UPopcornFXAttributeSamplerImage::OnUnregister()
 {
 	if (m_Data != null)
 	{
-#if (PK_GPU_D3D12 != 0)//(PK_HAS_GPU != 0)
 		// Unregister the component during OnUnregister instead of BeginDestroy.
 		// In editor mode, BeginDestroy is only called when saving a level:
 		// Components ReregisterComponent() do not have a matching BeginDestroy call in editor
-		if (m_Data->m_Desc != null)
-			m_Data->m_Desc = null;
-#endif // (PK_HAS_GPU != 0)
+		m_Data->m_Desc = null;
 	}
 	Super::OnUnregister();
 }
@@ -2113,9 +2127,9 @@ void	UPopcornFXAttributeSamplerImage::PostEditChangeProperty(FPropertyChangedEve
 			m_Data->m_ReloadTextureAtlas = true;
 			m_Data->m_RebuildPDF = true;
 		}
-		else if (propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerImage, SamplingMode) ||
-			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerImage, DensitySource) ||
-			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerImage, DensityPower))
+		else if (	propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerImage, SamplingMode) ||
+					propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerImage, DensitySource) ||
+					propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerImage, DensityPower))
 		{
 			m_Data->m_RebuildPDF = true;
 		}
@@ -2172,7 +2186,7 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 	const bool	rebuildImage = m_Data->m_ReloadTexture;
 	if (rebuildImage)
 	{
-		const PopcornFX::CString	fullPath = TCHAR_TO_ANSI(*Texture->GetPathName());
+		const PopcornFX::CString	fullPath = ToPk(Texture->GetPathName());
 		bool						success = false;
 		m_Data->m_TextureResource = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CImage>(fullPath, true);
 		success |= (m_Data->m_TextureResource != null && !m_Data->m_TextureResource->Empty());
@@ -2196,7 +2210,7 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 
 		if (!success) // Couldn't load any of the resources (CPU/GPU)
 		{
-			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("AttrSamplerImage: couldn't load texture '%s' for CPU/GPU sim sampling"), fullPath.Data());
+			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("AttrSamplerImage: couldn't load texture '%s' for CPU/GPU sim sampling"), *ToUE(fullPath));
 			return false;
 		}
 		m_Data->m_ReloadTexture = false;
@@ -2207,7 +2221,7 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 		if (TextureAtlas != null)
 		{
 			bool						success = false;
-			const PopcornFX::CString	fullPath = TCHAR_TO_ANSI(*TextureAtlas->GetPathName());
+			const PopcornFX::CString	fullPath = ToPk(TextureAtlas->GetPathName());
 			m_Data->m_TextureAtlasResource = PopcornFX::Resource::DefaultManager()->Load<PopcornFX::CRectangleList>(fullPath, true);
 			success |= (m_Data->m_TextureAtlasResource != null && !m_Data->m_TextureAtlasResource->Empty());
 
@@ -2223,7 +2237,7 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 
 			if (!success) // Couldn't load any of the resources (CPU/GPU)
 			{
-				UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("AttrSamplerImage: couldn't load texture atlas '%s' for CPU/GPU sim sampling"), fullPath.Data());
+				UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("AttrSamplerImage: couldn't load texture atlas '%s' for CPU/GPU sim sampling"), *ToUE(fullPath));
 				return false;
 			}
 		}
@@ -2368,8 +2382,8 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 			UE_LOG(LogPopcornFXAttributeSampler, Log,
 				TEXT("AttrSamplerImage: texture '%s' format %s not supported for sampling, converting to %s (because AllowTextureConvertionAtRuntime) in '%s'"),
 				*Texture->GetName(),
-				ANSI_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
-				ANSI_TO_TCHAR(PopcornFX::CImage::GetFormatName(dstFormat)),
+				UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
+				UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(dstFormat)),
 				*GetPathName());
 
 			PopcornFX::CImageSurface	newSurface;
@@ -2379,8 +2393,8 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 				UE_LOG(LogPopcornFXAttributeSampler, Warning,
 					TEXT("AttrSamplerImage: could not convert texture '%s' from %s to %s in %s"),
 					*Texture->GetName(),
-					ANSI_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
-					ANSI_TO_TCHAR(PopcornFX::CImage::GetFormatName(dstFormat)),
+					UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
+					UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(dstFormat)),
 					*GetPathName());
 				return false;
 			}
@@ -2394,7 +2408,7 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 			UE_LOG(LogPopcornFXAttributeSampler, Warning,
 				TEXT("AttrSamplerImage: texture '%s' format %s not supported for sampling (and AllowTextureConvertionAtRuntime not enabled) in %s"),
 				*Texture->GetName(),
-				ANSI_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
+				UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
 				*GetPathName());
 			return false;
 		}
@@ -2402,6 +2416,424 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 	return true;
 }
 
+//----------------------------------------------------------------------------
+//
+// UPopcornFXAttributeSamplerGrid
+//
+//----------------------------------------------------------------------------
+
+struct	FAttributeSamplerGridData
+{
+	bool												m_ReloadGrid = true;
+	PopcornFX::PParticleSamplerDescriptor_Grid_Default	m_Desc;
+
+	void	Clear()
+	{
+		m_Desc = null;
+		m_ReloadGrid = true;
+	}
+
+	FAttributeSamplerGridData() { }
+
+	~FAttributeSamplerGridData()
+	{
+	}
+};
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerGrid::SetRenderTarget(class UTextureRenderTarget *InRenderTarget)
+{
+	RenderTarget = InRenderTarget;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerGrid::SetAsMaterialTextureParameter(UMaterialInstanceDynamic *Material, FName ParameterName)
+{
+	if (Material == null)
+	{
+		UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("SetAsMaterialTextureParameter: couldn't set grid as material texture parameter: null material"));
+		return;
+	}
+	UTexture	*texture = GridTexture();
+	if (texture == null)
+	{
+		UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("SetAsMaterialTextureParameter: couldn't set grid as material texture parameter: empty grid texture"));
+		return;
+	}
+	Material->SetTextureParameterValue(ParameterName, texture);
+}
+
+//----------------------------------------------------------------------------
+
+UPopcornFXAttributeSamplerGrid::UPopcornFXAttributeSamplerGrid(const FObjectInitializer &PCIP)
+:	Super(PCIP)
+{
+	bAutoActivate = true;
+
+	RenderTarget = null;
+	bAssetGrid = false;
+
+	bSRGB = false;
+
+	SizeX = 128;
+	SizeY = 128;
+	SizeZ = 1;
+
+	DataType = EPopcornFXGridDataType::RGBA;
+
+	// UPopcornFXAttributeSampler override:
+	m_SamplerType = EPopcornFXAttributeSamplerType::Grid;
+
+	m_Data = new FAttributeSamplerGridData();
+	check(m_Data != null);
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerGrid::OnUnregister()
+{
+	if (m_Data != null)
+	{
+		// Unregister the component during OnUnregister instead of BeginDestroy.
+		// In editor mode, BeginDestroy is only called when saving a level:
+		// Components ReregisterComponent() do not have a matching BeginDestroy call in editor
+		m_Data->m_Desc = null;
+		m_Data->m_ReloadGrid = true;
+	}
+	Super::OnUnregister();
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerGrid::BeginDestroy()
+{
+	if (m_Data != null)
+	{
+		delete m_Data;
+		m_Data = null;
+	}
+	Super::BeginDestroy();
+}
+
+//----------------------------------------------------------------------------
+
+UTexture	*UPopcornFXAttributeSamplerGrid::GridTexture()
+{
+	return bAssetGrid != 0 ? RenderTarget : m_GridTexture;
+}
+
+//----------------------------------------------------------------------------
+
+#if WITH_EDITOR
+
+void	UPopcornFXAttributeSamplerGrid::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+{
+	if (propertyChangedEvent.Property != NULL)
+	{
+		const FString	propertyName = propertyChangedEvent.Property->GetName();
+
+		if (propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerGrid, bAssetGrid) ||
+			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerGrid, bSRGB) ||
+			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerGrid, RenderTarget) ||
+			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerGrid, SizeX) ||
+			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerGrid, SizeY) ||
+			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerGrid, SizeZ) ||
+			propertyName == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXAttributeSamplerGrid, DataType))
+		{
+			// Rebuild
+			m_Data->m_ReloadGrid = true;
+		}
+	}
+	Super::PostEditChangeProperty(propertyChangedEvent);
+}
+
+#endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
+PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerGrid::_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	LLM_SCOPE(ELLMTag::Particles);
+	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
+	if (!PK_VERIFY(defaultGridSampler != null))
+		return null;
+	if (m_Data->m_ReloadGrid)
+	{
+		if (!RebuildGridSampler())
+			return null;
+		m_Data->m_ReloadGrid = false;
+	}
+
+	// Make sure the sampler matches what the effect expects
+	const u32										gridOrder = Cast<UTextureRenderTarget2D>(GridTexture()) != null ? 2 : 3;
+	const PopcornFX::Nodegraph::SDataTypeTraits		&srcTypeTraits = PopcornFX::Nodegraph::SDataTypeTraits::Traits((PopcornFX::Nodegraph::EDataType)defaultGridSampler->Type());
+	if (defaultGridSampler->Order() != gridOrder ||
+		srcTypeTraits.BaseType() != m_Data->m_Desc->m_DataType)
+	{
+		UE_LOG(LogPopcornFXAttributeSampler, Warning,
+				TEXT("AttrSamplerGrid: Failed to setup grid attribute sampler, does not match with sampler defined in source effect '%s':\n"
+				"\t- SrcOrder=%d, Built=%d.\n"
+				"\t- SrcType=%s, Built=%s.\n"),
+				*ToUE(defaultGridSampler->FilePath()),
+				defaultGridSampler->Order(), gridOrder,
+				UTF8_TO_TCHAR(srcTypeTraits.Name()),
+				UTF8_TO_TCHAR(PopcornFX::CBaseTypeTraits::Traits(m_Data->m_Desc->m_DataType).Name));
+		m_Data->Clear();
+		return null;
+	}
+
+	return m_Data->m_Desc.Get();
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerGrid::RebuildGridSampler()
+{
+	if (!_RebuildGridSampler())
+	{
+		const FString	imageName = RenderTarget != null ? RenderTarget->GetName() : FString(TEXT("null"));
+		UE_LOG(LogPopcornFXAttributeSampler, Warning,
+				TEXT("AttrSamplerGrid: Failed to setup grid attribute sampler (RenderTarget=%s, Dimensions=(%d,%d,%d), DataType=%d"),
+				*imageName,
+				SizeX, SizeY, SizeZ,
+				DataType);
+		m_Data->Clear();
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerGrid::_RebuildGridSampler()
+{
+	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerGrid::Build grid sampler", POPCORNFX_UE_PROFILER_COLOR);
+
+	PopcornFX::PParticleSamplerDescriptor_Grid_Default	descriptor = PK_NEW(PopcornFX::CParticleSamplerDescriptor_Grid_Default);
+	if (!PK_VERIFY(descriptor != null))
+		return false;
+
+	bool	needsGPUHandle = false;
+#if (PK_GPU_D3D12 != 0)
+	needsGPUHandle = g_PopcornFXRHIAPI == SUERenderContext::D3D12;
+#endif
+
+	EPixelFormat	pixelFormat = PF_Unknown;
+	bool			isVolumeTexture = false;
+
+	m_GridTexture = null;
+
+	UTexture	*texture = null;
+	if (bAssetGrid)
+	{
+		if (RenderTarget == null)
+		{
+			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: couldn't build grid sampler: null texture"));
+			return false;
+		}
+		texture = RenderTarget;
+
+		UTextureRenderTarget2D		*RT2D = Cast<UTextureRenderTarget2D>(texture);
+		UTextureRenderTargetVolume	*RTVolume = Cast<UTextureRenderTargetVolume>(texture);
+		if (RT2D != null)
+		{
+			const EPixelFormat	RTFormat = GetPixelFormatFromRenderTargetFormat(RT2D->RenderTargetFormat);
+			const bool			hasSupportedFormat =	RTFormat == PF_R32_FLOAT ||
+														RTFormat == PF_G32R32F ||
+														RTFormat == PF_A32B32G32R32F;
+			const bool			hasCorrectGamma = bSRGB == RT2D->IsSRGB();
+
+			if (!hasSupportedFormat)
+			{
+				// Error, don't try to convert the texture, let the user specify the desired format.
+				UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: can only setup attribute sampler from UTextureRenderTarget2D with format set to RTF_R32f, RTF_RG32f or RTF_RGBA32f"));
+				return false;
+			}
+			if (!hasCorrectGamma)
+			{
+				UE_LOG(LogPopcornFXAttributeSampler, Log, TEXT("UPopcornFXAttributeSamplerGrid: converting UTextureRenderTarget2D format to sRGB=%d"), bSRGB);
+			}
+			if ((!RT2D->bCanCreateUAV || !hasCorrectGamma) && needsGPUHandle)
+			{
+				RT2D->bCanCreateUAV = true;
+				RT2D->SRGB = bSRGB;
+				RT2D->UpdateResource();
+			}
+
+			PopcornFX::EBaseTypeID	dataType;
+			switch (RTFormat)
+			{
+			case	PF_R32_FLOAT:
+				dataType = PopcornFX::BaseType_Float;
+				break;
+			case	PF_G32R32F:
+				dataType = PopcornFX::BaseType_Float2;
+				break;
+			case	PF_A32B32G32R32F:
+			default:
+				dataType = PopcornFX::BaseType_Float4;
+				break;
+			};
+			descriptor->m_DataType = dataType;
+			descriptor->m_GridDimensions = CUint4(RT2D->SizeX, RT2D->SizeY, 1, 1);
+			pixelFormat = RTFormat;
+		}
+		else if (RTVolume != null)
+		{
+			const EPixelFormat	RTFormat = RTVolume->OverrideFormat;
+			const bool			hasSupportedFormat = RTFormat == PF_A32B32G32R32F;
+			const bool			hasCorrectGamma = bSRGB == RTVolume->SRGB;
+
+			if (!hasSupportedFormat)
+			{
+				UE_LOG(LogPopcornFXAttributeSampler, Log, TEXT("UPopcornFXAttributeSamplerGrid: converting UTextureRenderTargetVolume format to RTF_RGBA32f"));
+			}
+			if (!hasCorrectGamma)
+			{
+				UE_LOG(LogPopcornFXAttributeSampler, Log, TEXT("UPopcornFXAttributeSamplerGrid: converting UTextureRenderTargetVolume format to sRGB=%d"), bSRGB);
+			}
+			if ((!RTVolume->bCanCreateUAV || !hasSupportedFormat || !hasCorrectGamma) || needsGPUHandle)
+			{
+				RTVolume->bCanCreateUAV = true;
+				RTVolume->OverrideFormat = PF_A32B32G32R32F;
+				RTVolume->SRGB = bSRGB;
+				RTVolume->UpdateResource();
+			}
+			descriptor->m_DataType = PopcornFX::BaseType_Float4;
+			descriptor->m_GridDimensions = CUint4(RTVolume->SizeX, RTVolume->SizeY, RTVolume->SizeZ, 1);
+			isVolumeTexture = true;
+			pixelFormat = PF_A32B32G32R32F;
+		}
+		else
+		{
+			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: can only setup attribute sampler from UTextureRenderTarget2D or UTextureRenderTargetVolume"));
+			return false;
+		}
+	}
+	else
+	{
+		if (SizeX < 0 || SizeY < 0 || SizeZ < 0)
+		{
+			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: couldn't build grid sampler: Invalid dimensions (%d,%d,%d)"), SizeX, SizeY, SizeZ);
+			return false;
+		}
+		ETextureRenderTargetFormat	RTFormat = ETextureRenderTargetFormat::RTF_RGBA32f;
+		PopcornFX::EBaseTypeID		dataType = PopcornFX::BaseType_Void;
+
+		switch (DataType)
+		{
+		case	EPopcornFXGridDataType::R:
+			RTFormat = RTF_R32f;
+			dataType = PopcornFX::BaseType_Float;
+			break;
+		case	EPopcornFXGridDataType::RG:
+			RTFormat = RTF_RG32f;
+			dataType = PopcornFX::BaseType_Float2;
+			break;
+		case	EPopcornFXGridDataType::RGBA:
+			RTFormat = RTF_RGBA32f;
+			dataType = PopcornFX::BaseType_Float4;
+			break;
+		default:
+			PK_ASSERT_NOT_REACHED();
+			return false;
+		};
+		pixelFormat = GetPixelFormatFromRenderTargetFormat(RTFormat);
+
+		if (needsGPUHandle)
+		{
+			if (SizeZ > 1)
+			{
+				UTextureRenderTargetVolume	*newTexture = NewObject<UTextureRenderTargetVolume>(GetTransientPackage(), TEXT("PopcornFX Grid Attribute Sampler Volume"), RF_Transient);
+				check(newTexture != null);
+				newTexture->bCanCreateUAV = true;
+				newTexture->SRGB = bSRGB;
+				newTexture->Init(SizeX, SizeY, SizeZ, pixelFormat);
+				newTexture->UpdateResourceImmediate(true);
+				texture = newTexture;
+				isVolumeTexture = true;
+			}
+			else
+			{
+				UTextureRenderTarget2D	*newTexture = NewObject<UTextureRenderTarget2D>(GetTransientPackage(), TEXT("PopcornFX Grid Attribute Sampler 2D"), RF_Transient);
+				check(newTexture != null);
+				newTexture->RenderTargetFormat = RTFormat;
+				newTexture->bAutoGenerateMips = false;
+				newTexture->bCanCreateUAV = true;
+				newTexture->SRGB = bSRGB;
+				newTexture->InitAutoFormat(SizeX, SizeY);
+				newTexture->UpdateResourceImmediate(true);
+				texture = newTexture;
+			}
+			if (texture == null)
+			{
+				UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: couldn't build grid sampler: couldn't create transient texture"));
+				return false;
+			}
+			m_GridTexture = texture;
+		}
+		descriptor->m_DataType = dataType;
+		descriptor->m_GridDimensions = CUint4(SizeX, SizeY, SizeZ, 1);
+	}
+
+	if (needsGPUHandle)
+	{
+		check(texture != null);
+
+		// WIP: Flush render commands to make sure the RHI resource is available.
+		FlushRenderingCommands();
+	}
+
+#if (PK_GPU_D3D12 != 0)
+	// There is no way currently to know if the current sampler descriptor will be used by the CPU or GPU sim, so we'll have to load both, if possible
+	// GPU sim image load is trivial: it will just grab the ref to the native resource
+	if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
+	{
+		// Simplified CResourceHandlerImage_UE_D3D12::NewFromTexture()
+		FTextureReferenceRHIRef	texRef = texture->TextureReference.TextureReferenceRHI;
+		if (!IsValidRef(texRef))
+		{
+			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: UTexture TextureReference not available \"%s\""), *texture->GetPathName());
+			return false;
+		}
+		FRHITexture	*texRHI = texRef->GetReferencedTexture();
+		if (texRHI == null)
+		{
+			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: UTexture TextureReference FRHITexture not available \"%s\""), *texture->GetPathName());
+			return false;
+		}
+		ID3D12Resource	*gpuTexture = static_cast<ID3D12Resource*>(texRHI->GetNativeResource());
+		if (gpuTexture == null)
+		{
+			UE_LOG(LogPopcornFXAttributeSampler, Warning, TEXT("UPopcornFXAttributeSamplerGrid: UTexture TextureReference FRHITexture D3D12 not available \"%s\""), *texture->GetPathName());
+			return false;
+		}
+
+		descriptor->SetupD3D12Resources(gpuTexture,
+										(u32)GPixelFormats[pixelFormat].PlatformFormat,
+										(u32)(isVolumeTexture ? D3D12_UAV_DIMENSION_TEXTURE3D : D3D12_UAV_DIMENSION_TEXTURE2D));
+	}
+#endif // PK_GPU_D3D12 != 0
+
+	// Build a CPU sim visible memory buffer (we could expose RW access functions into it)
+	{
+		const PopcornFX::CImage::EFormat	pkFormat = _UE2PKImageFormat(pixelFormat, false);
+		PK_ASSERT(pkFormat != PopcornFX::CImage::Format_Invalid);
+		const u32							expectedSizeInBytes = PopcornFX::CImage::GetFormatPixelBufferSizeInBytes(pkFormat, CUint3(SizeX, SizeY, SizeZ));
+
+		enum { kAlignment = 0x80 };
+		descriptor->m_RawDataRef = PopcornFX::CRefCountedMemoryBuffer::AllocAligned(expectedSizeInBytes + kAlignment, kAlignment);
+		if (!PK_VERIFY(descriptor->m_RawDataRef != null))
+			return false;
+		descriptor->m_RawDataPtr = descriptor->m_RawDataRef->Data<u8>();
+		descriptor->m_RawDataByteCount = descriptor->m_RawDataRef->DataSizeInBytes();
+	}
+
+	m_Data->m_Desc = descriptor;
+	return true;
+}
 
 //----------------------------------------------------------------------------
 //

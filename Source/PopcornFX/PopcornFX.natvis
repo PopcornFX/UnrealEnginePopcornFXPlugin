@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+	<!-- PopcornFX Visualizers -->
+	<!-- Copy this into c:\Users\<Your user folder>\My Documents\Visual Studio 201x\Visualizers -->
+
+	<!--
+		Compatibility notes:
+		- on PS4: don't use __int*
+		- on vs2013: don't use static const variable
+	-->
+
+	<!--
+		FIXME: PS4 does not like enums (ie kAlignment)
+	-->
+
+	<Type Name="PopcornFX::CString">
+		<DisplayString Condition="m_Container.m_Ptr == 0">null</DisplayString>
+		<DisplayString Condition="(int)(m_Container.m_Ptr->m_Length) &lt; 0">{*((char**)((unsigned long long)m_Container.m_Ptr + (((sizeof(PopcornFX::CStringContainer) + 4) + (sizeof(void*) - 1)) &amp; ~((unsigned long long)(sizeof(void*) - 1))))),s} [Len={m_Container.m_Ptr->m_Length &amp; 0x7FFFFFFF}]</DisplayString>
+		<DisplayString Condition="(int)(m_Container.m_Ptr->m_Length) &gt;= 0">{(char*)((unsigned long long)m_Container.m_Ptr + sizeof(PopcornFX::CStringContainer) + (0xF - ((sizeof(PopcornFX::CStringContainer) + 0xF) &amp; ((unsigned long long)0xF)))),s} [Len={m_Container.m_Ptr->m_Length &amp; 0x7FFFFFFF}]</DisplayString>
+		<StringView Condition="m_Container.m_Ptr == 0">null</StringView>
+		<StringView Condition="(int)(m_Container.m_Ptr->m_Length) &lt; 0">*((char**)((unsigned long long)m_Container.m_Ptr + (((sizeof(PopcornFX::CStringContainer) + 4) + (sizeof(void*) - 1)) &amp; ~((unsigned long long)(sizeof(void*) - 1))))),s</StringView>
+		<StringView Condition="(int)(m_Container.m_Ptr->m_Length) &gt;= 0">(char*)((unsigned long long)m_Container.m_Ptr + sizeof(PopcornFX::CStringContainer) + (0xF - ((sizeof(PopcornFX::CStringContainer) + 0xF) &amp; ((unsigned long long)0xF)))),s</StringView>
+	</Type>
+
+	<Type Name="PopcornFX::CStringUnicode">
+		<DisplayString Condition="m_Container.m_Ptr == 0">null</DisplayString>
+		<DisplayString Condition="(int)(m_Container.m_Ptr->m_Length) &lt; 0">{*((wchar_t**)((unsigned long long)m_Container.m_Ptr + sizeof(PopcornFX::CStringUnicodeContainer) + 4)),su} [Len={m_Container.m_Ptr->m_Length &amp; 0x7FFFFFFF}]</DisplayString>
+		<DisplayString Condition="(int)(m_Container.m_Ptr->m_Length) &gt;= 0">{(wchar_t*)(((unsigned long long)m_Container.m_Ptr + sizeof(PopcornFX::CStringUnicodeContainer) + 0xF) &amp; ~((unsigned long long)0xF)),su} [Len={m_Container.m_Ptr->m_Length &amp; 0x7FFFFFFF}]</DisplayString>
+		<StringView Condition="m_Container.m_Ptr == 0">null</StringView>
+		<StringView Condition="(int)(m_Container.m_Ptr->m_Length) &lt; 0">*((wchar_t**)((unsigned long long)m_Container.m_Ptr + sizeof(PopcornFX::CStringUnicodeContainer) + 4)),su</StringView>
+		<StringView Condition="(int)(m_Container.m_Ptr->m_Length) &gt;= 0">(wchar_t*)(((unsigned long long)m_Container.m_Ptr + sizeof(PopcornFX::CStringUnicodeContainer) + 0xF) &amp; ~((unsigned long long)0xF)),su</StringView>
+	</Type>
+
+	<Type Name="PopcornFX::CStringId">
+		<DisplayString Condition="m_Id == 0">Id=0 null</DisplayString>
+		<DisplayString Condition="m_Id != 0">Id={m_Id} {PopcornFX::CStringInternals::m_StringIdDictionnary->m_StringIdPool.m_Chunks[m_Id / PopcornFX::CStringIdDictionary::kPoolChunkSize][m_Id % PopcornFX::CStringIdDictionary::kPoolChunkSize]}</DisplayString>
+		<Expand>
+			<Item Name="string" Condition="m_Id != 0">PopcornFX::CStringInternals::m_StringIdDictionnary->m_StringIdPool.m_Chunks[m_Id / PopcornFX::CStringIdDictionary::kPoolChunkSize][m_Id % PopcornFX::CStringIdDictionary::kPoolChunkSize]</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::CStringView">
+		<DisplayString Condition="m_Data == 0">null</DisplayString>
+		<DisplayString Condition="m_Data != 0">{m_Data,[m_Length]s} [Len={m_Length}]</DisplayString>
+	</Type>
+
+	<Type Name="PopcornFX::HBO::CLink">
+		<DisplayString Condition="m_DataFeed.m_Ptr == 0">null</DisplayString>
+		<DisplayString Condition="m_DataFeed.m_Ptr != 0">{m_DataFeed.m_Ptr}</DisplayString>
+		<Expand>
+			<ExpandedItem Condition="m_DataFeed.m_Ptr != 0">m_DataFeed.m_Ptr</ExpandedItem>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TRefPtr&lt;*&gt;">
+		<DisplayString>{{RefPtr={(void*)m_Ptr}}}</DisplayString>
+		<Expand>
+			<ExpandedItem Condition="m_Ptr != 0">m_Ptr</ExpandedItem>
+		</Expand>
+	</Type>
+	<Type Name="PopcornFX::TWeakPtr&lt;*&gt;">
+		<DisplayString>{{WeakPtr={(void*)m_Ptr}}}</DisplayString>
+		<Expand>
+			<ExpandedItem Condition="m_Ptr != 0">m_Ptr</ExpandedItem>
+		</Expand>
+	</Type>
+	<Type Name="PopcornFX::TScopedPtr&lt;*&gt;">
+		<DisplayString>{{ScopedPtr={(void*)m_Ptr}}}</DisplayString>
+		<Expand>
+			<ExpandedItem Condition="m_Ptr != 0">m_Ptr</ExpandedItem>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TArray&lt;*,*&gt;">
+		<DisplayString>{{A Count={m_Count}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_Count</Size>
+				<ValuePointer>($T1*)m_Data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TArraySafe&lt;*,*&gt;">
+		<DisplayString>{{A Count={m_Count}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_Count</Size>
+				<ValuePointer>($T1*)m_Data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TSemiDynamicArray&lt;*,*,*&gt;">
+		<DisplayString Condition="(m_Count &amp; 0x80000000) != 0">{{SDA Count={m_Count &amp; 0x7FFFFFFF} Data={(void*)m_Allocated.m_Data}}</DisplayString>
+		<DisplayString Condition="(m_Count &amp; 0x80000000) == 0">{{SDA Count={m_Count &amp; 0x7FFFFFFF} Data={(void*)(((unsigned long long)m_StaticData + kAlignment - 1) &amp; - kAlignment)}}</DisplayString>
+		<Expand>
+			<ArrayItems Condition="(m_Count &amp; 0x80000000) != 0">
+				<Size>m_Count &amp; 0x7FFFFFFF</Size>
+				<ValuePointer>($T1*)m_Allocated.m_Data</ValuePointer>
+			</ArrayItems>
+			<ArrayItems Condition="(m_Count &amp; 0x80000000) == 0">
+				<Size>m_Count</Size>
+				<ValuePointer>($T1*)(((unsigned long long)m_StaticData + kAlignment - 1) &amp; - kAlignment)</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TStackFixedArray&lt;*&gt;">
+		<DisplayString>{{SFA Count={m_Count}, Data={(void*)m_Data}, Cap={m_Capacity}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_Count</Size>
+				<ValuePointer>($T1*)m_Data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TStaticArray&lt;*,*&gt;">
+		<DisplayString>{{SA _Count={$T2}, Data={(void*)(((unsigned long long)_m_Data + kAlignment - 1) &amp; - kAlignment)}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>$T2</Size>
+				<ValuePointer>($T1*)(((unsigned long long)_m_Data + kAlignment - 1) &amp; - kAlignment)</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TStaticCountedArray&lt;*,*&gt;">
+		<DisplayString>{{SCA Count={m_Count}, Data={(void*)(((unsigned long long)_m_Data + kAlignment - 1) &amp; - kAlignment)}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_Count</Size>
+				<ValuePointer>($T1*)(((unsigned long long)_m_Data + kAlignment - 1) &amp; - kAlignment)</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TChunkedArray&lt;*,*,*&gt;">
+		<DisplayString>{{CA Count={$T2 * m_ChunksCount}({$T2}*{m_ChunksCount}), ChuncksCap={m_ChunksCapacity}}}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>$T2 * m_ChunksCount</Size>
+				<ValueNode>m_Chunks[$i / $T2][$i % $T2]</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TStaticSlotArray&lt;*,*,*&gt;">
+		<DisplayString>{{SlotA UsedCount={m_UsedSlots} _Count={$T2}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>$T2</Size>
+				<ValuePointer>($T1*)m_Data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TSlotArray&lt;*,*&gt;">
+		<DisplayString>{{SlotA UsedCount={m_UsedSlots} Count={m_DataSizeInBytes / sizeof($T1)}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_DataSizeInBytes / sizeof($T1)</Size>
+				<ValuePointer>($T1*)m_Data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TMemoryView&lt;*&gt;">
+		<DisplayString>{{MV Count={m_Count}, Data={(void*)m_Data}, sizeof={sizeof($T1)}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_Count</Size>
+				<ValuePointer>($T1*)m_Data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TStridedMemoryView&lt;*&gt;">
+		<DisplayString>{{SMV Count={m_Storage.m_Count}, Data={(void*)m_Storage.m_RawDataPtr}, Stride={m_Storage.m_Stride}, sizeof={sizeof($T1)}}}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>m_Storage.m_Count</Size>
+				<ValueNode>*(($T1*)(m_Storage.m_RawDataPtr + $i * m_Storage.m_Stride))</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TStridedMemoryViewWithFootprint&lt;*&gt;">
+		<DisplayString>{{SMVF Count={m_Storage.m_Count}, Data={(void*)m_Storage.m_RawDataPtr}, Stride={m_Storage.m_Stride}, Footp={m_ElementFootprintInBytes}, sizeof={sizeof($T1)}}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>m_Storage.m_Count</Size>
+				<ValueNode>*(($T1*)(m_Storage.m_RawDataPtr + $i * m_Storage.m_Stride))</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TPair&lt;*&gt;">
+		<DisplayString>{{First={m_First}, Second={m_Second}}}</DisplayString>
+		<Expand>
+			<Item Name="m_First">m_First</Item>
+			<Item Name="m_Second">m_Second</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TFastHashMap&lt;*,*&gt;">
+		<DisplayString>{{FHM Count={m_Count}, Data={(void*)m_Slots}, Size={m_Size}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>m_Size</Size>
+				<ValuePointer>m_Slots</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<!--
+	natvis is a pretty hard regression from autoexp.dat regarding the formatting power :(
+	we're forced to do fugly things like this...
+	-->
+	<Type Name="PopcornFX::Compiler::IR::CRegID">
+		<AlternativeType Name="PopcornFX::CVMRegID"/>
+		<DisplayString Condition="m_RawBits == -1">empty</DisplayString>
+
+		<DisplayString Condition="((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Void">void (error)</DisplayString>
+
+		<!-- evolved -->
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Evolved) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const class cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Evolved) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable class vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Evolved) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance class ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Evolved) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream class sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<!-- bool -->
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const bool1 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable bool1 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance bool1 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream bool1 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const bool2 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable bool2 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance bool2 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream bool2 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const bool3 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable bool3 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance bool3 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream bool3 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const bool4 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable bool4 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance bool4 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Bool4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream bool4 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<!-- int -->
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_I32) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const int1 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_I32) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable int1 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_I32) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance int1 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_I32) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream int1 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const int2 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable int2 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance int2 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream int2 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const int3 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable int3 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance int3 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream int3 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const int4 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable int4 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance int4 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Int4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream int4 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<!-- float -->
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const float1 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable float1 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance float1 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream float1 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const float2 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable float2 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance float2 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float2) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream float2 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const float3 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable float3 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance float3 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float3) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream float3 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const float4 cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable float4 vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance float4 ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Float4) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream float4 sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+
+		<!-- orientation -->
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Quaternion) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 0)"   >const orientation cr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Quaternion) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 1)">variable orientation vr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Quaternion) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 2)">instance orientation ir{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+		<DisplayString Condition="(((m_RawBits &gt;&gt; 24) &amp; 0x3F) == 1+PopcornFX::BaseType_Quaternion) &amp; (((m_RawBits &gt;&gt; 21) &amp; 0x3) == 3)"  >stream orientation sr{m_RawBits &amp; 0xFFFF,d}</DisplayString>
+	</Type>
+
+	<!--
+	NOTE(Julien): This is a terrible hack. We need dummy types to get a "usable" display of these in natvis, because there's
+	apparently no way to customize the strings displayed in the '<Expand>' section, like what's possible with the '<DisplayString>' section.
+	-->
+	<Type Name="PopcornFX::Range::Internal::_SConstantRange_Natvis">
+<!--
+		<DisplayString>Range = {(char)(93 - 2 * m_BoundMin.m_Edge.m_Data[0])}{m_BoundMin.m_Value.m_Data32u,X}, {m_BoundMax.m_Value.m_Data32u,X}{(char)(93 - 2 * m_BoundMax.m_Edge.m_Data[0])}</DisplayString>
+-->
+		<DisplayString Condition="m_BoundMin.m_Edge.m_Data == 0 &amp; m_BoundMax.m_Edge.m_Data == 0">Range = ]{m_BoundMin.m_Value.m_Data32u,X}, {m_BoundMax.m_Value.m_Data32u,X}[ - ]{m_BoundMin.m_Value.m_Data32f}, {m_BoundMax.m_Value.m_Data32f}[ - ]{m_BoundMin.m_Value.m_Data32s}, {m_BoundMax.m_Value.m_Data32s}[</DisplayString>
+		<DisplayString Condition="m_BoundMin.m_Edge.m_Data == 0 &amp; m_BoundMax.m_Edge.m_Data == 1">Range = ]{m_BoundMin.m_Value.m_Data32u,X}, {m_BoundMax.m_Value.m_Data32u,X}] - ]{m_BoundMin.m_Value.m_Data32f}, {m_BoundMax.m_Value.m_Data32f}] - ]{m_BoundMin.m_Value.m_Data32s}, {m_BoundMax.m_Value.m_Data32s}]</DisplayString>
+		<DisplayString Condition="m_BoundMin.m_Edge.m_Data == 1 &amp; m_BoundMax.m_Edge.m_Data == 0">Range = [{m_BoundMin.m_Value.m_Data32u,X}, {m_BoundMax.m_Value.m_Data32u,X}[ - [{m_BoundMin.m_Value.m_Data32f}, {m_BoundMax.m_Value.m_Data32f}[ - [{m_BoundMin.m_Value.m_Data32s}, {m_BoundMax.m_Value.m_Data32s}[</DisplayString>
+		<DisplayString Condition="m_BoundMin.m_Edge.m_Data == 1 &amp; m_BoundMax.m_Edge.m_Data == 1">Range = [{m_BoundMin.m_Value.m_Data32u,X}, {m_BoundMax.m_Value.m_Data32u,X}] - [{m_BoundMin.m_Value.m_Data32f}, {m_BoundMax.m_Value.m_Data32f}] - [{m_BoundMin.m_Value.m_Data32s}, {m_BoundMax.m_Value.m_Data32s}]</DisplayString>
+	</Type>
+
+	<Type Name="PopcornFX::Range::Internal::_SConstantEdge_Natvis">
+		<DisplayString Condition="m_Data == 0">X</DisplayString>
+		<DisplayString Condition="m_Data == 1">O</DisplayString>
+	</Type>
+
+	<Type Name="PopcornFX::Range::SConstantRange">
+		<DisplayString>{*(PopcornFX::Range::Internal::_SConstantRange_Natvis*)(m_BoundMin.m_Value.m_Data32u + 0)}</DisplayString>
+		<Expand>
+			<IndexListItems>
+				<Size>4</Size>
+				<ValueNode>(PopcornFX::Range::Internal::_SConstantRange_Natvis*)(m_BoundMin.m_Value.m_Data32u + $i)</ValueNode>
+			</IndexListItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::Range::SRangeBound">
+		<DisplayString>{*(PopcornFX::Range::Internal::_SConstantEdge_Natvis*)(m_Edge.m_Data+0)}{*(PopcornFX::Range::Internal::_SConstantEdge_Natvis*)(m_Edge.m_Data+1)}{*(PopcornFX::Range::Internal::_SConstantEdge_Natvis*)(m_Edge.m_Data+2)}{*(PopcornFX::Range::Internal::_SConstantEdge_Natvis*)(m_Edge.m_Data+3)}: |{m_Value.m_Data32u[0],X}, {m_Value.m_Data32u[1],X}, {m_Value.m_Data32u[2],X}, {m_Value.m_Data32u[3],X}| - |{m_Value.m_Data32f[0]}, {m_Value.m_Data32f[1]}, {m_Value.m_Data32f[2]}, {m_Value.m_Data32f[3]}| - |{m_Value.m_Data32s[0]}, {m_Value.m_Data32s[1]}, {m_Value.m_Data32s[2]}, {m_Value.m_Data32s[3]}|</DisplayString>
+	</Type>
+
+	<Type Name="PopcornFX::SCompilerTypeID">
+		<DisplayString Condition="m_Index == 0xFFFFFFFF">INVALID</DisplayString>
+		<DisplayString Condition="m_Index == 0x40000000">void</DisplayString>
+		<DisplayString Condition="m_Index == 0x10000001">auto</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000002">byte</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000003">float</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000004">float2</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000005">float3</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000006">float4</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000007">int</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000008">int2</DisplayString>
+		<DisplayString Condition="m_Index == 0x20000009">int3</DisplayString>
+		<DisplayString Condition="m_Index == 0x2000000A">int4</DisplayString>
+		<DisplayString Condition="m_Index == 0x2000000B">bool</DisplayString>
+		<DisplayString Condition="m_Index == 0x2000000C">bool2</DisplayString>
+		<DisplayString Condition="m_Index == 0x2000000D">bool3</DisplayString>
+		<DisplayString Condition="m_Index == 0x2000000E">bool4</DisplayString>
+		<DisplayString Condition="m_Index == 0x2000000F">orientation</DisplayString>
+		<Expand>
+			<Item Name="m_Index">m_Index</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::SVStreamCode">
+		<DisplayString Condition="(m_Code &gt;&gt; 8) &lt; 6">{(PopcornFX::CVStreamSemanticDictionnary::EDefaultOrdinals)(m_Code &gt;&gt; 8)}</DisplayString>
+		<DisplayString Condition="(m_Code &gt;&gt; 8) &gt;= 6">(m_Code &gt;&gt; 8)</DisplayString>
+		<Expand>
+			<Item Name="Ordinal" Condition="(m_Code &gt;&gt; 8) &lt; 6">(PopcornFX::CVStreamSemanticDictionnary::EDefaultOrdinals)(m_Code &gt;&gt; 8)</Item>
+			<Item Name="Ordinal" Condition="(m_Code &gt;&gt; 8) &gt;= 6">(m_Code &gt;&gt; 8)</Item>
+			<Item Name="Type">(PopcornFX::SVStreamCode::EElementType)(m_Code &amp; 0x1F)</Item>
+			<Item Name="SIMD">(m_Code &amp; 0x80) != 0</Item>
+			<Item Name="Normalized">(m_Code &amp; 0x40) != 0</Item>
+			<Item Name="RawCode">m_Code</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::SEngineVersion">
+		<DisplayString>v{(m_Key &gt;&gt; 29) &amp; 0x7,d}.{(m_Key &gt;&gt; 24) &amp; 0x1F,d}.{(m_Key &gt;&gt; 18) &amp; 0x3F,d}.{m_Key &amp; 0x3FFFF,d}</DisplayString>
+		<Expand>
+			<Item Name="m_Key">m_Key</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TVector&lt;*,*&gt;">
+		<DisplayString>{m_Data}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>$T2</Size>
+				<ValuePointer>m_Data</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TMatrix&lt;*,*,*&gt;">
+		<DisplayString>{m_Axes}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>$T2</Size>
+				<ValuePointer>m_Axes</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+	<Type Name="PopcornFX::TQuaternion&lt;*&gt;">
+		<DisplayString>{{{m_Imag[0]}, {m_Imag[1]}, {m_Imag[2]}, {m_Real}}}</DisplayString>
+		<Expand>
+			<ArrayItems>
+				<Size>4</Size>
+				<ValuePointer>m_Imag</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+
+</AutoVisualizer>

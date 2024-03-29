@@ -79,10 +79,10 @@ void	*CResourceHandlerMesh_UE::Load(
 
 	PK_ASSERT(resourceTypeID == PopcornFX::TResourceRouter<PopcornFX::CResourceMesh>::ResourceTypeID());
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(resourcePath.Data(), pathNotVirtual);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(resourcePath, pathNotVirtual);
 	if (obj == null)
 	{
-		UE_LOG(LogPopcornFXResourceHandlerMesh, Warning, TEXT("UObject not found \"%s\""), ANSI_TO_TCHAR(resourcePath.Data()));
+		UE_LOG(LogPopcornFXResourceHandlerMesh, Warning, TEXT("UObject not found \"%s\""), *ToUE(resourcePath));
 		return null;
 	}
 

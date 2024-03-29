@@ -56,7 +56,7 @@ namespace
 			if (!LogPopcornFX.IsSuppressed(kLogVerbosityToUE[level]))
 			{
 				const ELogVerbosity::Type		logLevel = kLogVerbosityToUE[level];
-				FMsg::Logf(__FILE__, __LINE__, LogPopcornFX.GetCategoryName(), logLevel, TEXT("%s"), ANSI_TO_TCHAR(s.Data()));
+				FMsg::Logf(__FILE__, __LINE__, LogPopcornFX.GetCategoryName(), logLevel, TEXT("%s"), UTF8_TO_TCHAR(s.Data()));
 			}
 #endif
 		}

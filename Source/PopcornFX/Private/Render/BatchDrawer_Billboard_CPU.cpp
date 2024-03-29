@@ -185,6 +185,9 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
 			outStreamOffsetType = StreamOffset_EmissiveColors;
+
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_PreviousPosition())
+			outStreamOffsetType = StreamOffset_PreviousPosition;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
@@ -586,10 +589,14 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 
 	bool	outputVelocity;
 	sceneProxy->GetScene().GetPrimitiveUniformShaderParameters_RenderThread(sceneProxy->GetPrimitiveSceneInfo(), hasPrecomputedVolumetricLightmap, previousLocalToWorld, singleCaptureIndex, outputVelocity);
+	outputVelocity |= sceneProxy->AlwaysHasVelocity();
 
 	FMatrix	localToWorld = FMatrix::Identity;
 	if (view->GlobalScale() != 1.0f)
+	{
 		localToWorld *= view->GlobalScale();
+		previousLocalToWorld *= view->GlobalScale();
+	}
 
 	CRendererCache	*matCache = static_cast<CRendererCache*>(desc.m_RendererCaches.First().Get());
 	if (!PK_VERIFY(matCache != null))
@@ -664,6 +671,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vsUniformsBillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsBillboard.CapsulesOffset = m_CapsulesOffset;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
+			vsUniformsBillboard.InPreviousPositionOffset = m_AdditionalStreamOffsets[StreamOffset_PreviousPosition].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
 			vsUniformsBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
 			vsUniformsBillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();

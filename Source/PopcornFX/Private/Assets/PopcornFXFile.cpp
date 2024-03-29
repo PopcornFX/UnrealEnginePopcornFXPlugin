@@ -40,21 +40,21 @@ namespace
 	{
 		PK_ASSERT(!file.IsUnreachable());
 
-		PopcornFX::CString			rawFilePath = TCHAR_TO_ANSI(*file.GetPathName());
+		PopcornFX::CString			rawFilePath = ToPk(file.GetPathName());
 		PopcornFX::PFilePack		pack = FPopcornFXPlugin::Get().FilePack();
 		if (pack == null)
 		{
-			UE_LOG(LogPopcornFile, Warning/*Error*/, TEXT("PopcornFX pack not loaded, cannot find '%s'"), ANSI_TO_TCHAR(rawFilePath.Data()));
+			UE_LOG(LogPopcornFile, Warning/*Error*/, TEXT("PopcornFX pack not loaded, cannot find '%s'"), *ToUE(rawFilePath));
 			return null;
 		}
 		const PopcornFX::CString	&packPath = pack->Path();
-		if (!rawFilePath.StartsWith(packPath.Data()))
+		if (!rawFilePath.StartsWith(packPath))
 		{
 #if WITH_EDITOR
 			if (!IsRunningCommandlet()) // We don't want this error to fail the packaging
 			{
 				FText	title = LOCTEXT("import_outside_mountpoint_title", "PopcornFX: Invalid file location");
-				FText	finalText = FText::FromString(FString::Printf(TEXT("The PopcornFX file '%s' is outside the mount point of the PopcornFX pack '%s'"), ANSI_TO_TCHAR(rawFilePath.Data()), ANSI_TO_TCHAR(packPath.Data())));
+				FText	finalText = FText::FromString(FString::Printf(TEXT("The PopcornFX file '%s' is outside the mount point of the PopcornFX pack '%s'"), *ToUE(rawFilePath), *ToUE(packPath)));
 
 				OpenMessageBox(EAppMsgType::Ok, finalText, title);
 			}
@@ -71,7 +71,7 @@ namespace
 
 		rawFilePath = PopcornFX::CFilePath::StripExtension(rawFilePath);
 		rawFilePath += ".";
-		rawFilePath += TCHAR_TO_ANSI(*file.PkExtension());
+		rawFilePath += ToPk(file.PkExtension());
 		return rawFilePath;
 	}
 }
@@ -229,13 +229,13 @@ bool	UPopcornFXFile::ImportThumbnail()
 	{
 		UE_LOG(LogPopcornFile, Warning, TEXT("Imported file is outside Source PopcornFX Project, we cannot import its thumbnail !"));
 	}
-	else if (!PK_VERIFY(settings != null) || settings->SourcePackThumbnailsDir.IsEmpty())
+	else if (!PK_VERIFY(settings != null) || settings->AbsSourcePackThumbnailsDir.IsEmpty())
 	{
 		UE_LOG(LogPopcornFile, Warning, TEXT("Source PopcornFX Project is invalid, we cannot import its thumbnail !"));
 	}
 	else // ok
 	{
-		const FString		srcPath = settings->SourcePackThumbnailsDir / FileSourceVirtualPath + TEXT(".png");
+		const FString		srcPath = settings->AbsSourcePackThumbnailsDir / FileSourceVirtualPath + TEXT(".png");
 		bool				bImportWasCancelled;
 		if (ThumbnailImage == null ||
 			!FReimportManager::Instance()->Reimport(ThumbnailImage, false, false))
@@ -272,7 +272,7 @@ FString		UPopcornFXFile::FileSourcePath() const
 {
 	PK_ASSERT(!FileSourceVirtualPath.IsEmpty());
 	if (FileSourceVirtualPathIsNotVirtual == 0)
-		return FPopcornFXPlugin::Get().SettingsEditor()->SourcePackRootDir / FileSourceVirtualPath;
+		return FPopcornFXPlugin::Get().SettingsEditor()->AbsSourcePackRootDir / FileSourceVirtualPath;
 	return FileSourceVirtualPath;
 }
 
@@ -286,7 +286,7 @@ void		UPopcornFXFile::SetFileSourcePath(const FString &fileSourcePath)
 	m_IsBaseObject = false;
 
 	bool					absoluteImport = true;
-	const FString			packDir = FPopcornFXPlugin::Get().SettingsEditor()->SourcePackRootDir / "";
+	const FString			packDir = FPopcornFXPlugin::Get().SettingsEditor()->AbsSourcePackRootDir / "";
 
 	if (packDir.Len() > 0)
 	{
@@ -340,8 +340,8 @@ void	UPopcornFXFile::AskImportAssetDependenciesIFN()
 
 	bool				foundSome = false;
 
-	const FString		sourcePack = FPopcornFXPlugin::Get().SettingsEditor()->SourcePackRootDir;
-	const FString		sourcePackCacheDir = FPopcornFXPlugin::Get().SettingsEditor()->SourcePackCacheDir;
+	const FString		sourcePack = FPopcornFXPlugin::Get().SettingsEditor()->AbsSourcePackRootDir;
+	const FString		sourcePackCacheDir = FPopcornFXPlugin::Get().SettingsEditor()->AbsSourcePackCacheDir;
 	for (int32 asseti = 0; asseti < AssetDependencies.Num(); ++asseti)
 	{
 		const UPopcornFXAssetDep	*assetDep = AssetDependencies[asseti];

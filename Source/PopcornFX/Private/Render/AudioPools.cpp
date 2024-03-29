@@ -257,7 +257,7 @@ bool	CSoundDescriptorPool::Setup(CSoundDescriptorPoolCollection *poolCollection,
 	const PopcornFX::SRendererFeaturePropertyValue	*soundProperty = rendererData->m_Declaration.FindProperty(PopcornFX::BasicRendererProperties::SID_Sound_SoundData());
 	if (soundProperty == null || soundProperty->ValuePath().Empty())
 		return false;
-	m_SoundPath = FPopcornFXPlugin::Get().BuildPathFromPkPath(soundProperty->ValuePath().Data(), true);
+	m_SoundPath = FPopcornFXPlugin::Get().BuildPathFromPkPath(soundProperty->ValuePath(), true);
 
 	if (GetOrLoadSound() == null)
 		return false;

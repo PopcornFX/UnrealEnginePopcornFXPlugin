@@ -87,7 +87,7 @@ void	FPopcornFXDependencyModuleLevelEditor::OpenSourcePack()
 	PK_ASSERT(m_Settings->bSourcePackFound);
 
 	// We can now directly rely on opening the pkproj directly
-	FPlatformProcess::LaunchFileInDefaultExternalApplication(*m_Settings->SourcePackProjectFile);
+	FPlatformProcess::LaunchFileInDefaultExternalApplication(*m_Settings->AbsSourcePackProjectFile);
 }
 
 //----------------------------------------------------------------------------

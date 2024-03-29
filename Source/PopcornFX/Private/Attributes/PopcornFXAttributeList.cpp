@@ -86,6 +86,8 @@ EPopcornFXAttributeSamplerType::Type	ResolveAttribSamplerType(const PopcornFX::C
 			return EPopcornFXAttributeSamplerType::Shape;
 		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Image:
 			return EPopcornFXAttributeSamplerType::Image;
+		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Grid:
+			return EPopcornFXAttributeSamplerType::Grid;
 		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_Text:
 			return EPopcornFXAttributeSamplerType::Text;
 		case	PopcornFX::SParticleDeclaration::SSampler::Sampler_VectorField:
@@ -109,7 +111,7 @@ void	ResetAttribute(FPopcornFXAttributeDesc &attrib, const PopcornFX::CParticleA
 {
 	if (decl != null)
 	{
-		attrib.m_AttributeFName = *FString(ANSI_TO_TCHAR(decl->ExportedName().Data()));
+		attrib.m_AttributeFName = *FString(ToUE(decl->ExportedName()));
 		attrib.m_AttributeType = decl->ExportedType();
 
 #if WITH_EDITOR
@@ -126,7 +128,7 @@ void	ResetAttribute(FPopcornFXAttributeDesc &attrib, const PopcornFX::CParticleA
 
 		attrib.m_EnumList.SetNum(decl->EnumList().Count());
 		for (u32 i = 0; i < decl->EnumList().Count(); ++i)
-			attrib.m_EnumList[i] = ANSI_TO_TCHAR(decl->EnumList()[i].Data());
+			attrib.m_EnumList[i] = ToUE(decl->EnumList()[i]);
 
 		if ((PopcornFX::EBaseTypeID)attrib.m_AttributeType == PopcornFX::BaseType_Quaternion)
 		{
@@ -135,7 +137,7 @@ void	ResetAttribute(FPopcornFXAttributeDesc &attrib, const PopcornFX::CParticleA
 			attrib.m_AttributeEulerAngles = FVector(rotator.Roll, rotator.Pitch, rotator.Yaw);
 		}
 #endif // WITH_EDITOR
-		attrib.m_AttributeCategoryName = *FString((const UTF16CHAR*)decl->CategoryName().MapDefault().Data());
+		attrib.m_AttributeCategoryName = *ToUE(decl->CategoryName().MapDefault());
 		if (!attrib.m_AttributeCategoryName.IsValid() || attrib.m_AttributeCategoryName.IsNone())
 			attrib.m_AttributeCategoryName = "General";
 	}
@@ -150,10 +152,10 @@ void	ResetAttributeSampler(FPopcornFXSamplerDesc &attribSampler, const PopcornFX
 {
 	if (decl != null)
 	{
-		attribSampler.m_SamplerFName = *FString(ANSI_TO_TCHAR(decl->ExportedName().Data()));
+		attribSampler.m_SamplerFName = *FString(ToUE(decl->ExportedName()));
 		attribSampler.m_SamplerType = ResolveAttribSamplerType(decl);
 
-		attribSampler.m_AttributeCategoryName = *FString((const UTF16CHAR*)decl->CategoryName().MapDefault().Data());
+		attribSampler.m_AttributeCategoryName = *ToUE(decl->CategoryName().MapDefault());
 		if (!attribSampler.m_AttributeCategoryName.IsValid() || attribSampler.m_AttributeCategoryName.IsNone())
 			attribSampler.m_AttributeCategoryName = "General";
 	}
@@ -506,6 +508,7 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 {
 	DBG_HERE();
 
+
 	if (!force && IsUpToDate(effect))
 	{
 #if WITH_EDITOR
@@ -518,6 +521,8 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 #endif // WITH_EDITOR
 		return;
 	}
+
+	const uint32 oldAttributesCount = m_Attributes.Num();
 
 #if WITH_EDITOR
 	Modify();
@@ -552,23 +557,27 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 	const int32				attrCount = attrs.Count();
 	const int32				samplerCount = samplers.Count();
 
-#if WITH_EDITOR
 	m_Attributes.SetNum(attrCount);
 	for (int32 attri = 0; attri < attrCount; ++attri)
 	{
 		ResetAttribute(m_Attributes[attri], attrs[attri]);
+#if WITH_EDITOR
 		if (m_Attributes[attri].m_AttributeCategoryName.IsValid() && !m_Attributes[attri].m_AttributeCategoryName.IsNone())
 			m_Categories.AddUnique(m_Attributes[attri].m_AttributeCategoryName);
+#endif // WITH_EDITOR
 	}
 
 	m_Samplers.SetNum(samplerCount);
 	for (int32 sampleri = 0; sampleri < samplerCount; ++sampleri)
 	{
 		ResetAttributeSampler(m_Samplers[sampleri], samplers[sampleri]);
+#if WITH_EDITOR
 		if (m_Samplers[sampleri].m_AttributeCategoryName.IsValid() && !m_Samplers[sampleri].m_AttributeCategoryName.IsNone())
 			m_Categories.AddUnique(m_Samplers[sampleri].m_AttributeCategoryName);
+#endif // WITH_EDITOR
 	}
 
+#if WITH_EDITOR
 	if (attrCount > 0 || samplerCount > 0)
 	{
 		// Make "General" the first category if not already
@@ -588,7 +597,8 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 
 	const uint32	attribBytes = defContainer->Attributes().CoveredBytes();
 	m_AttributesRawData.SetNumUninitialized(attribBytes);
-	if (attribBytes > 0)
+
+	if (attribBytes > 0 && (oldAttributesCount != attrCount))
 		PopcornFX::Mem::Copy(m_AttributesRawData.GetData(), defContainer->Attributes().Data(), attribBytes);
 
 	PK_ASSERT(CheckDataIntegrity());
@@ -1298,6 +1308,46 @@ void	UPopcornFXAttributeList::SetAttributeDim<bool>(uint32 attributeId, uint32 d
 	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 }
 
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeList::PulseBoolAttributeDim(uint32 attributeId, uint32 dim, bool fromUI/* = false*/)
+{
+	SetAttributeDim<bool>(attributeId, dim, true, fromUI);
+	m_HasPendingOneShotReset = true;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeList::ResetPulsedBoolAttributesIFN()
+{
+	if (!m_HasPendingOneShotReset)	// Early-out most of the time
+		return;
+	m_HasPendingOneShotReset = false;
+
+	if (!m_Owner.IsValid() /*&& m_Owner->IsEmitterStarted()*/)	// don't check if the emitter is started, even if stopped as long as particles are still here we want this logic to run
+		return;
+	PopcornFX::CParticleEffectInstance	*effectInstance = m_Owner->_GetEffectInstance();
+	if (effectInstance == null)
+		return;
+
+	for (int32 i = 0; i < m_Attributes.Num(); i++)
+	{
+		const PopcornFX::CParticleAttributeDeclaration	*decl = effectInstance->GetAttributeDecl(i);
+		if (decl != null && decl->OneShotTrigger())
+		{
+			const PopcornFX::EBaseTypeID	typeID = PopcornFX::EBaseTypeID(decl->ExportedType());
+			if (PK_VERIFY(PopcornFX::CBaseTypeTraits::Traits(typeID).ScalarType == PopcornFX::BaseType_Bool))	// OneShotTrigger but not a 'bool' type ?
+			{
+				// Do not call 'UPopcornFXAttributeList::SetAttribute()', we don't want the 'RestartEmitter' logic at all here !
+				FPopcornFXAttributeValue						newValue = { 0, 0, 0, 0 };
+				const PopcornFX::SAttributesContainer_SAttrib	&_value = *reinterpret_cast<const PopcornFX::SAttributesContainer_SAttrib*>(&newValue);	// FIXME: We don't actually care about FPopcornFXAttributeValue, add a way to ctor a new SAttrib in one line
+				PK_VERIFY(effectInstance->SetRawAttribute(i, typeID, &_value, true));
+				AttributeRawDataAttributes(this)[i] = _value;
+			}
+		}
+	}
+}
+
 #endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
@@ -1392,7 +1442,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 
 		if (desc.SamplerType() == EPopcornFXAttributeSamplerType::None)
 		{
-			effectInstance->SetAttributeSampler(TCHAR_TO_ANSI(*desc.SamplerName()), null);
+			effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.SamplerName()), null);
 			continue;
 		}
 
@@ -1401,7 +1451,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 		if (attribSampler == null ||
 			!PK_VERIFY(desc.SamplerType() == attribSampler->SamplerType()))
 		{
-			effectInstance->SetAttributeSampler(TCHAR_TO_ANSI(*desc.SamplerName()), null);
+			effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.SamplerName()), null);
 			continue;
 		}
 
@@ -1411,7 +1461,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 		if (!IsRunningCommandlet() && attribSampler != null)
 			samplerDescriptor = attribSampler->_AttribSampler_SetupSamplerDescriptor(desc, defaultSampler.Get());
 
-		effectInstance->SetAttributeSampler(TCHAR_TO_ANSI(*desc.SamplerName()), samplerDescriptor != null ? samplerDescriptor : null);
+		effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.SamplerName()), samplerDescriptor != null ? samplerDescriptor : null);
 	}
 }
 

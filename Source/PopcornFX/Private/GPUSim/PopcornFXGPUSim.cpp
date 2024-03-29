@@ -48,12 +48,18 @@ void	SetupPopcornFXRHIAPI(uint32 API)
 
 bool	_IsGpuSupportedOnPlatform(const EShaderPlatform &platform)
 {
-	const bool	platformSupportsSM5OrEquivalent = IsFeatureLevelSupported(platform, ERHIFeatureLevel::SM5);
-	const bool	isStaticShaderPlatform = FStaticShaderPlatformNames::Get().IsStaticPlatform(platform);
+#if WITH_EDITOR
+	const EShaderPlatform	&realPlatform = FGenericDataDrivenShaderPlatformInfo::GetIsPreviewPlatform(platform) ? FGenericDataDrivenShaderPlatformInfo::GetPreviewShaderPlatformParent(platform) : platform;
+#else
+	const EShaderPlatform	&realPlatform = platform;
+#endif
+
+	const bool	platformSupportsSM5OrEquivalent = IsFeatureLevelSupported(realPlatform, ERHIFeatureLevel::SM5);
+	const bool	isStaticShaderPlatform = FStaticShaderPlatformNames::Get().IsStaticPlatform(realPlatform);
 
 	if (isStaticShaderPlatform)
 	{
-		const FName		platformName = FStaticShaderPlatformNames::Get().GetPlatformName(platform);
+		const FName		platformName = FStaticShaderPlatformNames::Get().GetPlatformName(realPlatform);
 
 		// Special UE4
 		return	(
@@ -69,16 +75,16 @@ bool	_IsGpuSupportedOnPlatform(const EShaderPlatform &platform)
 				 false) && platformSupportsSM5OrEquivalent;
 	}
 #if (ENGINE_MAJOR_VERSION == 5)
-	const bool	platformSupportsSM6OrEquivalent = IsFeatureLevelSupported(platform, ERHIFeatureLevel::SM6);
-	return	(platform == SP_PCD3D_SM5 && platformSupportsSM5OrEquivalent) ||
-			(platform == SP_PCD3D_SM6 && platformSupportsSM6OrEquivalent);
+	const bool	platformSupportsSM6OrEquivalent = IsFeatureLevelSupported(realPlatform, ERHIFeatureLevel::SM6);
+	return	(realPlatform == SP_PCD3D_SM5 && platformSupportsSM5OrEquivalent) ||
+			(realPlatform == SP_PCD3D_SM6 && platformSupportsSM6OrEquivalent);
 #else
 	return (
 #	if 0
 			// GPU sim not supported on Xbox one for now
-			platform == SP_XBOXONE_D3D12 ||
+			realPlatform == SP_XBOXONE_D3D12 ||
 #	endif
-			platform == SP_PCD3D_SM5
+			realPlatform == SP_PCD3D_SM5
 			) &&
 			platformSupportsSM5OrEquivalent;
 #endif // (ENGINE_MAJOR_VERSION == 5)

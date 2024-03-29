@@ -330,7 +330,7 @@ inline FD3D12UnorderedAccessView* CreateUAV(D3D12_UNORDERED_ACCESS_VIEW_DESC& De
 //
 //----------------------------------------------------------------------------
 
-FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamBuffer_D3D12 *stream, u32 stride, u8 pixelFormat)
+FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D12 *stream, u32 stride, u8 pixelFormat)
 {
 #if (ENGINE_MAJOR_VERSION == 5)
 	FRHIBuffer			*buffer = StreamBufferResourceToRHI(stream, stride);
@@ -353,9 +353,9 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamB
 //----------------------------------------------------------------------------
 
 #if (ENGINE_MAJOR_VERSION == 5)
-FRHIBuffer			*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D12 *stream, u32 stride)
+FRHIBuffer			*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stream, u32 stride)
 #else
-FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D12 *stream, u32 stride)
+FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stream, u32 stride)
 #endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	D3D12_RESOURCE_DESC	desc = stream->m_Resource->GetDesc();
@@ -368,7 +368,7 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuff
 	PK_ASSERT(desc.SampleDesc.Quality == 0);
 	PK_ASSERT(desc.Layout == D3D12_TEXTURE_LAYOUT_ROW_MAJOR);
 	PK_ASSERT(desc.Flags == D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-	PK_ASSERT(stream->m_State == (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)); // PK_BUFFER_GPU_D3D12_DEFAULT_STATE, currently not exposed
+	PK_ASSERT(stream->m_State == (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER) || stream->m_State == (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | D3D12_RESOURCE_STATE_COPY_SOURCE)); // PK_BUFFER_GPU_D3D12_DEFAULT_STATE, currently not exposed
 
 	FD3D12DynamicRHI	*dynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
 	FD3D12Device		*device = dynamicRHI->GetAdapter().GetDevice(0);

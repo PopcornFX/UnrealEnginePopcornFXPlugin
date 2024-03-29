@@ -119,10 +119,10 @@ PopcornFX::CVectorField	*CResourceHandlerVectorField_UE::NewFromPath(const Popco
 {
 	PK_NAMEDSCOPEDPROFILE_C("CResourceHandlerVectorField_UE::NewFromPath", POPCORNFX_UE_PROFILER_COLOR);
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path.Data(), pathNotVirtual);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path, pathNotVirtual);
 	if (obj == null)
 	{
-		UE_LOG(LogPopcornFXResourceHandlerVectorField, Warning, TEXT("UObject not found \"%s\" %d"), ANSI_TO_TCHAR(path.Data()), pathNotVirtual);
+		UE_LOG(LogPopcornFXResourceHandlerVectorField, Warning, TEXT("UObject not found \"%s\" %d"), *ToUE(path), pathNotVirtual);
 		return null;
 	}
 	UVectorFieldStatic		*vectorFieldStatic = Cast<UVectorFieldStatic>(obj);
@@ -157,9 +157,8 @@ void	*CResourceHandlerVectorField_UE::Load(
 
 	PopcornFX::CString			_fullPath = resourcePath;
 	if (!pathNotVirtual) // if virtual path
-	{
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
-	}
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))

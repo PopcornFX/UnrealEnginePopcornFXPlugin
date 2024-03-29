@@ -13,15 +13,15 @@
 class	FD3D11VertexBuffer;
 
 FWD_PK_API_BEGIN
-struct SParticleStreamBuffer_D3D11;
+struct SBuffer_D3D11;
 class CParticleStreamToRender_D3D11;
 FWD_PK_API_END
 
-FShaderResourceViewRHIRef		StreamBufferSRVToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride, u8 pixelFormat = PF_R32_FLOAT);
+FShaderResourceViewRHIRef		StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride, u8 pixelFormat = PF_R32_FLOAT);
 #if (ENGINE_MAJOR_VERSION == 5)
-FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride);
+FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride);
 #else
-FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride);
+FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride);
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 //----------------------------------------------------------------------------

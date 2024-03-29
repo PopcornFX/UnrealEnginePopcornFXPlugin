@@ -33,6 +33,7 @@ struct	FVertexFactoryIntermediates
 {
 	float3		ParticleWorldPosition; // UE units
 	float3		VertexWorldPosition; // UE units
+	float3		VertexPrevWorldPosition; // UE units
 	float4		VertexTexCoords;
 
 	//float		ParticleLifeRatio; TODO
@@ -167,6 +168,9 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	else
 		radius = PKSimData_Load2f(particleID, PopcornFXGPUBillboardVSUniforms.InSize2sOffset);
 
+	if (PopcornFXGPUBillboardVSUniforms.InEnabledOffset != -1)
+		radius *= PKSimData_Loadi(particleID, PopcornFXGPUBillboardVSUniforms.InEnabledOffset) != 0 ? 1.0f : 0.0f;
+
 	float			rotation = 0.0f;
 
 	float3			xAxis = float3(0.0f, 0.0f, 0.0f);
@@ -291,6 +295,17 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	intermediates.VertexWorldPosition += LWCToFloat(ResolvedView.PreViewTranslation);
 #else
 	intermediates.VertexWorldPosition += ResolvedView.PreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
+	BRANCH
+	if (PopcornFXGPUBillboardVSUniforms.InPreviousPositionOffset != -1)
+		intermediates.VertexPrevWorldPosition = (PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InPreviousPositionOffset) + bbCorner) * GLOBAL_SCALE;
+	else
+		intermediates.VertexPrevWorldPosition = (worldPos + bbCorner) * GLOBAL_SCALE; // no velocity
+#if (ENGINE_MAJOR_VERSION == 5)
+	intermediates.VertexPrevWorldPosition += LWCToFloat(ResolvedView.PrevPreViewTranslation);
+#else
+	intermediates.VertexPrevWorldPosition += ResolvedView.PrevPreViewTranslation;
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if USE_PARTICLE_POSITION

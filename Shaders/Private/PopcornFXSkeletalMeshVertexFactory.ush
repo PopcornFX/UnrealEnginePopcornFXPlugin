@@ -250,7 +250,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #	if USE_PARTICLE_WORLD_TO_LOCAL
 	Result.Particle.WorldToParticle = LWCPromoteInverse(transpose(float4x4(Interpolants.WorldToParticle[0], Interpolants.WorldToParticle[1], Interpolants.WorldToParticle[2], float4(0.0f, 0.0f, 0.0f, 1.0f))));
 #		if NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
-	Result.InstanceWorldtoLocal = Result.Particle.WorldToParticle;
+	Result.InstanceWorldToLocal = Result.Particle.WorldToParticle;
 #		endif // NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
 #	endif // USE_PARTICLE_WORLD_TO_LOCAL
 #else

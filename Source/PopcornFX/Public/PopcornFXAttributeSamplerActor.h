@@ -45,7 +45,7 @@ protected:
 	void				ReloadSprite();
 
 	EPopcornFXAttributeSamplerComponentType::Type	m_SamplerComponentType;
-	bool				m_IsValidSpecializedActor = false;
+	bool											m_IsValidSpecializedActor = false;
 };
 
 /** Can override an Attribute Sampler **Shape** by a **UStaticMesh**. */
@@ -56,6 +56,9 @@ UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerSkinnedMeshActor : public
 
 /** Can override an Attribute Sampler **Image** by a **UTexture**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerImageActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
+
+/** Can override an Attribute Sampler **Grid** by a **UTexture**. */
+UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerGridActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
 /** Can override an Attribute Sampler **Curve** by a **UCurve...**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerCurveActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };

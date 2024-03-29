@@ -31,7 +31,7 @@ using PopcornFX::PKMax;
 // static
 UObject			*CFileSystemController_UE::LoadUObject(const CString &path, bool pathNotVirtual)
 {
-	UObject		*object = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path.Data(), pathNotVirtual);
+	UObject		*object = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path, pathNotVirtual);
 	FS_DEBUG_LOG(PK_INFO, "FileSystem LoadUObject %s > %p", path.Data(), object);
 	return object;
 }
@@ -65,16 +65,15 @@ UPopcornFXFile		*CFileSystemController_UE::FindDirectPopcornFXFile(UObject *uobj
 //
 //----------------------------------------------------------------------------
 
-CFileStreamFS_UE::CFileStreamFS_UE(
-	CFileSystemController_UE	*controller,
-	PopcornFX::PFilePack		pack,
-	const CString				&path,
-	IFileSystem::EAccessPolicy	mode,
-	UPopcornFXFile				*file)
-	: CFileStream(controller, pack, path, mode)
-	, m_Mode(mode)
-	, m_File(file)
-	, m_Pos(0)
+CFileStreamFS_UE::CFileStreamFS_UE(	CFileSystemController_UE	*controller,
+									PopcornFX::PFilePack		pack,
+									const CString				&path,
+									IFileSystem::EAccessPolicy	mode,
+									UPopcornFXFile				*file)
+:	CFileStream(controller, pack, path, mode)
+,	m_Mode(mode)
+,	m_File(file)
+,	m_Pos(0)
 {
 	FILE_ASSERT(m_File != null);
 	FS_DEBUG_LOG(PK_INFO, "ctor CFileStreamFS_UE %s filesize:%d", Path().Data(), CFileStreamFS_UE::SizeInBytes());

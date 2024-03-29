@@ -40,10 +40,10 @@ namespace	PopcornFXGPU
 		FString	simInterfaceSource;
 		if (!FFileHelper::LoadFileToString(simInterfaceSource, *simInterfacePath))
 		{
-			PopcornFX::CLog::Log(PK_ERROR, "Couldn't load sim interface source ('%s')", TCHAR_TO_ANSI(*simInterfacePath));
+			PopcornFX::CLog::Log(PK_ERROR, "Couldn't load sim interface source ('%s')", TCHAR_TO_UTF8(*simInterfacePath));
 			return false;
 		}
-		outKernelSource += TCHAR_TO_ANSI(*simInterfaceSource);
+		outKernelSource += ToPk(simInterfaceSource);
 		return true;
 	}
 
@@ -160,7 +160,7 @@ namespace	PopcornFXGPU
 #if	(PK_GPU_D3D11 != 0)
 				const PopcornFX::SBindingContextD3D11	&d3d11Context = context.ToD3D11();
 
-				PopcornFX::SParticleStreamBuffer_D3D11	&viewConstantBuffer = FPopcornFXPlugin::Get().ViewConstantBuffer_D3D11();
+				PopcornFX::SBuffer_D3D11	&viewConstantBuffer = FPopcornFXPlugin::Get().ViewConstantBuffer_D3D11();
 				if (viewConstantBuffer.Empty())
 				{
 					ID3D11Device	*device = null;

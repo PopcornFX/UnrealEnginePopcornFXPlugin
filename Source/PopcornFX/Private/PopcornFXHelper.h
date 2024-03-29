@@ -14,9 +14,14 @@
 #include "Math/IntPoint.h"
 #include "Math/Color.h"
 #include "Math/Box.h"
+#include "Containers/UnrealString.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_maths/include/pk_maths_primitives.h>
+
+__PK_API_BEGIN
+class	CStringUnicode;	// Forward-declare
+__PK_API_END
 
 #ifndef POPCORNFX_UE_PROFILER_COLOR
 	#define POPCORNFX_UE_PROFILER_COLOR			CFloat3(1.0f, 0.5f, 0.0f)
@@ -35,6 +40,7 @@ PK_FORCEINLINE const _OutType		&_Reinterpret(const _InType &vec)
 
 PK_FORCEINLINE const CFloat4		&ToPk(const FLinearColor &vec) { return _Reinterpret<CFloat4>(vec); }
 PK_FORCEINLINE const CInt2			&ToPk(const FIntPoint& point) { return _Reinterpret<CInt2>(point); }
+PK_FORCEINLINE const CUint4			&ToPk(const FIntVector4 &vec) { return _Reinterpret<CUint4>(vec); }
 
 // UE5 LWC: Keep reinterpret casts whenever possible
 PK_FORCEINLINE const FVector3f		&ToUE(const CFloat3 &vec) { return _Reinterpret<FVector3f>(vec); }
@@ -92,6 +98,11 @@ PK_FORCEINLINE CFloat3		&ToPkRef(FVector3f &vec)
 	PK_STATIC_ASSERT(sizeof(FVector3f) == sizeof(CFloat3));
 	return *reinterpret_cast<CFloat3*>(&vec);
 }
+
+PopcornFX::CString		ToPk(const FString &str);
+FString					ToUE(const PopcornFX::CString &str);
+FString					ToUE(const PopcornFX::CStringView &str);
+FString					ToUE(const PopcornFX::CStringUnicode &str);
 
 float					HumanReadF(float v, u32 base = 1024);
 const TCHAR				*HumanReadS(float v, u32 base = 1024);

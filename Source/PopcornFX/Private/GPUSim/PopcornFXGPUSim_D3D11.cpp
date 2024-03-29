@@ -63,7 +63,7 @@ void	UpdateBufferStats(TRefCountPtr<ID3D11Buffer> Buffer, bool bAllocating) { }
 //
 //----------------------------------------------------------------------------
 
-FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride, u8 pixelFormat)
+FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride, u8 pixelFormat)
 {
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
 	FRHICommandListBase			&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
@@ -89,9 +89,9 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SParticleStreamB
 //----------------------------------------------------------------------------
 
 #if (ENGINE_MAJOR_VERSION == 5)
-FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride)
+FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride)
 #else
-FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamBuffer_D3D11 *stream, u32 stride)
+FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride)
 #endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	D3D11_BUFFER_DESC	desc;
@@ -103,7 +103,7 @@ FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SParticleStreamB
 	PK_ASSERT((desc.Usage & D3D11_USAGE_DYNAMIC) == 0); // no BUF_AnyDynamic
 	PK_ASSERT((desc.CPUAccessFlags) == 0); // no BUF_AnyDynamic
 
-	// TODO: Unify SParticleStreamBuffer_D3D11 with other APIs, just provide a m_ByteSize member..
+	// TODO: Unify SBuffer_D3D11 with other APIs, just provide a m_ByteSize member..
 	const u32	sizeInBytes = desc.ByteWidth;
 
 	// Fixed #12899: removed BUF_UnorderedAccess | BUF_ByteAddressBuffer from the buffer usage, as it leads to crashes on some AMD GPU hardware.

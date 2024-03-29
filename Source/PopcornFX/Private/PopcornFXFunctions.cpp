@@ -177,7 +177,7 @@ bool		UPopcornFXFunctions::IsTextureCPUInUse(const FString &virtualPath)
 	if (!PK_VERIFY(ihandler != null))
 		return false;
 	CResourceHandlerImage_UE		*handler = PopcornFX::checked_cast<CResourceHandlerImage_UE*>(ihandler);
-	const PopcornFX::CString		virtPath = TCHAR_TO_ANSI(*virtualPath);
+	const PopcornFX::CString		virtPath = ToPk(virtualPath);
 	return handler->IsUsed(virtPath, false);
 }
 
@@ -189,7 +189,7 @@ bool		UPopcornFXFunctions::IsTextureGPUInUse(const FString &virtualPath)
 	if (!PK_VERIFY(ihandler != null))
 		return false;
 	CResourceHandlerImage_UE_D3D11	*handler = PopcornFX::checked_cast<CResourceHandlerImage_UE_D3D11*>(ihandler);
-	const PopcornFX::CString		virtPath = TCHAR_TO_ANSI(*virtualPath);
+	const PopcornFX::CString		virtPath = ToPk(virtualPath);
 	return handler->IsUsed(virtPath, false);
 #else
 	return false;
@@ -212,8 +212,7 @@ bool		UPopcornFXFunctions::RegisterVirtualTextureOverride_CPU_FloatR(const FStri
 	if (!PK_VERIFY(ihandler != null))
 		return false;
 	CResourceHandlerImage_UE		*handler = PopcornFX::checked_cast<CResourceHandlerImage_UE*>(ihandler);
-
-	const PopcornFX::CString		virtPath = TCHAR_TO_ANSI(*virtualPath);
+	const PopcornFX::CString		virtPath = ToPk(virtualPath);
 	const PopcornFX::CUint2			size(width, height);
 
 	PK_ASSERT(pixels.GetTypeSize() == sizeof(float));
@@ -239,9 +238,9 @@ bool		UPopcornFXFunctions::RegisterVirtualTextureOverride_CPU_FloatRGBA(const FS
 	if (!PK_VERIFY(ihandler != null))
 		return false;
 	CResourceHandlerImage_UE		*handler = PopcornFX::checked_cast<CResourceHandlerImage_UE*>(ihandler);
-
-	const PopcornFX::CString		virtPath = TCHAR_TO_ANSI(*virtualPath);
+	const PopcornFX::CString		virtPath = ToPk(virtualPath);
 	const PopcornFX::CUint2			size(width, height);
+
 	PK_ASSERT(pixels.GetTypeSize() == sizeof(FLinearColor));
 	return handler->RegisterVirtualTexture(
 		virtPath, false,
@@ -258,7 +257,7 @@ bool		UPopcornFXFunctions::UnregisterVirtualTextureOverride_CPU(const FString &v
 	PopcornFX::IResourceHandler		*ihandler = PopcornFX::Resource::DefaultManager()->FindHandler<PopcornFX::CImage>();
 	if (!PK_VERIFY(ihandler != null))
 		return false;
-	const PopcornFX::CString		virtPath = TCHAR_TO_ANSI(*virtualPath);
+	const PopcornFX::CString		virtPath = ToPk(virtualPath);
 	CResourceHandlerImage_UE		*handler = PopcornFX::checked_cast<CResourceHandlerImage_UE*>(ihandler);
 	return handler->UnregisterVirtualTexture(virtPath, false);
 }
@@ -276,12 +275,8 @@ bool		UPopcornFXFunctions::RegisterVirtualTextureOverride_GPU(const FString &vir
 	if (!PK_VERIFY(ihandler != null))
 		return false;
 	CResourceHandlerImage_UE_D3D11	*handler = PopcornFX::checked_cast<CResourceHandlerImage_UE_D3D11*>(ihandler);
-
-	const PopcornFX::CString		virtPath = TCHAR_TO_ANSI(*virtualPath);
-
-	return handler->RegisterVirtualTexture(
-		virtPath, false,
-		texture);
+	const PopcornFX::CString		virtPath = ToPk(virtualPath);
+	return handler->RegisterVirtualTexture(virtPath, false, texture);
 #else
 	return false;
 #endif
@@ -294,7 +289,7 @@ bool		UPopcornFXFunctions::UnregisterVirtualTextureOverride_GPU(const FString &v
 	PopcornFX::IResourceHandler		*ihandler = PopcornFX::Resource::DefaultManager()->FindHandler<PopcornFX::CImageGPU_D3D11>();
 	if (!PK_VERIFY(ihandler != null))
 		return false;
-	const PopcornFX::CString		virtPath = TCHAR_TO_ANSI(*virtualPath);
+	const PopcornFX::CString		virtPath = ToPk(virtualPath);
 	CResourceHandlerImage_UE_D3D11	*handler = PopcornFX::checked_cast<CResourceHandlerImage_UE_D3D11*>(ihandler);
 	return handler->UnregisterVirtualTexture(virtPath, false);
 #else

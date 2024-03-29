@@ -259,6 +259,10 @@ public:
 
 	template<typename _Scalar> void						SetAttributeDim(uint32 attributeId, uint32 dim, _Scalar value, bool fromUI = false);
 	template<typename _Scalar> _Scalar					GetAttributeDim(uint32 attributeId, uint32 dim);
+
+	void												PulseBoolAttributeDim(uint32 attributeId, uint32 dim, bool fromUI = false);
+
+	void												ResetPulsedBoolAttributesIFN();
 #endif // WITH_EDITOR
 
 	uint32					FileVersionId() const { return m_FileVersionId; }
@@ -309,6 +313,10 @@ private:
 
 	bool								m_RestartEmitter = false; // UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
 #endif // WITH_EDITORONLY_DATA
+
+#if WITH_EDITOR
+	bool								m_HasPendingOneShotReset = false;
+#endif // WITH_EDITOR
 
 public:
 	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere, BlueprintReadOnly, EditFixedSize)

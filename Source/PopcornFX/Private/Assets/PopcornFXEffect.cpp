@@ -188,7 +188,7 @@ void	UPopcornFXEffect::BeginCacheForCookedPlatformData(const ITargetPlatform *ta
 		}
 
 		FString		bakedFilePath;
-		if (_BakeFile(path, bakedFilePath, false, TCHAR_TO_ANSI(*targetPlatform->PlatformName())))
+		if (_BakeFile(path, bakedFilePath, false, targetPlatform->PlatformName()))
 		{
 			// For debugging purposes only, helps inspect content of baked effects
 			if (FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects)
@@ -235,7 +235,7 @@ const PopcornFX::CStringView	kQualityLevelNames[] = { "low", "medium", "high", "
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXEffect::LoadEffect()
+bool	UPopcornFXEffect::LoadEffect(bool forceImport)
 {
 	ClearEffect();
 
@@ -272,7 +272,7 @@ bool	UPopcornFXEffect::LoadEffect()
 
 	m_Loaded = true;
 
-	DefaultAttributeList->SetupDefault(this);
+	DefaultAttributeList->SetupDefault(this, forceImport);
 	return m_Loaded;
 }
 
@@ -577,7 +577,7 @@ namespace
 
 			if (filePath.Empty())
 				return;
-			FString	cleanFilePath = filePath.Data();
+			FString	cleanFilePath = ToUE(filePath);
 
 			const PopcornFX::HBO::CFieldDefinition			&fieldDef = hbo.GetFieldDefinition(fieldIndex);
 			const PopcornFX::HBO::CFieldAttributesBase		&fieldAttribs = fieldDef.GetBaseAttributes();
@@ -716,7 +716,6 @@ namespace
 
 bool	UPopcornFXEffect::_ImportFile(const FString &filePath)
 {
-	DefaultAttributeList->Clean();
 	ClearEffect();
 
 	if (!Super::_ImportFile(filePath))
@@ -749,7 +748,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	for (s32 i = 0; i < qualityLevelCount; ++i)
 		PK_VERIFY(targetBuildVersions.PushBack(PopcornFX::CString::Format("%s:%s%s", kQualityLevelNames[i].Data(), backendAndBuildTags.m_BuildTags.Data(), kQualityLevelNames[i].Data())).Valid());
 
-	const TCHAR		*targetPlatformNameForLog = forEditor ? ANSI_TO_TCHAR("UnrealEditor") : *targetPlatformName;
+	const TCHAR		*targetPlatformNameForLog = forEditor ? UTF8_TO_TCHAR("UnrealEditor") : *targetPlatformName;
 
 	UE_LOG(LogPopcornFXEffect, Display, TEXT("Begin effect baking '%s' for '%s'..."), *GetPathName(), targetPlatformNameForLog);
 
@@ -777,7 +776,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	}
 
 	PopcornFX::CCookery				cookery;
-	const PopcornFX::SBakeTarget	defaultTarget("UE_Generic", TCHAR_TO_ANSI(*bakeDirPath));
+	const PopcornFX::SBakeTarget	defaultTarget("UE_Generic", ToPk(bakeDirPath));
 
 	if (FPopcornFXPlugin::Get().Settings() == null) // Will trigger a load of settings if necessary
 		return false;
@@ -846,7 +845,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 #if (PK_COMPILE_GPU != 0)
 	if (backendAndBuildTags.m_BackendTargets > 0)
 	{
-		if (!_SetupBakeBackendCompilers(bakeConfig, backendAndBuildTags, TCHAR_TO_ANSI(*FileSourceVirtualPath)))
+		if (!_SetupBakeBackendCompilers(bakeConfig, backendAndBuildTags, ToPk(FileSourceVirtualPath)))
 		{
 			UE_LOG(LogPopcornFXEffect, Warning, TEXT("Couldn't bake effect '%s': failed setting up GPU backend compilers"), *GetPathName());
 			return false;
@@ -859,7 +858,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	bakeConfig->SetExtensionsRemap(extensionsRemap);
 
 	PopcornFX::CMessageStream	bakerErrors;
-	if (!cookery.BakeAsset(TCHAR_TO_ANSI(*resolvedSrcFilePath), configFile, bakerErrors))
+	if (!cookery.BakeAsset(ToPk(resolvedSrcFilePath), configFile, bakerErrors))
 	{
 		UE_LOG(LogPopcornFXEffect, Warning, TEXT("Failed baking effect '%s' for '%s'%s"), *GetPathName(), targetPlatformNameForLog, !bakerErrors.Messages().Empty() ? ":" : ".");
 		for (const auto &message : bakerErrors.Messages())
@@ -867,7 +866,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 			if (message.m_Level >= PopcornFX::CMessageStream::Warning)
 			{
 				const PopcornFX::CString	messageText = message.ToString();
-				UE_LOG(LogPopcornFXEffect, Warning, TEXT("	- %s"), ANSI_TO_TCHAR(messageText.Data()));
+				UE_LOG(LogPopcornFXEffect, Warning, TEXT("	- %s"), *ToUE(messageText));
 			}
 		}
 		return false;
@@ -879,7 +878,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 			if (message.m_Level >= PopcornFX::CMessageStream::Warning)
 			{
 				const PopcornFX::CString	messageText = message.ToString();
-				UE_LOG(LogPopcornFXEffect, Warning, TEXT("	- %s"), ANSI_TO_TCHAR(messageText.Data()));
+				UE_LOG(LogPopcornFXEffect, Warning, TEXT("	- %s"), *ToUE(messageText));
 			}
 		}
 	}
@@ -892,7 +891,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 
 bool	UPopcornFXEffect::FinishImport()
 {
-	if (!LoadEffect())
+	if (!LoadEffect(true))
 		return false;
 
 	TArray<UPopcornFXAssetDep*>		oldAssetDeps = AssetDependencies;

@@ -151,7 +151,7 @@ public:
 
 	// Stops all layers/emitters of this instance, and kills all particles spawned by this effect instance
 	// The kill will be processed during the next medium-collection update.
-	UFUNCTION(BlueprintCallable, Category = "PopcornFX|Emitter", meta = (Keywords = "popcornfx particle emitter effect system kill", UnsafeDuringActorConstruction = "true"))
+	UFUNCTION(BlueprintCallable, Category = "PopcornFX|Emitter", meta = (Keywords="popcornfx particle emitter effect system kill", UnsafeDuringActorConstruction = "true"))
 	void							KillParticles();
 
 	/** Get whether the emitter is still emitting particles or not */

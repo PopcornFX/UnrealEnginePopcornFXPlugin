@@ -1649,16 +1649,16 @@ UTexture2D		*LoadTexturePk(const PopcornFX::CString &pkPath)
 	if (pkPath.Empty())
 		return null;
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath.Data(), false);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath, false);
 	UTexture2D		*texture = Cast<UTexture2D>(obj);
 	if (obj != null && texture == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a texture: '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a texture: '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	if (texture == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load texture '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load texture '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	return texture;
@@ -1671,16 +1671,16 @@ UPopcornFXTextureAtlas		*LoadAtlasPk(const PopcornFX::CString &pkPath)
 	if (pkPath.Empty())
 		return null;
 
-	UObject					*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath.Data(), false);
+	UObject					*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath, false);
 	UPopcornFXTextureAtlas	*atlas = Cast<UPopcornFXTextureAtlas>(obj);
 	if (obj != null && atlas == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not an atlas: '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not an atlas: '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	if (atlas == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load atlas '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load atlas '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	return atlas;
@@ -1693,16 +1693,16 @@ UStaticMesh		*LoadMeshPk(const PopcornFX::CString &pkPath)
 	if (pkPath.Empty())
 		return null;
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath.Data(), false);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath, false);
 	UStaticMesh		*mesh = Cast<UStaticMesh>(obj);
 	if (obj != null && mesh == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a mesh: '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a mesh: '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	if (mesh == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load mesh '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load mesh '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	return mesh;
@@ -1715,16 +1715,16 @@ USkeletalMesh		*LoadSkelMeshPk(const PopcornFX::CString &pkPath)
 	if (pkPath.Empty())
 		return null;
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath.Data(), false);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(pkPath, false);
 	USkeletalMesh	*mesh = Cast<USkeletalMesh>(obj);
 	if (obj != null && mesh == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a skeletal mesh: '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a skeletal mesh: '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	if (mesh == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load skeletal mesh '%s'"), ANSI_TO_TCHAR(pkPath.Data()));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load skeletal mesh '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	return mesh;
@@ -1734,7 +1734,7 @@ USkeletalMesh		*LoadSkelMeshPk(const PopcornFX::CString &pkPath)
 
 void	SetMaterialTextureParameter(UMaterialInstanceDynamic *mat, FName textureName, const PopcornFX::CString &pkTexturePath)
 {
-	mat->SetTextureParameterValue(textureName, LoadTexturePk(pkTexturePath.Data()));
+	mat->SetTextureParameterValue(textureName, LoadTexturePk(pkTexturePath));
 }
 
 //----------------------------------------------------------------------------

@@ -195,7 +195,7 @@ bool	UPopcornFXAssetDep::SetAsset(UPopcornFXFile *file, UObject *asset)
 
 FString		UPopcornFXAssetDep::GetDefaultAssetPath() const
 {
-	return FPopcornFXPlugin::Get().BuildPathFromPkPath(TCHAR_TO_ANSI(*ImportPath), true);
+	return FPopcornFXPlugin::Get().BuildPathFromPkPath(ToPk(ImportPath), true);
 }
 
 //----------------------------------------------------------------------------
@@ -237,16 +237,16 @@ bool	UPopcornFXAssetDep::ReimportAndResetDefaultAsset(UPopcornFXFile *file, bool
 	FString	importSourcePath;
 	if (bImportFromCache)
 	{
-		importSourcePath = FPopcornFXPlugin::Get().SettingsEditor()->SourcePackCacheDir / GetSourcePath();
+		importSourcePath = FPopcornFXPlugin::Get().SettingsEditor()->AbsSourcePackCacheDir / GetSourcePath();
 		if (!FPaths::FileExists(importSourcePath))
 		{
-			UE_LOG(LogPopcornFXAssetDep, Error, TEXT("Source File '%s' not found. Please make sure to right click and 'Build Assets' on the source file."), *(FPopcornFXPlugin::Get().SettingsEditor()->SourcePackRootDir / GetSourcePath()));
+			UE_LOG(LogPopcornFXAssetDep, Error, TEXT("Source File '%s' not found. Please make sure to right click and 'Build Assets' on the source file."), *(FPopcornFXPlugin::Get().SettingsEditor()->AbsSourcePackRootDir / GetSourcePath()));
 			return false;
 		}
 	}
 	else
 	{
-		importSourcePath = FPopcornFXPlugin::Get().SettingsEditor()->SourcePackRootDir / GetSourcePath();
+		importSourcePath = FPopcornFXPlugin::Get().SettingsEditor()->AbsSourcePackRootDir / GetSourcePath();
 		if (!FPaths::FileExists(importSourcePath))
 		{
 			UE_LOG(LogPopcornFXAssetDep, Error, TEXT("Source File '%s' not found to Import"), *importSourcePath);
@@ -299,17 +299,17 @@ void	UPopcornFXAssetDep::GetAssetPath(FString &outputPath) const
 	}
 
 	PopcornFX::PFilePack		pack;
-	const PopcornFX::CString	assetPath = TCHAR_TO_ANSI(*Asset->GetPathName());
+	const PopcornFX::CString	assetPath = ToPk(Asset->GetPathName());
 	PK_ASSERT(PopcornFX::File::DefaultFileSystem() != null);
 	const PopcornFX::CString	virtPath = PopcornFX::File::DefaultFileSystem()->PhysicalToVirtual(assetPath, &pack);
 	if (!virtPath.Empty())
 	{
 		PK_VERIFY(pack == FPopcornFXPlugin::Get().FilePack());
-		outputPath = ANSI_TO_TCHAR(virtPath.Data());
+		outputPath = ToUE(virtPath);
 		return; // OK
 	}
 
-	UE_LOG(LogPopcornFXAssetDep, Warning, TEXT("Asset '%s' is outside the mounted PopcornFX Pack"), ANSI_TO_TCHAR(assetPath.Data()));
+	UE_LOG(LogPopcornFXAssetDep, Warning, TEXT("Asset '%s' is outside the mounted PopcornFX Pack"), *ToUE(assetPath));
 	outputPath = ImportPath;
 }
 
@@ -339,7 +339,7 @@ bool	UPopcornFXAssetDep::Setup(UPopcornFXFile *file, const FString &sourcePathOr
 		ext == "pkan")
 		bImportFromCache = true;
 
-	UObject		*asset = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(TCHAR_TO_ANSI(*ImportPath), false);
+	UObject		*asset = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(ToPk(ImportPath), false);
 	if (asset != null)
 	{
 		if (PK_VERIFY(IsCompatibleClass(asset->GetClass())))
@@ -397,7 +397,7 @@ void	UPopcornFXAssetDep::PatchFields(UPopcornFXFile *file) const
 
 	FString					newAssetPath;
 	GetAssetPath(newAssetPath);
-	PopcornFX::CString		newAssetPathPk = TCHAR_TO_ANSI(*newAssetPath); // Conv to UE, can't have PK types in public header.
+	PopcornFX::CString		newAssetPathPk = ToPk(newAssetPath); // Conv to UE, can't have PK types in public header.
 	if (!PK_VERIFY(!newAssetPathPk.Empty()))
 		return;
 
@@ -427,7 +427,7 @@ void	UPopcornFXAssetDep::PatchFields(UPopcornFXFile *file) const
 
 		if (bo != null)
 		{
-			const PopcornFX::CString	fieldName = TCHAR_TO_ANSI(*(patch.FieldName));
+			const PopcornFX::CString	fieldName = ToPk(patch.FieldName);
 			PopcornFX::CGuid			fieldId = bo->GetFieldIndex(PopcornFX::CStringView(fieldName));
 			if (PK_VERIFY(fieldId.Valid()))
 			{
@@ -468,7 +468,7 @@ UPopcornFXFile	*UPopcornFXAssetDep::ParentPopcornFXFile() const
 
 bool	UPopcornFXAssetDep::Conflicts(const FString &importPath, EPopcornFXAssetDepType::Type type, const TArray<UPopcornFXAssetDep*> &otherAssetDeps)
 {
-	const FString			gamePath = FPopcornFXPlugin::Get().BuildPathFromPkPath(TCHAR_TO_ANSI(*importPath), true);
+	const FString			gamePath = FPopcornFXPlugin::Get().BuildPathFromPkPath(ToPk(importPath), true);
 	if (!PK_VERIFY(!gamePath.IsEmpty()))
 		return false;
 

@@ -118,7 +118,7 @@ UMaterialInterface	*UPopcornFXSettings::GetConfigDefaultMaterial(uint32 ePopcorn
 	if (mat == null)
 	{
 		UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %s is invalid, falling back on PopcornFX Plugin's default one %s"), *FString(kMaterialTypeNames[materialType]), *FString(kPluginsDefaultMaterials[materialType]));
-		mat = ::LoadObject<UMaterialInterface>(null, ANSI_TO_TCHAR(kPluginsDefaultMaterials[materialType]));
+		mat = ::LoadObject<UMaterialInterface>(null, UTF8_TO_TCHAR(kPluginsDefaultMaterials[materialType]));
 		PK_ASSERT(mat != null);
 	}
 	return mat;

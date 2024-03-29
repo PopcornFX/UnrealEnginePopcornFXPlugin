@@ -364,6 +364,7 @@ void	FPopcornFXEffectEditor::ReimportEffect()
 	PK_ASSERT(m_Effect != null);
 
 	FReimportManager::Instance()->Reimport(m_Effect, true);
+	PreviewViewport->ResetEmitterAttributes();
 }
 
 //----------------------------------------------------------------------------

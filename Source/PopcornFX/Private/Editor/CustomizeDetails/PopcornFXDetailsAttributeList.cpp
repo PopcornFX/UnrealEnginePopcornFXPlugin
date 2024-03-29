@@ -89,6 +89,8 @@ namespace
 				return "AttributeSampler_Curve";
 			case	EPopcornFXAttributeSamplerType::Image:
 				return "AttributeSampler_Image";
+			case	EPopcornFXAttributeSamplerType::Grid:
+				return "AttributeSampler_Image"; //"AttributeSampler_Grid"; // TODO: Grid icon
 			case	EPopcornFXAttributeSamplerType::AnimTrack:
 				return "Attributesampler_AnimTrack";
 			case	EPopcornFXAttributeSamplerType::Text:
@@ -535,6 +537,7 @@ namespace
 			m_Traits = &(PopcornFX::CBaseTypeTraits::Traits(attributeBaseTypeID));
 
 			m_IsQuaternion = attributeBaseTypeID == PopcornFX::BaseType_Quaternion;
+			m_IsOneShotTrigger = decl->OneShotTrigger();
 
 			// force vector dimension to 3 for quaternion, allow to display 3 float and use euler angles in editor
 			m_VectorDimension = (!m_IsQuaternion) ? m_Traits->VectorDimension : 3;
@@ -549,11 +552,9 @@ namespace
 			m_Title = FText::FromString(name);
 
 			{
-				FString			description;
-				FString			shortDescription;
-				description = (const UTF16CHAR*)decl->Description().MapDefault().Data();
-				description = description.Replace(TEXT("\\n"), TEXT("\n"));
-				int32		shortOffset;
+				FString	description = ToUE(decl->Description().MapDefault()).Replace(TEXT("\\n"), TEXT("\n"));
+				FString	shortDescription;
+				int32	shortOffset;
 				if (description.FindChar('\n', shortOffset))
 					shortDescription = description.Left(shortOffset - 1);
 				else
@@ -563,7 +564,7 @@ namespace
 			}
 
 			// TODO: add an icon for quaternion attributes, right now fallbacks to F3
-			const FString			typeName = (!m_IsQuaternion) ? GenerateTypeName(attributeBaseTypeID) : TEXT("F3");
+			const FString	typeName = (!m_IsQuaternion) ? GenerateTypeName(attributeBaseTypeID) : TEXT("F3");
 			m_AttributeIcon = *(TEXT("PopcornFX.Attribute.") + typeName);
 
 			m_IsColor =
@@ -803,19 +804,36 @@ namespace
 			TSharedRef<TSelf> sharedThis = SharedThis(this);
 
 			check(dimi < m_Traits->VectorDimension);
-			TSharedPtr< SCheckBox >	axis;
-			if (m_ReadOnly)
+			if (!m_IsOneShotTrigger)
 			{
-				SAssignNew(axis, SCheckBox)
-					.IsChecked(sharedThis, &TSelf::GetValueBool, dimi);
+				TSharedPtr<SCheckBox>	axis;
+				if (m_ReadOnly)
+				{
+					SAssignNew(axis, SCheckBox)
+						.IsChecked(sharedThis, &TSelf::GetValueBool, dimi);
+				}
+				else
+				{
+					SAssignNew(axis, SCheckBox)
+						.OnCheckStateChanged(sharedThis, &TSelf::OnValueChangedBool, dimi)
+						.IsChecked(sharedThis, &TSelf::GetValueBool, dimi);
+				}
+				return axis.ToSharedRef();
 			}
 			else
 			{
-				SAssignNew(axis, SCheckBox)
-					.OnCheckStateChanged(sharedThis, &TSelf::OnValueChangedBool, dimi)
-					.IsChecked(sharedThis, &TSelf::GetValueBool, dimi);
+				TSharedPtr<SButton>	axis;
+				SAssignNew(axis, SButton)
+					.Text(FText::FromString("Pulse"))
+					.VAlign(VAlign_Center)
+					.HAlign(HAlign_Center)
+					.ClickMethod(EButtonClickMethod::MouseDown)
+					.OnClicked(this, &TSelf::OnValuePulsedBool, dimi)
+					.ContentPadding(0.0f)
+					.ForegroundColor(FSlateColor::UseForeground())
+					.IsFocusable(false);
+				return axis.ToSharedRef();
 			}
-			return axis.ToSharedRef();
 		}
 
 		template <typename _Scalar>
@@ -963,6 +981,22 @@ namespace
 			attrList->Modify();
 			attrList->SetAttributeDim<bool>(m_Index, dimi, value == ECheckBoxState::Checked, true);
 			attrList->PostEditChange();
+		}
+
+		FReply	OnValuePulsedBool(uint32 dimi)
+		{
+			if (m_ReadOnly)
+				return FReply::Handled();
+			UPopcornFXAttributeList	*attrList;
+			if (!_GetAttrib(attrList))
+				return FReply::Handled();
+
+			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Pulse"));
+			attrList->SetFlags(RF_Transactional);
+			attrList->Modify();
+			attrList->PulseBoolAttributeDim(m_Index, dimi, true);
+			attrList->PostEditChange();
+			return FReply::Handled();
 		}
 
 		FText	GetValueEnumText() const
@@ -1138,17 +1172,18 @@ namespace
 		bool				m_ReadOnly = false;
 		bool				m_ExpandOnly = false;
 
-		uint32				m_Index;
-		u32					m_VectorDimension;
-		const PopcornFX::CBaseTypeTraits	*m_Traits;
+		uint32				m_Index = 0;
+		u32					m_VectorDimension = 0;
+		const PopcornFX::CBaseTypeTraits	*m_Traits = null;
 
 		FText				m_Title;
 		FText				m_Description;
 		FText				m_ShortDescription;
 		FName				m_AttributeIcon;
 
-		bool									m_IsColor;
-		bool									m_IsQuaternion;
+		bool									m_IsColor = false;
+		bool									m_IsQuaternion = false;
+		bool									m_IsOneShotTrigger = false;
 		EPopcornFXAttributeDropDownMode::Type	m_DropDownMode;
 		TArray<FString>							m_EnumList; // copy
 		TArray<TSharedPtr<int32>>				m_EnumListIndices;

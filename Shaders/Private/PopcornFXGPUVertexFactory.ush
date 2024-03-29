@@ -184,9 +184,9 @@ FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input,
 	VertexParameters.PreSkinnedPosition = Intermediates.ParticleWorldPosition.xyz;
 	VertexParameters.PreSkinnedNormal = TangentToLocal[2].xyz;
 #if (ENGINE_MAJOR_VERSION == 5)
-	VertexParameters.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().LocalToWorld; // No velocity
+	VertexParameters.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld;
 #else
-	VertexParameters.PrevFrameLocalToWorld = Primitive.LocalToWorld; // No velocity
+	VertexParameters.PrevFrameLocalToWorld = Primitive.PreviousLocalToWorld;
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
@@ -431,7 +431,7 @@ float3x3 VertexFactoryGetTangentToLocal(FVertexFactoryInput Input, FVertexFactor
 
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
-	return VertexFactoryGetWorldPosition(Input, Intermediates); // TODO
+    return float4(Intermediates.VertexPrevWorldPosition, 1.f);
 }
 
 float4 VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants)

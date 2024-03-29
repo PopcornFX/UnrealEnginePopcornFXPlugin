@@ -112,6 +112,7 @@ public:
 	enum	EPopcornFXStreamOffsets
 	{
 		StreamOffset_Positions = 0,
+		StreamOffset_Enabled,
 		StreamOffset_Sizes,
 		StreamOffset_Size2s,
 		StreamOffset_Rotations,
@@ -124,6 +125,7 @@ public:
 	{
 		StreamOffset_Colors = 0,
 		StreamOffset_EmissiveColors,
+		StreamOffset_PreviousPosition,
 		StreamOffset_TextureIDs,
 		StreamOffset_AlphaCursors,
 		StreamOffset_DynParam1s,

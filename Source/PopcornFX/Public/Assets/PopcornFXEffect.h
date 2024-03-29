@@ -61,7 +61,7 @@ public:
 
 private:
 	void					ClearEffect();
-	bool					LoadEffect();
+	bool					LoadEffect(bool forceImport = false);
 
 protected:
 #if WITH_EDITOR

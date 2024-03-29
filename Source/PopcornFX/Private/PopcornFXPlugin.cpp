@@ -595,7 +595,7 @@ void	FPopcornFXPlugin::_UpdateSimInterfaceBindings(const FString &libraryDir)
 	{
 		simInterfaceMapper->Clear();
 
-		const PopcornFX::CString	pkLibDir = TCHAR_TO_ANSI(*libraryDir);
+		const PopcornFX::CString	pkLibDir = ToPk(libraryDir);
 
 		for (const SPopcornFXSimulationInterface &simInterface : kSimInterfaces)
 		{
@@ -639,10 +639,50 @@ PopcornFX::PFilePack	FPopcornFXPlugin::FilePack()
 
 //----------------------------------------------------------------------------
 
+#if WITH_EDITOR
+void	FPopcornFXPlugin::RefreshFromEditorSettings()
+{
+	UPopcornFXSettingsEditor	*editorSettings = GetMutableDefault<UPopcornFXSettingsEditor>();
+	check(editorSettings);
+	m_SettingsEditor = editorSettings;
+
+	if (m_BakeContext != null &&
+		m_BakeContext->m_BakeContext != null &&
+		m_BakeContext->m_BakeFSController != null)
+	{
+		m_BakeContext->m_BakeFSController->UnmountAllPacks();
+		if (PK_VERIFY(m_BakeContext->m_BakeFSController->MountPack(ToPk(m_SettingsEditor->AbsSourcePackRootDir)) != null))
+		{
+			if (editorSettings->bSourcePackFound)
+			{
+				// Only update bindings when pack is found. we don't want to spam errors for users not having the source pack available (which is legit).
+				// No source pack -> no effects import
+				{
+					// New project, lib dir might have changed, we need to update the sim interface bindings
+					FString	libraryDir = editorSettings->AbsSourcePackLibraryDir;
+					if (PK_VERIFY(FPaths::MakePathRelativeTo(libraryDir, *editorSettings->AbsSourcePackRootDir)))
+						_UpdateSimInterfaceBindings(libraryDir);
+					else
+						UE_LOG(LogPopcornFXPlugin, Error, TEXT("Couldn't make LibraryDir relative path from source pack root directory. Sim interfaces will not be bound"));
+				}
+			}
+		}
+	}
+}
+#endif	// WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
 bool	FPopcornFXPlugin::LoadSettingsAndPackIFN()
 {
 	if (!m_LaunchedPopcornFX) // could happen on shutdown
 		return false;
+
+#if WITH_EDITOR
+	// Lazy init IFN
+	BakeContext();
+#endif
+
 	if (m_Settings != null)
 	{
 #if WITH_EDITOR
@@ -652,37 +692,7 @@ bool	FPopcornFXPlugin::LoadSettingsAndPackIFN()
 		return m_RootPackLoaded;
 	}
 #if WITH_EDITOR
-	{
-		UPopcornFXSettingsEditor	*editorSettings = GetMutableDefault<UPopcornFXSettingsEditor>();
-		check(editorSettings);
-		editorSettings->UpdateSourcePack();
-		m_SettingsEditor = editorSettings;
-
-		// Lazy init IFN
-		BakeContext();
-		if (m_BakeContext != null &&
-			m_BakeContext->m_BakeContext != null &&
-			m_BakeContext->m_BakeFSController != null)
-		{
-			m_BakeContext->m_BakeFSController->UnmountAllPacks();
-			if (PK_VERIFY(m_BakeContext->m_BakeFSController->MountPack(TCHAR_TO_ANSI(*m_SettingsEditor->SourcePackRootDir)) != null))
-			{
-				if (editorSettings->bSourcePackFound)
-				{
-					// Only update bindings when pack is found. we don't want to spam errors for users not having the source pack available (which is legit).
-					// No source pack -> no effects import
-					{
-						// New project, lib dir might have changed, we need to update the sim interface bindings
-						FString	libraryDir = editorSettings->SourcePackLibraryDir;
-						if (PK_VERIFY(FPaths::MakePathRelativeTo(libraryDir, *editorSettings->SourcePackRootDir)))
-							_UpdateSimInterfaceBindings(libraryDir);
-						else
-							UE_LOG(LogPopcornFXPlugin, Error, TEXT("Couldn't make LibraryDir relative path from source pack root directory. Sim interfaces will not be bound"));
-					}
-				}
-			}
-		}
-	}
+	RefreshFromEditorSettings();
 	PK_ASSERT(m_SettingsEditor != null);
 #endif
 	m_Settings = GetMutableDefault<UPopcornFXSettings>();
@@ -697,14 +707,14 @@ bool	FPopcornFXPlugin::LoadSettingsAndPackIFN()
 	{
 		PK_ASSERT(m_FilePack == null);
 
-		const PopcornFX::CString	packPath = TCHAR_TO_ANSI(*m_Settings->PackMountPoint);
+		const PopcornFX::CString	packPath = ToPk(m_Settings->PackMountPoint);
 		PK_ASSERT(PopcornFX::File::DefaultFileSystem() != null);
 		PopcornFX::PFilePack		pack = PopcornFX::File::DefaultFileSystem()->MountPack(packPath);
 		if (!PK_VERIFY(pack != null))
 			return false;
 
 		m_FilePack = pack;
-		m_FilePackPath = ANSI_TO_TCHAR(m_FilePack->Path().Data());
+		m_FilePackPath = ToUE(m_FilePack->Path());
 		m_FilePackPath /= "";
 		PK_ASSERT(m_FilePackPath[m_FilePackPath.Len() - 1] == '/');
 		m_RootPackLoaded = true;
@@ -726,17 +736,20 @@ bool	FPopcornFXPlugin::LoadSettingsAndPackIFN()
 
 FString		FPopcornFXPlugin::BuildPathFromPkPath(const char *pkPath, bool prependPackPath)
 {
+	return BuildPathFromPkPath(PopcornFX::CString(pkPath), prependPackPath);
+}
+
+//----------------------------------------------------------------------------
+
+FString		FPopcornFXPlugin::BuildPathFromPkPath(const PopcornFX::CString &pkPath, bool prependPackPath)
+{
 	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXPlugin::BuildPathFromPkPath", POPCORNFX_UE_PROFILER_COLOR);
 
-	if (!LoadSettingsAndPackIFN())
+	if (!LoadSettingsAndPackIFN() ||
+		!PK_VERIFY(FilePack() != null))
 		return FString();
 
-	if (!PK_VERIFY(FilePack() != null))
-	{
-		return FString();
-	}
-
-	PopcornFX::CString		path(PopcornFX::CStringContainer::NewResizable(pkPath));
+	PopcornFX::CString	path = pkPath;
 	if (path.Empty())
 		return FString();
 	if (prependPackPath)
@@ -764,8 +777,7 @@ FString		FPopcornFXPlugin::BuildPathFromPkPath(const char *pkPath, bool prependP
 	else
 		path.Append(path.Data(), path.Length() - 1 /*the '.'*/);
 
-	FString			p = path.Data();
-	return p;
+	return ToUE(path);
 }
 
 //----------------------------------------------------------------------------
@@ -815,7 +827,8 @@ PopcornFX::PBaseObjectFile		FPopcornFXPlugin::LoadPkFile(const UPopcornFXFile *f
 	const PopcornFX::CString	pkPath = file->PkPath();
 	if (pkPath.Empty())
 		return null;
-	PopcornFX::PBaseObjectFile	pkFile = PopcornFX::HBO::g_Context->LoadFile(pkPath.Data(), reload);
+
+	PopcornFX::PBaseObjectFile	pkFile = PopcornFX::HBO::g_Context->LoadFile(pkPath, reload);
 	if (pkFile != null)
 		_SetupFile(file, pkFile);
 	return pkFile;
@@ -847,7 +860,7 @@ UPopcornFXFile		*FPopcornFXPlugin::GetPopcornFXFile(const PopcornFX::CBaseObject
 
 	if (boFile->InternalUserData() == null)
 	{
-		UObject			*object = LoadUObjectFromPkPath(boFile->Path().Data(), false);
+		UObject			*object = LoadUObjectFromPkPath(boFile->Path(), false);
 		if (object == null)
 			return null;
 		UPopcornFXFile	*file = Cast<UPopcornFXFile>(object);
@@ -859,16 +872,14 @@ UPopcornFXFile		*FPopcornFXPlugin::GetPopcornFXFile(const PopcornFX::CBaseObject
 
 	UPopcornFXFile		*file = reinterpret_cast<UPopcornFXFile*>(boFile->InternalUserData());
 
-	PK_ASSERT(Cast<UPopcornFXFile>(LoadUObjectFromPkPath(boFile->Path().Data(), false)) == file);
-
+	PK_ASSERT(Cast<UPopcornFXFile>(LoadUObjectFromPkPath(boFile->Path(), false)) == file);
 	check(file == null || file->IsBaseObject());
-
 	return file;
 }
 
 //----------------------------------------------------------------------------
 
-UObject		*FPopcornFXPlugin::LoadUObjectFromPkPath(const char *pkPath, bool pathNotVirtual)
+UObject	*FPopcornFXPlugin::LoadUObjectFromPkPath(const PopcornFX::CString &pkPath, bool pathNotVirtual)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	if (!m_LaunchedPopcornFX) // could happen at shutdown
@@ -879,22 +890,22 @@ UObject		*FPopcornFXPlugin::LoadUObjectFromPkPath(const char *pkPath, bool pathN
 
 #if WITH_EDITOR
 	// Editor only (baking code is the only place where this occurs)
-	PopcornFX::CString	ext = PopcornFX::CFilePath::ExtractExtension(pkPath);
+	PopcornFX::CStringView	ext = PopcornFX::CFilePath::ExtractExtension(PopcornFX::CStringView(pkPath));
 	if (ext == "pkcf")
 		return null;
 #endif // WITH_EDITOR
 
-	//
 	// about BuildPathFromPkPath(..., __ bool prependPackPath __):
-	//
 	//	if pathNotVirtual: // real path
 	//		already prepended with "/Game/"
 	//	else // virtual path
 	//		no "/Game/", just "Particles/": so prendpend "/Game/"
-	FString				p = BuildPathFromPkPath(pkPath, !pathNotVirtual);
+
+	FString	p = BuildPathFromPkPath(pkPath, !pathNotVirtual);
 	if (p.IsEmpty())
 		return null;
-	UObject				*anyObject = ::FindObject<UObject>(null, *p);
+
+	UObject	*anyObject = ::FindObject<UObject>(null, *p);
 	if (anyObject == null)
 		anyObject = ::LoadObject<UObject>(null, *p);
 	if (anyObject != null)
@@ -935,7 +946,7 @@ void	FPopcornFXPlugin::NotifyObjectChanged(UObject *object)
 	if (!objectPath.StartsWith(m_FilePackPath))
 		return;
 	const FString				virtualPath = objectPath.Right(objectPath.Len() - m_FilePackPath.Len());
-	const PopcornFX::CString	virtualPathPk(TCHAR_TO_ANSI(*virtualPath));
+	const PopcornFX::CString	virtualPathPk(ToPk(virtualPath));
 	PopcornFX::Resource::DefaultManager()->NotifyResourceChanged(PopcornFX::CFilePackPath(m_FilePack, virtualPathPk));
 }
 

@@ -149,6 +149,8 @@ struct FVertexFactoryIntermediates
 	float4x4	ParticleToWorld;
 	float4x4	WorldToParticle;
 
+	float4		PreviousPosition;
+
 #if (ENGINE_MAJOR_VERSION == 5)
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
@@ -233,7 +235,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #	if USE_PARTICLE_WORLD_TO_LOCAL
 	Result.Particle.WorldToParticle = LWCPromoteInverse(transpose(float4x4(Interpolants.WorldToParticle[0], Interpolants.WorldToParticle[1], Interpolants.WorldToParticle[2], float4(0.0f, 0.0f, 0.0f, 1.0f))));
 #		if NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
-	Result.InstanceWorldtoLocal = Result.Particle.WorldToParticle;
+	Result.InstanceWorldToLocal = Result.Particle.WorldToParticle;
 #		endif // NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
 #	endif // USE_PARTICLE_WORLD_TO_LOCAL
 #else
@@ -395,6 +397,19 @@ float4 CalcWorldPosition(FVertexFactoryInput Input)
 	return float4(WorldPosition, Input.Position.w);
 }
 
+float4 CalcPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	// FIXME only offsets the particle position, properly store the previous rotation transforms as well.
+	float4x4 Transform = float4x4(Input.Transform1, Input.Transform2, Input.Transform3, Intermediates.PreviousPosition);
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.PrevPreViewTranslation);
+#else
+	float3 WorldPosition = mul(Input.Position, Transform).xyz + ResolvedView.PrevPreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
+	return float4(WorldPosition, Input.Position.w);
+}
+
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
 {
 	FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
@@ -428,6 +443,12 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	BRANCH
 	if (PopcornFXMeshVSUniforms.InEmissiveColorsOffset != -1)
 		Intermediates.EmissiveColor = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InEmissiveColorsOffset);
+
+	BRANCH
+	if (PopcornFXMeshVSUniforms.InPreviousPositionOffset != -1)
+		Intermediates.PreviousPosition = float4(PKSimData_Load3f(particleID, PopcornFXMeshVSUniforms.InPreviousPositionOffset), Input.Transform4.w);
+	else
+		Intermediates.PreviousPosition = Input.Transform4;
 
 	// Cursor sent through RelativeTime (either one)
 	BRANCH
@@ -632,8 +653,7 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 // @return previous translated world position
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
-	// The previous local to world instance transform isn't available.
-	return CalcWorldPosition(Input);
+	return CalcPreviousWorldPosition(Input, Intermediates);
 }
 
 #if USING_TESSELLATION

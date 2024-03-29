@@ -229,7 +229,7 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.Win32)
 			{
-				libPrefix = clientLibDir + "vs2017_Win32/";
+				libPrefix = clientLibDir + "vs2019_Win32/";
 				libExt = ".lib";
 			}
 			else
@@ -237,7 +237,7 @@ namespace UnrealBuildTool.Rules
 			if (Target.Platform == UnrealTargetPlatform.Win64 ||
 				isWinUNKNOWN) // Win32 UNKNOWN (WINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP), just link with the same libs as Win64
 			{
-				libPrefix = clientLibDir + "vs2017_x64/";
+				libPrefix = clientLibDir + "vs2019_x64/";
 				libExt = ".lib";
 			}
 			else if (Target.Platform == UnrealTargetPlatform.Mac)
@@ -248,31 +248,31 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.XboxOne)
 			{
-				libPrefix = clientLibDir + "vs2017_Durango/";
+				libPrefix = clientLibDir + "vs2019_Durango/";
 				libExt = ".lib";
 			}
 #endif // !UE_5_0_OR_LATER
 			else if (isXboxOneUNKNOWN)
 			{
-				libPrefix = clientLibDir + "vs2017_UNKNOWN.x64/";
+				libPrefix = clientLibDir + "vs2019_UNKNOWN.x64/";
 				libExt = ".lib";
 			}
 			else if (isUNKNOWN)
 			{
-				libPrefix = clientLibDir + "vs2017_UNKNOWN.x64/";
+				libPrefix = clientLibDir + "vs2019_UNKNOWN.x64/";
 				libExt = ".lib";
 			}
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.PS4)
 			{
-				libPrefix = clientLibDir + "vs2017_ORBIS/";
+				libPrefix = clientLibDir + "vs2019_ORBIS/";
 				// "vs" + WindowsPlatform.GetVisualStudioCompilerVersionName(); // error (exception) on >= 4.16
 				libExt = ".a";
 			}
 #endif // !UE_5_0_OR_LATER
 			else if (isUNKNOWN2)
 			{
-				libPrefix = clientLibDir + "vs2017_UNKNOWN2/";
+				libPrefix = clientLibDir + "vs2019_UNKNOWN2/";
 				libExt = ".a";
 			}
 			else if (Target.Platform == UnrealTargetPlatform.IOS)
@@ -294,7 +294,7 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.Switch)
 			{
-				libPrefix = clientLibDir + "vs2017_NX64/";
+				libPrefix = clientLibDir + "vs2019_NX64/";
 				libExt = ".a";
 			}
 #endif // !UE_5_0_OR_LATER

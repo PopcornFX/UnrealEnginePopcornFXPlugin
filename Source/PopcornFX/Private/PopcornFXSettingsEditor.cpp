@@ -8,7 +8,6 @@
 #include "PopcornFXPlugin.h"
 
 #if WITH_EDITOR
-
 #	include "PopcornFXSDK.h"
 #	include <pk_particles/include/ps_project_settings.h>
 
@@ -39,6 +38,7 @@ UPopcornFXSettingsEditor::UPopcornFXSettingsEditor(const FObjectInitializer& PCI
 ,	bRestartEmitterWhenAttributesChanged(false)
 #endif // WITH_EDITORONLY_DATA
 {
+#if WITH_EDITORONLY_DATA
 	static const FString		kDefaultIncludes[] = {
 		"*.pkfx", "*.pkat",
 		"*.fbx",
@@ -52,7 +52,7 @@ UPopcornFXSettingsEditor::UPopcornFXSettingsEditor(const FObjectInitializer& PCI
 		"Editor/*",
 	};
 	static uint32				kDefaultExcludesCount = sizeof(kDefaultExcludes) / sizeof(*kDefaultExcludes);
-#if WITH_EDITORONLY_DATA
+
 	AutoReimportMirrorPackWildcards.SetNum(kDefaultIncludesCount + kDefaultExcludesCount);
 	uint32		configwci = 0;
 	for (uint32 i = 0; i < kDefaultIncludesCount; ++i, ++configwci)
@@ -68,19 +68,24 @@ UPopcornFXSettingsEditor::UPopcornFXSettingsEditor(const FObjectInitializer& PCI
 #endif // WITH_EDITORONLY_DATA
 }
 
-#if WITH_EDITOR
-
 //----------------------------------------------------------------------------
 
-void	UPopcornFXSettingsEditor::PostLoad()
+#if WITH_EDITORONLY_DATA
+void	UPopcornFXSettingsEditor::PostInitProperties()
 {
-	Super::PostLoad();
+	Super::PostInitProperties();
 
-	// /!\ not actualy called when GetDefault<UPopcornFXSettingsEditor> is used
-	UpdateSourcePack();
+	AbsSourcePackProjectFile	= SourcePackProjectFile.IsEmpty()	? FString() : FPaths::ConvertRelativePathToFull(SourcePackProjectFile);
+	AbsSourcePackRootDir		= SourcePackRootDir.IsEmpty()		? FString() : FPaths::ConvertRelativePathToFull(SourcePackRootDir);
+	AbsSourcePackLibraryDir		= SourcePackLibraryDir.IsEmpty()	? FString() : FPaths::ConvertRelativePathToFull(SourcePackLibraryDir);
+	AbsSourcePackThumbnailsDir	= SourcePackThumbnailsDir.IsEmpty()	? FString() : FPaths::ConvertRelativePathToFull(SourcePackThumbnailsDir);
+	AbsSourcePackCacheDir		= SourcePackCacheDir.IsEmpty()		? FString() : FPaths::ConvertRelativePathToFull(SourcePackCacheDir);
 }
+#endif // WITH_EDITORONLY_DATA
 
 //----------------------------------------------------------------------------
+
+#if WITH_EDITOR
 
 void	UPopcornFXSettingsEditor::PreEditChange(FProperty *propertyAboutToChange)
 {
@@ -90,11 +95,11 @@ void	UPopcornFXSettingsEditor::PreEditChange(FProperty *propertyAboutToChange)
 	{
 		if (propertyAboutToChange->GetName() == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXSettingsEditor, ImportSourcePack))
 		{
-			SourcePackRootDir_ToRemove = SourcePackRootDir;
+			SourcePackRootDir_ToRemove = AbsSourcePackRootDir;
 		}
 		else if (propertyAboutToChange->GetName() == GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXSettingsEditor, bAddSourcePackToMonitoredDirectories))
 		{
-			SourcePackRootDir_ToRemove = SourcePackRootDir;
+			SourcePackRootDir_ToRemove = AbsSourcePackRootDir;
 		}
 	}
 }
@@ -184,6 +189,8 @@ static bool		operator == (const FAutoReimportWildcard &a, const FMyAutoReimportW
 	return a.Wildcard == b.Wildcard && a.bInclude == b.bInclude;
 }
 
+//----------------------------------------------------------------------------
+
 void	UPopcornFXSettingsEditor::_CopyWildcards(FAutoReimportDirectoryConfig &config)
 {
 	const u32	wildcardCount = AutoReimportMirrorPackWildcards.Num();
@@ -200,6 +207,8 @@ void	UPopcornFXSettingsEditor::_CopyWildcards(FAutoReimportDirectoryConfig &conf
 	}
 }
 
+//----------------------------------------------------------------------------
+
 bool	UPopcornFXSettingsEditor::_HasSameWildcards(const FAutoReimportDirectoryConfig &config)
 {
 	const u32	wildcardCount = config.Wildcards.Num();
@@ -213,6 +222,8 @@ bool	UPopcornFXSettingsEditor::_HasSameWildcards(const FAutoReimportDirectoryCon
 	return true;
 }
 
+//----------------------------------------------------------------------------
+
 void	UPopcornFXSettingsEditor::ForceUpdateAutoReimportSettings()
 {
 	UEditorLoadingSavingSettings	*loadSaveSettings = GetMutableDefault<UEditorLoadingSavingSettings>();
@@ -223,18 +234,18 @@ void	UPopcornFXSettingsEditor::ForceUpdateAutoReimportSettings()
 
 	// Remove old one IFN
 	if (!SourcePackRootDir_ToRemove.IsEmpty() &&
-		SourcePackRootDir_ToRemove != SourcePackRootDir)
+		SourcePackRootDir_ToRemove != AbsSourcePackRootDir)
 	{
 		notify |= _RemoveAutoReimport(SourcePackRootDir_ToRemove);
 	}
 	SourcePackRootDir_ToRemove.Empty();
 
-	const bool		autoReimport = !SourcePackRootDir.IsEmpty() && bAddSourcePackToMonitoredDirectories;
+	const bool		autoReimport = !AbsSourcePackRootDir.IsEmpty() && bAddSourcePackToMonitoredDirectories;
 
 	if (!autoReimport)
 	{
 		// remove everything !
-		notify |= _RemoveAutoReimport(SourcePackRootDir);
+		notify |= _RemoveAutoReimport(AbsSourcePackRootDir);
 	}
 	else
 	{
@@ -250,7 +261,7 @@ void	UPopcornFXSettingsEditor::ForceUpdateAutoReimportSettings()
 		for (int32 i = 0; i < loadSaveSettings->AutoReimportDirectorySettings.Num(); ++i)
 		{
 			const FAutoReimportDirectoryConfig		&config = loadSaveSettings->AutoReimportDirectorySettings[i];
-			if (config.SourceDirectory != SourcePackRootDir)
+			if (config.SourceDirectory != AbsSourcePackRootDir)
 				continue;
 			++foundCount;
 			if (foundCount > expectedCount)
@@ -273,12 +284,12 @@ void	UPopcornFXSettingsEditor::ForceUpdateAutoReimportSettings()
 		if (hasChanged)
 		{
 			// remove all
-			notify |= _RemoveAutoReimport(SourcePackRootDir);
+			notify |= _RemoveAutoReimport(AbsSourcePackRootDir);
 
 			const int32		diri = loadSaveSettings->AutoReimportDirectorySettings.Add(FAutoReimportDirectoryConfig());
 			check(diri >= 0);
 			FAutoReimportDirectoryConfig		&config = loadSaveSettings->AutoReimportDirectorySettings[diri];
-			config.SourceDirectory = SourcePackRootDir;
+			config.SourceDirectory = AbsSourcePackRootDir;
 			config.MountPoint = settings->PackMountPoint;
 
 			_CopyWildcards(config);
@@ -291,53 +302,58 @@ void	UPopcornFXSettingsEditor::ForceUpdateAutoReimportSettings()
 		_NotifyReimportManager();
 }
 
-
 //----------------------------------------------------------------------------
 
-static const FString			kOldPopcornFXProjectFileName = "PopcornProject.xml";
-static const FString			kPopcornFXProjectFileName = "PopcornProject.pkproj";
+static const FString	kOldPopcornFXProjectFileName = "PopcornProject.xml";
+static const FString	kPopcornFXProjectFileName = "PopcornProject.pkproj";
 
-// static
-FString		UPopcornFXSettingsEditor::FixAndAppendPopcornFXProjectFileName(const FString &path)
+static FString	FixAndAppendPopcornFXProjectFileName(const FString &path)
 {
 	// fix old path
 	if (path.EndsWith(kOldPopcornFXProjectFileName))
 	{
-		FString			newPath = path;
+		FString	newPath = path;
 		newPath.RemoveAt(newPath.Len() - kOldPopcornFXProjectFileName.Len(), kOldPopcornFXProjectFileName.Len(), false);
 		newPath /= kPopcornFXProjectFileName;
 		return newPath;
 	}
-	// append ifn
+	// append IFN
 	if (!path.EndsWith(kPopcornFXProjectFileName))
 		return path / kPopcornFXProjectFileName;
 	return path;
 }
 
+//----------------------------------------------------------------------------
+
 void	UPopcornFXSettingsEditor::UpdateSourcePack()
 {
 	// if not in editor, do nothing, keep saved values
-
 	SourcePackProjectFile.Empty();
 	SourcePackRootDir.Empty();
 	SourcePackLibraryDir.Empty();
-	SourcePackCacheDir.Empty();
 	SourcePackThumbnailsDir.Empty();
-	bSourcePackFound = 0;
+	SourcePackCacheDir.Empty();
+
+	AbsSourcePackProjectFile.Empty();
+	AbsSourcePackRootDir.Empty();
+	AbsSourcePackLibraryDir.Empty();
+	AbsSourcePackThumbnailsDir.Empty();
+	AbsSourcePackCacheDir.Empty();
+
+	bSourcePackFound = false;
 
 	if (!ImportSourcePack.IsEmpty())
 	{
-		FString				projectFile = ImportSourcePack;
+		FString	projectFile = ImportSourcePack;
 		FPaths::NormalizeFilename(projectFile);
 		FPaths::RemoveDuplicateSlashes(projectFile);
-
 		projectFile = FixAndAppendPopcornFXProjectFileName(projectFile);
 
 		if (FPaths::IsRelative(projectFile))
 			projectFile = FPaths::ProjectDir() / projectFile;
 
 		SourcePackProjectFile = projectFile;
-		int32			lastSlash = projectFile.Find("/", ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+		int32	lastSlash = projectFile.Find("/", ESearchCase::CaseSensitive, ESearchDir::FromEnd);
 		if (lastSlash != INDEX_NONE)
 			SourcePackRootDir = projectFile.Left(lastSlash + 1);
 		SourcePackLibraryDir = SourcePackRootDir / "Library";
@@ -346,29 +362,26 @@ void	UPopcornFXSettingsEditor::UpdateSourcePack()
 
 		if (FPaths::FileExists(projectFile))
 		{
-			bSourcePackFound = 1;
-
 			TArray<uint8>	fileContent;
 			if (FFileHelper::LoadFileToArray(fileContent, *projectFile))
 			{
 				PopcornFX::CConstMemoryStream	stream(fileContent.GetData(), fileContent.Num());
-
-				PopcornFX::HBO::CContext	*localBoContext = PK_NEW(PopcornFX::HBO::CContext());
+				PopcornFX::HBO::CContext		*localBoContext = PK_NEW(PopcornFX::HBO::CContext());
 				if (PK_VERIFY(localBoContext != null))
 				{
 					PopcornFX::PProjectSettings	projectSettings = PopcornFX::CProjectSettings::LoadFromStream(stream, localBoContext);
 
 					if (projectSettings != null && projectSettings->General() != null)
 					{
-						bSourcePackFound = 1;
+						bSourcePackFound = true;
 						if (!projectSettings->General()->RootDir().Empty())
-							SourcePackRootDir /= ANSI_TO_TCHAR(projectSettings->General()->RootDir().Data());
+							SourcePackRootDir /= ToUE(projectSettings->General()->RootDir());
 						if (!projectSettings->General()->LibraryDir().Empty())
-							SourcePackLibraryDir = SourcePackRootDir / ANSI_TO_TCHAR(projectSettings->General()->LibraryDir().Data());
+							SourcePackLibraryDir = SourcePackRootDir / ToUE(projectSettings->General()->LibraryDir());
 						if (!projectSettings->General()->ThumbnailsDir().Empty())
-							SourcePackThumbnailsDir = SourcePackRootDir / ANSI_TO_TCHAR(projectSettings->General()->ThumbnailsDir().Data());
+							SourcePackThumbnailsDir = SourcePackRootDir / ToUE(projectSettings->General()->ThumbnailsDir());
 						if (!projectSettings->General()->EditorCacheDir().Empty())
-							SourcePackCacheDir = SourcePackRootDir / ANSI_TO_TCHAR(projectSettings->General()->EditorCacheDir().Data());
+							SourcePackCacheDir = SourcePackRootDir / ToUE(projectSettings->General()->EditorCacheDir());
 
 						localBoContext->UnloadAllFiles();
 						PK_DELETE(localBoContext);
@@ -388,18 +401,42 @@ void	UPopcornFXSettingsEditor::UpdateSourcePack()
 		{
 			// Log error
 		}
-		SourcePackProjectFile = FPaths::ConvertRelativePathToFull(SourcePackProjectFile);
-		SourcePackRootDir = FPaths::ConvertRelativePathToFull(SourcePackRootDir);
-		SourcePackLibraryDir = FPaths::ConvertRelativePathToFull(SourcePackLibraryDir);
-		SourcePackThumbnailsDir = FPaths::ConvertRelativePathToFull(SourcePackThumbnailsDir);
-		SourcePackCacheDir = FPaths::ConvertRelativePathToFull(SourcePackCacheDir);
+
+		// Can't use 'FPaths::CollapseRelativeDirectories()' to collapse '..' inside the path if they start with '..'
+		// So convert to PopcornFX strings and use CFilePath::Purify(), then convert back to FPath
+		SourcePackProjectFile		= ToUE(PopcornFX::CFilePath::Purified(ToPk(SourcePackProjectFile)));
+		SourcePackRootDir			= ToUE(PopcornFX::CFilePath::Purified(ToPk(SourcePackRootDir)));
+		SourcePackLibraryDir		= ToUE(PopcornFX::CFilePath::Purified(ToPk(SourcePackLibraryDir)));
+		SourcePackThumbnailsDir		= ToUE(PopcornFX::CFilePath::Purified(ToPk(SourcePackThumbnailsDir)));
+		SourcePackCacheDir			= ToUE(PopcornFX::CFilePath::Purified(ToPk(SourcePackCacheDir)));
+
+		AbsSourcePackProjectFile	= FPaths::ConvertRelativePathToFull(SourcePackProjectFile);
+		AbsSourcePackRootDir		= FPaths::ConvertRelativePathToFull(SourcePackRootDir);
+		AbsSourcePackLibraryDir		= FPaths::ConvertRelativePathToFull(SourcePackLibraryDir);
+		AbsSourcePackThumbnailsDir	= FPaths::ConvertRelativePathToFull(SourcePackThumbnailsDir);
+		AbsSourcePackCacheDir		= FPaths::ConvertRelativePathToFull(SourcePackCacheDir);
 	}
 
 	// Avoid adding invalid source pack folders
 	if (bSourcePackFound)
-	{
 		ForceUpdateAutoReimportSettings();
-	}
+
+	// Fix #13209: Update bake context & other plugin-global things that depend on the project paths
+	FPopcornFXPlugin::Get().RefreshFromEditorSettings();
+}
+
+//----------------------------------------------------------------------------
+
+static bool	_IsValidSourcePack(const FString &path)
+{
+	FString	projectFile = path;
+	FPaths::NormalizeFilename(projectFile);
+	FPaths::RemoveDuplicateSlashes(projectFile);
+	projectFile = FixAndAppendPopcornFXProjectFileName(projectFile);
+	if (FPaths::IsRelative(projectFile))
+		projectFile = FPaths::ProjectDir() / projectFile;
+
+	return FPaths::FileExists(projectFile);
 }
 
 //----------------------------------------------------------------------------
@@ -409,11 +446,10 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 	if (!PK_VERIFY(!sourceAssetPath.IsEmpty()))
 		return false;
 
-	bool				isValid = ValidSourcePack();
-	if (isValid)
+	if (ValidSourcePack())
 	{
 		const FString	sourceAssetPathAbs = FPaths::ConvertRelativePathToFull(sourceAssetPath);
-		if (!sourceAssetPathAbs.StartsWith(SourcePackRootDir))
+		if (!sourceAssetPathAbs.StartsWith(AbsSourcePackRootDir))
 		{
 			UE_LOG(LogPopcornFXEditorSettings, Error, TEXT("Asset outside Source PopcornFX Project: '%s'"), *sourceAssetPath);
 			const FText	title = LOCTEXT("PopcornFXAssetOutsidePackTitle", "PopcornFX: Asset outside Source PopcornFX Project");
@@ -426,44 +462,62 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 													"Project Settings > PopcornFX Editor > Source PopcornFX Project path:\n"
 													"{1}\n"
 													"\n"
-													"Continue anyway ?\n"), FText::FromString(sourceAssetPath), FText::FromString(SourcePackRootDir));
+													"Continue anyway ?\n"), FText::FromString(sourceAssetPathAbs), FText::FromString(AbsSourcePackRootDir));
 
 			return OpenMessageBox(EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
 		}
 		return true;
 	}
-	const FString		oldImportSourcePath = ImportSourcePack;
 
-	if (!sourceAssetPath.IsEmpty())
+	const FString	oldImportSourcePath = ImportSourcePack;
+	bool			isValid = false;
+	FString			sourcePack = FPaths::ConvertRelativePathToFull(sourceAssetPath);
+
+	static const FString	kTrySubPaths[] = {
+		"PopcornFX",
+		"PopcornFX/Editor",
+		"Editor",
+	};
+
+	// GetPath will make it loop over all parent folders to find the right one IFP
+	while (!isValid && !sourcePack.IsEmpty())
 	{
-		ImportSourcePack = FPaths::ConvertRelativePathToFull(sourceAssetPath);
-		PK_ASSERT(!isValid);
-
-		// GetPath will make it loop over all parent folders to find the right one IFP
-		while (!isValid)
+		FString		newSourcePack = FPaths::GetPath(sourcePack); // gets dirname: removes last name in path, effectively does a ../
+		if (!FPaths::IsRelative(newSourcePack))
 		{
-			const FString	sourcePack = ImportSourcePack;
-			FString			newSourcePack = FPaths::GetPath(sourcePack); // dirname !
-			// sanity checks !
-			if (newSourcePack.Len() < 3 || // matches drive paths and too small to be valid
-				newSourcePack.Len() >= sourcePack.Len()) // GetPath does that too
-				break;
-			if (!FPaths::IsRelative(newSourcePack))
-			{
-				FString			relativePath = newSourcePack;
-				const FString	projectDir = FPaths::ProjectDir();
+			FString			relativePath = newSourcePack;
+			const FString	projectDir = FPaths::ProjectDir();
 
-				if (FPaths::MakePathRelativeTo(relativePath, *projectDir) &&
-					relativePath.Len() > 1 && relativePath.Len() <= newSourcePack.Len()) // use it only if shorter
+			if (FPaths::MakePathRelativeTo(relativePath, *projectDir))
+				newSourcePack = relativePath;
+		}
+
+		if (newSourcePack.IsEmpty() || !PK_VERIFY(newSourcePack[newSourcePack.Len() - 1] != '/'))
+			break;
+
+		sourcePack = newSourcePack;
+		isValid = _IsValidSourcePack(sourcePack);
+		if (!isValid)
+		{
+			for (const auto &subPath : kTrySubPaths)
+			{
+				const FString	tryPath = sourcePack / subPath;
+				isValid = _IsValidSourcePack(tryPath);
+				if (isValid)
 				{
-					newSourcePack = relativePath;
+					sourcePack = tryPath;
+					break;
 				}
 			}
-			if (!PK_VERIFY(newSourcePack[newSourcePack.Len() - 1] != '/'))
-				break;
-			ImportSourcePack = newSourcePack;
+		}
+
+		if (isValid)	// Quick detection found a .pkproj, try the full-force resolve that will actually load it:
+		{
+			ImportSourcePack = sourcePack;
 			UpdateSourcePack();
 			isValid = ValidSourcePack();
+			if (!isValid)
+				sourcePack = newSourcePack;	// revert the potential subpath & continue iterating downstream
 		}
 	}
 
@@ -480,7 +534,6 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 		OpenMessageBox(EAppMsgType::Ok, text, title);
 
 		SaveConfig(); // Force save
-		return true;
 	}
 	else
 	{
@@ -495,15 +548,16 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 		UE_LOG(LogPopcornFXEditorSettings, Error, TEXT("Source PopcornFX Project NOT found: '%s'"), *ImportSourcePack);
 		const FText	title = LOCTEXT("PopcornFXSourcePackNOTFoundTitle", "PopcornFX: Invalid Source PopcornFX Project path");
 		const FText	msg = LOCTEXT(	"PopcornFXSourcePackNOTFoundTitleMsg",
-									"Invalid Source PopcornFX Project path, and could automaticaly find one.\n\
-									Please setup:\n\
-									\n\
-									Project Settings > PopcornFX > Source PopcornFX Project path\n\
-									\n\
-									Continue anyway ?\n");
+									"Invalid Source PopcornFX Project path, and could not automatically find one.\n"
+									"Please setup:\n"
+									"\n"
+									"Project Settings > PopcornFX > Source PopcornFX Project path\n"
+									"\n"
+									"Continue anyway ?\n");
 		return OpenMessageBox(EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
 	}
-	return false;
+
+	return isValid;
 }
 
 //----------------------------------------------------------------------------

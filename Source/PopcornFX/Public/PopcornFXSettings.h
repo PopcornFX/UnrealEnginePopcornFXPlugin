@@ -330,6 +330,5 @@ public:
 	virtual void		PostEditChangeProperty(struct FPropertyChangedEvent& propertyChangedEvent) override;
 #endif
 
-	void				UpdateSourcePack();
 	UMaterialInterface	*GetConfigDefaultMaterial(uint32 ePopcornFXMaterialType) const;
 };

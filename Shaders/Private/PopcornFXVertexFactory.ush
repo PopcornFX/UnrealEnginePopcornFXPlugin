@@ -54,6 +54,7 @@ struct FVertexFactoryInput
 struct FVertexFactoryIntermediates
 {
 	float3	Position;
+	float3	PrevPosition;
 
 	float4	ParticleColor;
 	float3	ParticleEmissiveColor;
@@ -229,6 +230,12 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	VertexParameters.PreSkinnedPosition = Input.Position.xyz;
 	VertexParameters.PreSkinnedNormal = TangentToLocal[2].xyz;
 
+#if (ENGINE_MAJOR_VERSION == 5)
+	VertexParameters.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld;
+#else
+	VertexParameters.PrevFrameLocalToWorld = Primitive.PreviousLocalToWorld;
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 #if NEEDS_PARTICLE_COLOR
 	VertexParameters.Particle.Color = Intermediates.ParticleColor;
 #endif
@@ -315,6 +322,22 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Intermediates.Position = worldVertexPosition;
+
+    float3	prevVertexPosition = vertexPosition;
+
+	BRANCH
+	if (PopcornFXBillboardVSUniforms.InPreviousPositionOffset != -1)
+		prevVertexPosition = PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InPreviousPositionOffset);
+
+#if (ENGINE_MAJOR_VERSION == 5)
+	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), LWCToFloat(GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld)).xyz;
+	prevWorldVertexPosition += LWCToFloat(ResolvedView.PrevPreViewTranslation);
+#else
+	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), Primitive.PreviousLocalToWorld).xyz;
+	prevWorldVertexPosition += ResolvedView.PrevPreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
+    Intermediates.PrevPosition = prevWorldVertexPosition;
 
 	BRANCH
 	if (PopcornFXBillboardVSUniforms.InColorsOffset != -1)
@@ -427,7 +450,7 @@ float3x3 VertexFactoryGetTangentToLocal(FVertexFactoryInput Input, FVertexFactor
 
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
-	return VertexFactoryGetWorldPosition(Input, Intermediates);
+	return float4(Intermediates.PrevPosition, 1);
 }
 
 float4 VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants)

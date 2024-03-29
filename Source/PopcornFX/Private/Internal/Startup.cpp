@@ -30,6 +30,7 @@
 #include <pk_geometrics/include/ge_init.h>
 #include <pk_geometrics/include/ge_coordinate_frame.h>
 #include <pk_particles/include/ps_init.h>
+#include <pk_particles/include/ps_system.h>
 #include <pk_particles_toolbox/include/pt_init.h>
 #include <pk_render_helpers/include/rh_init.h>
 #include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
@@ -40,6 +41,7 @@
 
 #include <pk_kernel/include/kr_buffer.h>
 #include <pk_kernel/include/kr_assert_internals.h>
+#include <pk_kernel/include/kr_string_static.h>
 
 #include <pk_kernel/include/kr_thread_pool_details.h>
 #include <pk_kernel/include/kr_thread_pool_default.h>
@@ -103,16 +105,34 @@ void	AddDefaultGlobalListenersOverride(void *userHandle);
 
 #if (KR_PROFILER_ENABLED != 0)
 
+bool				g_RecordEffectNames = false;
+thread_local u32	g_ProfileDepth = 0;
+thread_local s32	g_RecordEffectName_Depth = -1;
 struct	SUEStatIdKey
 {
-	const char	*m_StatName = null;
+	PopcornFX::COwnedStringView		m_StatName;
 
-	SUEStatIdKey() {}
-	SUEStatIdKey(const char *statName) : m_StatName(statName) {}
+	SUEStatIdKey() : m_StatName(PopcornFX::CString::EmptyString) { }
+	SUEStatIdKey(const PopcornFX::COwnedStringView &statName)
+	:	m_StatName(statName)
+	{
+#if	(PK_CALL_SCOPE_ENABLED != 0)
+		if (g_RecordEffectNames &&
+			(g_RecordEffectName_Depth == -1 || g_RecordEffectName_Depth == g_ProfileDepth))
+		{
+			PopcornFX::TMemoryView<const PopcornFX::CCallContextScope *>	stack = PopcornFX::CCallContext::ReadStack();
+			if (!stack.Empty() && stack.Last() != null)
+			{
+				g_RecordEffectName_Depth = g_ProfileDepth;
+				m_StatName = PopcornFX::CString::Format("(%s) %s", stack.Last()->Message().Data(), statName.Data());
+			}
+		}
+#endif // (PK_CALL_SCOPE_ENABLED != 0)
+	}
 
-	bool	Empty() const { return m_StatName == null; }
+	bool	Empty() const { return m_StatName.Empty(); }
 
-	bool	operator == (const SUEStatIdKey &other) const { return m_StatName == other.m_StatName; }
+	bool	operator == (const SUEStatIdKey &other) const { return m_StatName.View() == other.m_StatName.View(); }
 	bool	operator != (const SUEStatIdKey &other) const { return !(*this == other); }
 };
 
@@ -121,7 +141,7 @@ struct	SUEStatIdEntry
 	SUEStatIdKey	m_Key;
 	TStatId			m_StatId;
 
-	SUEStatIdEntry() {}
+	SUEStatIdEntry() { }
 	SUEStatIdEntry(const SUEStatIdKey &key, TStatId value) : m_Key(key), m_StatId(value) {}
 
 	bool	operator == (const SUEStatIdKey &other) const { return m_Key == other; }
@@ -137,7 +157,7 @@ class	PopcornFX::TTypeHasher<SUEStatIdEntry, _RawHasher>
 public:
 	PK_INLINE static u32	Hash(const SUEStatIdKey &value)
 	{
-		return _RawHasher::Hash(value.m_StatName, strlen(value.m_StatName));//sizeof(char*)); // hash pointer
+		return _RawHasher::Hash(value.m_StatName.Data(), value.m_StatName.Length());
 	}
 	PK_INLINE static u32	Hash(const SUEStatIdEntry &value)
 	{
@@ -163,7 +183,7 @@ public:
 template<typename _Hasher, typename _Controller>
 SUEStatIdEntry	const PopcornFX::TFastHashMapTraits<SUEStatIdEntry, _Hasher, _Controller>::Invalid = SUEStatIdEntry();
 template<typename _Hasher, typename _Controller>
-SUEStatIdEntry	const PopcornFX::TFastHashMapTraits<SUEStatIdEntry, _Hasher, _Controller>::Probe = SUEStatIdEntry(SUEStatIdKey((const char*)1), TStatId());
+SUEStatIdEntry	const PopcornFX::TFastHashMapTraits<SUEStatIdEntry, _Hasher, _Controller>::Probe = SUEStatIdEntry(SUEStatIdKey("SUEStatIdKey"), TStatId());
 
 struct	SPopcornFXThreadProfileContext
 {
@@ -269,8 +289,8 @@ namespace
 
 		char			_buffer[2048];
 		PrettyFormatAssert_Unsafe(_buffer, sizeof(_buffer), PK_ASSERT_CATCHER_ARGUMENTS);
-		const char		*perttyMessage = _buffer;
-		UE_LOG(LogPopcornFXStartup, Warning, TEXT("%s"), ANSI_TO_TCHAR(perttyMessage));
+		const char		*prettyMessage = _buffer;
+		UE_LOG(LogPopcornFXStartup, Warning, TEXT("%s"), UTF8_TO_TCHAR(prettyMessage));
 
 		if (!IsClassLoaded<UPopcornFXSettings>() ||
 			!GetMutableDefault<UPopcornFXSettings>()->EnableAsserts)
@@ -290,7 +310,7 @@ namespace
 				// UE handles all WinProc messages then wait updates tasks before execute them >>> DEAD LOCK
 				// GPumpingMessagesOutsideOfMainLoop = true should enqueue messages
 				TGuardValue<bool>	pumpMessageGuard(GPumpingMessagesOutsideOfMainLoop, true);
-				msgBoxRes = FPlatformMisc::MessageBoxExt(EAppMsgType::CancelRetryContinue, ANSI_TO_TCHAR(perttyMessage), TEXT("PopcornFX Assertion failed"));
+				msgBoxRes = FPlatformMisc::MessageBoxExt(EAppMsgType::CancelRetryContinue, UTF8_TO_TCHAR(prettyMessage), TEXT("PopcornFX Assertion failed"));
 			}
 			switch (msgBoxRes)
 			{
@@ -644,14 +664,14 @@ namespace
 		if (success)
 		{
 			PK_ASSERT(nodeDescriptor != null);
-			const SUEStatIdKey	key = SUEStatIdKey(nodeDescriptor->m_Name);
+			const SUEStatIdKey	key = SUEStatIdKey(PopcornFX::COwnedStringView(PopcornFX::CStringView::FromNullTerminatedString(nodeDescriptor->m_Name)));
 			PopcornFX::CGuid	statId = ctx->m_StatsMap.IndexOf(key);
 			if (!statId.Valid())
 			{
-				const FString	statName = ANSI_TO_TCHAR(nodeDescriptor->m_Name);
+				const FString	statName = *ToUE(key.m_StatName.View());
 				const TStatId	newStatId = FDynamicStats::CreateStatId<STAT_GROUP_TO_FStatGroup(STATGROUP_PopcornFX_Profile)>(statName);
 
-				statId = ctx->m_StatsMap.Insert(SUEStatIdEntry(SUEStatIdKey(nodeDescriptor->m_Name), newStatId));
+				statId = ctx->m_StatsMap.Insert(SUEStatIdEntry(key, newStatId));
 			}
 
 			success = statId.Valid();
@@ -675,6 +695,9 @@ namespace
 				const FMinimalName	statMinimalName = dynamicStatId.GetMinimalName(EMemoryOrder::Relaxed);
 				const FName			statName = MinimalNameToName(statMinimalName);
 				FThreadStats::AddMessage(statName, EStatOperation::CycleScopeStart);
+#if	(PK_CALL_SCOPE_ENABLED != 0)
+				++g_ProfileDepth;
+#endif // (PK_CALL_SCOPE_ENABLED != 0)
 			}
 		}
 
@@ -691,22 +714,24 @@ namespace
 
 		POPCORNFX_PROFILERECORD_REENTRY_GUARD(return);
 
+		--g_ProfileDepth;
+
 		CWorkerThreadPool_UE			*threadPool = static_cast<CWorkerThreadPool_UE*>(PopcornFX::Scheduler::ThreadPool().Get());
 		PK_ASSERT(threadPool != null);
 		SPopcornFXThreadProfileContext	*ctx = threadPool->GetCurrentThreadProfileContext();
 		if (ctx != null) // Can record
 		{
 			PK_ASSERT(nodeDescriptor != null);
-			const SUEStatIdKey		key = SUEStatIdKey(nodeDescriptor->m_Name);
+			const SUEStatIdKey		key = SUEStatIdKey(PopcornFX::COwnedStringView(PopcornFX::CStringView::FromNullTerminatedString(nodeDescriptor->m_Name)));
 			const PopcornFX::CGuid	statId = ctx->m_StatsMap.IndexOf(key);
 			if (statId.Valid())
 			{
 				if (GCycleStatsShouldEmitNamedEvents > 0)
 				{
-#	if PK_HAS_CPUPROFILERTRACE
+#if PK_HAS_CPUPROFILERTRACE
 					if (UE_TRACE_CHANNELEXPR_IS_ENABLED(CpuChannel))
 						FCpuProfilerTrace::OutputEndEvent();
-#	endif // PK_HAS_CPUPROFILERTRACE
+#endif // PK_HAS_CPUPROFILERTRACE
 
 					FPlatformMisc::EndNamedEvent();
 				}
@@ -714,6 +739,10 @@ namespace
 				const FMinimalName	statMinimalName = dynamicStatId.GetMinimalName(EMemoryOrder::Relaxed);
 				const FName			statName = MinimalNameToName(statMinimalName);
 				FThreadStats::AddMessage(statName, EStatOperation::CycleScopeEnd);
+#if	(PK_CALL_SCOPE_ENABLED != 0)
+				if (g_ProfileDepth == g_RecordEffectName_Depth)
+					g_RecordEffectName_Depth = -1;
+#endif // (PK_CALL_SCOPE_ENABLED != 0)
 			}
 		}
 	}
@@ -763,11 +792,19 @@ bool	PopcornFXStartup()
 #if (KR_PROFILER_ENABLED != 0)
 	bool	usePopcornFXTP = false;
 	bool	recordProfileMarkers = false;
+	bool	recordEffectNames = false;
+
 	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bUsePopcornFXWTP"), usePopcornFXTP, GEngineIni);
 	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bRecordProfileMarkers"), recordProfileMarkers, GEngineIni);
+#if	(PK_CALL_SCOPE_ENABLED != 0)
+	GConfig->GetBool(TEXT("PopcornFX"), TEXT("bRecordEffectNames"), recordEffectNames, GEngineIni);
+#endif	//(PK_CALL_SCOPE_ENABLED != 0)
 
 	if (usePopcornFXTP)
+	{
 		recordProfileMarkers = false;
+		recordEffectNames = false;
+	}
 	if (recordProfileMarkers)
 	{
 		kernelConfiguration.m_ProfilerRecordArg = null;
@@ -776,6 +813,7 @@ bool	PopcornFXStartup()
 		kernelConfiguration.m_ProfilerRecordMemoryTransaction = &PopcornFX_ProfileRecordMemoryTransaction;
 		kernelConfiguration.m_ProfilerRecordThreadDependency = &PopcornFX_ProfileRecordThreadDependency;
 	}
+	g_RecordEffectNames = recordEffectNames;
 #endif // (KR_PROFILER_ENABLED != 0)
 
 	success = true;
@@ -829,7 +867,6 @@ bool	PopcornFXStartup()
 #endif // WITH_EDITOR
 
 	CCoordinateFrame::SetGlobalFrame(ECoordinateFrame::Frame_LeftHand_Z_Up);
-
 
 	// Register load tags
 	success &= PopcornFX::CParticleManager::AddGlobalConstant(PopcornFX::CParticleManager::SElement("build.tags.low", 20));

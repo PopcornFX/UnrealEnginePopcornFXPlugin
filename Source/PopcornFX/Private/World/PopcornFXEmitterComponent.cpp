@@ -32,6 +32,7 @@
 #include <pk_particles/include/ps_descriptor.h>
 #include <pk_particles/include/ps_effect.h>
 
+#include <pk_kernel/include/kr_call_context.h>
 #include <pk_particles_toolbox/include/pt_helpers.h>
 
 //----------------------------------------------------------------------------
@@ -363,9 +364,7 @@ void	UPopcornFXEmitterComponent::CheckForErrors()
 		if (filever.Empty())
 			filever = PopcornFX::SEngineVersion(1, 7, 3, 0); // bo file version did not exists
 
-		bool		outOfDate = filever.Major() < current.Major();
-		if (!outOfDate && filever.Minor() < current.Minor())
-			outOfDate = true;
+		const bool	outOfDate = filever.Lower_IgnorePatch(current);
 		if (outOfDate)
 		{
 			FFormatNamedArguments Arguments;
@@ -997,7 +996,7 @@ bool	UPopcornFXEmitterComponent::RegisterEventListener(FPopcornFXRaiseEventSigna
 		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Register Event Listener: Empty EventName"));
 		return false;
 	}
-	const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(TCHAR_TO_ANSI(*EventName.ToString()));
+	const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(ToPk(EventName.ToString()));
 	PK_ASSERT(!eventNameId.Empty());
 
 	if (!Delegate.IsBound())
@@ -1020,7 +1019,7 @@ void	UPopcornFXEmitterComponent::UnregisterEventListener(FPopcornFXRaiseEventSig
 	if (!PK_VERIFY(m_CurrentScene != null))
 		return;
 
-	const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(TCHAR_TO_ANSI(*EventName.ToString()));
+	const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(ToPk(EventName.ToString()));
 	if (eventNameId.Empty())
 	{
 		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Unregister Event Listener: Empty EventName"));
@@ -1139,6 +1138,9 @@ void	UPopcornFXEmitterComponent::ApplyWorldOffset(const FVector &inOffset, bool 
 
 void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float deltaTime)
 {
+	using namespace PopcornFX;
+	PK_CALL_CONTEXT("Emitter", PopcornFX::CStringView(Effect->Effect()->ParticleEffectIFP()->File()->Path()));
+	PK_SCOPEDPROFILE();
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_ASSERT(!IsTemplate());
 
@@ -1244,6 +1246,14 @@ void	UPopcornFXEmitterComponent::Scene_PostUpdate(CParticleScene *scene, float d
 {
 	// Destroy component if instance was destroyed during update
 	CheckForDead();
+
+#if WITH_EDITOR
+	// This will be called after the update has been complete.
+	// Post-update the attributes if we have some: Needed to reset pulsed bool attributes
+	UPopcornFXAttributeList		*attributeList = GetAttributeListIFP();
+	if (attributeList != null && IsValid(attributeList))
+		attributeList->ResetPulsedBoolAttributesIFN();
+#endif // WITH_EDITOR
 }
 
 //----------------------------------------------------------------------------

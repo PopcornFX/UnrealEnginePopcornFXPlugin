@@ -229,10 +229,10 @@ PopcornFX::CImage	*CResourceHandlerImage_UE::NewFromPath(const PopcornFX::CStrin
 {
 	PK_NAMEDSCOPEDPROFILE_C("CResourceHandlerImage_UE::NewFromPath", POPCORNFX_UE_PROFILER_COLOR);
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path.Data(), pathNotVirtual);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path, pathNotVirtual);
 	if (obj == null)
 	{
-		UE_LOG(LogPopcornFXResourceHandlerImage, Warning, TEXT("UObject not found \"%s\" %d"), ANSI_TO_TCHAR(path.Data()), pathNotVirtual);
+		UE_LOG(LogPopcornFXResourceHandlerImage, Warning, TEXT("UObject not found \"%s\" %d"), *ToUE(path), pathNotVirtual);
 		return null;
 	}
 	UTexture		*texture = Cast<UTexture>(obj);
@@ -285,9 +285,7 @@ CResourceHandlerImage_UE::~CResourceHandlerImage_UE()
 	for (CResourcesHashMap::ConstIterator it = m_Images.Begin(), itEnd = m_Images.End(); it != itEnd; ++it)
 	{
 		PK_ASSERT(it->m_ReferenceCount > 0);
-		UE_LOG(LogPopcornFXResourceHandlerImage, Warning, TEXT("Texture leak: \"%s\" %s"),
-			ANSI_TO_TCHAR(it.Key().Data()),
-			it->m_Virtual ? TEXT("(Virtual Texture)") : TEXT(""));
+		UE_LOG(LogPopcornFXResourceHandlerImage, Warning, TEXT("Texture leak: \"%s\" %s"), *ToUE(it.Key()), it->m_Virtual ? TEXT("(Virtual Texture)") : TEXT(""));
 	}
 }
 
@@ -308,9 +306,8 @@ void	*CResourceHandlerImage_UE::Load(
 
 	PopcornFX::CString			_fullPath = resourcePath;
 	if (!pathNotVirtual) // if virtual path
-	{
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
-	}
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -508,9 +505,8 @@ bool	CResourceHandlerImage_UE::IsUsed(const PopcornFX::CString &virtualPath, boo
 {
 	PopcornFX::CString			_fullPath = virtualPath;
 	if (!pathNotVirtual) // if virtual path
-	{
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
-	}
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -538,9 +534,8 @@ bool	CResourceHandlerImage_UE::RegisterVirtualTexture(const PopcornFX::CString &
 
 	PopcornFX::CString			_fullPath = virtualPath;
 	if (!pathNotVirtual) // if virtual path
-	{
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
-	}
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -552,7 +547,7 @@ bool	CResourceHandlerImage_UE::RegisterVirtualTexture(const PopcornFX::CString &
 	const u32				totalImageBytes = PopcornFX::CImage::GetFormatPixelBufferSizeInBytes(format, size);
 	if (!PK_VERIFY(pixelsDataSizeInBytes >= totalImageBytes))
 	{
-		UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Invalid image byte size for virtual texture \"%s\""), ANSI_TO_TCHAR(virtualPath.Data()));
+		UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Invalid image byte size for virtual texture \"%s\""), *ToUE(virtualPath));
 		return false;
 	}
 
@@ -647,7 +642,8 @@ bool	CResourceHandlerImage_UE::UnregisterVirtualTexture(const PopcornFX::CString
 
 	PopcornFX::CString			_fullPath = virtualPath;
 	if (!pathNotVirtual) // if virtual path
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -660,12 +656,12 @@ bool	CResourceHandlerImage_UE::UnregisterVirtualTexture(const PopcornFX::CString
 		SResourceEntry	*foundResource = m_Images.Find(fullPath);
 		if (foundResource == null)
 		{
-			UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Virtual Texture not found to Unregister \"%s\""), ANSI_TO_TCHAR(virtualPath.Data()));
+			UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Virtual Texture not found to Unregister \"%s\""), *ToUE(virtualPath));
 			return false;
 		}
 		if (!PK_VERIFY(foundResource->m_Virtual))
 		{
-			UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Texture is not a Virtual Texture to Unregister \"%s\""), ANSI_TO_TCHAR(virtualPath.Data()));
+			UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Texture is not a Virtual Texture to Unregister \"%s\""), *ToUE(virtualPath));
 			return false;
 		}
 		PK_ASSERT(foundResource->m_Image != null);
@@ -701,7 +697,7 @@ bool	CResourceHandlerImage_UE::UnregisterVirtualTexture(const PopcornFX::CString
 
 			if (resource == null)
 			{
-				UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Could not load true asset to replace Unregistered Virtual Texture, keeping old datas \"%s\""), ANSI_TO_TCHAR(virtualPath.Data()));
+				UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Could not load true asset to replace Unregistered Virtual Texture, keeping old datas \"%s\""), *ToUE(virtualPath));
 				return false;
 			}
 			PK_ASSERT(foundResource->m_Image != null);
@@ -789,10 +785,10 @@ PopcornFX::CImageGPU_D3D11		*CResourceHandlerImage_UE_D3D11::NewFromPath(const P
 {
 	PK_NAMEDSCOPEDPROFILE_C("CResourceHandlerImage_UE_D3D11::NewFromPath", POPCORNFX_UE_PROFILER_COLOR);
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path.Data(), pathNotVirtual);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path, pathNotVirtual);
 	if (obj == null)
 	{
-		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UObject not found \"%s\" %d"), ANSI_TO_TCHAR(path.Data()), pathNotVirtual);
+		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UObject not found \"%s\" %d"), *ToUE(path), pathNotVirtual);
 		return null;
 	}
 	UTexture		*texture = Cast<UTexture>(obj);
@@ -840,9 +836,8 @@ void	*CResourceHandlerImage_UE_D3D11::Load(
 
 	PopcornFX::CString			_fullPath = resourcePath;
 	if (!pathNotVirtual) // if virtual path
-	{
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
-	}
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -1038,9 +1033,8 @@ bool	CResourceHandlerImage_UE_D3D11::IsUsed(const PopcornFX::CString &virtualPat
 {
 	PopcornFX::CString			_fullPath = virtualPath;
 	if (!pathNotVirtual) // if virtual path
-	{
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
-	}
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -1066,7 +1060,8 @@ bool	CResourceHandlerImage_UE_D3D11::RegisterVirtualTexture(const PopcornFX::CSt
 
 	PopcornFX::CString			_fullPath = virtualPath;
 	if (!pathNotVirtual) // if virtual path
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -1116,7 +1111,8 @@ bool	CResourceHandlerImage_UE_D3D11::UnregisterVirtualTexture(const PopcornFX::C
 
 	PopcornFX::CString			_fullPath = virtualPath;
 	if (!pathNotVirtual) // if virtual path
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))
@@ -1128,12 +1124,12 @@ bool	CResourceHandlerImage_UE_D3D11::UnregisterVirtualTexture(const PopcornFX::C
 		SResourceEntry	*foundResource = m_Images.Find(fullPath);
 		if (foundResource == null)
 		{
-			UE_LOG(LogPopcornFXResourceHandlerImageGPU, Error, TEXT("Virtual Texture GPU not found to Unregister \"%s\""), ANSI_TO_TCHAR(virtualPath.Data()));
+			UE_LOG(LogPopcornFXResourceHandlerImageGPU, Error, TEXT("Virtual Texture GPU not found to Unregister \"%s\""), *ToUE(virtualPath));
 			return false;
 		}
 		if (!PK_VERIFY(foundResource->m_Virtual))
 		{
-			UE_LOG(LogPopcornFXResourceHandlerImageGPU, Error, TEXT("Texture GPU is not a Virtual Texture to Unregister \"%s\""), ANSI_TO_TCHAR(virtualPath.Data()));
+			UE_LOG(LogPopcornFXResourceHandlerImageGPU, Error, TEXT("Texture GPU is not a Virtual Texture to Unregister \"%s\""), *ToUE(virtualPath));
 			return false;
 		}
 		PK_ASSERT(foundResource->m_Image != null);
@@ -1170,7 +1166,7 @@ bool	CResourceHandlerImage_UE_D3D11::UnregisterVirtualTexture(const PopcornFX::C
 
 			if (resource == null)
 			{
-				UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Could not load true asset to replace Unregistered Virtual Texture, keeping old datas \"%s\""), ANSI_TO_TCHAR(virtualPath.Data()));
+				UE_LOG(LogPopcornFXResourceHandlerImage, Error, TEXT("Could not load true asset to replace Unregistered Virtual Texture, keeping old datas \"%s\""), *ToUE(virtualPath));
 				return false;
 			}
 			PK_ASSERT(foundResource->m_Image != null);
@@ -1267,10 +1263,10 @@ PopcornFX::CImageGPU_D3D12	*CResourceHandlerImage_UE_D3D12::NewFromPath(const Po
 {
 	PK_NAMEDSCOPEDPROFILE_C("CResourceHandlerImage_UE_D3D12::NewFromPath", POPCORNFX_UE_PROFILER_COLOR);
 
-	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path.Data(), pathNotVirtual);
+	UObject			*obj = FPopcornFXPlugin::Get().LoadUObjectFromPkPath(path, pathNotVirtual);
 	if (obj == null)
 	{
-		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UObject not found \"%s\" %d"), ANSI_TO_TCHAR(path.Data()), pathNotVirtual);
+		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UObject not found \"%s\" %d"), *ToUE(path), pathNotVirtual);
 		return null;
 	}
 	UTexture		*texture = Cast<UTexture>(obj);
@@ -1318,9 +1314,8 @@ void	*CResourceHandlerImage_UE_D3D12::Load(
 
 	PopcornFX::CString			_fullPath = resourcePath;
 	if (!pathNotVirtual) // if virtual path
-	{
-		_fullPath = TCHAR_TO_ANSI(*FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath.Data(), true)); // prepend Pack Path
-	}
+		_fullPath = ToPk(FPopcornFXPlugin::Get().BuildPathFromPkPath(_fullPath, true)); // prepend Pack Path
+
 	PopcornFX::CFilePath::StripExtensionInPlace(_fullPath);
 	const PopcornFX::CString	&fullPath = _fullPath;
 	if (!/*PK_VERIFY*/(!fullPath.Empty()))

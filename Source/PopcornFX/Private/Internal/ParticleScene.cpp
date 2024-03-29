@@ -1872,7 +1872,7 @@ PopcornFX::TMemoryView<const float * const>	CParticleScene::GetAudioSpectrum(Pop
 	if (channelGroup.Empty() || m_FillAudioBuffers == null)
 		return PopcornFX::TMemoryView<const float * const>();
 
-	const FName			channelName(ANSI_TO_TCHAR(channelGroup.ToString().Data()));
+	const FName			channelName(*ToUE(channelGroup.ToString()));
 	const float * const	*rawSpectrumData = m_FillAudioBuffers->AsyncGetAudioSpectrum(channelName, outBaseCount);
 	if (rawSpectrumData == null || outBaseCount == 0)
 		return PopcornFX::TMemoryView<const float * const>();
@@ -1888,7 +1888,7 @@ PopcornFX::TMemoryView<const float * const>	CParticleScene::GetAudioWaveform(Pop
 	if (channelGroup.Empty() || m_FillAudioBuffers == null)
 		return PopcornFX::TMemoryView<const float * const>();
 
-	const FName			channelName(ANSI_TO_TCHAR(channelGroup.ToString().Data()));
+	const FName			channelName(*ToUE(channelGroup.ToString()));
 	const float * const	*rawWaveformData = m_FillAudioBuffers->AsyncGetAudioWaveform(channelName, outBaseCount);
 	if (rawWaveformData == null || outBaseCount == 0)
 		return PopcornFX::TMemoryView<const float * const>();
@@ -2946,7 +2946,7 @@ bool	CParticleScene::RegisterEventListener(UPopcornFXEffect* particleEffect, Pop
 	{
 		if (!particleEffect->Effect()->RegisterEventCallback(broadcastCallback, eventNameID))
 		{
-			UE_LOG(LogPopcornFXScene, Warning, TEXT("Register Event Listener: Couldn't register callback to event '%s' on effect '%s'"), eventNameID.ToString().Data(), *particleEffect->GetName());
+			UE_LOG(LogPopcornFXScene, Warning, TEXT("Register Event Listener: Couldn't register callback to event '%s' on effect '%s'"), *ToUE(eventNameID.ToString()), *particleEffect->GetName());
 			return false;
 		}
 		// add event name ID : don't register a callback several times for the same event
@@ -3098,7 +3098,7 @@ bool	CParticleScene::GetPayloadValue(const FName &payloadName, EPopcornFXPayload
 		return false;
 	}
 
-	const PopcornFX::CStringId		payloadNameID(TCHAR_TO_ANSI(*payloadName.ToString())); // Expensive
+	const PopcornFX::CStringId		payloadNameID(ToPk(payloadName.ToString())); // Expensive
 	const PopcornFX::CGuid			payloadIndex = m_CurrentPayloadView->m_Payloads.IndexOf(payloadNameID);
 
 	if (!payloadIndex.Valid())

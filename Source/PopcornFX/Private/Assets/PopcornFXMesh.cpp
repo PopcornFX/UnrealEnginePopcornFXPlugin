@@ -228,7 +228,7 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::LoadResourceMeshIFN(bool editorBuildIFN
 		m_ResourceMesh = PopcornFX::CResourceMesh::Load(PopcornFX::File::DefaultFileSystem(), PopcornFX::CFilePackPath(FPopcornFXPlugin::Get().FilePack(), PkPath()), outReport);
 		if (m_ResourceMesh == null)
 		{
-			UE_LOG(LogPopcornMesh, Warning, TEXT("Couldn't load PopcornFX mesh '%s'"), ANSI_TO_TCHAR(PkPath()));
+			UE_LOG(LogPopcornMesh, Warning, TEXT("Couldn't load PopcornFX mesh '%s'"), *ToUE(PkPath()));
 			m_ResourceMesh = null;
 		}
 	}
@@ -394,6 +394,13 @@ namespace
 			const u32	numVertices = section.GetNumVertices();
 			const u32	sectionInfluenceCount = section.MaxBoneInfluences;
 
+#if (ENGINE_MAJOR_VERSION == 4)
+			const float		boneWeightNormalizer = 1.0f / 255.0f;
+#else
+			// 'GetBoneWeight()' will always return 16-bit bone weights, even if 'Use16BitBoneWeight()' is false, or if 'GetBoneWeightByteSize()' returns 1
+			const float		boneWeightNormalizer = 1.0f / 65535.0f;
+#endif
+
 			for (u32 iVertex = 0; iVertex < numVertices; ++iVertex)
 			{
 				const u32	vertexIndex = sectionOffset + iVertex;
@@ -419,7 +426,7 @@ namespace
 					for (u32 iInfluence = 0; iInfluence < sectionInfluenceCount; ++iInfluence)
 					{
 						const float	localBoneWeight = LODRenderData.SkinWeightVertexBuffer.GetBoneWeight(vertexIndex, iInfluence);
-						const float	boneWeight = localBoneWeight / 255.0f;
+						const float	boneWeight = localBoneWeight * boneWeightNormalizer;
 
 						PK_ONLY_IF_ASSERTS(weightsSum += boneWeight);
 						_boneWeights[offsetInfluences + iInfluence] = boneWeight;

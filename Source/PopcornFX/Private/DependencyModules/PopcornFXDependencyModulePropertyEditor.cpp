@@ -12,6 +12,7 @@
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerShape.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerCurve.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerImage.h"
+#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerGrid.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerVectorField.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerActor.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerSkinnedMesh.h"
@@ -50,6 +51,7 @@ void	FPopcornFXDependencyModulePropertyEditor::Load()
 	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerShape", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerShape::MakeInstance));
 	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerCurve", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerCurve::MakeInstance));
 	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerImage", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerImage::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerGrid", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerGrid::MakeInstance));
 	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerVectorField", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerVectorField::MakeInstance));
 	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerActor", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerActor::MakeInstance));
 	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerSkinnedMesh", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerSkinnedMesh::MakeInstance));
@@ -81,6 +83,7 @@ void	FPopcornFXDependencyModulePropertyEditor::Unload()
 	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerShape");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerCurve");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerImage");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerGrid");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerVectorField");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerActor");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerSkinnedMesh");

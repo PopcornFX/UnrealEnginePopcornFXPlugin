@@ -117,6 +117,7 @@ public:
 	*	return the corresponding path for Unreal assets
 	*/
 	FString								BuildPathFromPkPath(const char *pkPath, bool prependPackPath);
+	FString								BuildPathFromPkPath(const PopcornFX::CString &pkPath, bool prependPackPath);
 
 	PopcornFX::PBaseObjectFile			FindPkFile(const UPopcornFXFile *file);
 	PopcornFX::PBaseObjectFile			LoadPkFile(const UPopcornFXFile *file, bool reload = false);
@@ -124,7 +125,7 @@ public:
 
 	UPopcornFXFile						*GetPopcornFXFile(const PopcornFX::CBaseObjectFile *file);
 
-	UObject								*LoadUObjectFromPkPath(const char *pkPath, bool notVirtual);
+	UObject								*LoadUObjectFromPkPath(const PopcornFX::CString &pkPath, bool notVirtual);
 
 	void								NotifyObjectChanged(UObject *object);
 
@@ -194,7 +195,7 @@ public:
 	class FRHITexture2D						*SceneDepthTexture() { return m_SceneDepthTexture; }
 	class FRHITexture2D						*SceneNormalTexture() { return m_SceneNormalTexture; }
 #if (PK_GPU_D3D11 != 0)
-	PopcornFX::SParticleStreamBuffer_D3D11	&ViewConstantBuffer_D3D11() { return m_ViewConstantBuffer_D3D11; }
+	PopcornFX::SBuffer_D3D11	&ViewConstantBuffer_D3D11() { return m_ViewConstantBuffer_D3D11; }
 #endif // (PK_GPU_D3D11 != 0)
 	void									SetViewUniformData(const SUEViewUniformData &viewUniformData) { m_ViewUniformData = viewUniformData; }
 	const SUEViewUniformData				&ViewUniformData() const { return m_ViewUniformData; }
@@ -203,6 +204,10 @@ public:
 	CPopcornFXProfiler					*Profiler();
 	void								ActivateEffectsProfiler(bool activate);
 	bool								EffectsProfilerActive() const;
+
+#if WITH_EDITOR
+	void								RefreshFromEditorSettings();
+#endif
 
 private:
 	bool								LoadSettingsAndPackIFN();
@@ -231,7 +236,7 @@ private:
 	class FRHITexture2D						*m_SceneDepthTexture;
 	class FRHITexture2D						*m_SceneNormalTexture;
 #if (PK_GPU_D3D11 != 0)
-	PopcornFX::SParticleStreamBuffer_D3D11	m_ViewConstantBuffer_D3D11;
+	PopcornFX::SBuffer_D3D11	m_ViewConstantBuffer_D3D11;
 #endif // (PK_GPU_D3D11 != 0)
 	SUEViewUniformData						m_ViewUniformData;
 	FPostOpaqueRenderDelegate				m_PostOpaqueRenderDelegate;

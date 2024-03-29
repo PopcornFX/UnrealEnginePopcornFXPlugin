@@ -211,7 +211,7 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::Clear()
 
 	m_Data->m_SkinContext.m_SrcPositions = TStridedMemoryView<const CFloat3>();
 	m_Data->m_SkinContext.m_SrcNormals = TStridedMemoryView<const CFloat3>();
-	m_Data->m_SkinContext.m_SrcTangents = TStridedMemoryView<const CFloat3>();
+	m_Data->m_SkinContext.m_SrcTangents = TStridedMemoryView<const CFloat4>();
 
 	m_Data->m_SkinContext.m_DstPositions = TStridedMemoryView<CFloat3>();
 	m_Data->m_SkinContext.m_DstNormals = TStridedMemoryView<CFloat3>();
@@ -313,7 +313,8 @@ void	UPopcornFXAttributeSamplerSkinnedMesh::Skin_Finish(const PopcornFX::SSkinCo
 	// Rebuild sampling structures if bone visibility array has changed
 	if (!m_Data->m_BoneVisibilityChanged)
 		return;
-	if (!PK_VERIFY(bSkinPositions))
+
+	if (!bSkinPositions)
 	{
 		// @TODO : warn the user that distribution will be invalid if he only checked bSkinNormals or bSkinTangents
 		// and he either is sampling a destructible mesh or the target skinned mesh component got one of its bone hidden/unhidden
@@ -710,16 +711,16 @@ namespace
 
 		_IndexType							* __restrict boneIndices = reinterpret_cast<_IndexType*>(data->m_BoneIndices.RawDataPointer());
 
-		const bool	skin = (buildDesc.m_BuildFlags & (Build_Positions | Build_Tangents | Build_Normals)) != 0;
+		const bool	skin = (buildDesc.m_BuildFlags & (Build_Positions | Build_Normals | Build_Tangents)) != 0;
 		if (skin)
 		{
 			PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerSkinnedMesh::Copy src positions/normals/tangents", POPCORNFX_UE_PROFILER_COLOR);
-			PK_ASSERT(srcPositionsView.Stride() == data->m_DstPositions.Stride());
 
 			if (buildDesc.m_BuildFlags & Build_Positions)
 			{
 				if (!PK_VERIFY(srcPositionsView.Count() == data->m_DstPositions.Count()))
 					return false;
+				PK_ASSERT(srcPositionsView.Stride() == data->m_DstPositions.Stride());
 				data->m_SkinContext.m_SrcPositions = srcPositionsView;
 				PopcornFX::Mem::Copy(data->m_DstPositions.RawDataPointer(), srcPositionsView.Data(), sizeof(CFloat4) * srcPositionsView.Count());
 			}
@@ -734,7 +735,7 @@ namespace
 			}
 			if (buildDesc.m_BuildFlags & Build_Tangents)
 			{
-				const TStridedMemoryView<CFloat3>	srcTangentsView = TStridedMemoryView<CFloat3>::Reinterpret(vstream.Tangents());
+				const TStridedMemoryView<CFloat4>	srcTangentsView = vstream.Tangents();
 				if (!PK_VERIFY(srcTangentsView.Count() == data->m_DstTangents.Count()))
 					return false;
 				PK_ASSERT(srcTangentsView.Stride() == data->m_DstTangents.Stride());

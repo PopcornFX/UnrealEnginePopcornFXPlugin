@@ -112,11 +112,10 @@ namespace
 				const char			*attrType = (dstAttrTraits.ScalarType == PopcornFX::BaseType_Bool ? "Bool" : (dstAttrTraits.IsFp ? "Float" : "Int"));
 				UE_LOG(LogPopcornFXAttributeFunctions, Warning,
 					TEXT("SetAttributeAs: the Attribute [%d] \"%s\" cannot be set as %s %d: the attribute is %s %d (%s)"),
-					attri, ANSI_TO_TCHAR(decl->ExportedName().Data()),
-					ANSI_TO_TCHAR(inType), _Dim,
-					ANSI_TO_TCHAR(attrType), dstAttrTraits.VectorDimension,
-					*(component->GetPathName())
-					);
+					attri, *ToUE(decl->ExportedName()),
+					UTF8_TO_TCHAR(inType), _Dim,
+					UTF8_TO_TCHAR(attrType), dstAttrTraits.VectorDimension,
+					*(component->GetPathName()));
 				return false;
 			}
 		}
@@ -176,11 +175,10 @@ namespace
 				const char	*attrType = (dstAttrTraits.ScalarType == PopcornFX::BaseType_Bool ? "Bool" : (dstAttrTraits.IsFp ? "Float" : "Int"));
 				UE_LOG(LogPopcornFXAttributeFunctions, Warning,
 					TEXT("GetAttributeAs: the Attribute [%d] \"%s\" cannot be get as %s %d: the attribute is %s %d (%s)"),
-					attri, ANSI_TO_TCHAR(decl->ExportedName().Data()),
-					ANSI_TO_TCHAR(inType), _Dim,
-					ANSI_TO_TCHAR(attrType), dstAttrTraits.VectorDimension,
-					*(component->GetPathName())
-					);
+					attri, *ToUE(decl->ExportedName()),
+					UTF8_TO_TCHAR(inType), _Dim,
+					UTF8_TO_TCHAR(attrType), dstAttrTraits.VectorDimension,
+					*(component->GetPathName()));
 				return false;
 			}
 		}
