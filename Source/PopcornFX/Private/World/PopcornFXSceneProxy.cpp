@@ -162,9 +162,7 @@ FPrimitiveViewRelevance	FPopcornFXSceneProxy::GetViewRelevance(const FSceneView*
 	viewRelevance.bHasVolumeMaterialDomain = true;
 
 	viewRelevance.bTranslucentSelfShadow = true;
-#if 0
-	viewRelevance.bVelocityRelevance = true;
-#endif
+	viewRelevance.bVelocityRelevance = DrawsVelocity();
 	return viewRelevance;
 }
 
