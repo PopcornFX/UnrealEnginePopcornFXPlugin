@@ -1712,12 +1712,40 @@ void	CParticleScene::RayTracePacket(
 		}
 	}
 
+	void** contactSurfaces = queryPhysicalMaterial ? results.m_ContactSurfaces_Aligned16 : null;
+
 	for (u32 hiti = 0; hiti < hitResultBufferCurrentIndex; ++hiti)
 	{
 		RAYTRACE_PROFILE_CAPTURE_CYCLES(RayTrace_CHAOS_Results_Hit);
+		const FRaycastBufferAndIndex& resultBufferAndIndex = hitResultBuffers[hiti];
 
 		u32					rayi = hitResultBuffers[hiti].m_RayIndex;
 		const FHitLocation	&hit = hitResultBuffers[hiti].m_HitLocation;
+
+		PK_ASSERT(rayi < resCount);
+
+		if (contactSurfaces != null)
+		{
+			RAYTRACE_PROFILE_CAPTURE_CYCLES_N(RayTrace_Results_Hit_Mat, 1);
+
+			const TArray<Chaos::FMaterialHandle> &fmatData = hit.Shape->GetMaterials();
+
+			if (fmatData.Num() != 0)
+			{
+				const Chaos::FChaosPhysicsMaterial *fPhyMat = fmatData[0].Get();
+				void *userData = fPhyMat->UserData;
+
+				if (userData)
+				{
+					UPhysicalMaterial *uPhyMat = FChaosUserData::Get<UPhysicalMaterial>(userData);
+					contactSurfaces[rayi] = uPhyMat;
+				}
+			}
+			else
+			{
+				contactSurfaces[rayi] = null;
+			}
+		}
 
 		const float		hitTime = hit.Distance * scaleUEToPk;
 

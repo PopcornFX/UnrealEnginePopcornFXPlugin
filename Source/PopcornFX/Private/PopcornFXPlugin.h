@@ -195,7 +195,7 @@ public:
 	class FRHITexture2D						*SceneDepthTexture() { return m_SceneDepthTexture; }
 	class FRHITexture2D						*SceneNormalTexture() { return m_SceneNormalTexture; }
 #if (PK_GPU_D3D11 != 0)
-	PopcornFX::SBuffer_D3D11	&ViewConstantBuffer_D3D11() { return m_ViewConstantBuffer_D3D11; }
+	PopcornFX::SBuffer_D3D11				&ViewConstantBuffer_D3D11() { return m_ViewConstantBuffer_D3D11; }
 #endif // (PK_GPU_D3D11 != 0)
 	void									SetViewUniformData(const SUEViewUniformData &viewUniformData) { m_ViewUniformData = viewUniformData; }
 	const SUEViewUniformData				&ViewUniformData() const { return m_ViewUniformData; }
@@ -233,13 +233,13 @@ private:
 
 #if 0
 	// Main
-	class FRHITexture2D						*m_SceneDepthTexture;
-	class FRHITexture2D						*m_SceneNormalTexture;
+	class FRHITexture2D					*m_SceneDepthTexture;
+	class FRHITexture2D					*m_SceneNormalTexture;
 #if (PK_GPU_D3D11 != 0)
-	PopcornFX::SBuffer_D3D11	m_ViewConstantBuffer_D3D11;
+	PopcornFX::SBuffer_D3D11			m_ViewConstantBuffer_D3D11;
 #endif // (PK_GPU_D3D11 != 0)
-	SUEViewUniformData						m_ViewUniformData;
-	FPostOpaqueRenderDelegate				m_PostOpaqueRenderDelegate;
+	SUEViewUniformData					m_ViewUniformData;
+	FPostOpaqueRenderDelegate			m_PostOpaqueRenderDelegate;
 #endif
 
 #if WITH_EDITOR
