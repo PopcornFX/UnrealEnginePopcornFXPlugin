@@ -53,6 +53,9 @@ public:
 
 	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetHeight(float height);
+
+	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
+	void					SetScale(FVector scale);
 public:
 	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
 	TEnumAsByte<EPopcornFXAttribSamplerShapeType::Type>		ShapeType;
@@ -74,6 +77,9 @@ public:
 
 	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly, meta=(ClampMin = "0.0", UIMin = "0.0"))
 	float					Height;
+
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly, meta=(ClampMin = "0.0", UIMin = "0.0"))
+	FVector					Scale;
 
 	/** Distribute sampling by the given CollectionSamplingHeuristic of sub-Shapes */
 	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)

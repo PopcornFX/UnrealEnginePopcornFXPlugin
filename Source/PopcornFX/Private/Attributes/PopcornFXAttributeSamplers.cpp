@@ -638,7 +638,11 @@ namespace
 		if (!PK_VERIFY(batch->RawMesh() != null))
 			return null;
 
-		PopcornFX::CShapeDescriptor_Mesh	*shapeDesc = PK_NEW(PopcornFX::CShapeDescriptor_Mesh(batch->RawMesh()));
+		PK_ASSERT(self->Scale.GetMin() >= 0.0f);
+		const FVector3f safeMeshScale = FVector3f(self->Scale);
+		const CFloat3 scale = ToPk(safeMeshScale);
+
+		PopcornFX::CShapeDescriptor_Mesh	*shapeDesc = PK_NEW(PopcornFX::CShapeDescriptor_Mesh(batch->RawMesh(), scale));
 
 		_RebuildSamplingStructs(self, shapeDesc);
 
@@ -651,6 +655,12 @@ namespace
 	{
 		const UPopcornFXAttributeSamplerShape		*self = params.self;
 		PopcornFX::CShapeDescriptor_Mesh			*shapeDesc = static_cast<PopcornFX::CShapeDescriptor_Mesh*>(params.shape);
+		
+		PK_ASSERT(self->Scale.GetMin() >= 0.0f);
+		const FVector3f	safeScale = FVector3f(self->Scale);
+		const CFloat3	scale = ToPk(safeScale);
+
+		shapeDesc->SetScale(scale);
 
 		_RebuildSamplingStructs(self, shapeDesc);
 	}
@@ -779,6 +789,7 @@ UPopcornFXAttributeSamplerShape::UPopcornFXAttributeSamplerShape(const FObjectIn
 	ShapeType = EPopcornFXAttribSamplerShapeType::Sphere;
 	BoxDimension = FVector(100.f);
 	Radius = 100.f;
+	Scale = FVector::OneVector;
 	InnerRadius = 0.f;
 	Height = 100.f;
 	StaticMesh = null;
@@ -849,6 +860,14 @@ void	UPopcornFXAttributeSamplerShape::SetHeight(float height)
 
 //----------------------------------------------------------------------------
 
+void	UPopcornFXAttributeSamplerShape::SetScale(FVector scale)
+{
+	Scale = scale;
+	UpdateShapeProperties();
+}
+
+//----------------------------------------------------------------------------
+
 PopcornFX::CMeshSurfaceSamplerStructuresRandom	*UPopcornFXAttributeSamplerShape::SamplerSurface() const
 {
 	return &m_Data->m_SamplerSurface;
@@ -908,6 +927,7 @@ void	UPopcornFXAttributeSamplerShape::PostEditChangeProperty(FPropertyChangedEve
 			propertyName == TEXT("Radius") ||
 			propertyName == TEXT("InnerRadius") ||
 			propertyName == TEXT("Height") ||
+			propertyName == TEXT("Scale") ||
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 			propertyName == TEXT("CollectionSamplingHeuristic") ||
 			propertyName == TEXT("CollectionUseShapeWeights") ||

@@ -254,7 +254,7 @@ FText	FPopcornFXCustomizationSubRendererMaterial::OnGetThumbnailToolTip(int32 th
 	check(thumbId >= 0 && thumbId < PK_ARRAY_COUNT(m_Thumbs));
 	if (!m_Thumbs[thumbId].m_Pty->IsValidHandle())
 		return FText::FromString(TEXT("Invalid"));
-	UObject		*obj;
+	UObject		*obj = null;
 	m_Thumbs[thumbId].m_Pty->GetValue(obj);
 	if (obj == null)
 		return FText::FromString(TEXT("null"));

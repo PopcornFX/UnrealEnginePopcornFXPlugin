@@ -68,6 +68,7 @@ void	FPopcornFXDetailsAttributeSamplerShape::CustomizeDetails(IDetailLayoutBuild
 			detailLayout.HideProperty("StaticMesh");
 			detailLayout.HideProperty("StaticMeshSubIndex");
 			detailLayout.HideProperty("Shapes");
+			detailLayout.HideProperty("Scale");
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 			detailLayout.HideProperty("CollectionSamplingHeuristic");
 			detailLayout.HideProperty("CollectionUseShapeWeights");
@@ -82,6 +83,7 @@ void	FPopcornFXDetailsAttributeSamplerShape::CustomizeDetails(IDetailLayoutBuild
 			detailLayout.HideProperty("StaticMesh");
 			detailLayout.HideProperty("StaticMeshSubIndex");
 			detailLayout.HideProperty("Shapes");
+			detailLayout.HideProperty("Scale");
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 			detailLayout.HideProperty("CollectionSamplingHeuristic");
 			detailLayout.HideProperty("CollectionUseShapeWeights");
@@ -108,6 +110,7 @@ void	FPopcornFXDetailsAttributeSamplerShape::CustomizeDetails(IDetailLayoutBuild
 			detailLayout.HideProperty("StaticMesh");
 			detailLayout.HideProperty("StaticMeshSubIndex");
 			detailLayout.HideProperty("Shapes");
+			detailLayout.HideProperty("Scale");
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 			detailLayout.HideProperty("CollectionSamplingHeuristic");
 			detailLayout.HideProperty("CollectionUseShapeWeights");
@@ -121,6 +124,7 @@ void	FPopcornFXDetailsAttributeSamplerShape::CustomizeDetails(IDetailLayoutBuild
 			detailLayout.HideProperty("StaticMesh");
 			detailLayout.HideProperty("StaticMeshSubIndex");
 			detailLayout.HideProperty("Shapes");
+			detailLayout.HideProperty("Scale");
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 			detailLayout.HideProperty("CollectionSamplingHeuristic");
 			detailLayout.HideProperty("CollectionUseShapeWeights");
@@ -136,6 +140,7 @@ void	FPopcornFXDetailsAttributeSamplerShape::CustomizeDetails(IDetailLayoutBuild
 			detailLayout.HideProperty("InnerRadius");
 			detailLayout.HideProperty("Height");
 			detailLayout.HideProperty("StaticMesh");
+			detailLayout.HideProperty("Scale");
 			detailLayout.HideProperty("StaticMeshSubIndex");
 			detailLayout.HideProperty("ShapeSamplingMode");
 			detailLayout.HideProperty("DensityColorChannel");
