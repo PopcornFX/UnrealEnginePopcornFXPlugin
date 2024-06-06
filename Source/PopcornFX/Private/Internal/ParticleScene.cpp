@@ -1728,17 +1728,32 @@ void	CParticleScene::RayTracePacket(
 		{
 			RAYTRACE_PROFILE_CAPTURE_CYCLES_N(RayTrace_Results_Hit_Mat, 1);
 
-			const TArray<Chaos::FMaterialHandle> &fmatData = hit.Shape->GetMaterials();
-
-			if (fmatData.Num() != 0)
+			if (hit.Shape)
 			{
-				const Chaos::FChaosPhysicsMaterial *fPhyMat = fmatData[0].Get();
-				void *userData = fPhyMat->UserData;
+				const TArray<Chaos::FMaterialHandle> &fmatData = hit.Shape->GetMaterials();
 
-				if (userData)
+				if (fmatData.Num() != 0)
 				{
-					UPhysicalMaterial *uPhyMat = FChaosUserData::Get<UPhysicalMaterial>(userData);
-					contactSurfaces[rayi] = uPhyMat;
+					const Chaos::FChaosPhysicsMaterial *fPhyMat = fmatData[0].Get();
+
+					if (fPhyMat)
+					{
+						void* userData = fPhyMat->UserData;
+
+						if (userData)
+						{
+							UPhysicalMaterial* uPhyMat = FChaosUserData::Get<UPhysicalMaterial>(userData);
+							contactSurfaces[rayi] = uPhyMat;
+						}
+					}
+					else
+					{
+						contactSurfaces[rayi] = null;
+					}
+				}
+				else
+				{
+					contactSurfaces[rayi] = null;
 				}
 			}
 			else
