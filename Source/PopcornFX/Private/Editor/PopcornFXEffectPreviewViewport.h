@@ -72,11 +72,11 @@ private:
 	bool	m_DisplayCubemap;
 	bool	m_DisplayGrid;
 
-	FPreviewScene						m_PreviewScene;
-	class UPopcornFXEmitterComponent	*m_EmitterComponent;
+	FPreviewScene									m_PreviewScene;
+	TObjectPtr<class UPopcornFXEmitterComponent>	m_EmitterComponent;
 
-	TWeakPtr<SDockTab>						m_ParentTab;
-	TWeakPtr<class FPopcornFXEffectEditor>	m_EffectEditor;
+	TWeakPtr<SDockTab>								m_ParentTab;
+	TWeakPtr<class FPopcornFXEffectEditor>			m_EffectEditor;
 
 	TSharedPtr<class FPopcornFXEffectPreviewViewportClient>	m_ViewportClient;
 };

@@ -18,9 +18,9 @@
 #	include "ShaderCompilerCore.h"
 #	include "Misc/FileHelper.h"
 
-#	if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#	if (ENGINE_MINOR_VERSION >= 3)
 #		include "ShaderPreprocessTypes.h"
-#	endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#	endif // (ENGINE_MINOR_VERSION >= 3)
 
 #	include <pk_engine_utils/include/eu_random.h>
 #	include <pk_maths/include/pk_maths_random.h>
@@ -312,19 +312,19 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				// Tell UE where the content is located, and to skip the mcpp pass
 				input.VirtualSourceFilePath = srcFilePath;
 				input.EntryPointName = "main";
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
+				input.DebugInfoFlags |= EShaderDebugInfoFlags::CompileFromDebugUSF;
+#else
 				input.bSkipPreprocessedCache = true;
+#endif
 
-#if (ENGINE_MAJOR_VERSION == 5)
 				for (u32 compilerFlag : compilerFlags)
 					input.Environment.CompilerFlags.Append(compilerFlag);
-#else
-				input.Environment.CompilerFlags = compilerFlags;
-#endif // (ENGINE_MAJOR_VERSION == 5)
 			}
 
 			FShaderCompilerOutput		output;
 			const FString				workingDirectory;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MINOR_VERSION >= 3)
 			FShaderPreprocessOutput		preprocessorOutput;
 			FShaderCompilerEnvironment	mergedEnvironment;
 			if (!shaderFormat->PreprocessShader(input, mergedEnvironment, preprocessorOutput))
@@ -335,7 +335,7 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output, workingDirectory);
 #else
 			shaderFormat->CompileShader(shaderFormatName, input, output, workingDirectory);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#endif // (ENGINE_MINOR_VERSION >= 3)
 
 			if (output.bSucceeded)
 			{
@@ -420,12 +420,7 @@ namespace
 								PopcornFX::CMessageStream								&outMessages)
 	{
 		TArray<uint32>	compilerFlags;
-#if (ENGINE_MAJOR_VERSION == 5)
 		return CompileComputeShaderForAPI(source, buildInfos, "D3D12", SP_PCD3D_SM6, "DXBC", compilerFlags, outBytecode, outMessages);
-#else
-		compilerFlags.Add(CFLAG_ForceDXC); // Force SM6.0
-		return CompileComputeShaderForAPI(source, buildInfos, "D3D12", SP_PCD3D_SM5, "DXBC", compilerFlags, outBytecode, outMessages);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	}
 }
 

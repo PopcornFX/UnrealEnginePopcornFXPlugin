@@ -423,6 +423,15 @@ void	UPopcornFXFile::PreReimport_Clean()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
+void	UPopcornFXFile::GetAssetRegistryTags(FAssetRegistryTagsContext context) const
+{
+	if (AssetImportData != null)
+		context.AddTag( FAssetRegistryTag(SourceFileTagName(), AssetImportData->GetSourceData().ToJson(), FAssetRegistryTag::TT_Hidden) );
+
+	Super::GetAssetRegistryTags(context);
+}
+#else
 void	UPopcornFXFile::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const
 {
 	if (AssetImportData != null)
@@ -430,6 +439,7 @@ void	UPopcornFXFile::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) co
 
 	Super::GetAssetRegistryTags(outTags);
 }
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 
 //----------------------------------------------------------------------------
 

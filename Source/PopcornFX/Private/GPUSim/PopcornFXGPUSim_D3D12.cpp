@@ -133,7 +133,9 @@ FD3D12ResourceLocation::~FD3D12ResourceLocation()
 void FD3D12ResourceLocation::SetResource(FD3D12Resource* Value)
 {
 	check(UnderlyingResource == nullptr);
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION < 4)
 	check(ResidencyHandle == nullptr);
+#endif
 
 	if (Type == ResourceLocationType::eStandAlone)
 	{
@@ -141,11 +143,11 @@ void FD3D12ResourceLocation::SetResource(FD3D12Resource* Value)
 	}
 
 	UnderlyingResource = Value;
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION < 4)
 	ResidencyHandle = &UnderlyingResource->GetResidencyHandle();
-#else
+#elif (ENGINE_MAJOR_VERSION == 4)
 	ResidencyHandle = UnderlyingResource->GetResidencyHandle();
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION < 4)
 }
 
 //----------------------------------------------------------------------------
@@ -157,6 +159,38 @@ namespace	D3D12RHI
 		check(FAILED(Result));
 	}
 }
+
+//----------------------------------------------------------------------------
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
+void FD3D12Resource::StartTrackingForResidency()
+{
+#if ENABLE_RESIDENCY_MANAGEMENT
+
+	if (!bRequiresResidencyTracking)
+	{
+		return;
+	}
+
+	checkf(IsGPUOnly(HeapType), TEXT("Residency tracking is not expected for CPU-accessible resources"));
+	checkf(!Desc.bBackBuffer, TEXT("Residency tracking is not expected for back buffers"));
+	checkf(!Desc.bExternal, TEXT("Residency tracking is not expected for externally-owned resources"));
+
+	if (!IsPlacedResource() && !IsReservedResource())
+	{
+		checkf(!ResidencyHandle, TEXT("Residency tracking is already initialzied for this resource"));
+		ResidencyHandle = new FD3D12ResidencyHandle;
+
+		D3D12_RESOURCE_ALLOCATION_INFO Info;
+
+		Info = GetParentDevice()->GetDevice()->GetResourceAllocationInfo(0, 1, &Desc);
+		checkf(Info.SizeInBytes == UINT64_MAX, TEXT("D3D12 GetResourceAllocationInfo failed - likely a resource was requested that has invalid allocation info (e.g. is an invalid texture size)"));
+		D3DX12Residency::Initialize(*ResidencyHandle, Resource.GetReference(), Info.SizeInBytes, this);
+		D3DX12Residency::BeginTrackingObject(GetParentDevice()->GetResidencyManager(), *ResidencyHandle);
+	}
+#endif // ENABLE_RESIDENCY_MANAGEMENT
+}
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 
 //----------------------------------------------------------------------------
 
@@ -188,7 +222,9 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	, bRequiresResourceStateTracking(true)
 	, bDepthStencil(false)
 	, bDeferDelete(true)
+#	if (ENGINE_MINOR_VERSION < 4)
 	, bBackBuffer(false)
+#endif
 #else
 	, ResidencyHandle()
 	, Desc(InDesc)
@@ -217,11 +253,14 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 
 	InitalizeResourceState(InitialState, InResourceStateMode, InDefaultResourceState);
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MINOR_VERSION == 3)
 	if (!IsPlacedResource())
 	{
 		ResidencyHandle = MakeUnique<FD3D12ResidencyHandle>();
 	}
-
+#else
+	StartTrackingForResidency();
+#endif // (ENGINE_MINOR_VERSION == 3)
 	if (Desc.bReservedResource)
 	{
 		checkf(Heap == nullptr, TEXT("Reserved resources are not expected to have a heap"));

@@ -157,12 +157,21 @@ void	UPopcornFXEffect::PreReimport_Clean()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
+void	UPopcornFXEffect::GetAssetRegistryTags(FAssetRegistryTagsContext context) const
+{
+	context.AddTag(FAssetRegistryTag("NumMaterials", LexToString(ParticleRendererMaterials.Num()), FAssetRegistryTag::TT_Numerical));
+
+	Super::GetAssetRegistryTags(context);
+}
+#else
 void	UPopcornFXEffect::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const
 {
 	outTags.Add(FAssetRegistryTag("NumMaterials", LexToString(ParticleRendererMaterials.Num()), FAssetRegistryTag::TT_Numerical));
 
 	Super::GetAssetRegistryTags(outTags);
 }
+#endif
 
 //----------------------------------------------------------------------------
 
@@ -860,7 +869,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	PopcornFX::CMessageStream	bakerErrors;
 	if (!cookery.BakeAsset(ToPk(resolvedSrcFilePath), configFile, bakerErrors))
 	{
-		UE_LOG(LogPopcornFXEffect, Warning, TEXT("Failed baking effect '%s' for '%s'%s"), *GetPathName(), targetPlatformNameForLog, !bakerErrors.Messages().Empty() ? ":" : ".");
+		UE_LOG(LogPopcornFXEffect, Warning, TEXT("Failed baking effect '%s' for '%s'%s"), *GetPathName(), targetPlatformNameForLog, !bakerErrors.Messages().Empty() ? TEXT(":") : TEXT("."));
 		for (const auto &message : bakerErrors.Messages())
 		{
 			if (message.m_Level >= PopcornFX::CMessageStream::Warning)

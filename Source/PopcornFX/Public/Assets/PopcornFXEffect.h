@@ -51,7 +51,11 @@ public:
 
 #if WITH_EDITOR
 	// overrides UObject
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
+	void					GetAssetRegistryTags(FAssetRegistryTagsContext context) const override;
+#else
 	void					GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const override;
+#endif
 
 	// overrides FPopcornFXFile
 	virtual void			PreReimport_Clean() override;

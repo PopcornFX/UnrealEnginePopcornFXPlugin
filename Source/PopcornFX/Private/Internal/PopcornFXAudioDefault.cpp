@@ -48,7 +48,7 @@ void	*FPopcornFXAudioDefault::StartNewSound(const FPopcornFXSoundDescriptor &des
 	USoundBase		*sound = ::LoadObject<USoundBase>(null, *soundPath);
 	if (sound == null)
 	{
-		UE_LOG(LogPopcornFXAudio, Warning, TEXT("Couldn't play '%s', sound wasn't found"), descriptor.m_SoundPath);
+		UE_LOG(LogPopcornFXAudio, Warning, TEXT("Couldn't play '%s', sound wasn't found"), UTF8_TO_TCHAR(descriptor.m_SoundPath));
 		return null;
 	}
 	UAudioComponent	*audioComponent = null;

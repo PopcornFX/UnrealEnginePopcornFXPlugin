@@ -24,6 +24,10 @@ FPopcornFXSceneProxy::FPopcornFXSceneProxy(UPopcornFXSceneComponent *component)
 
 #if (ENGINE_MAJOR_VERSION == 5)
 	bAlwaysHasVelocity = true;
+
+#if (ENGINE_MINOR_VERSION >= 4)
+	bSupportsParallelGDME = false;
+#endif // (ENGINE_MINOR_VERSION >= 4)
 #endif // (ENGINE_MAJOR_VERSION == 5)
 }
 

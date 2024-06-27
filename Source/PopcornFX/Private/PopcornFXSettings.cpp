@@ -112,7 +112,7 @@ UMaterialInterface	*UPopcornFXSettings::GetConfigDefaultMaterial(uint32 ePopcorn
 	{
 		mat = Cast<UMaterialInterface>(obj);
 		if (!PK_VERIFY(mat != null))
-			UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %s is not a UMaterialInterface !"), kMaterialTypeNames[materialType]);
+			UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %s is not a UMaterialInterface !"), UTF8_TO_TCHAR(kMaterialTypeNames[materialType]));
 	}
 
 	if (mat == null)

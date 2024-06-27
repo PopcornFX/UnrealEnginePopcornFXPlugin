@@ -279,7 +279,7 @@ namespace
 
 		if (g_Asserting) // assert recursion ! break now
 		{
-			UE_LOG(LogPopcornFXStartup, Warning, TEXT("!! PopcornFX Assertion Recursion !! %s(%d): '%s' '%s'"), file, line, failed, message);
+			UE_LOG(LogPopcornFXStartup, Warning, TEXT("!! PopcornFX Assertion Recursion !! %s(%d): '%s' '%s'"), UTF8_TO_TCHAR(file), line, UTF8_TO_TCHAR(failed), UTF8_TO_TCHAR(message));
 #if defined(PK_DEBUG)
 			PK_BREAKPOINT();
 #endif

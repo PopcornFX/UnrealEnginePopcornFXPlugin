@@ -5,8 +5,12 @@
 
 #pragma once
 
+#include "PopcornFXSDK.h"
 #include "Assets/PopcornFXAssetDep.h"
 #include "Interfaces/Interface_AssetUserData.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
+#include "UObject/AssetRegistryTagsContext.h"
+#endif
 
 #include "PopcornFXFile.generated.h"
 
@@ -83,7 +87,11 @@ public:
 
 	void						AskImportAssetDependenciesIFN();
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
+	void						GetAssetRegistryTags(FAssetRegistryTagsContext context) const override;
+#else
 	void						GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const override;
+#endif
 
 	virtual void				PreReimport_Clean();
 #endif // WITH_EDITOR

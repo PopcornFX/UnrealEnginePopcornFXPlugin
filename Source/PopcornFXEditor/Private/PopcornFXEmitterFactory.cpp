@@ -66,15 +66,5 @@ UObject	*UPopcornFXEmitterFactory::GetAssetFromActorInstance(AActor* Instance)
 	return emitter->GetEffect();
 }
 
-void	UPopcornFXEmitterFactory::PostCreateBlueprint(UObject* Asset, AActor* CDO)
-{
-	if (Asset != NULL && CDO != NULL)
-	{
-		UPopcornFXEffect* effect = CastChecked<UPopcornFXEffect>(Asset);
-		APopcornFXEmitter* emitter = CastChecked<APopcornFXEmitter>(CDO);
-		emitter->SetEffect(effect);
-	}
-}
-
 //----------------------------------------------------------------------------
 #undef LOCTEXT_NAMESPACE

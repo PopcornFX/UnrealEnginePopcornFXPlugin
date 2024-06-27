@@ -35,9 +35,7 @@
 
 #if PLATFORM_WINDOWS
 #	include "Windows/MinimalWindowsApi.h"
-#	include "Windows/PreWindowsApi.h"
-#	include "Windows/MinWindows.h"
-#	include "Windows/PostWindowsApi.h"
+#	include "Windows/WindowsHWrapper.h"
 #elif PLATFORM_XBOXONE
 #	include "XboxCommonPreApi.h"
 #	include "XboxCommonMinApi.h"

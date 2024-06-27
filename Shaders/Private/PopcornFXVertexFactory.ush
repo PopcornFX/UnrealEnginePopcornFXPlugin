@@ -257,6 +257,14 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 #endif
 
 	VertexParameters.TangentToWorld = mul(TangentToLocal, GetLocalToWorld3x3());
+
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
+#if ENABLE_NEW_HLSL_GENERATOR
+	EvaluateVertexMaterialAttributes(VertexParameters);
+#endif // ENABLE_NEW_HLSL_GENERATOR
+	VertexParameters.LWCData = MakeMaterialLWCData(VertexParameters);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
+
 	return VertexParameters;
 }
 
@@ -313,7 +321,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 
 	float3	vertexPosition = Input.Position;
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MAJOR_VERSION >= 4)
+	float3	worldVertexPosition = mul(float4(vertexPosition,1), DFDemote(GetPrimitiveDataFromUniformBuffer().LocalToWorld)).xyz;
+	worldVertexPosition += LWCToFloat(ResolvedView.TileOffset.PreViewTranslation);
+#elif (ENGINE_MAJOR_VERSION == 5)
 	float3	worldVertexPosition = mul(float4(vertexPosition,1), LWCToFloat(GetPrimitiveDataFromUniformBuffer().LocalToWorld)).xyz;
 	worldVertexPosition += LWCToFloat(ResolvedView.PreViewTranslation);
 #else
@@ -329,7 +340,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	if (PopcornFXBillboardVSUniforms.InPreviousPositionOffset != -1)
 		prevVertexPosition = PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InPreviousPositionOffset);
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MAJOR_VERSION >= 4)
+	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), DFDemote(GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld)).xyz;
+	prevWorldVertexPosition += LWCToFloat(ResolvedView.TileOffset.PrevPreViewTranslation);
+#elif (ENGINE_MAJOR_VERSION == 5)
 	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), LWCToFloat(GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld)).xyz;
 	prevWorldVertexPosition += LWCToFloat(ResolvedView.PrevPreViewTranslation);
 #else
