@@ -321,7 +321,7 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 
 	float3	vertexPosition = Input.Position;
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MAJOR_VERSION >= 4)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	float3	worldVertexPosition = mul(float4(vertexPosition,1), DFDemote(GetPrimitiveDataFromUniformBuffer().LocalToWorld)).xyz;
 	worldVertexPosition += LWCToFloat(ResolvedView.TileOffset.PreViewTranslation);
 #elif (ENGINE_MAJOR_VERSION == 5)
@@ -340,7 +340,7 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	if (PopcornFXBillboardVSUniforms.InPreviousPositionOffset != -1)
 		prevVertexPosition = PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InPreviousPositionOffset);
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MAJOR_VERSION >= 4)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), DFDemote(GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld)).xyz;
 	prevWorldVertexPosition += LWCToFloat(ResolvedView.TileOffset.PrevPreViewTranslation);
 #elif (ENGINE_MAJOR_VERSION == 5)
