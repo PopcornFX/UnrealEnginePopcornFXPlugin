@@ -610,8 +610,12 @@ namespace
 			else if (basePath.EndsWith(TEXT(".ttf")) || basePath.EndsWith(TEXT(".otf")))
 				basePath = basePath.LeftChop(4) + TEXT(".pkfm");
 
-			if (PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_AnimTrack>(&hbo) != null && basePath.EndsWith(TEXT(".fbx")))
+			if ((PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_AnimTrack>(&hbo) != null
+				|| PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_AnimTrack>(&hbo) != null)
+				&& basePath.EndsWith(TEXT(".fbx")))
+			{
 				basePath = basePath.LeftChop(4) + TEXT(".pkan");
+			}
 
 			FString				sourcePathOrNot;
 			FString				importPath;

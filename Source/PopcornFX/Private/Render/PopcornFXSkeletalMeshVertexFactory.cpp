@@ -21,6 +21,7 @@
 
 #include "MeshMaterialShader.h"
 #include "MeshDrawShaderBindings.h"
+#include "GPUSim/PopcornFXGPUSim.h"
 
 #include "PopcornFXSDK.h"
 

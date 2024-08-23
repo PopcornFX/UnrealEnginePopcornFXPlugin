@@ -13,6 +13,7 @@
 #include "Components.h"
 
 #include "PopcornFXSDK.h"
+#include "GlobalShader.h"
 
 #define		PK_PREBUILD_BONE_TRANSFORMS	1
 
