@@ -118,13 +118,13 @@ public:
 	bool		SetupFromGame(const CMaterialDesc_GameThread &gameMat);
 	bool		ResolveMaterial(PopcornFX::Drawers::EBillboardingLocation bbLocation);
 
-	FMaterialRenderProxy		*RenderProxy() const { return m_MaterialRenderProxy; }
-	const UMaterialInterface	*MaterialInterface() const { return m_MaterialInterface; }
+	TArray<FMaterialRenderProxy*>		RenderProxy() const { return m_MaterialRenderProxy; }
+	const TArray<UMaterialInterface*>	MaterialInterface() const { return m_MaterialInterface; }
 
 private:
 	// Stateless, resolved every frame
-	UMaterialInterface			*m_MaterialInterface = null;
-	FMaterialRenderProxy		*m_MaterialRenderProxy = null;
+	TArray<UMaterialInterface*>			m_MaterialInterface;
+	TArray<FMaterialRenderProxy*>		m_MaterialRenderProxy;
 };
 
 //----------------------------------------------------------------------------

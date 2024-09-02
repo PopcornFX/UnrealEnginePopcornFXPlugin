@@ -30,6 +30,7 @@
 
 #include <pk_render_helpers/include/render_features/rh_features_basic.h>
 #include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
+#include <pk_particles/include/Storage/MainMemory/storage_ram.h>
 
 //----------------------------------------------------------------------------
 
@@ -59,9 +60,9 @@ bool	CBatchDrawer_Sound::AreRenderersCompatible(const PopcornFX::CRendererDataBa
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Sound::CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const
+bool	CBatchDrawer_Sound::CanRender(PopcornFX::SRenderContext &ctx) const
 {
-	PK_ASSERT(drawPass.m_RendererCaches.First() != null);
+	PK_ASSERT(DrawPass().m_RendererCaches.First() != null);
 
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
 	PK_ASSERT(renderContext.m_RendererSubView != null);
@@ -247,7 +248,7 @@ void	CBatchDrawer_Sound::_IssueDrawCall_Sound(const SUERenderContext &renderCont
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Sound::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit)
+bool	CBatchDrawer_Sound::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Sound::EmitDrawCall");
 	PK_ASSERT(toEmit.m_DrawRequests.First() != null);

@@ -216,20 +216,35 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 
 	if (renderer->m_RendererType == PopcornFX::Renderer_Billboard)
 	{
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_FlipUVs()))
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_FlipUVs())) // Legacy
 		{
 			m_Flags.m_FlipU = false;
 			m_Flags.m_FlipV = true;
 		}
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipU()))
+			m_Flags.m_FlipU = true;
+
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipV()))
+			m_Flags.m_FlipV = true;
+
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_RotateUV()))
+			m_Flags.m_RotateTexture = true;
+		
 	}
 	else if (renderer->m_RendererType == PopcornFX::Renderer_Ribbon)
 	{
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_TextureUVs()))
-		{
-			m_Flags.m_FlipU = renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipU(), false);
-			m_Flags.m_FlipV = renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipV(), false);
-			m_Flags.m_RotateTexture = renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_RotateTexture(), false);
-		}
+		if (renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipU(), false) ||
+			renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipU(), false))
+			m_Flags.m_FlipU = true;
+
+		if (renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipV(), false) ||
+			renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipV(), false))
+			m_Flags.m_FlipV = true;
+
+		if (renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_RotateTexture(), false)  ||
+			renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_RotateUV(), false))
+			m_Flags.m_RotateTexture = true;
+
 		m_Flags.m_HasRibbonCorrectDeformation = renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
 	}
 	else if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
@@ -238,6 +253,17 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 			BuildCacheInfos_SkeletalMesh();
 		else if (m_GameThreadDesc.m_StaticMesh != null)
 			BuildCacheInfos_StaticMesh();
+	}
+	else if (renderer->m_RendererType == PopcornFX::Renderer_Triangle)
+	{
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipU()))
+			m_Flags.m_FlipU = true;
+
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipV()))
+			m_Flags.m_FlipV = true;
+
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_RotateUV()))
+			m_Flags.m_RotateTexture = true;
 	}
 }
 
@@ -496,11 +522,11 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 
 bool	CMaterialDesc_RenderThread::ValidForRendering() const
 {
-	if (m_MaterialInterface == null ||
-		m_MaterialRenderProxy == null ||
+	if (m_MaterialInterface.IsEmpty() ||
+		m_MaterialRenderProxy.IsEmpty() ||
 		m_RendererMaterial == null ||
 		/* m_MaterialRenderProxy->IsDeleted() || */
-		!m_MaterialRenderProxy->IsInitialized())
+		!m_MaterialRenderProxy[0]->IsInitialized())
 		return false;
 
 //#if WITH_EDITOR Will happen in packaged games unless we can report that a material is invalid for rendering
@@ -522,8 +548,8 @@ void	CMaterialDesc_RenderThread::Clear()
 {
 	CMaterialDesc_GameThread::Clear();
 
-	m_MaterialInterface = null;
-	m_MaterialRenderProxy = null;
+	m_MaterialInterface.Empty();
+	m_MaterialRenderProxy.Empty();
 }
 
 //----------------------------------------------------------------------------
@@ -651,56 +677,63 @@ bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardi
 	PK_ASSERT(IsInRenderingThread());
 	if (!MaterialIsValid())
 		return false;
-	UMaterialInstanceConstant	*materialInstance = m_RendererMaterial->GetInstance(0, true); // ~
-	if (materialInstance == null) // We shouldn't be here
-		return false;
 
-	// We are here, we are going to be rendered. Fallback on the default material if user specified an invalid material
-	m_MaterialInterface = materialInstance;
-	switch (m_RendererClass)
+	m_MaterialInterface.SetNum(m_RendererMaterial->SubMaterials.Num());
+	m_MaterialRenderProxy.SetNum(m_RendererMaterial->SubMaterials.Num());
+
+	for (int32 i = 0; i < m_RendererMaterial->SubMaterials.Num(); i++)
 	{
-	case	PopcornFX::Renderer_Billboard:
-	case	PopcornFX::Renderer_Triangle:
-		if (bbLocation == PopcornFX::Drawers::BillboardingLocation_CPU ||
-			bbLocation == PopcornFX::Drawers::BillboardingLocation_ComputeShader)
-		{
-			if (!FPopcornFXVertexFactory::IsCompatible(m_MaterialInterface))
-				m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
-		}
-		else if (bbLocation == PopcornFX::Drawers::BillboardingLocation_VertexShader)
-		{
-			if (!FPopcornFXGPUVertexFactory::IsCompatible(m_MaterialInterface))
-				m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
-		}
-		else
-		{
-			PK_ASSERT_NOT_REACHED();
-		}
-		break;
-	case	PopcornFX::Renderer_Ribbon:
-		if (!FPopcornFXVertexFactory::IsCompatible(m_MaterialInterface))
-			m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
-		break;
-	case	PopcornFX::Renderer_Mesh:
-		if (m_SkeletalMesh != null)
-		{
-			if (!FPopcornFXSkelMeshVertexFactory::IsCompatible(materialInstance))
-				m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
-		}
-		else
-		{
-			if (!FPopcornFXMeshVertexFactory::IsCompatible(materialInstance))
-				m_MaterialInterface = UMaterial::GetDefaultMaterial(MD_Surface);
-		}
-		break;
-	default:
-		PK_ASSERT_NOT_REACHED();
-		break;
-	}
+		UMaterialInstanceConstant	*materialInstance = m_RendererMaterial->GetInstance(i, true); // ~
+		if (materialInstance == null) // We shouldn't be here
+			return false;
 
-	m_MaterialRenderProxy = materialInstance->GetRenderProxy();
-	if (!PK_VERIFY(m_MaterialRenderProxy != null))
-		return false;
+		// We are here, we are going to be rendered. Fallback on the default material if user specified an invalid material
+		m_MaterialInterface[i] = materialInstance;
+		switch (m_RendererClass)
+		{
+		case	PopcornFX::Renderer_Billboard:
+		case	PopcornFX::Renderer_Triangle:
+			if (bbLocation == PopcornFX::Drawers::BillboardingLocation_CPU)
+			{
+				if (!FPopcornFXVertexFactory::IsCompatible(m_MaterialInterface[i]))
+					m_MaterialInterface[i] = UMaterial::GetDefaultMaterial(MD_Surface);
+			}
+			else if (bbLocation == PopcornFX::Drawers::BillboardingLocation_VertexShader)
+			{
+				if (!FPopcornFXGPUVertexFactory::IsCompatible(m_MaterialInterface[i]))
+					m_MaterialInterface[i] = UMaterial::GetDefaultMaterial(MD_Surface);
+			}
+			else
+			{
+				PK_ASSERT_NOT_REACHED();
+			}
+			break;
+		case	PopcornFX::Renderer_Ribbon:
+			if (!FPopcornFXVertexFactory::IsCompatible(m_MaterialInterface[i]))
+				m_MaterialInterface[i] = UMaterial::GetDefaultMaterial(MD_Surface);
+			break;
+		case	PopcornFX::Renderer_Mesh:
+			if (m_SkeletalMesh != null)
+			{
+				if (!FPopcornFXSkelMeshVertexFactory::IsCompatible(materialInstance))
+					m_MaterialInterface[i] = UMaterial::GetDefaultMaterial(MD_Surface);
+			}
+			else
+			{
+				if (!FPopcornFXMeshVertexFactory::IsCompatible(materialInstance))
+					m_MaterialInterface[i] = UMaterial::GetDefaultMaterial(MD_Surface);
+			}
+			break;
+		default:
+			PK_ASSERT_NOT_REACHED();
+			break;
+		}
+
+		m_MaterialRenderProxy[i] = materialInstance->GetRenderProxy();
+		if (!PK_VERIFY(!m_MaterialRenderProxy.IsEmpty()))
+			return false;
+	}
+	
 	return true;
 }
 

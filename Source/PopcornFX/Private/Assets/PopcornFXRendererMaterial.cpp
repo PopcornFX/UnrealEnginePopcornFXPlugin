@@ -156,26 +156,11 @@ namespace
 	};
 
 #if WITH_EDITOR
-	bool		RM_Setup_Billboard(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	bool		RM_Setup_Billboard_Legacy(FPopcornFXSubRendererMaterial& mat, const PopcornFX::SRendererDeclaration &decl)
 	{
-		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
-		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Billboard)
-			return false;
-		const PopcornFX::CRendererDataBillboard	*renderer = static_cast<const PopcornFX::CRendererDataBillboard*>(_rendererBase);
-		if (renderer == null)
-			return false;
-		self->SubMaterials.SetNum(1);
-		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
-
-		const PopcornFX::SRendererFeaturePropertyValue	*prop = null;
-		const PopcornFX::SRendererDeclaration			&decl = renderer->m_Declaration;
-
 		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
-
-		// Default values:
-		mat.MaterialType = EPopcornFXMaterialType::Billboard_Additive;
 		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
-		mat.Raytraced = decl.IsFeatureEnabled(PopcornFX::CStringId("Raytraced")); // tmp
+		EPopcornFXLegacyMaterialType	finalMatType = mat.LegacyMaterialType;
 
 		if (mat.Lit)
 		{
@@ -193,25 +178,25 @@ namespace
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
-			mat.MaterialType = kTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
+			finalMatType = kLegacyTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
 			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
 			if (decl.IsFeatureEnabled(UERendererProperties::SID_SixWayLightmap()))
 			{
 				mat.CastShadow = true; // Tmp: Force cast shadows true when six way lightmap material is used
-				mat.MaterialType = EPopcornFXMaterialType::Billboard_SixWayLightmap;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_SixWayLightmap;
 				mat.TextureSixWay_RLTS = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_RightLeftTopSmoke(), PopcornFX::CString::EmptyString));
 				mat.TextureSixWay_BBF = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_BottomBackFront(), PopcornFX::CString::EmptyString));
 			}
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
-			mat.MaterialType = kOpaqueBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
-			if (mat.MaterialType == EPopcornFXMaterialType::Billboard_Masked)
+			finalMatType = kOpaqueBillboard_LegacyMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+			if (finalMatType == EPopcornFXLegacyMaterialType::Billboard_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 		}
 		else if (decl.IsFeatureEnabled(UERendererProperties::SID_VolumetricFog()))
 		{
-			mat.MaterialType = EPopcornFXMaterialType::Billboard_VolumetricFog;
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_VolumetricFog;
 			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_VolumetricFog_AlbedoMap(), PopcornFX::CString::EmptyString));
 			mat.SphereMaskHardness = decl.GetPropertyValue_F1(UERendererProperties::SID_VolumetricFog_SphereMaskHardness(), 0.0f);
 		}
@@ -227,7 +212,7 @@ namespace
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
 			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
-			mat.MaterialType = EPopcornFXMaterialType::Billboard_Distortion;
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Distortion;
 
 			if (mat.TextureDiffuse != null &&
 				mat.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
@@ -266,58 +251,219 @@ namespace
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 
-		EPopcornFXMaterialType::Type	finalMatType = mat.MaterialType;
-		switch (mat.MaterialType)
+		switch (mat.LegacyMaterialType)
 		{
-		case	EPopcornFXMaterialType::Billboard_Additive_NoAlpha:
-			finalMatType = EPopcornFXMaterialType::Billboard_Additive;
+		case	EPopcornFXLegacyMaterialType::Billboard_Additive_NoAlpha:
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 			mat.NoAlpha = true;
 			if (mat.Lit)
 			{
 				// Warn user LIT activated on an additive material ?
 			}
 			break;
-		case	EPopcornFXMaterialType::Billboard_Additive:
+		case	EPopcornFXLegacyMaterialType::Billboard_Additive:
 			if (mat.Lit)
 			{
 				// Warn user LIT activated on an additive material ?
 			}
 			break;
-		case	EPopcornFXMaterialType::Billboard_AlphaBlend:
+		case	EPopcornFXLegacyMaterialType::Billboard_AlphaBlend:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_AlphaBlend_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_AlphaBlend_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_AlphaBlendAdditive:
+		case	EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_Distortion:
+		case	EPopcornFXLegacyMaterialType::Billboard_Distortion:
 			PK_ASSERT(!mat.Lit);
 			break;
-		case	EPopcornFXMaterialType::Billboard_Solid:
+		case	EPopcornFXLegacyMaterialType::Billboard_Solid:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_Solid_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_Solid_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_Masked:
+		case	EPopcornFXLegacyMaterialType::Billboard_Masked:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_Masked_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_Masked_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_VolumetricFog:
-		case	EPopcornFXMaterialType::Billboard_SixWayLightmap:
-			finalMatType = mat.MaterialType;
+		case	EPopcornFXLegacyMaterialType::Billboard_VolumetricFog:
+		case	EPopcornFXLegacyMaterialType::Billboard_SixWayLightmap:
+			finalMatType = mat.LegacyMaterialType;
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();
 			return false;
 		}
-		mat.MaterialType = finalMatType;
+		mat.LegacyMaterialType = finalMatType;
+		return true;
+	}
+
+bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const PopcornFX::SRendererDeclaration &decl)
+	{
+		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		EPopcornFXDefaultMaterialType	finalMatType = mat.DefaultMaterialType;
+
+		if (mat.Lit)
+		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
+		{
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend;
+		}
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
+		{
+			finalMatType = kOpaqueBillboard_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+			if (finalMatType == EPopcornFXDefaultMaterialType::Billboard_Masked)
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+		{
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+			{
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Additive;
+				mat.NoAlpha = true;
+			}
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		{
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+		}
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
+		{
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_Distortion;
+
+			if (mat.TextureDiffuse != null &&
+				mat.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
+			{
+				FText		title = LOCTEXT("import_distortion_texture_title", "PopcornFX: Compression Settings");
+				const FText	message = FText::Format(LOCTEXT("import_distortion_texture_message",
+					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
+					FText::FromString(mat.TextureDiffuse->GetPathName()));
+
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				{
+					mat.TextureDiffuse->Modify();
+					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
+				}
+			}
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
+		{
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+
+			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
+			mat.SoftAnimBlending = blendingType == 1;
+			mat.MotionVectorsBlending = blendingType == 2;
+			if (mat.MotionVectorsBlending)
+			{
+				mat.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+
+				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
+				mat.MVDistortionStrengthColumns = distortionStrength.x();
+				mat.MVDistortionStrengthRows = distortionStrength.y();
+			}
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
+			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
+
+
+		switch (finalMatType)
+		{
+#if 0
+		case	EPopcornFXDefaultMaterialType::Billboard_Additive_NoAlpha:
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Additive;
+			mat.NoAlpha = true;
+			if (mat.Lit)
+			{
+				// Warn user LIT activated on an additive material ?
+			}
+			break;
+#endif
+		case	EPopcornFXDefaultMaterialType::Billboard_Additive:
+			if (mat.Lit)
+			{
+				// Warn user LIT activated on an additive material ?
+			}
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_AlphaBlend:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Distortion:
+			PK_ASSERT(!mat.Lit);
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Solid:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Solid_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Masked:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Masked_Lit;
+			break;
+		default:
+			PK_ASSERT_NOT_REACHED();
+			return false;
+		}
+		mat.DefaultMaterialType = finalMatType;
+		return true;
+	}
+
+
+	bool		RM_Setup_Billboard(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	{
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Billboard)
+			return false;
+		const PopcornFX::CRendererDataBillboard	*renderer = static_cast<const PopcornFX::CRendererDataBillboard*>(_rendererBase);
+		if (renderer == null)
+			return false;
+
+
+		const PopcornFX::SRendererFeaturePropertyValue	*prop = null;
+		const PopcornFX::SRendererDeclaration			&decl = renderer->m_Declaration;
+		bool success = true;
+
+
+		self->SubMaterials.SetNum(1);
+		FPopcornFXSubRendererMaterial &mat = self->SubMaterials[0];
+
+		// Default values:
+		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
+		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
+		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		mat.Raytraced = decl.IsFeatureEnabled(PopcornFX::CStringId("Raytraced")); // tmp
+
+		if (mat.IsLegacy)
+			success &= RM_Setup_Billboard_Legacy(mat, decl);
+		else
+			success &= RM_Setup_Billboard_Default(mat, decl);
 
 		// Not correct, this should be derived from the material Blend Mode as it can be overriden
-		mat.SortIndices =	(mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit) ||
-							mat.MaterialType == EPopcornFXMaterialType::Billboard_SixWayLightmap;
+		mat.SortIndices = mat.NeedsSorting();
 
 		mat.BuildDynamicParameterMask(_rendererBase, decl);
-		return true;
+
+		return success;
 	}
 
 	bool		RM_Params_Billboard(UPopcornFXRendererMaterial *self, UMaterialInstanceDynamic *material, uint32 subMaterialIndex)
@@ -374,26 +520,12 @@ namespace
 #endif // WITH_EDITOR
 
 #if WITH_EDITOR
-	bool		RM_Setup_Ribbon(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	bool		RM_Setup_Ribbon_Legacy(FPopcornFXSubRendererMaterial &mat, const PopcornFX::SRendererDeclaration &decl)
 	{
-		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
-		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Ribbon)
-			return false;
-		const PopcornFX::CRendererDataRibbon	*renderer = static_cast<const PopcornFX::CRendererDataRibbon*>(_rendererBase);
-		if (renderer == null)
-			return false;
-		self->SubMaterials.SetNum(1);
-		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
-
-		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
-
 		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
-
-		// Default values:
-		mat.MaterialType = EPopcornFXMaterialType::Billboard_Additive;
 		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
-		mat.CorrectDeformation = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
 
+		EPopcornFXLegacyMaterialType	finalMatType = mat.LegacyMaterialType;
 		if (mat.Lit)
 		{
 			if (legacyLit)
@@ -410,13 +542,13 @@ namespace
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
-			mat.MaterialType = kTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
+			finalMatType = kLegacyTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
 			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
-			mat.MaterialType = kOpaqueBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
-			if (mat.MaterialType == EPopcornFXMaterialType::Billboard_Masked)
+			finalMatType = kOpaqueBillboard_LegacyMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+			if (finalMatType == EPopcornFXLegacyMaterialType::Billboard_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 		}
 
@@ -431,7 +563,7 @@ namespace
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
 			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
-			mat.MaterialType = EPopcornFXMaterialType::Billboard_Distortion;
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Distortion;
 
 			if (mat.TextureDiffuse != null &&
 				mat.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
@@ -470,12 +602,12 @@ namespace
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 
-		EPopcornFXMaterialType::Type	finalMatType = mat.MaterialType;
-		switch (mat.MaterialType)
+		
+		switch (finalMatType)
 		{
-		case	EPopcornFXMaterialType::Billboard_Additive_NoAlpha:
+		case	EPopcornFXLegacyMaterialType::Billboard_Additive_NoAlpha:
 		{
-			finalMatType = EPopcornFXMaterialType::Billboard_Additive;
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 			mat.NoAlpha = true;
 			if (mat.Lit)
 			{
@@ -483,61 +615,207 @@ namespace
 			}
 			break;
 		}
-		case	EPopcornFXMaterialType::Billboard_Additive:
+		case	EPopcornFXLegacyMaterialType::Billboard_Additive:
 			if (mat.Lit)
 			{
 				// Warn user LIT activated on an additive material ?
 			}
 			break;
-		case	EPopcornFXMaterialType::Billboard_AlphaBlend:
+		case	EPopcornFXLegacyMaterialType::Billboard_AlphaBlend:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_AlphaBlend_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_AlphaBlend_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_AlphaBlendAdditive:
+		case	EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_Distortion:
+		case	EPopcornFXLegacyMaterialType::Billboard_Distortion:
 			PK_ASSERT(!mat.Lit);
 			break;
-		case	EPopcornFXMaterialType::Billboard_Solid:
+		case	EPopcornFXLegacyMaterialType::Billboard_Solid:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_Solid_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_Solid_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_Masked:
+		case	EPopcornFXLegacyMaterialType::Billboard_Masked:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_Masked_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_Masked_Lit;
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();
 			return false;
 		}
-		mat.MaterialType = finalMatType;
-		mat.SortIndices = mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
-
-		mat.BuildDynamicParameterMask(_rendererBase, decl);
+		mat.LegacyMaterialType = finalMatType;
 		return true;
 	}
 
-	bool		RM_Setup_Mesh(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	bool		RM_Setup_Ribbon_Default(FPopcornFXSubRendererMaterial &mat, const PopcornFX::SRendererDeclaration &decl)
+	{
+		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		EPopcornFXDefaultMaterialType	finalMatType = mat.DefaultMaterialType;
+		if (mat.Lit)
+		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+		
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
+		{
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend;
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
+		}
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
+		{
+			finalMatType = kOpaqueBillboard_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+			if (finalMatType == EPopcornFXDefaultMaterialType::Billboard_Masked)
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive())) 
+		{
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+			{
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Additive;
+				mat.NoAlpha = true;
+			}
+		}	
+			
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		{
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+		}
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
+		{
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_Distortion;
+
+			if (mat.TextureDiffuse != null &&
+				mat.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
+			{
+				FText		title = LOCTEXT("import_distortion_texture_title", "PopcornFX: Compression Settings");
+				const FText	message = FText::Format(LOCTEXT("import_distortion_texture_message",
+					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
+					FText::FromString(mat.TextureDiffuse->GetPathName()));
+
+				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				{
+					mat.TextureDiffuse->Modify();
+					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
+				}
+			}
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
+		{
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+
+			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
+			mat.SoftAnimBlending = blendingType == 1;
+			mat.MotionVectorsBlending = blendingType == 2;
+			if (mat.MotionVectorsBlending)
+			{
+				mat.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+
+				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
+				mat.MVDistortionStrengthColumns = distortionStrength.x();
+				mat.MVDistortionStrengthRows = distortionStrength.y();
+			}
+		}
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
+			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
+
+		switch (finalMatType)
+		{
+#if 0
+		case	EPopcornFXDefaultMaterialType::Billboard_Additive_NoAlpha:
+		{
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Additive;
+			mat.NoAlpha = true;
+			if (mat.Lit)
+			{
+				// Warn user LIT activated on an additive material ?
+			}
+			break;
+#endif
+		case	EPopcornFXDefaultMaterialType::Billboard_Additive:
+			if (mat.Lit)
+			{
+				// Warn user LIT activated on an additive material ?
+			}
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_AlphaBlend:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Distortion:
+			PK_ASSERT(!mat.Lit);
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Solid:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Solid_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Masked:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Masked_Lit;
+			break;
+		default:
+			PK_ASSERT_NOT_REACHED();
+			return false;
+		}
+		mat.DefaultMaterialType = finalMatType;
+		return true;
+	}
+
+	bool		RM_Setup_Ribbon(UPopcornFXRendererMaterial *self, const void *rendererBase)
 	{
 		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
-		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Mesh)
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Ribbon)
 			return false;
-		const PopcornFX::CRendererDataMesh	*renderer = static_cast<const PopcornFX::CRendererDataMesh*>(_rendererBase);
+		const PopcornFX::CRendererDataRibbon	*renderer = static_cast<const PopcornFX::CRendererDataRibbon*>(_rendererBase);
 		if (renderer == null)
 			return false;
-
-		// TODO: Remove sub materials
 		self->SubMaterials.SetNum(1);
 		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
 
 		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
 
-		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
+		
 
 		// Default values:
-		mat.MaterialType = EPopcornFXMaterialType::Mesh_Solid;
+		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
+		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
+		mat.CorrectDeformation = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
+		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+
+		bool success = true;
+
+		if (mat.IsLegacy)
+			success &= RM_Setup_Ribbon_Legacy(mat, decl);
+		else
+			success &= RM_Setup_Ribbon_Default(mat, decl);
+
+		mat.SortIndices = mat.NeedsSorting();
+
+		mat.BuildDynamicParameterMask(_rendererBase, decl);
+		return true;
+	}
+
+	bool		RM_Setup_Mesh_Legacy(FPopcornFXSubRendererMaterial &mat, const PopcornFX::SRendererDeclaration &decl)
+	{
+		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
+		const bool	fluidVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid());
+		const bool	softVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft());
+		const bool	rigidVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid());
+		const bool	normalizedVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_NormalizedData());
 
 		const bool	skelMesh = decl.IsFeatureEnabled(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation());
 		if (skelMesh)
@@ -547,17 +825,9 @@ namespace
 			mat.StaticMesh = LoadMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
 			mat.StaticMeshLOD = 0; // TODO
 		}
-		mat.PerParticleLOD = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshLOD());
-		mat.MotionBlur = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MotionBlur());
 
 		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
-		mat.MeshAtlas = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshAtlas());
-		mat.Raytraced = decl.IsFeatureEnabled(PopcornFX::CStringId("Raytraced")); // tmp
-
-		const bool		fluidVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid());
-		const bool		softVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft());
-		const bool		rigidVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid());
-		const bool		normalizedVAT = decl.IsFeatureEnabled(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_NormalizedData());
+		EPopcornFXLegacyMaterialType type = mat.LegacyMaterialType;
 
 		if (mat.Lit)
 		{
@@ -704,19 +974,19 @@ namespace
 		{
 			// * 2 because unlit/lit pair per enum value
 			if (fluidVAT)
-				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Fluid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
+				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Fluid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
 			else if (softVAT)
-				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Soft + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
+				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Soft + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
 			else if (rigidVAT)
-				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(EPopcornFXMaterialType::Mesh_VAT_Opaque_Rigid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
+				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Rigid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
 			else
-				mat.MaterialType = kOpaqueMesh_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+				type = kOpaqueMesh_LegacyMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 
-			if (mat.MaterialType == EPopcornFXMaterialType::Mesh_Masked)
+			if (type == EPopcornFXLegacyMaterialType::Mesh_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 
 			if (mat.Lit)
-				mat.MaterialType = static_cast<EPopcornFXMaterialType::Type>(mat.MaterialType + 1); // Next enum index
+				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)type + 1); // Next enum index
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
@@ -726,9 +996,9 @@ namespace
 			{
 				// For now, only support unlit alpha blended & additive meshes.
 				if (decl.GetPropertyValue_Enum<PopcornFX::BasicRendererProperties::ETransparentType>(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), PopcornFX::BasicRendererProperties::Additive) == PopcornFX::BasicRendererProperties::AlphaBlend)
-					mat.MaterialType = EPopcornFXMaterialType::Mesh_AlphaBlend;
+					type = EPopcornFXLegacyMaterialType::Mesh_AlphaBlend;
 				else
-					mat.MaterialType = EPopcornFXMaterialType::Mesh_Additive;
+					type = EPopcornFXLegacyMaterialType::Mesh_Additive;
 			}
 
 			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
@@ -742,6 +1012,94 @@ namespace
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
 			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+
+		mat.LegacyMaterialType = type;
+
+		return true;
+	
+	}
+
+	bool		RM_Setup_Mesh_Default(FPopcornFXSubRendererMaterial &mat, const PopcornFX::SRendererDeclaration &decl)
+	{
+		mat.StaticMesh = LoadMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
+		mat.StaticMeshLOD = 0; // TODO
+
+		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		EPopcornFXDefaultMaterialType type = EPopcornFXDefaultMaterialType::Mesh_Additive;
+
+		if (mat.Lit)
+		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
+		{
+			type = kOpaqueMesh_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+
+			if (type == EPopcornFXDefaultMaterialType::Mesh_Masked)
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
+
+			if (mat.Lit)
+				type = static_cast<EPopcornFXDefaultMaterialType>((uint32)type + 1); // Next enum index
+		}
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
+		{
+			type = EPopcornFXDefaultMaterialType::Mesh_AlphaBlend;
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
+			mat.Lit = false;
+		}
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		{
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+		}
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+		{
+			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+			{
+				type = EPopcornFXDefaultMaterialType::Mesh_Additive;
+				mat.NoAlpha = true;
+			}
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString)); 
+		}
+			
+		mat.DefaultMaterialType = type;
+		return true;
+	}
+
+	bool		RM_Setup_Mesh(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	{
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Mesh)
+			return false;
+		const PopcornFX::CRendererDataMesh	*renderer = static_cast<const PopcornFX::CRendererDataMesh*>(_rendererBase);
+		if (renderer == null)
+			return false;
+
+		// TODO: Remove sub materials
+		self->SubMaterials.SetNum(1);
+		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
+
+		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
+
+		// Default values:
+		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Mesh_Solid;
+		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Mesh_Solid;
+		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+		mat.PerParticleLOD = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshLOD());
+		mat.MotionBlur = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MotionBlur());
+		mat.MeshAtlas = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshAtlas());
+		mat.Raytraced = decl.IsFeatureEnabled(PopcornFX::CStringId("Raytraced")); // tmp
+
+		if (mat.IsLegacy)
+			RM_Setup_Mesh_Legacy(mat, decl);
+		else 
+			RM_Setup_Mesh_Default(mat, decl);
 
 		mat.BuildDynamicParameterMask(_rendererBase, decl);
 		return true;
@@ -819,24 +1177,11 @@ namespace
 		return true;
 	}
 
-	bool		RM_Setup_Triangle(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	bool		RM_Setup_Triangle_Legacy(FPopcornFXSubRendererMaterial& mat, const PopcornFX::SRendererDeclaration &decl)
 	{
-		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
-		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Triangle)
-			return false;
-
-		const PopcornFX::CRendererDataTriangle	*renderer = static_cast<const PopcornFX::CRendererDataTriangle*>(_rendererBase);
-		if (renderer == null)
-			return false;
-
-		self->SubMaterials.SetNum(1);
-		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
-
-		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
 		const bool	legacyLit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_LegacyLit());
-
-		mat.MaterialType = EPopcornFXMaterialType::Billboard_Additive;
 		mat.Lit = legacyLit || decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		EPopcornFXLegacyMaterialType	finalMatType = mat.LegacyMaterialType;
 
 		if (legacyLit)
 		{
@@ -851,13 +1196,13 @@ namespace
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
-			mat.MaterialType = kTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
+			finalMatType = kLegacyTransparentBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_Type(), 0)];
 			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
-			mat.MaterialType = kOpaqueBillboard_Material_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
-			if (mat.MaterialType == EPopcornFXMaterialType::Billboard_Masked)
+			finalMatType = kOpaqueBillboard_LegacyMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+			if (finalMatType == EPopcornFXLegacyMaterialType::Billboard_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 		}
 
@@ -872,7 +1217,7 @@ namespace
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
 			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
-			mat.MaterialType = EPopcornFXMaterialType::Mesh_Distortion;
+			finalMatType = EPopcornFXLegacyMaterialType::Mesh_Distortion;
 
 			if (mat.TextureDiffuse != null &&
 				mat.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
@@ -893,12 +1238,12 @@ namespace
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
 			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
-		EPopcornFXMaterialType::Type	finalMatType = mat.MaterialType;
-		switch (mat.MaterialType)
+
+		switch (finalMatType)
 		{
-		case	EPopcornFXMaterialType::Billboard_Additive_NoAlpha:
+		case	EPopcornFXLegacyMaterialType::Billboard_Additive_NoAlpha:
 		{
-			finalMatType = EPopcornFXMaterialType::Billboard_Additive;
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 			mat.NoAlpha = true;
 			if (mat.Lit)
 			{
@@ -906,35 +1251,151 @@ namespace
 			}
 			break;
 		}
-		case	EPopcornFXMaterialType::Billboard_Additive:
+		case	EPopcornFXLegacyMaterialType::Billboard_Additive:
 			if (mat.Lit)
 			{
 				// Warn user LIT activated on an additive material ?
 			}
 			break;
-		case	EPopcornFXMaterialType::Billboard_AlphaBlend:
+		case	EPopcornFXLegacyMaterialType::Billboard_AlphaBlend:
 			break;
-		case	EPopcornFXMaterialType::Billboard_AlphaBlendAdditive:
+		case	EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_Distortion:
+		case	EPopcornFXLegacyMaterialType::Billboard_Distortion:
 			PK_ASSERT(!mat.Lit);
 			break;
-		case	EPopcornFXMaterialType::Billboard_Solid:
+		case	EPopcornFXLegacyMaterialType::Billboard_Solid:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_Solid_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_Solid_Lit;
 			break;
-		case	EPopcornFXMaterialType::Billboard_Masked:
+		case	EPopcornFXLegacyMaterialType::Billboard_Masked:
 			if (mat.Lit)
-				finalMatType = EPopcornFXMaterialType::Billboard_Masked_Lit;
+				finalMatType = EPopcornFXLegacyMaterialType::Billboard_Masked_Lit;
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();
 			return false;
 		}
-		mat.MaterialType = finalMatType;
-		mat.SortIndices = mat.MaterialType >= EPopcornFXMaterialType::Billboard_AlphaBlend && mat.MaterialType <= EPopcornFXMaterialType::Billboard_AlphaBlendAdditive_Lit;
+		mat.LegacyMaterialType = finalMatType;
+		return true;
+	}
+
+	bool		RM_Setup_Triangle_Default(FPopcornFXSubRendererMaterial& mat, const PopcornFX::SRendererDeclaration &decl)
+	{
+		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
+		EPopcornFXDefaultMaterialType	finalMatType = mat.DefaultMaterialType;
+
+		if (mat.Lit)
+		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
+			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
+		{
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend;
+			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
+		}
+		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
+		{
+			finalMatType = kOpaqueBillboard_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+			if (finalMatType == EPopcornFXDefaultMaterialType::Billboard_Masked)
+				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+		{
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+			{
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Additive;
+				mat.NoAlpha = true;
+			}
+		}
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		{
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+
+		switch (mat.DefaultMaterialType)
+		{
+#if 0
+		case	EPopcornFXDefaultMaterialType::Billboard_Additive_NoAlpha:
+		{
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_Additive;
+			mat.NoAlpha = true;
+			if (mat.Lit)
+			{
+				// Warn user LIT activated on an additive material ?
+			}
+			break;
+		}
+#endif
+		case	EPopcornFXDefaultMaterialType::Billboard_Additive:
+			if (mat.Lit)
+			{
+				// Warn user LIT activated on an additive material ?
+			}
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_AlphaBlend:
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Distortion:
+			PK_ASSERT(!mat.Lit);
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Solid:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Solid_Lit;
+			break;
+		case	EPopcornFXDefaultMaterialType::Billboard_Masked:
+			if (mat.Lit)
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Masked_Lit;
+			break;
+		default:
+			PK_ASSERT_NOT_REACHED();
+			return false;
+		}
+		mat.DefaultMaterialType = finalMatType;
+		return true;
+	}
+
+	bool		RM_Setup_Triangle(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	{
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Triangle)
+			return false;
+
+		const PopcornFX::CRendererDataTriangle	*renderer = static_cast<const PopcornFX::CRendererDataTriangle*>(_rendererBase);
+		if (renderer == null)
+			return false;
+
+		self->SubMaterials.SetNum(1);
+		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
+
+		const PopcornFX::SRendererDeclaration		&decl = renderer->m_Declaration;
+		
+
+		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
+		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
+		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+
+		bool success = true;
+		if (mat.IsLegacy)
+			success &= RM_Setup_Triangle_Legacy(mat, decl);
+		else
+			success &= RM_Setup_Triangle_Default(mat, decl); 
+
+		mat.SortIndices = mat.NeedsSorting();
 
 		mat.BuildDynamicParameterMask(_rendererBase, decl);
 		return true;
@@ -968,8 +1429,9 @@ namespace
 //----------------------------------------------------------------------------
 
 FPopcornFXSubRendererMaterial::FPopcornFXSubRendererMaterial()
-:	Material(null)
-,	MaterialType()
+:	Material()
+,	LegacyMaterialType(EPopcornFXLegacyMaterialType::Billboard_Additive)
+,	DefaultMaterialType(EPopcornFXDefaultMaterialType::Billboard_Additive)
 ,	TextureDiffuse(null)
 ,	TextureDiffuseRamp(null)
 ,	TextureEmissive(null)
@@ -1039,7 +1501,10 @@ FPopcornFXSubRendererMaterial::~FPopcornFXSubRendererMaterial()
 
 bool	FPopcornFXSubRendererMaterial::_ResetDefaultMaterial_NoReload()
 {
-	Material = FindDefaultMaterial();
+	if (IsLegacy)
+		Material = FindLegacyMaterial();
+	else
+		Material = FindDefaultMaterial();
 	return Material != null;
 }
 
@@ -1074,8 +1539,18 @@ UMaterialInterface		*FPopcornFXSubRendererMaterial::FindDefaultMaterial() const
 {
 	if (!PK_VERIFY(uint32(m_RMId) < PK_ARRAY_COUNT(kRendererMaterialFuncs)))
 		return null;
-	UMaterialInterface		*defaultMaterial = FPopcornFXPlugin::Get().Settings()->GetConfigDefaultMaterial(MaterialType.GetValue());
+	UMaterialInterface		*defaultMaterial = FPopcornFXPlugin::Get().Settings()->GetConfigDefaultMaterial((uint32)DefaultMaterialType);
 	return defaultMaterial;
+}
+
+//----------------------------------------------------------------------------
+
+UMaterialInterface		*FPopcornFXSubRendererMaterial::FindLegacyMaterial() const
+{
+	if (!PK_VERIFY(uint32(m_RMId) < PK_ARRAY_COUNT(kRendererMaterialFuncs)))
+		return null;
+	UMaterialInterface		*legacyMaterial = FPopcornFXPlugin::Get().Settings()->GetConfigLegacyMaterial((uint32)LegacyMaterialType);
+	return legacyMaterial;
 }
 
 //----------------------------------------------------------------------------
@@ -1283,7 +1758,8 @@ bool	FPopcornFXSubRendererMaterial::CanBeMergedWith(const FPopcornFXSubRendererM
 {
 	return
 		m_RMId == other.m_RMId &&
-		MaterialType == other.MaterialType &&
+		DefaultMaterialType == other.DefaultMaterialType &&
+		LegacyMaterialType == other.LegacyMaterialType &&
 		TextureDiffuse == other.TextureDiffuse &&
 		TextureDiffuseRamp == other.TextureDiffuseRamp &&
 		TextureEmissive == other.TextureEmissive &&
@@ -1576,7 +2052,7 @@ bool	UPopcornFXRendererMaterial::_ReloadInstance(uint32 subMatId)
 void	UPopcornFXRendererMaterial::ReloadInstances()
 {
 	for (int32 mati = 0; mati < SubMaterials.Num(); ++mati)
-		_ReloadInstance(mati);
+			_ReloadInstance(mati);
 	PostEditChange();
 }
 
@@ -1607,23 +2083,32 @@ UMaterialInstanceConstant	*UPopcornFXRendererMaterial::GetInstance(uint32 subMat
 //
 //----------------------------------------------------------------------------
 
-const EPopcornFXMaterialType::Type		kTransparentBillboard_Material_ToUE[] =
+const EPopcornFXLegacyMaterialType		kLegacyTransparentBillboard_Material_ToUE[] =
 {
-	EPopcornFXMaterialType::Billboard_Additive,				//Additive
-	EPopcornFXMaterialType::Billboard_Additive_NoAlpha,		//AdditiveNoAlpha
-	EPopcornFXMaterialType::Billboard_AlphaBlend,			//AlphaBlend
-	EPopcornFXMaterialType::Billboard_AlphaBlendAdditive,	//AlphaBlend_Additive
+	EPopcornFXLegacyMaterialType::Billboard_Additive,				//Additive
+	EPopcornFXLegacyMaterialType::Billboard_Additive_NoAlpha,		//AdditiveNoAlpha
+	EPopcornFXLegacyMaterialType::Billboard_AlphaBlend,			//AlphaBlend
+	EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive,	//AlphaBlend_Additive
 };
-PK_STATIC_ASSERT(PK_ARRAY_COUNT(kTransparentBillboard_Material_ToUE) == PopcornFX::BasicRendererProperties::ETransparentType::__MaxTransparentType);
+PK_STATIC_ASSERT(PK_ARRAY_COUNT(kLegacyTransparentBillboard_Material_ToUE) == PopcornFX::BasicRendererProperties::ETransparentType::__MaxTransparentType);
 
 //----------------------------------------------------------------------------
 
-const EPopcornFXMaterialType::Type		kOpaqueBillboard_Material_ToUE[] =
+const EPopcornFXLegacyMaterialType		kOpaqueBillboard_LegacyMaterial_ToUE[] =
 {
-	EPopcornFXMaterialType::Billboard_Solid,				// Solid
-	EPopcornFXMaterialType::Billboard_Masked,				// Masked
+	EPopcornFXLegacyMaterialType::Billboard_Solid,				// Solid
+	EPopcornFXLegacyMaterialType::Billboard_Masked,				// Masked
 };
-PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueBillboard_Material_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
+PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueBillboard_LegacyMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
+
+//----------------------------------------------------------------------------
+
+const EPopcornFXDefaultMaterialType		kOpaqueBillboard_DefaultMaterial_ToUE[] =
+{
+	EPopcornFXDefaultMaterialType::Billboard_Solid,				// Solid
+	EPopcornFXDefaultMaterialType::Billboard_Masked,			// Masked
+};
+PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueBillboard_DefaultMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
 
 //----------------------------------------------------------------------------
 //
@@ -1631,12 +2116,19 @@ PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueBillboard_Material_ToUE) == PopcornFX::Ba
 //
 //----------------------------------------------------------------------------
 
-const EPopcornFXMaterialType::Type		kOpaqueMesh_Material_ToUE[] =
+const EPopcornFXLegacyMaterialType		kOpaqueMesh_LegacyMaterial_ToUE[] =
 {
-	EPopcornFXMaterialType::Mesh_Solid,				// Solid,
-	EPopcornFXMaterialType::Mesh_Masked,			// Masked,
+	EPopcornFXLegacyMaterialType::Mesh_Solid,				// Solid,
+	EPopcornFXLegacyMaterialType::Mesh_Masked,			// Masked,
 };
-PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueMesh_Material_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
+PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueMesh_LegacyMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
+
+const EPopcornFXDefaultMaterialType		kOpaqueMesh_DefaultMaterial_ToUE[] =
+{
+	EPopcornFXDefaultMaterialType::Mesh_Solid,				// Solid,
+	EPopcornFXDefaultMaterialType::Mesh_Masked,			// Masked,
+};
+PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueMesh_DefaultMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
 
 //----------------------------------------------------------------------------
 //

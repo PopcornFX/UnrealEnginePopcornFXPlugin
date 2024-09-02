@@ -24,10 +24,17 @@ public:
 
 	virtual bool		AreRenderersCompatible(const PopcornFX::CRendererDataBase *rendererA, const PopcornFX::CRendererDataBase *rendererB) const override;
 
-	virtual bool		CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const override;
+	virtual bool		CanRender(PopcornFX::SRenderContext &ctx) const override;
 
 	virtual void		BeginFrame(PopcornFX::SRenderContext &ctx) override;
-	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit) override;
+	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit) override;
+
+	virtual bool	Step_AllocBuffers(PopcornFX::SRenderContext &ctx) { return false;};
+	virtual bool	Step_MapBuffers(PopcornFX::SRenderContext &ctx) { return false;};
+	virtual bool	Step_LaunchBillboardingTasks(PopcornFX::SRenderContext &ctx, PopcornFX::Drawers::PAsynchronousJob_PostRenderTasks &syncJob) { return false;};
+	virtual bool	Step_WaitForBillboardingTasks(PopcornFX::SRenderContext &ctx) { return false;};
+	virtual bool	Step_UnmapBuffers(PopcornFX::SRenderContext &ctx) { return false;};
+
 
 private:
 	void				_IssueDrawCall_Sound(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc);

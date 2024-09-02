@@ -140,9 +140,9 @@ PopcornFX::CImage::EFormat	_UE2PKImageFormat(const EPixelFormat pixelFormat, boo
 		UE2PK_IMAGE_SRGB(PF_B8G8R8A8		, Format_BGRA8);
 		UE2PK_IMAGE(PF_G8					, Format_Lum8);
 //		UE2PK_IMAGE(PF_G16					, );
-		UE2PK_IMAGE_SRGB(PF_DXT1			, Format_DXT1);
-		UE2PK_IMAGE_SRGB(PF_DXT3			, Format_DXT3);
-		UE2PK_IMAGE_SRGB(PF_DXT5			, Format_DXT5);
+		UE2PK_IMAGE_SRGB(PF_DXT1			, Format_BC1);
+		UE2PK_IMAGE_SRGB(PF_DXT3			, Format_BC2);
+		UE2PK_IMAGE_SRGB(PF_DXT5			, Format_BC3);
 //		UE2PK_IMAGE(PF_UYVY					, );
 //		UE2PK_IMAGE(PF_FloatRGB				, );
 		UE2PK_IMAGE(PF_FloatRGBA			, Format_Fp16RGBA);

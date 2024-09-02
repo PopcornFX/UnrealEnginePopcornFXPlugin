@@ -88,8 +88,7 @@ struct	FVertexFactoryIntermediates
 //----------------------------------------------------------------------------
 
 #define NORMALIZER_EPSILON			1.0e-8f
-#define	BB_Flag_BillboardMask		7U	// 3 firsts bytes
-#define	BB_Flag_VFlipUVs			8U	// 4th byte
+#define	BB_Flag_BillboardMask		7U	// 3 firsts bits
 
 //----------------------------------------------------------------------------
 // Billboarding modes
@@ -101,6 +100,15 @@ struct	FVertexFactoryIntermediates
 #define BILLBOARD_AxisAlignedSpheroid	4U
 #define BILLBOARD_AxisAlignedCapsule	5U
 #define BILLBOARD_PlaneAligned			6U
+
+//----------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------
+// Basic Transform 
+//----------------------------------------------------------------------------
+#define BasicTransform_Flag_RotateUV    1U
+#define BasicTransform_Flag_FlipU       2U
+#define BasicTransform_Flag_FlipV       4U
 
 //----------------------------------------------------------------------------
 
@@ -180,7 +188,9 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	const uint		flags = asuint(currentDr.x);
 	const uint		billboarderType = flags & BB_Flag_BillboardMask;
 	const float		normalBendingFactor = currentDr.y;
-	const int		flipUVs = (flags & BB_Flag_VFlipUVs) != 0U;
+    const uint		rotateUV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_RotateUV) != 0;
+    const uint      flipV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipU) != 0;
+    const uint      flipU = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipV) != 0;
 
 	const float2	cornerCoords = texCoords;
 
@@ -342,8 +352,15 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 		texCoords = texCoords * 0.5f + 0.5f; // Remap corners from -1,1 to 0,1
 
 	FLATTEN
-	if (flipUVs)
+	if (flipV)
 		texCoords.y = 1.0f - texCoords.y;
+	
+    FLATTEN
+    if (flipU)
+        texCoords.x = 1.0f - texCoords.x;
+	
+    if (rotateUV)
+        texCoords.xy = texCoords.yx;
 
 	// Texcoords
 	float	alphaCursor = 0.0f;

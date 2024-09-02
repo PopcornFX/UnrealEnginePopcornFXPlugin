@@ -37,14 +37,13 @@ public:
 
 	virtual bool		AreRenderersCompatible(const PopcornFX::CRendererDataBase *rendererA, const PopcornFX::CRendererDataBase *rendererB) const override;
 
-	virtual bool		CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const override;
+	virtual bool		CanRender(PopcornFX::SRenderContext &ctx) const override;
 
 	virtual void		BeginFrame(PopcornFX::SRenderContext &ctx) override;
-	virtual bool		AllocBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) override;
-	virtual bool		MapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) override;
-
-	virtual bool		UnmapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) override;
-	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit) override;
+	virtual bool		AllocBuffers(PopcornFX::SRenderContext &ctx) override;
+	virtual bool		MapBuffers(PopcornFX::SRenderContext &ctx) override;
+	virtual bool		UnmapBuffers(PopcornFX::SRenderContext &ctx) override;
+	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit) override;
 
 public:
 	struct	SViewDependent
@@ -79,6 +78,7 @@ private:
 	// UserData used to bind shader uniforms (Billboard & Ribbon)
 	bool							m_SecondUVSet = false;
 	bool							m_NeedsBTN = false;
+	bool							m_RotateUVs = false;
 
 	// View independent buffers
 	CPooledIndexBuffer				m_Indices;

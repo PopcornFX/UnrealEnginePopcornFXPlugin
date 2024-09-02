@@ -113,7 +113,13 @@ public:
 #endif // RHI_RAYTRACING
 
 #if WITH_EDITOR
-	bool										RenderThread_CollectedForRendering(const UMaterialInterface *material) const { return m_RenderThread_CollectedUsedMaterials.Contains(material); }
+	bool										RenderThread_CollectedForRendering(const TArray<UMaterialInterface*> material) const 
+	{ 
+		bool success = true;
+		for (auto subMat : material)
+			success &= m_RenderThread_CollectedUsedMaterials.Contains(subMat); 
+		return success;
+	}
 #endif // WITH_EDITOR
 	PopcornFX::Drawers::EBillboardingLocation	RenderThread_BillboardingLocation() const { return m_RenderThread_BillboardingLocation; }
 

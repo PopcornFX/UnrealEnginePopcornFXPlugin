@@ -301,8 +301,8 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 				UE_LOG(LogRenderBatchManager, Warning, TEXT("Couldn't create compatible render policy for material: invalid material."));
 				return null;
 			}
-			hasVolumeMaterial =	rendererSubMat->MaterialType == EPopcornFXMaterialType::Billboard_SixWayLightmap ||
-								material->MaterialDomain == MD_Volume;
+			hasVolumeMaterial =	rendererSubMat->LegacyMaterialType == EPopcornFXLegacyMaterialType::Billboard_SixWayLightmap ||
+								material->MaterialDomain == MD_Volume; // TODO Default
 
 			switch (rendererType)
 			{
@@ -555,7 +555,8 @@ void	CRenderBatchManager::CollectedForRendering(const PopcornFX::CParticleMedium
 #endif
 
 	PK_ASSERT(rendererCache->GameThread_Desc().MaterialIsValid());
-	AddCollectedUsedMaterial(rendererCache->GameThread_Desc().m_RendererMaterial->GetInstance(0, false));
+	for (int32 i = 0; i < rendererCache->GameThread_Desc().m_RendererMaterial->SubMaterials.Num(); i++)
+		AddCollectedUsedMaterial(rendererCache->GameThread_Desc().m_RendererMaterial->GetInstance(i, false));
 }
 
 //----------------------------------------------------------------------------

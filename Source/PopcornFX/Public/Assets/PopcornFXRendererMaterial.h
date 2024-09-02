@@ -26,90 +26,129 @@ class	UTexture2D;
 class	UPopcornFXEffect;
 class	UPopcornFXTextureAtlas;
 
-#define EXEC_X_POPCORNFX_MATERIAL_TYPE()							\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_Additive)				\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlend)				\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlend_Lit)			\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlendAdditive)		\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlendAdditive_Lit)	\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_Distortion)				\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_Solid)					\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_Solid_Lit)				\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_Masked)					\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_Masked_Lit)				\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_VolumetricFog)			\
-		X_POPCORNFX_MATERIAL_TYPE(Billboard_SixWayLightmap)			\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_Additive)					\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_AlphaBlend)					\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_Distortion)					\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_Solid)						\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_Solid_Lit)					\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_Masked)						\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_Masked_Lit)					\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Opaque_Fluid)			\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Masked_Fluid)			\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Opaque_Fluid_Lit)		\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Masked_Fluid_Lit)		\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Opaque_Soft)				\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Masked_Soft)				\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Opaque_Soft_Lit)			\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Masked_Soft_Lit)			\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Opaque_Rigid)			\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Masked_Rigid)			\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Opaque_Rigid_Lit)		\
-		X_POPCORNFX_MATERIAL_TYPE(Mesh_VAT_Masked_Rigid_Lit)
+#define EXEC_X_POPCORNFX_LEGACY_MATERIAL_TYPE()								\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_Additive)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_AlphaBlend)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_AlphaBlend_Lit)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_AlphaBlendAdditive)		\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_AlphaBlendAdditive_Lit)	\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_Distortion)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_Solid)					\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_Solid_Lit)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_Masked)					\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_Masked_Lit)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_VolumetricFog)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Billboard_SixWayLightmap)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_Additive)						\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_AlphaBlend)					\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_Distortion)					\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_Solid)						\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_Solid_Lit)					\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_Masked)						\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_Masked_Lit)					\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Fluid)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Fluid)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Fluid_Lit)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Fluid_Lit)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Soft)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Soft)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Soft_Lit)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Soft_Lit)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Rigid)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Rigid)				\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Rigid_Lit)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Rigid_Lit)	
+
+#define EXEC_X_POPCORNFX_MATERIAL_TYPE()									\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_Additive)						\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlend)						\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlend_Lit)					\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlendAdditive)				\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_AlphaBlendAdditive_Lit)			\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_Distortion)						\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_Solid)							\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_Solid_Lit)						\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_Masked)							\
+		X_POPCORNFX_MATERIAL_TYPE(Billboard_Masked_Lit)						\
+		X_POPCORNFX_MATERIAL_TYPE(Mesh_Additive)							\
+		X_POPCORNFX_MATERIAL_TYPE(Mesh_AlphaBlend)							\
+		X_POPCORNFX_MATERIAL_TYPE(Mesh_Solid)								\
+		X_POPCORNFX_MATERIAL_TYPE(Mesh_Solid_Lit)							\
+		X_POPCORNFX_MATERIAL_TYPE(Mesh_Masked)								\
+		X_POPCORNFX_MATERIAL_TYPE(Mesh_Masked_Lit)							\
+
 
 UENUM()
-namespace EPopcornFXMaterialType
+enum class	EPopcornFXLegacyMaterialType
 {
-	enum	Type
-	{
-		Billboard_Additive,
-		Billboard_AlphaBlend,
-		Billboard_AlphaBlend_Lit,
-		Billboard_AlphaBlendAdditive,
-		Billboard_AlphaBlendAdditive_Lit,
-		Billboard_Distortion,
-		Billboard_Solid,
-		Billboard_Solid_Lit,
-		Billboard_Masked,
-		Billboard_Masked_Lit,
+	Billboard_Additive,
+	Billboard_AlphaBlend,
+	Billboard_AlphaBlend_Lit,
+	Billboard_AlphaBlendAdditive,
+	Billboard_AlphaBlendAdditive_Lit,
+	Billboard_Distortion,
+	Billboard_Solid,
+	Billboard_Solid_Lit,
+	Billboard_Masked,
+	Billboard_Masked_Lit,
 
-		Billboard_VolumetricFog,
-		Billboard_SixWayLightmap,
+	Billboard_VolumetricFog,
+	Billboard_SixWayLightmap,
 
-		Mesh_Additive,
-		Mesh_AlphaBlend,
-		Mesh_Distortion,
-		Mesh_Solid,
-		Mesh_Solid_Lit,
-		Mesh_Masked,
-		Mesh_Masked_Lit,
+	Mesh_Additive,
+	Mesh_AlphaBlend,
+	Mesh_Distortion,
+	Mesh_Solid,
+	Mesh_Solid_Lit,
+	Mesh_Masked,
+	Mesh_Masked_Lit,
+	Mesh_VAT_Opaque_Fluid,
+	Mesh_VAT_Opaque_Fluid_Lit,
+	Mesh_VAT_Masked_Fluid,
+	Mesh_VAT_Masked_Fluid_Lit,
+	Mesh_VAT_Opaque_Soft,
+	Mesh_VAT_Opaque_Soft_Lit,
+	Mesh_VAT_Masked_Soft,
+	Mesh_VAT_Masked_Soft_Lit,
+	Mesh_VAT_Opaque_Rigid,
+	Mesh_VAT_Opaque_Rigid_Lit,
+	Mesh_VAT_Masked_Rigid,
+	Mesh_VAT_Masked_Rigid_Lit,
+	// Put them in the end so that the material remap can work..
+	Billboard_Additive_NoAlpha,
+	Mesh_Additive_NoAlpha,
+	__Max UMETA(Hidden)
+};
 
-		Mesh_VAT_Opaque_Fluid,
-		Mesh_VAT_Opaque_Fluid_Lit,
-		Mesh_VAT_Masked_Fluid,
-		Mesh_VAT_Masked_Fluid_Lit,
-		Mesh_VAT_Opaque_Soft,
-		Mesh_VAT_Opaque_Soft_Lit,
-		Mesh_VAT_Masked_Soft,
-		Mesh_VAT_Masked_Soft_Lit,
-		Mesh_VAT_Opaque_Rigid,
-		Mesh_VAT_Opaque_Rigid_Lit,
-		Mesh_VAT_Masked_Rigid,
-		Mesh_VAT_Masked_Rigid_Lit,
+UENUM()
+enum class	EPopcornFXDefaultMaterialType
+{
+	Billboard_Additive,
+	Billboard_AlphaBlend,
+	Billboard_AlphaBlend_Lit,
+	Billboard_AlphaBlendAdditive,
+	Billboard_AlphaBlendAdditive_Lit,
+	Billboard_Distortion,
+	Billboard_Solid,
+	Billboard_Solid_Lit,
+	Billboard_Masked,
+	Billboard_Masked_Lit,
 
-		// Put them in the end so that the material remap can work..
-		Billboard_Additive_NoAlpha,
-		Mesh_Additive_NoAlpha,
+	Mesh_Additive,
+	Mesh_AlphaBlend,
+	Mesh_Solid,
+	Mesh_Solid_Lit,
+	Mesh_Masked,
+	Mesh_Masked_Lit,
 
-		__Max UMETA(Hidden)
-	};
-}
+	__Max UMETA(Hidden)
+};
 
-extern const EPopcornFXMaterialType::Type		kTransparentBillboard_Material_ToUE[4];
-extern const EPopcornFXMaterialType::Type		kOpaqueBillboard_Material_ToUE[2];
-extern const EPopcornFXMaterialType::Type		kOpaqueMesh_Material_ToUE[2];
+extern const EPopcornFXLegacyMaterialType		kLegacyTransparentBillboard_Material_ToUE[4];
+extern const EPopcornFXLegacyMaterialType		kOpaqueBillboard_LegacyMaterial_ToUE[2];
+extern const EPopcornFXDefaultMaterialType		kOpaqueBillboard_DefaultMaterial_ToUE[2];
+extern const EPopcornFXLegacyMaterialType		kOpaqueMesh_LegacyMaterial_ToUE[2];
+extern const EPopcornFXDefaultMaterialType		kOpaqueMesh_DefaultMaterial_ToUE[2];
 
 USTRUCT(BlueprintType)
 struct FPopcornFXSubRendererMaterial
@@ -118,10 +157,13 @@ public:
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere, BlueprintReadOnly, meta=(DisplayThumbnail="true"))
-	UMaterialInterface			*Material;
+	UMaterialInterface*			Material;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	TEnumAsByte<EPopcornFXMaterialType::Type>	MaterialType;
+	EPopcornFXLegacyMaterialType		LegacyMaterialType;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	EPopcornFXDefaultMaterialType		DefaultMaterialType;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UTexture2D					*TextureDiffuse;
@@ -247,12 +289,16 @@ public:
 	uint32						PerParticleLOD : 1;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	uint32						MotionBlur : 1;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	bool						IsLegacy;
+	
 
 	UPROPERTY()
 	TArray<uint32>				m_SkeletalMeshBoneIndicesReorder;
 
 	UPROPERTY()
 	int32						m_RMId;
+
 
 	UPROPERTY(Instanced)
 	UMaterialInstanceConstant	*MaterialInstance;
@@ -263,6 +309,7 @@ public:
 #if WITH_EDITOR
 	bool				_ResetDefaultMaterial_NoReload();
 	UMaterialInterface	*FindDefaultMaterial() const;
+	UMaterialInterface	*FindLegacyMaterial() const;
 	bool				BuildSkelMeshBoneIndicesReorder();
 	void				BuildDynamicParameterMask(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::SRendererDeclaration &decl);
 	void				RenameDependenciesIFN(UObject* oldAsset, UObject* newAsset);
@@ -296,7 +343,8 @@ public:
 			DynamicParameterMask == other.DynamicParameterMask &&
 			CastShadow == other.CastShadow &&
 			Lit == other.Lit &&
-			SortIndices == other.SortIndices;
+			SortIndices == other.SortIndices &&
+			IsLegacy == other.IsLegacy;
 	}
 
 	inline bool			RenderThread_SameMaterial_Mesh(const FPopcornFXSubRendererMaterial &other) const
@@ -347,7 +395,22 @@ public:
 			DynamicParameterMask == other.DynamicParameterMask &&
 			CastShadow == other.CastShadow &&
 			Lit == other.Lit &&
-			SortIndices == other.SortIndices;
+			SortIndices == other.SortIndices &&
+			IsLegacy == other.IsLegacy;
+	}
+	inline bool NeedsSorting()
+	{
+		if (IsLegacy)
+		{
+			if ((LegacyMaterialType >= EPopcornFXLegacyMaterialType::Billboard_AlphaBlend && LegacyMaterialType <= EPopcornFXLegacyMaterialType::Billboard_AlphaBlendAdditive_Lit) ||
+ 				LegacyMaterialType == EPopcornFXLegacyMaterialType::Billboard_SixWayLightmap)
+				return true;
+		}
+		else {
+			if (DefaultMaterialType >= EPopcornFXDefaultMaterialType::Billboard_AlphaBlend && DefaultMaterialType <= EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive_Lit)
+				return true;
+		}
+		return false;
 	}
 
 };

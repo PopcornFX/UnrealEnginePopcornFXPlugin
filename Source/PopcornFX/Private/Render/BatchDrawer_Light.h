@@ -24,10 +24,10 @@ public:
 
 	virtual bool		AreRenderersCompatible(const PopcornFX::CRendererDataBase *rendererA, const PopcornFX::CRendererDataBase *rendererB) const override;
 
-	virtual bool		CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const override;
+	virtual bool		CanRender(PopcornFX::SRenderContext &ctx) const override;
 
 	virtual void		BeginFrame(PopcornFX::SRenderContext &ctx) override;
-	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit) override;
+	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit) override;
 
 private:
 	void				_IssueDrawCall_Light(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc);

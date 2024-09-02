@@ -28,6 +28,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardVSUniforms, POPCORNFX_AP
 	SHADER_PARAMETER(uint32, TubesPlanesOffset)
 	SHADER_PARAMETER(uint32, VPP)
 	SHADER_PARAMETER(uint32, TotalParticleCount)
+	SHADER_PARAMETER(uint32, BasicTransform)
 	//SHADER_PARAMETER(int, InTextureIDsOffset)
 	SHADER_PARAMETER(int32, InColorsOffset)
 	SHADER_PARAMETER(int32, InEmissiveColorsOffset)

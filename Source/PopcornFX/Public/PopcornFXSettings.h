@@ -11,6 +11,7 @@
 #include "Engine/EngineBaseTypes.h"
 
 #include "PopcornFXDefaultMaterialsSettings.h"
+#include "PopcornFXLegacyMaterialsSettings.h"
 
 #include "PopcornFXSettings.generated.h"
 
@@ -259,6 +260,10 @@ public:
 	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Materials")
 	FPopcornFXDefaultMaterialsSettings	DefaultMaterials;
 
+	/** List of legacy materials for the project. */
+	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Materials")
+	FPopcornFXLegacyMaterialsSettings	LegacyMaterials;
+
 	/** Time limit per effect in miliseconds (does not affect simulated effects yet) */
 	UPROPERTY(Config, EditAnywhere, Category="PopcornFX Budget")
 	float						TimeLimitPerEffect;
@@ -331,4 +336,5 @@ public:
 #endif
 
 	UMaterialInterface	*GetConfigDefaultMaterial(uint32 ePopcornFXMaterialType) const;
+	UMaterialInterface	*GetConfigLegacyMaterial(uint32 ePopcornFXMaterialType) const;
 };

@@ -124,12 +124,12 @@ bool	CBatchDrawer_Triangle_CPUBB::AreRenderersCompatible(const PopcornFX::CRende
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Triangle_CPUBB::CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const
+bool	CBatchDrawer_Triangle_CPUBB::CanRender(PopcornFX::SRenderContext &ctx) const
 {
-	PK_ASSERT(drawPass.m_RendererCaches.First() != null);
+	PK_ASSERT(DrawPass().m_RendererCaches.First() != null);
 
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
-	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(drawPass.m_RendererCaches.First().Get())->RenderThread_Desc();
+	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(DrawPass().m_RendererCaches.First().Get())->RenderThread_Desc();
 	PK_ASSERT(renderContext.m_RendererSubView != null);
 
 	return renderContext.m_RendererSubView->Pass() == CRendererSubView::RenderPass_Main ||
@@ -155,7 +155,8 @@ bool	CBatchDrawer_Triangle_CPUBB::_IsAdditionalInputSupported(const PopcornFX::C
 {
 	if (type == PopcornFX::BaseType_Float4)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() ||
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() || // Legacy
+			fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseColor() ||
 			fieldName == PopcornFX::BasicRendererProperties::SID_Distortion_Color())
 			outStreamOffsetType = StreamOffset_Colors;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput1_Input1())
@@ -180,10 +181,12 @@ bool	CBatchDrawer_Triangle_CPUBB::_IsAdditionalInputSupported(const PopcornFX::C
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Triangle_CPUBB::AllocBuffers");
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
+	
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 
 	const bool	resizeBuffers = m_TotalParticleCount != drawPass.m_TotalParticleCount;
 	m_TotalParticleCount = drawPass.m_TotalParticleCount;
@@ -219,7 +222,6 @@ bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, c
 	// Billboard View independent
 	const bool	needsUV0 = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV0) != 0;
 	const bool	needsUV1 = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1) != 0;
-	const bool	needsAtlasIDs = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_AtlasId) != 0;
 
 	bool	largeIndices = false;
 
@@ -242,8 +244,6 @@ bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, c
 		resizeBuffers) // m_TotalParticleCount can differ between passes, realloc buffers if that's the case
 	{
 		PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Triangle_CPUBB::AllocBuffers_AdditionalInputs");
-
-		PK_ASSERT(needsAtlasIDs == m_SecondUVSet);
 
 		_ClearStreamOffsets();
 
@@ -318,9 +318,11 @@ bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, c
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Triangle_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Triangle_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Triangle_CPUBB::UnmapBuffers");
+
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 
 	m_Indices.Unmap();
 	m_Positions.Unmap();
@@ -366,9 +368,11 @@ void	CBatchDrawer_Triangle_CPUBB::_ClearStreamOffsets()
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Triangle_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Triangle_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Triangle_CPUBB::MapBuffers_Billboard");
+
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 
 	const u32	totalParticleCount = m_TotalParticleCount;
 	const u32	totalVertexCount = totalParticleCount * 3;
@@ -611,7 +615,7 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 		meshBatch.DepthPriorityGroup = renderContext.m_RendererSubView->SceneProxy()->GetDepthPriorityGroup(view->SceneViews()[realViewIndex].m_SceneView);
 		meshBatch.bUseWireframeSelectionColoring = isSelected;
 		meshBatch.bCanApplyViewModeOverrides = true;
-		meshBatch.MaterialRenderProxy = matDesc.RenderProxy();
+		meshBatch.MaterialRenderProxy = matDesc.RenderProxy()[0];
 
 		FMeshBatchElement	&meshElement = meshBatch.Elements[0];
 
@@ -642,7 +646,7 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Triangle_CPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit)
+bool	CBatchDrawer_Triangle_CPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Triangle_CPUBB::EmitDrawCall");
 	PK_ASSERT(toEmit.m_TotalParticleCount <= m_TotalParticleCount); // <= if slicing is enabled

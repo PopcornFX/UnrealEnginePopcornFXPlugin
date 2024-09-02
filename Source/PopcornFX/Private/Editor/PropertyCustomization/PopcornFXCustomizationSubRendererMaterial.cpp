@@ -57,8 +57,18 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 	check(material->IsValidHandle());
 	m_MaterialPty = material;
 
-	TSharedRef<IPropertyHandle>		materialType = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, MaterialType)).ToSharedRef();
-	check(materialType->IsValidHandle());
+	TSharedRef<IPropertyHandle>		legacyMaterialType = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, LegacyMaterialType)).ToSharedRef();
+	check(legacyMaterialType->IsValidHandle());
+
+	TSharedRef<IPropertyHandle>		defaultMaterialType = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, DefaultMaterialType)).ToSharedRef();
+	check(defaultMaterialType->IsValidHandle());
+
+	TSharedRef<IPropertyHandle>		isLegacyHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, IsLegacy)).ToSharedRef();
+	check(isLegacyHandle->IsValidHandle());
+
+	bool isLegacy = false;
+	isLegacyHandle.Get().GetValue(isLegacy);
+	TSharedRef<IPropertyHandle>		materialType = isLegacy ? legacyMaterialType : defaultMaterialType;
 
 	TSharedRef<IPropertyHandle>		noAlpha = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, NoAlpha)).ToSharedRef();
 	check(noAlpha->IsValidHandle());
@@ -310,8 +320,16 @@ EVisibility		FPopcornFXCustomizationSubRendererMaterial::GetResetVisibility() co
 		return EVisibility::Hidden;
 	if (self->Material == null)
 		return EVisibility::Visible;
-	if (self->Material != self->FindDefaultMaterial())
-		return EVisibility::Visible;
+	if (self->IsLegacy)
+	{
+		if (self->Material != self->FindLegacyMaterial())
+			return EVisibility::Visible;
+	}
+	else
+	{
+		if (self->Material != self->FindDefaultMaterial())
+			return EVisibility::Visible;
+	}
 	return EVisibility::Hidden;
 }
 

@@ -17,7 +17,24 @@
 
 //----------------------------------------------------------------------------
 
-class	FPopcornFXMeshCollector;
+class FPopcornFXMeshVertexCollector : public FOneFrameResource
+{
+public:
+	FPopcornFXMeshVertexFactory		*m_VertexFactory = null;
+
+	FPopcornFXMeshVertexCollector() { }
+	~FPopcornFXMeshVertexCollector()
+	{
+		if (PK_VERIFY(m_VertexFactory != null))
+		{
+			m_VertexFactory->ReleaseResource();
+			delete m_VertexFactory;
+			m_VertexFactory = null;
+		}
+	}
+};
+
+//----------------------------------------------------------------------------
 
 class	CBatchDrawer_Mesh_CPUBB : public PopcornFX::CRendererBatchJobs_Mesh_CPUBB
 {
@@ -44,14 +61,14 @@ public:
 
 	virtual bool		AreRenderersCompatible(const PopcornFX::CRendererDataBase *rendererA, const PopcornFX::CRendererDataBase *rendererB) const override;
 
-	virtual bool		CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const override;
+	virtual bool		CanRender(PopcornFX::SRenderContext &ctx) const override;
 
 	virtual void		BeginFrame(PopcornFX::SRenderContext &ctx) override;
-	virtual bool		AllocBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) override;
-	virtual bool		MapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) override;
+	virtual bool		AllocBuffers(PopcornFX::SRenderContext &ctx) override;
+	virtual bool		MapBuffers(PopcornFX::SRenderContext &ctx) override;
 
-	virtual bool		UnmapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) override;
-	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit) override;
+	virtual bool		UnmapBuffers(PopcornFX::SRenderContext &ctx) override;
+	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit) override;
 
 public:
 	struct	SAdditionalInput
@@ -88,7 +105,7 @@ private:
 											u32									buffersOffset,
 											FMeshElementCollector				*collector,
 											FPopcornFXMeshVertexFactory			*&outFactory,
-											FPopcornFXMeshCollector				*&outCollectorRes);
+											FPopcornFXMeshVertexCollector		*&outCollectorRes);
 
 #if RHI_RAYTRACING
 	void		_IssueDrawCall_Mesh_AccelStructs(const SUERenderContext & renderContext, const PopcornFX::SDrawCallDesc & desc);

@@ -22,17 +22,34 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXSettings, Log, All);
 //----------------------------------------------------------------------------
 
 #define DEFAULT_MATERIAL_PATH(__name)		"/PopcornFX/Materials/M_PK_Default_" #__name ".M_PK_Default_" #__name
-
+#define LEGACY_MATERIAL_PATH(__name)		"/PopcornFX/Materials/M_PK_Legacy_" #__name ".M_PK_Legacy_" #__name
 static const char		* const kPluginsDefaultMaterials[] = {
 #define	X_POPCORNFX_MATERIAL_TYPE(__name)	DEFAULT_MATERIAL_PATH(__name),
+
+	EXEC_X_POPCORNFX_MATERIAL_TYPE()
+
+#undef	X_POPCORNFX_MATERIAL_TYPE
+};
+
+static const char		* const kPluginsLegacyMaterials[] = {
+#define	X_POPCORNFX_LEGACY_MATERIAL_TYPE(__name)	LEGACY_MATERIAL_PATH(__name),
+
+	EXEC_X_POPCORNFX_LEGACY_MATERIAL_TYPE()
+
+#undef	X_POPCORNFX_LEGACY_MATERIAL_TYPE
+};
+
+
+static const char		* const kDefaultMaterialTypeNames[] = {
+#define	X_POPCORNFX_MATERIAL_TYPE(__name)	"Material_Default" #__name,
 	EXEC_X_POPCORNFX_MATERIAL_TYPE()
 #undef	X_POPCORNFX_MATERIAL_TYPE
 };
 
-static const char		* const kMaterialTypeNames[] = {
-#define	X_POPCORNFX_MATERIAL_TYPE(__name)	"Material_" #__name,
-	EXEC_X_POPCORNFX_MATERIAL_TYPE()
-#undef	X_POPCORNFX_MATERIAL_TYPE
+static const char		* const kLegacyMaterialTypeNames[] = {
+#define	X_POPCORNFX_LEGACY_MATERIAL_TYPE(__name)	"Material_Legacy_" #__name,
+	EXEC_X_POPCORNFX_LEGACY_MATERIAL_TYPE()
+#undef	X_POPCORNFX_LEGACY_MATERIAL_TYPE
 };
 
 UPopcornFXSettings::UPopcornFXSettings(const FObjectInitializer& PCIP)
@@ -59,9 +76,12 @@ UPopcornFXSettings::UPopcornFXSettings(const FObjectInitializer& PCIP)
 {
 	//if (!IsRunningCommandlet())
 	{
-#	define	X_POPCORNFX_MATERIAL_TYPE(__name)	DefaultMaterials.Material_ ## __name = FSoftObjectPath(DEFAULT_MATERIAL_PATH(__name));
+#	define	X_POPCORNFX_MATERIAL_TYPE(__name)	DefaultMaterials.Material_Default_ ## __name = FSoftObjectPath(DEFAULT_MATERIAL_PATH(__name));
+#	define	X_POPCORNFX_LEGACY_MATERIAL_TYPE(__name)	LegacyMaterials.Material_Legacy_ ## __name = FSoftObjectPath(LEGACY_MATERIAL_PATH(__name));
 			EXEC_X_POPCORNFX_MATERIAL_TYPE()
+			EXEC_X_POPCORNFX_LEGACY_MATERIAL_TYPE()
 #	undef	X_POPCORNFX_MATERIAL_TYPE
+#	undef	X_POPCORNFX_LEGACY_MATERIAL_TYPE
 	}
 }
 
@@ -94,13 +114,13 @@ UMaterialInterface	*UPopcornFXSettings::GetConfigDefaultMaterial(uint32 ePopcorn
 		PK_ASSERT_NOT_REACHED();
 		ePopcornFXMaterialType = 0; // fall back to bb additive
 	}
-	const EPopcornFXMaterialType::Type	materialType = (EPopcornFXMaterialType::Type)ePopcornFXMaterialType;
+	const EPopcornFXDefaultMaterialType	materialType = (EPopcornFXDefaultMaterialType)(ePopcornFXMaterialType);
 
 	UObject			*obj = null;
 	switch (materialType)
 	{
 #define	X_POPCORNFX_MATERIAL_TYPE(__name)	\
-	case	EPopcornFXMaterialType:: __name: obj = DefaultMaterials.Material_ ## __name .TryLoad(); break;
+	case	EPopcornFXDefaultMaterialType:: __name: obj = DefaultMaterials.Material_Default_ ## __name .TryLoad(); break;
 		EXEC_X_POPCORNFX_MATERIAL_TYPE()
 #undef	X_POPCORNFX_MATERIAL_TYPE
 	default:
@@ -112,16 +132,53 @@ UMaterialInterface	*UPopcornFXSettings::GetConfigDefaultMaterial(uint32 ePopcorn
 	{
 		mat = Cast<UMaterialInterface>(obj);
 		if (!PK_VERIFY(mat != null))
-			UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %s is not a UMaterialInterface !"), UTF8_TO_TCHAR(kMaterialTypeNames[materialType]));
+			UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %hs is not a UMaterialInterface !"), kDefaultMaterialTypeNames[(uint32)materialType]);
 	}
 
 	if (mat == null)
 	{
-		UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %s is invalid, falling back on PopcornFX Plugin's default one %s"), *FString(kMaterialTypeNames[materialType]), *FString(kPluginsDefaultMaterials[materialType]));
-		mat = ::LoadObject<UMaterialInterface>(null, UTF8_TO_TCHAR(kPluginsDefaultMaterials[materialType]));
+		UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %hs is invalid, falling back on PopcornFX Plugin's default one %hs"), kDefaultMaterialTypeNames[(uint32)materialType], kPluginsDefaultMaterials[(uint32)materialType]);
+		mat = ::LoadObject<UMaterialInterface>(null, UTF8_TO_TCHAR(kPluginsDefaultMaterials[(uint32)materialType]));
 		PK_ASSERT(mat != null);
 	}
-	return mat;
+	return mat; // TODO Wrong error message
+}
+
+UMaterialInterface	*UPopcornFXSettings::GetConfigLegacyMaterial(uint32 ePopcornFXMaterialType) const
+{
+	if (ePopcornFXMaterialType >= PK_ARRAY_COUNT(kPluginsLegacyMaterials))
+	{
+		PK_ASSERT_NOT_REACHED();
+		ePopcornFXMaterialType = 0; // fall back to bb additive
+	}
+	const EPopcornFXLegacyMaterialType	materialType = (EPopcornFXLegacyMaterialType)(ePopcornFXMaterialType);
+
+	UObject			*obj = null;
+	switch (materialType)
+	{
+#define	X_POPCORNFX_LEGACY_MATERIAL_TYPE(__name)	\
+	case	EPopcornFXLegacyMaterialType:: __name: obj = LegacyMaterials.Material_Legacy_ ## __name .TryLoad(); break;
+		EXEC_X_POPCORNFX_LEGACY_MATERIAL_TYPE()
+#undef	X_POPCORNFX_MATERIAL_TYPE
+	default:
+		PK_ASSERT_NOT_REACHED();
+		return null;
+	}
+	UMaterialInterface		*mat = null;
+	if (obj != null)
+	{
+		mat = Cast<UMaterialInterface>(obj);
+		if (!PK_VERIFY(mat != null))
+			UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %hs is not a UMaterialInterface !"), kLegacyMaterialTypeNames[(uint32)materialType]); 
+	}
+
+	if (mat == null)
+	{
+		UE_LOG(LogPopcornFXSettings, Warning, TEXT("PopcornFX Config %hs is invalid, falling back on PopcornFX Plugin's default one %hs"), kLegacyMaterialTypeNames[(uint32)materialType], kPluginsLegacyMaterials[(uint32)materialType]);
+		mat = ::LoadObject<UMaterialInterface>(null, UTF8_TO_TCHAR(kPluginsLegacyMaterials[(uint32)materialType]));
+		PK_ASSERT(mat != null);
+	}
+	return mat; // TODO Wrong error message
 }
 
 //----------------------------------------------------------------------------

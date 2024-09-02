@@ -4,9 +4,22 @@ echo "---------- Downloading PopcornFX Runtime SDK for Unreal Engine (Mobile pla
 
 setlocal
 
+@rem Find 7zip
+set passed=0
+FOR /F "tokens=*" %%g IN ('where 7z') do (set passed=1 && set zip=%%g)
+if %passed% == 0 (
+    if exist "C:\Program Files\7-Zip\7z.exe" (
+        set zip="C:\Program Files\7-Zip\7z.exe"
+    ) else (
+        echo Could not find 7-Zip. If you have changed its install directory, please add it to the PATH environment variable. Aborting.
+        pause
+        exit 1
+    )
+)
+
 bitsadmin /reset
 bitsadmin /create third_party_download_mobile
-bitsadmin /addfile third_party_download_mobile https://downloads.popcornfx.com/Plugins/UE4/UnrealEngine_PopcornFXPlugin_2.19.7_iOS_Android.7z "%~dp0\_PopcornFX_Runtime_SDK_Mobile.7z"
+bitsadmin /addfile third_party_download_mobile https://downloads.popcornfx.com/Plugins/UE4/UnrealEngine_PopcornFXPlugin_2.20.0_iOS_Android.7z "%~dp0\_PopcornFX_Runtime_SDK_Mobile.7z"
 bitsadmin /setpriority third_party_download_mobile "FOREGROUND"
 bitsadmin /resume third_party_download_mobile
 
@@ -14,9 +27,9 @@ bitsadmin /resume third_party_download_mobile
     call bitsadmin /info third_party_download_mobile /verbose | find "STATE: TRANSFERRED"
     if %ERRORLEVEL% equ 0 goto WAIT_FOR_DOWNLOAD_LOOP_END
     call bitsadmin /RawReturn /GetBytesTransferred third_party_download_mobile
-    printf ' / '
+    echo|set /p=" / " 
     call bitsadmin /RawReturn /GetBytesTotal third_party_download_mobile
-    echo Bytes transferred
+    echo  Bytes transferred
     timeout 2 > nul
     goto WAIT_FOR_DOWNLOAD_LOOP_START
 :WAIT_FOR_DOWNLOAD_LOOP_END
@@ -30,8 +43,7 @@ rem rmdir /s /q "%~dp0\PopcornFX_Runtime_SDK"
 mkdir "%~dp0\PopcornFX_Runtime_SDK"
 
 echo "---------- Unzipping _PopcornFX_Runtime_SDK_Mobile.7z ----------"
-
-7z x _PopcornFX_Runtime_SDK_Mobile.7z -o_PopcornFX_Runtime_SDK_Mobile
+%zip% x _PopcornFX_Runtime_SDK_Mobile.7z -o_PopcornFX_Runtime_SDK_Mobile
 
 echo "---------- Copying PopcornFX Runtime SDK ----------"
 

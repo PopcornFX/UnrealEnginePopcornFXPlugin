@@ -76,7 +76,6 @@ CBatchDrawer_Billboard_CPUBB::~CBatchDrawer_Billboard_CPUBB()
 	PK_ASSERT(!m_Tangents.Valid());
 	PK_ASSERT(!m_Texcoords.Valid());
 	PK_ASSERT(!m_Texcoord2s.Valid());
-	PK_ASSERT(!m_AtlasIDs.Valid());
 
 	PK_ASSERT(!m_SimData.Valid());
 
@@ -98,6 +97,9 @@ bool	CBatchDrawer_Billboard_CPUBB::Setup(const PopcornFX::CRendererDataBase *ren
 
 	m_NeedsBTN = renderer->m_RendererCache->m_Flags.m_HasNormal;
 	m_SecondUVSet = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending && renderer->m_RendererCache->m_Flags.m_HasUV;
+	m_RotateUV = renderer->m_RendererCache->m_Flags.m_RotateTexture;
+	m_FlipU = renderer->m_RendererCache->m_Flags.m_FlipU;
+	m_FlipV = renderer->m_RendererCache->m_Flags.m_FlipV;
 	return true;
 }
 
@@ -140,12 +142,12 @@ bool	CBatchDrawer_Billboard_CPUBB::AreRenderersCompatible(const PopcornFX::CRend
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_CPUBB::CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const
+bool	CBatchDrawer_Billboard_CPUBB::CanRender(PopcornFX::SRenderContext &ctx) const
 {
-	PK_ASSERT(drawPass.m_RendererCaches.First() != null);
+	PK_ASSERT(DrawPass().m_RendererCaches.First() != null);
 
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
-	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(drawPass.m_RendererCaches.First().Get())->RenderThread_Desc();
+	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(DrawPass().m_RendererCaches.First().Get())->RenderThread_Desc();
 	PK_ASSERT(renderContext.m_RendererSubView != null);
 
 	return renderContext.m_RendererSubView->Pass() == CRendererSubView::RenderPass_Main ||
@@ -171,7 +173,8 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 {
 	if (type == PopcornFX::BaseType_Float4)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() ||
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() || // Legacy
+			fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseColor() ||
 			fieldName == PopcornFX::BasicRendererProperties::SID_Distortion_Color())
 			outStreamOffsetType = StreamOffset_Colors;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput1_Input1())
@@ -199,16 +202,18 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Billboard_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 {
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_CPUBB::AllocBuffers");
-	const PopcornFX::SRendererBatchDrawPass_Billboard_CPUBB	&drawPassCPU = static_cast<const PopcornFX::SRendererBatchDrawPass_Billboard_CPUBB&>(drawPass);
 	const SUERenderContext									&renderContext = static_cast<SUERenderContext&>(ctx);
 
-	const bool	resizeBuffers = m_TotalParticleCount != drawPassCPU.m_TotalParticleCount;
-	m_TotalParticleCount = drawPassCPU.m_TotalParticleCount;
-	m_TotalVertexCount = drawPassCPU.m_TotalVertexCount;
-	m_TotalIndexCount = drawPassCPU.m_TotalIndexCount;
+	PK_ASSERT(m_DrawPass->m_TotalParticleCount == m_BB_Billboard.TotalParticleCount());
+
+	const bool	resizeBuffers = m_TotalParticleCount != m_DrawPass->m_TotalParticleCount;
+	m_TotalParticleCount = m_DrawPass->m_TotalParticleCount;
+	m_TotalVertexCount = m_BB_Billboard.TotalVertexCount();
+	m_TotalIndexCount = m_BB_Billboard.TotalIndexCount();
 
 	PK_ASSERT(renderContext.m_RendererSubView != null);
 	m_FeatureLevel = renderContext.m_RendererSubView->ViewFamily()->GetFeatureLevel();
@@ -259,8 +264,6 @@ bool	CBatchDrawer_Billboard_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 		if (!mainVBPool->AllocateIf(needsUV0, m_Texcoords, totalVertexCount, sizeof(CFloat2), false))
 			return false;
 		if (!mainVBPool->AllocateIf(needsUV1, m_Texcoord2s, totalVertexCount, sizeof(CFloat2), false))
-			return false;
-		if (!mainVBPool->AllocateIf(m_SecondUVSet, m_AtlasIDs, totalVertexCount, sizeof(float), false))
 			return false;
 	}
 
@@ -353,7 +356,7 @@ bool	CBatchDrawer_Billboard_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Billboard_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_CPUBB::UnmapBuffers");
 
@@ -363,7 +366,6 @@ bool	CBatchDrawer_Billboard_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx, 
 	m_Tangents.Unmap();
 	m_Texcoords.Unmap();
 	m_Texcoord2s.Unmap();
-	m_AtlasIDs.Unmap();
 
 	m_SimData.Unmap();
 
@@ -387,7 +389,6 @@ void	CBatchDrawer_Billboard_CPUBB::_ClearBuffers()
 	m_Tangents.UnmapAndClear();
 	m_Texcoords.UnmapAndClear();
 	m_Texcoord2s.UnmapAndClear();
-	m_AtlasIDs.UnmapAndClear();
 
 	m_SimData.UnmapAndClear();
 
@@ -405,9 +406,11 @@ void	CBatchDrawer_Billboard_CPUBB::_ClearStreamOffsets()
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Billboard_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_CPUBB::MapBuffers_Billboard");
+	
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 
 	// All quads are billboarded first, then capsules. We need this info in the VS to compute the particle ID from the vertex ID
 	m_CapsulesOffset = m_BB_Billboard.VPP4_ParticleCount();
@@ -468,14 +471,6 @@ bool	CBatchDrawer_Billboard_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 		if (!m_Texcoord2s->Map(uv1s))
 			return false;
 		m_BBJobs_Billboard.m_Exec_Texcoords.m_Texcoords2 = uv1s;
-	}
-	if (m_SecondUVSet)
-	{
-		PK_ASSERT(m_AtlasIDs.Valid());
-		TStridedMemoryView<float>	atlasIDs(null, totalVertexCount);
-		if (!m_AtlasIDs->Map(atlasIDs))
-			return false;
-		m_BBJobs_Billboard.m_Exec_Texcoords.m_AtlasIds = atlasIDs.ToMemoryViewIFP();
 	}
 	if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
 	{
@@ -653,7 +648,6 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vertexFactory = collectorRes->m_VertexFactory;
 			vertexFactory->m_Texcoords.Setup(m_Texcoords);
 			vertexFactory->m_Texcoord2s.Setup(m_Texcoord2s);
-			vertexFactory->m_AtlasIDs.Setup(m_AtlasIDs);
 
 			vertexFactory->m_Positions.Setup(viewIndependentPNT ? m_Positions : viewDep->m_Positions);
 			vertexFactory->m_Normals.Setup(viewIndependentPNT ? m_Normals : viewDep->m_Normals);
@@ -679,7 +673,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vsUniformsBillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
 
 			commonUniformsBillboard.HasSecondUVSet = m_SecondUVSet;
-			commonUniformsBillboard.FlipUVs = false;
+			commonUniformsBillboard.FlipUVs = m_RotateUV;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = false;
 
@@ -708,7 +702,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 		meshBatch.DepthPriorityGroup = sceneProxy->GetDepthPriorityGroup(view->SceneViews()[realViewIndex].m_SceneView);
 		meshBatch.bUseWireframeSelectionColoring = isSelected;
 		meshBatch.bCanApplyViewModeOverrides = true;
-		meshBatch.MaterialRenderProxy = matDesc.RenderProxy();
+		meshBatch.MaterialRenderProxy = matDesc.RenderProxy()[0];
 
 		FMeshBatchElement	&meshElement = meshBatch.Elements[0];
 
@@ -741,7 +735,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_CPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit)
+bool	CBatchDrawer_Billboard_CPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_CPUBB::EmitDrawCall");
 	PK_ASSERT(toEmit.m_TotalParticleCount <= m_TotalParticleCount); // <= if slicing is enabled

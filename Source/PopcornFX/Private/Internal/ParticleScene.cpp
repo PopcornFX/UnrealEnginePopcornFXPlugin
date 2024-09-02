@@ -612,10 +612,9 @@ void	CParticleScene::StartUpdate(float dt)
 				mediumStats->ComputeGlobalStats(mediumStatsReport);
 
 				effectTimings.m_TotalStatsReport += mediumStatsReport;
-				if (PK_VERIFY(medium->ParticleStorage() != null) &&
-					PK_VERIFY(medium->ParticleStorage()->Manager() != null))
+				if (PK_VERIFY(medium->ParticleStorage() != null))
 				{
-					if (medium->ParticleStorage()->Manager()->StorageClass() == PopcornFX::CParticleStorageManager_MainMemory::DefaultStorageClass())
+					if (medium->ParticleStorage()->StorageClass() == PopcornFX::CParticleStorageManager_MainMemory::DefaultStorageClass())
 						effectTimings.m_TotalParticleCount_CPU += medium->ParticleStorage()->ActiveParticleCount();
 					else
 						effectTimings.m_TotalParticleCount_GPU += medium->ParticleStorage()->ActiveParticleCount();

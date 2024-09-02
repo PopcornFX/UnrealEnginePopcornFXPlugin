@@ -411,6 +411,9 @@ bool	CBatchDrawer_Billboard_GPUBB::Setup(const PopcornFX::CRendererDataBase *ren
 		return false;
 
 	m_HasAtlasBlending = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending;
+	m_RotateUVs = renderer->m_RendererCache->m_Flags.m_RotateTexture;
+	m_FlipU = renderer->m_RendererCache->m_Flags.m_FlipU;
+	m_FlipV = renderer->m_RendererCache->m_Flags.m_FlipV;
 
 	// Billboarding mode
 	{
@@ -461,10 +464,10 @@ bool	CBatchDrawer_Billboard_GPUBB::AreRenderersCompatible(const PopcornFX::CRend
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const
+bool	CBatchDrawer_Billboard_GPUBB::CanRender(PopcornFX::SRenderContext &ctx) const
 {
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
-	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(drawPass.m_RendererCaches.First().Get())->RenderThread_Desc();
+	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(DrawPass().m_RendererCaches.First().Get())->RenderThread_Desc();
 
 	return renderContext.m_RendererSubView->Pass() == CRendererSubView::RenderPass_Main ||
 #if RHI_RAYTRACING
@@ -524,7 +527,8 @@ bool	CBatchDrawer_Billboard_GPUBB::_IsAdditionalInputSupported(const PopcornFX::
 	// TODO: PK-RenderHelpers improvement, this doesn't need to be resolved every frame
 	if (type == PopcornFX::BaseType_Float4)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() ||
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() || // Legacy
+			fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseColor() ||
 			fieldName == PopcornFX::BasicRendererProperties::SID_Distortion_Color() ||
 			fieldName == UERendererProperties::SID_VolumetricFog_AlbedoColor() ||
 			fieldName == UERendererProperties::SID_SixWayLightMap_Color())
@@ -555,9 +559,10 @@ bool	CBatchDrawer_Billboard_GPUBB::_IsAdditionalInputSupported(const PopcornFX::
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::AllocBuffers");
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 
 	const bool	resizeBuffers = m_TotalParticleCount != drawPass.m_TotalParticleCount;
 	m_TotalParticleCount = drawPass.m_TotalParticleCount;
@@ -796,8 +801,9 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, 
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 {
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 	if (drawPass.m_GPUStorage)
 	{
 		// GPU storage, nothing to map
@@ -921,9 +927,10 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, co
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::LaunchCustomTasks(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Billboard_GPUBB::LaunchCustomTasks(PopcornFX::SRenderContext &ctx)
 {
 	const SUERenderContext																&renderContext = static_cast<SUERenderContext&>(ctx);
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 	PopcornFX::TMemoryView<const PopcornFX::Drawers::SBillboard_DrawRequest * const>	drawRequests = drawPass.DrawRequests<PopcornFX::Drawers::SBillboard_DrawRequest>();
 #if (PK_HAS_GPU != 0)
 	if (drawPass.m_GPUStorage) // GPU storage
@@ -1000,7 +1007,7 @@ bool	CBatchDrawer_Billboard_GPUBB::LaunchCustomTasks(PopcornFX::SRenderContext &
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Billboard_GPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::UnmapBuffers");
 
@@ -1055,7 +1062,10 @@ bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_CPU(FPopcornFXGPUVertex
 	PK_ASSERT(m_Indices.Valid() || (viewDep != null && viewDep->m_Indices.Valid()));
 
 	vsUniforms.InSimData = m_SimData.Buffer()->SRV();
-
+	vsUniformsGPUBillboard.BasicTransforms = 0;
+	vsUniformsGPUBillboard.BasicTransforms |= m_RotateUVs ? 1u : 0u;
+	vsUniformsGPUBillboard.BasicTransforms |= m_FlipU ? 2u : 0u;
+	vsUniformsGPUBillboard.BasicTransforms |= m_FlipV ? 4u : 0u;
 	vsUniformsGPUBillboard.DrawRequestID = -1;
 	vsUniformsGPUBillboard.HasSortedIndices = 1; // By default we always generate indices, even when not required. TODO: Fix that to save perf/mem
 	vsUniformsGPUBillboard.InIndicesOffset = desc.m_IndexOffset;
@@ -1260,7 +1270,7 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			if (!PK_VERIFY(vertexFactory->IsInitialized()))
 				return;
 
-#if RHI_RAYTRACING
+			#if RHI_RAYTRACING
 			FMeshBatch		_meshBatch;
 			FMeshBatch		&meshBatch = isRayTracingPass ? _meshBatch : collector->AllocateMesh();
 
@@ -1278,7 +1288,7 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			meshBatch.DepthPriorityGroup = sceneProxy->GetDepthPriorityGroup(renderContext.m_RendererSubView->SceneViews()[realViewIndex].m_SceneView);
 			meshBatch.bUseWireframeSelectionColoring = sceneProxy->IsSelected();
 			meshBatch.bCanApplyViewModeOverrides = true;
-			meshBatch.MaterialRenderProxy = matDesc.RenderProxy();
+			meshBatch.MaterialRenderProxy = matDesc.RenderProxy()[0];
 
 			FMeshBatchElement	&meshElement = meshBatch.Elements[0];
 
@@ -1320,16 +1330,16 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 				// Update dynamic ray tracing geometry
 				dynamicRayTracingGeometries->Add(
 					FRayTracingDynamicGeometryUpdateParams
-					{
-						rayTracingInstance.Materials,
-						meshBatch.Elements[0].NumPrimitives == 0, // gpu sim (indirect draw)
-						totalVertexCount,
-						totalVertexCount * (u32)sizeof(CFloat3), // output from compute shader ?
-						totalTriangleCount,
-						&m_RayTracingGeometry,
-						&m_RayTracingDynamicVertexBuffer
-					}
-				);
+						{
+							rayTracingInstance.Materials,
+							meshBatch.Elements[0].NumPrimitives == 0, // gpu sim (indirect draw)
+							totalVertexCount,
+							totalVertexCount * (u32)sizeof(CFloat3), // output from compute shader ?
+							totalTriangleCount,
+							&m_RayTracingGeometry,
+							&m_RayTracingDynamicVertexBuffer
+						}
+					);
 
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 #elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
@@ -1353,17 +1363,17 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Billboard_GPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit)
+bool	CBatchDrawer_Billboard_GPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Billboard_GPUBB::EmitDrawCall");
 	PK_ASSERT(toEmit.m_TotalParticleCount <= m_TotalParticleCount); // <= if slicing is enabled
-	PK_ASSERT(drawPass.m_RendererType == toEmit.m_Renderer);
+	PK_ASSERT(m_DrawPass->m_RendererType == toEmit.m_Renderer);
 	PK_ASSERT(toEmit.m_DrawRequests.First() != null);
 
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
 
 	// !Resolve material proxy and interface for first compatible material
-	CRendererCache	*matCache = static_cast<CRendererCache*>(drawPass.m_RendererCaches.First().Get());
+	CRendererCache	*matCache = static_cast<CRendererCache*>(DrawPass().m_RendererCaches.First().Get());
 	if (!PK_VERIFY(matCache != null))
 		return true;
 
@@ -1383,7 +1393,7 @@ bool	CBatchDrawer_Billboard_GPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, 
 		return true;
 #endif // WITH_EDITOR
 
-	switch (drawPass.m_RendererType)
+	switch (m_DrawPass->m_RendererType)
 	{
 	case	PopcornFX::ERendererClass::Renderer_Billboard:
 		_IssueDrawCall_Billboard(renderContext, toEmit);

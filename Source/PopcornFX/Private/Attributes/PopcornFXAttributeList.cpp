@@ -1432,8 +1432,8 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 
 	for (int32 sampleri = 0; sampleri < m_Samplers.Num(); ++sampleri)
 	{
-		PK_ASSERT(attrListPtr->SamplerList()[sampleri] != null);
-		const PopcornFX::PResourceDescriptor	defaultSampler = attrListPtr->SamplerList()[sampleri]->AttribSamplerDefaultValue();
+		PK_ASSERT(attrListPtr->UniqueSamplerList()[sampleri] != null);
+		const PopcornFX::PResourceDescriptor	defaultSampler = attrListPtr->UniqueSamplerList()[sampleri]->AttribSamplerDefaultValue();
 		if (!PK_VERIFY(defaultSampler != null))
 			continue;
 
@@ -1446,7 +1446,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 			continue;
 		}
 
-		PK_ASSERT(desc.SamplerType() == ResolveAttribSamplerType(attrListPtr->SamplerList()[sampleri].Get()));
+		PK_ASSERT(desc.SamplerType() == ResolveAttribSamplerType(attrListPtr->UniqueSamplerList()[sampleri]));
 		UPopcornFXAttributeSampler	*attribSampler = desc.ResolveAttributeSampler(emitter, emitter);
 		if (attribSampler == null ||
 			!PK_VERIFY(desc.SamplerType() == attribSampler->SamplerType()))

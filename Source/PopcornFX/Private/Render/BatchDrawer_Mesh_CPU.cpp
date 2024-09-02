@@ -107,12 +107,12 @@ bool	CBatchDrawer_Mesh_CPUBB::AreRenderersCompatible(const PopcornFX::CRendererD
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Mesh_CPUBB::CanRender(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass) const
+bool	CBatchDrawer_Mesh_CPUBB::CanRender(PopcornFX::SRenderContext &ctx) const
 {
-	PK_ASSERT(drawPass.m_RendererCaches.First() != null);
+	PK_ASSERT(DrawPass().m_RendererCaches.First() != null);
 
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
-	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(drawPass.m_RendererCaches.First().Get())->RenderThread_Desc();
+	CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(DrawPass().m_RendererCaches.First().Get())->RenderThread_Desc();
 	PK_ASSERT(renderContext.m_RendererSubView != null);
 
 	return	renderContext.m_RendererSubView->Pass() == CRendererSubView::RenderPass_Main ||
@@ -141,7 +141,8 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 {
 	if (type == PopcornFX::BaseType_Float4)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() ||
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_Color() || // Legacy
+			fieldName == PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseColor() ||
 			fieldName == PopcornFX::BasicRendererProperties::SID_Distortion_Color())
 			outStreamOffsetType = StreamOffset_Colors;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput0_Input0())
@@ -174,16 +175,19 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 {
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
+
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::AllocBuffers");
-	const PopcornFX::SRendererBatchDrawPass_Mesh_CPUBB		&drawPassCPU = static_cast<const PopcornFX::SRendererBatchDrawPass_Mesh_CPUBB&>(drawPass);
 	const SUERenderContext									&renderContext = static_cast<SUERenderContext&>(ctx);
 
-	const bool	resizeBuffers = m_TotalParticleCount != drawPassCPU.m_TotalParticleCount;
-	m_TotalParticleCount = drawPassCPU.m_TotalParticleCount;
-	m_PerMeshParticleCount = drawPassCPU.m_PerMeshParticleCount;
-	m_HasMeshIDs = drawPassCPU.m_HasMeshIDs;
+	PK_ASSERT(m_DrawPass->m_TotalParticleCount == m_BB_Mesh.TotalParticleCount());
+
+	const bool	resizeBuffers = m_TotalParticleCount != m_BB_Mesh.TotalParticleCount();
+	m_TotalParticleCount = m_DrawPass->m_TotalParticleCount;
+	m_PerMeshParticleCount = m_BB_Mesh.PerMeshParticleCount();
+	m_HasMeshIDs = m_BB_Mesh.HasMeshIds();
 
 	PK_ASSERT(renderContext.m_RendererSubView != null);
 	m_FeatureLevel = renderContext.m_RendererSubView->ViewFamily()->GetFeatureLevel();
@@ -286,9 +290,10 @@ bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx, const
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Mesh_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Mesh_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::UnmapBuffers");
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 
 	m_SimData.Unmap();
 
@@ -344,9 +349,10 @@ void	CBatchDrawer_Mesh_CPUBB::_ClearStreamOffsets()
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Mesh_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass)
+bool	CBatchDrawer_Mesh_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::MapBuffers_Meshes");
+	const PopcornFX::SRendererBatchDrawPass &drawPass = DrawPass();
 
 	const SUERenderContext		&renderContext = static_cast<SUERenderContext&>(ctx);
 
@@ -406,25 +412,6 @@ bool	CBatchDrawer_Mesh_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx, const P
 
 //----------------------------------------------------------------------------
 
-class FPopcornFXMeshCollector : public FOneFrameResource
-{
-public:
-	FPopcornFXMeshVertexFactory		*m_VertexFactory = null;
-
-	FPopcornFXMeshCollector() { }
-	~FPopcornFXMeshCollector()
-	{
-		if (PK_VERIFY(m_VertexFactory != null))
-		{
-			m_VertexFactory->ReleaseResource();
-			delete m_VertexFactory;
-			m_VertexFactory = null;
-		}
-	}
-};
-
-//----------------------------------------------------------------------------
-
 void	CBatchDrawer_Mesh_CPUBB::_PreSetupMeshData(FPopcornFXMeshVertexFactory::FDataType &meshData, const FStaticMeshLODResources &meshResources)
 {
 	meshData.bInitialized = false;
@@ -447,7 +434,7 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 															u32									buffersOffset,
 															FMeshElementCollector				*collector,
 															FPopcornFXMeshVertexFactory			*&outFactory,
-															FPopcornFXMeshCollector				*&outCollectorRes)
+															FPopcornFXMeshVertexCollector		*&outCollectorRes)
 {
 	// Resets m_VFData, that is *copied* per VF
 	m_VFData.m_InstancedMatrices.Setup(m_Instanced_Matrices, buffersOffset * sizeof(CFloat4x4));
@@ -482,7 +469,7 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 	{
 		PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::IssueDrawCall_Mesh CollectorRes");
 
-		outCollectorRes = &(collector->AllocateOneFrameResource<FPopcornFXMeshCollector>());
+		outCollectorRes = &(collector->AllocateOneFrameResource<FPopcornFXMeshVertexCollector>());
 		check(outCollectorRes != null);
 
 		PK_ASSERT(outCollectorRes->m_VertexFactory == null);
@@ -656,7 +643,7 @@ bool	CBatchDrawer_Mesh_CPUBB::_BuildMeshBatch_Mesh(	FMeshBatch							&meshBatch,
 
 	meshBatch.DepthPriorityGroup = sceneProxy->GetDepthPriorityGroup(view);
 	meshBatch.Type = PT_TriangleList;
-	meshBatch.MaterialRenderProxy = matDesc.RenderProxy(); // TODO: Check with v1 impl.
+	meshBatch.MaterialRenderProxy = matDesc.RenderProxy()[0]; // TODO: Check with v1 impl.       
 	meshBatch.bCanApplyViewModeOverrides = true;
 
 	const FStaticMeshSection	&section = LODResources.Sections[iSection];
@@ -710,7 +697,7 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_Sections(	const FPopcornFXScen
 	// Vertex factory and collector resource are either used to render all sections (if all sections of the mesh are being rendered of m_TotalParticleCount)
 	// If there is a mesh atlas, we have to create a vertex factory per mesh section, because we cannot specify per FMeshBatchElement an offset into the instances buffers
 	FPopcornFXMeshVertexFactory		*vertexFactory = null;
-	FPopcornFXMeshCollector			*collectorRes = null;
+	FPopcornFXMeshVertexCollector	*collectorRes = null;
 	if (!m_HasMeshIDs)
 		_CreateMeshVertexFactory(matDesc, 0, collector, vertexFactory, collectorRes);
 
@@ -805,7 +792,7 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext &render
 
 //----------------------------------------------------------------------------
 
-bool	CBatchDrawer_Mesh_CPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SRendererBatchDrawPass &drawPass, const PopcornFX::SDrawCallDesc &toEmit)
+bool	CBatchDrawer_Mesh_CPUBB::EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit)
 {
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::EmitDrawCall");
 	PK_ASSERT(toEmit.m_TotalParticleCount <= m_TotalParticleCount); // <= if slicing is enabled

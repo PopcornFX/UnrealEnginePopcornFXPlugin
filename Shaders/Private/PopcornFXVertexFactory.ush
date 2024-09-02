@@ -132,6 +132,12 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 			UVs = float2(UVs.y, UVs.x);
 		Interpolants.TexCoord.xy = (UVs * Interpolants.UVScalesAndOffsets.xy) + Interpolants.UVScalesAndOffsets.zw;
 	}
+	else
+    {
+        if (PopcornFXBillboardCommonUniforms.FlipUVs)
+            Interpolants.TexCoord.xy = Interpolants.TexCoord.yx;
+
+    }
 
 #if NUM_TEX_COORD_INTERPOLATORS
 	#if NUM_TEX_COORD_INTERPOLATORS >= 1
