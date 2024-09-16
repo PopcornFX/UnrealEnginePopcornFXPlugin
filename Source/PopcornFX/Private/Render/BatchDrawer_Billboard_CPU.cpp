@@ -183,11 +183,13 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 			outStreamOffsetType = StreamOffset_DynParam2s;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
 			outStreamOffsetType = StreamOffset_DynParam3s;
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
+			outStreamOffsetType = StreamOffset_EmissiveColors4;
 	}
 	else if (type == PopcornFX::BaseType_Float3)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
-			outStreamOffsetType = StreamOffset_EmissiveColors;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
+			outStreamOffsetType = StreamOffset_EmissiveColors3;
 
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_PreviousPosition())
 			outStreamOffsetType = StreamOffset_PreviousPosition;
@@ -196,6 +198,8 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
+			outStreamOffsetType = StreamOffset_AtlasTextureID;
 	}
 	return outStreamOffsetType != EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
 }
@@ -666,8 +670,10 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vsUniformsBillboard.CapsulesOffset = m_CapsulesOffset;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
 			vsUniformsBillboard.InPreviousPositionOffset = m_AdditionalStreamOffsets[StreamOffset_PreviousPosition].OffsetForShaderConstant();
-			vsUniformsBillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
+			vsUniformsBillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].OffsetForShaderConstant();
+			vsUniformsBillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].OffsetForShaderConstant();
 			vsUniformsBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
+			vsUniformsBillboard.InTextureIDsOffset = m_AdditionalStreamOffsets[StreamOffset_AtlasTextureID].OffsetForShaderConstant();
 			vsUniformsBillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();
 			vsUniformsBillboard.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].OffsetForShaderConstant();
 			vsUniformsBillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();

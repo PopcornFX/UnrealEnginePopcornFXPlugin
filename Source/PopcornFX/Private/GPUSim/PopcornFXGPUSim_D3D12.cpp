@@ -184,7 +184,7 @@ void FD3D12Resource::StartTrackingForResidency()
 		D3D12_RESOURCE_ALLOCATION_INFO Info;
 
 		Info = GetParentDevice()->GetDevice()->GetResourceAllocationInfo(0, 1, &Desc);
-		checkf(Info.SizeInBytes == UINT64_MAX, TEXT("D3D12 GetResourceAllocationInfo failed - likely a resource was requested that has invalid allocation info (e.g. is an invalid texture size)"));
+		checkf(Info.SizeInBytes != UINT64_MAX, TEXT("D3D12 GetResourceAllocationInfo failed - likely a resource was requested that has invalid allocation info (e.g. is an invalid texture size)"));
 		D3DX12Residency::Initialize(*ResidencyHandle, Resource.GetReference(), Info.SizeInBytes, this);
 		D3DX12Residency::BeginTrackingObject(GetParentDevice()->GetResidencyManager(), *ResidencyHandle);
 	}

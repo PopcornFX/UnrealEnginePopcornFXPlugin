@@ -34,7 +34,6 @@ struct FVertexFactoryInput
 	float2	TexCoord2				: ATTRIBUTE4;
 	float4	UVFactors				: ATTRIBUTE5;
 	float4	UVScalesAndOffsets		: ATTRIBUTE6;
-	float	AtlasID					: ATTRIBUTE7; // Should be an additional input
 
 	// Optional instance ID for vertex layered rendering
 #if FEATURE_LEVEL >= FEATURE_LEVEL_SM4 && ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER
@@ -57,7 +56,7 @@ struct FVertexFactoryIntermediates
 	float3	PrevPosition;
 
 	float4	ParticleColor;
-	float3	ParticleEmissiveColor;
+	float4	ParticleEmissiveColor;
 	
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
 	float4	DynamicParameter;
@@ -85,7 +84,7 @@ struct FVertexFactoryIntermediates
 struct FVertexFactoryInterpolantsVSToPS
 {
 	float4					ParticleColor			: TEXCOORD0;
-	float3					ParticleEmissiveColor	: TEXCOORD1;
+	float4					ParticleEmissiveColor	: TEXCOORD1;
 	float4					TexCoord				: TEXCOORD2;
 	float3					Normal					: TEXCOORD3;
 	float3					Tangent					: TEXCOORD4;
@@ -172,7 +171,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	PixelParameters.Particle.DynamicParameter3 = Interpolants.DynamicParameter3;
 #endif
 
-	PixelParameters.VertexColor = float4(Interpolants.ParticleEmissiveColor, 1);
+	PixelParameters.VertexColor = Interpolants.ParticleEmissiveColor;
 	PixelParameters.UnMirrored = 1;
 	PixelParameters.TwoSidedSign = 1;
 
@@ -232,7 +231,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	VertexParameters.SceneData = Intermediates.SceneData;
 #endif // (ENGINE_MAJOR_VERSION == 5)
 	VertexParameters.WorldPosition = WorldPosition;
-	VertexParameters.VertexColor = float4(Intermediates.ParticleEmissiveColor, 1);
+	VertexParameters.VertexColor = Intermediates.ParticleEmissiveColor;
 	VertexParameters.PreSkinnedPosition = Input.Position.xyz;
 	VertexParameters.PreSkinnedNormal = TangentToLocal[2].xyz;
 
@@ -357,22 +356,29 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	prevWorldVertexPosition += ResolvedView.PrevPreViewTranslation;
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
-    Intermediates.PrevPosition = prevWorldVertexPosition;
+	Intermediates.PrevPosition = prevWorldVertexPosition;
 
 	BRANCH
 	if (PopcornFXBillboardVSUniforms.InColorsOffset != -1)
 		Intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXBillboardVSUniforms.InColorsOffset);
 	BRANCH
-	if (PopcornFXBillboardVSUniforms.InEmissiveColorsOffset != -1)
-		Intermediates.ParticleEmissiveColor = PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InEmissiveColorsOffset);
-
+	if (PopcornFXBillboardVSUniforms.InEmissiveColorsOffset3 != -1)
+		Intermediates.ParticleEmissiveColor = float4(PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InEmissiveColorsOffset3), 1.0f);
+	BRANCH
+	if (PopcornFXBillboardVSUniforms.InEmissiveColorsOffset4 != -1)
+		Intermediates.ParticleEmissiveColor = PKSimData_Load4f(particleID, PopcornFXBillboardVSUniforms.InEmissiveColorsOffset4);
 	float	alphaCursor = 0.0f;
 	BRANCH
 	if (PopcornFXBillboardVSUniforms.InAlphaCursorsOffset != -1)
 		alphaCursor = PKSimData_Loadf(particleID, PopcornFXBillboardVSUniforms.InAlphaCursorsOffset);
+
+	float	textureID = 0.0f;
+	BRANCH
+	if (PopcornFXBillboardVSUniforms.InTextureIDsOffset != -1)
+		textureID = PKSimData_Loadf(particleID, PopcornFXBillboardVSUniforms.InTextureIDsOffset);
 	
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
-	Intermediates.DynamicParameter = float4(Input.AtlasID, alphaCursor, 0, 0);
+	Intermediates.DynamicParameter = float4(textureID, alphaCursor, 0, 0);
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 2)
 	BRANCH

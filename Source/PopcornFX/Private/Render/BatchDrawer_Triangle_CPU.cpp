@@ -165,11 +165,13 @@ bool	CBatchDrawer_Triangle_CPUBB::_IsAdditionalInputSupported(const PopcornFX::C
 			outStreamOffsetType = StreamOffset_DynParam2s;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
 			outStreamOffsetType = StreamOffset_DynParam3s;
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
+			outStreamOffsetType = StreamOffset_EmissiveColors4;
 	}
 	else if (type == PopcornFX::BaseType_Float3)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
-			outStreamOffsetType = StreamOffset_EmissiveColors;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
+			outStreamOffsetType = StreamOffset_EmissiveColors3;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
@@ -579,7 +581,8 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 			vsUniformsBillboard.RendererType = static_cast<u32>(PopcornFX::Renderer_Triangle);
 			vsUniformsBillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
-			vsUniformsBillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
+			vsUniformsBillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].OffsetForShaderConstant();
+			vsUniformsBillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].OffsetForShaderConstant();
 			vsUniformsBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
 			vsUniformsBillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();
 			vsUniformsBillboard.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].OffsetForShaderConstant();

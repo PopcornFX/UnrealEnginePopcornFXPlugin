@@ -16,6 +16,8 @@
 // These are only enabled for SM5 due to limited interpolators elsewhere
 #define USE_PARTICLE_POSITION ((NEEDS_PARTICLE_POSITION || PASS_NEEDS_PRIMITIVE_VOLUME_BOUNDS))
 #define USE_PARTICLE_TIME (NEEDS_PARTICLE_TIME)
+#define USE_PARTICLE_SIZE (NEEDS_PARTICLE_SIZE)
+#define USE_PARTICLE_SPRITE_ROTATION (NEEDS_PARTICLE_SPRITE_ROTATION)
 
 #define USE_PARTICLE_LOCAL_TO_WORLD (NEEDS_PARTICLE_LOCAL_TO_WORLD || NEEDS_INSTANCE_LOCAL_TO_WORLD_PS)
 #define USE_PARTICLE_WORLD_TO_LOCAL (NEEDS_PARTICLE_WORLD_TO_LOCAL || NEEDS_INSTANCE_WORLD_TO_LOCAL_PS)
@@ -72,9 +74,7 @@ struct FVertexFactoryInterpolantsVSToPS
 #if NEEDS_PARTICLE_COLOR
 	nointerpolation float4	ParticleColor : COLOR1;
 #endif
-	nointerpolation float3	EmissiveColor : COLOR6;
 
-	nointerpolation float	Cursor : PARTICLE_TIME;
 
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	nointerpolation float4	DynamicParameter0 : COLOR2;
@@ -88,6 +88,8 @@ struct FVertexFactoryInterpolantsVSToPS
 #if (DYNAMIC_PARAMETERS_MASK & 8)
 	nointerpolation float4	DynamicParameter3 : COLOR5;
 #endif
+
+	nointerpolation float	Cursor : PARTICLE_TIME;
 
 #if USE_PARTICLE_POSITION
 	/** Particle position in camera-centered translated world space */
@@ -111,6 +113,9 @@ struct FVertexFactoryInterpolantsVSToPS
 #endif
 
 #if USE_PARTICLE_SUBUVS
+	nointerpolation float4	EmissiveColor : COLOR6;
+#endif
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
 	nointerpolation float4	AtlasRect : COLOR7;
 #endif
 };
@@ -123,11 +128,8 @@ struct FVertexFactoryIntermediates
 	/** The color of the particle. */
 	float4	ParticleColor;
 
-	float3	EmissiveColor;
+	float4	EmissiveColor;
 
-	/** AlphaRemap cursor */
-	float	Cursor;
-	
 #if (DYNAMIC_PARAMETERS_MASK & 1)
 	float4	DynamicParameter0;
 #endif
@@ -148,6 +150,8 @@ struct FVertexFactoryIntermediates
 
 	/** Particle position in camera-centered translated world space. */
 	float3	ParticleTranslatedWorldPosition;
+	/** AlphaRemap cursor */
+	float	Cursor;
 
 #if NEEDS_PARTICLE_TRANSFORM
 	float4	LocalToWorld[4];
@@ -211,11 +215,16 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	Result.Particle.Color = Interpolants.ParticleColor;
 #endif
 #if USE_PARTICLE_SUBUVS
+	// TODO: Move this to dynamic params
 	Result.Particle.SubUVCoords[0] = Interpolants.EmissiveColor.xy;
-	Result.Particle.SubUVCoords[1] = float2(Interpolants.EmissiveColor.z, Interpolants.AtlasRect.x);
-	Result.Particle.SubUVLerp = Interpolants.AtlasRect.y;
+	Result.Particle.SubUVCoords[1] = Interpolants.EmissiveColor.zw;
+	Result.Particle.SubUVLerp = Interpolants.AtlasRect.x;
+#endif
+#if USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
+	Result.Particle.SpriteRotation = Interpolants.AtlasRect.y;
 	Result.Particle.Size = Interpolants.AtlasRect.zw;
 #endif
+
 	Result.Particle.RelativeTime = Interpolants.Cursor;
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
@@ -353,11 +362,16 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 
 	Result.Particle.Color = Intermediates.ParticleColor;
 #if USE_PARTICLE_SUBUVS
+	// TODO: Move this to dynamic params
 	Result.Particle.SubUVCoords[0] = Intermediates.EmissiveColor.xy;
-	Result.Particle.SubUVCoords[1] = float2(Intermediates.EmissiveColor.z, Intermediates.AtlasRect.x);
-	Result.Particle.SubUVLerp = Intermediates.AtlasRect.y;
+	Result.Particle.SubUVCoords[1] = Intermediates.EmissiveColor.zw;
+#endif
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
+	Result.Particle.SubUVLerp = Intermediates.AtlasRect.x;
+	Result.Particle.SpriteRotation = Intermediates.AtlasRect.y;
 	Result.Particle.Size = Intermediates.AtlasRect.zw;
 #endif
+
 	Result.Particle.RelativeTime = Intermediates.Cursor;
 
 #if (DYNAMIC_PARAMETERS_MASK != 0)
@@ -650,9 +664,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	if (PopcornFXSkelMeshUniforms.InColorsOffset != -1)
 		Intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXSkelMeshUniforms.InColorsOffset);
 	BRANCH
-	if (PopcornFXSkelMeshUniforms.InEmissiveColorsOffset != -1)
-		Intermediates.EmissiveColor = PKSimData_Load3f(particleID, PopcornFXSkelMeshUniforms.InEmissiveColorsOffset);
-
+	if (PopcornFXSkelMeshUniforms.InEmissiveColorsOffset3 != -1)
+		Intermediates.EmissiveColor = float4(PKSimData_Load3f(particleID, PopcornFXSkelMeshUniforms.InEmissiveColorsOffset3), 1);
+	else if (PopcornFXSkelMeshUniforms.InEmissiveColorsOffset4 != -1)
+		Intermediates.EmissiveColor = PKSimData_Load4f(particleID, PopcornFXSkelMeshUniforms.InEmissiveColorsOffset4);
 	BRANCH
 	if (PopcornFXSkelMeshUniforms.InAlphaCursorsOffset != -1)
 		Intermediates.Cursor = PKSimData_Loadf(particleID, PopcornFXSkelMeshUniforms.InAlphaCursorsOffset);
@@ -802,7 +817,6 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 #if NEEDS_PARTICLE_COLOR
 	Interpolants.ParticleColor = Intermediates.ParticleColor;
 #endif
-	Interpolants.EmissiveColor = Intermediates.EmissiveColor;
 	Interpolants.Cursor = Intermediates.Cursor;
 
 #if (DYNAMIC_PARAMETERS_MASK & 1)
@@ -838,6 +852,9 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 #endif
 
 #if USE_PARTICLE_SUBUVS
+	Interpolants.EmissiveColor = Intermediates.EmissiveColor;
+#endif
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
 	Interpolants.AtlasRect = Intermediates.AtlasRect;
 #endif
 

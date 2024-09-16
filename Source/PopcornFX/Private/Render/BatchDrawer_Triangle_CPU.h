@@ -22,7 +22,8 @@ private:
 	enum	EPopcornFXAdditionalStreamOffsets
 	{
 		StreamOffset_Colors = 0,
-		StreamOffset_EmissiveColors,
+		StreamOffset_EmissiveColors3,
+		StreamOffset_EmissiveColors4,
 		StreamOffset_AlphaCursors,
 		StreamOffset_DynParam1s,
 		StreamOffset_DynParam2s,

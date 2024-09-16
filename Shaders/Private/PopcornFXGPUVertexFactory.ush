@@ -75,7 +75,7 @@ uint	GetNumRayTracingDynamicMeshVerticesIndirect()
 struct	FVertexFactoryInterpolantsVSToPS
 {
 	nointerpolation float4		Color							: TEXCOORD0;
-	nointerpolation float3		EmissiveColor					: TEXCOORD1;
+	nointerpolation float4		EmissiveColor					: TEXCOORD1;
 	float4						TexCoords						: TEXCOORD2;
 	float3						Normal							: TEXCOORD3;
 	float4						Tangent							: TEXCOORD4;
@@ -174,7 +174,7 @@ FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input,
 	VertexParameters.SceneData = Intermediates.SceneData;
 #endif // (ENGINE_MAJOR_VERSION == 5)
 	VertexParameters.WorldPosition = WorldPosition;
-	VertexParameters.VertexColor = float4(Intermediates.ParticleEmissiveColor, 1.0);
+	VertexParameters.VertexColor = Intermediates.ParticleEmissiveColor;
 	VertexParameters.TangentToWorld = mul(TangentToLocal, GetLocalToWorld3x3());
 
 	//VertexParameters.Particle.MacroUV = ; TODO
@@ -321,7 +321,7 @@ FMaterialPixelParameters	GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	#endif	// > 3
 #endif	//NUM_TEX_COORD_INTERPOLATORS
 
-	PixelParameters.VertexColor = float4(Interpolants.EmissiveColor, 1.0);
+	PixelParameters.VertexColor = Interpolants.EmissiveColor;
 	PixelParameters.UnMirrored = 1;
 	PixelParameters.TwoSidedSign = 1;
 

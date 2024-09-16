@@ -290,7 +290,7 @@ public:
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	uint32						MotionBlur : 1;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	bool						IsLegacy;
+	uint32						IsLegacy : 1;
 	
 
 	UPROPERTY()
@@ -406,7 +406,8 @@ public:
  				LegacyMaterialType == EPopcornFXLegacyMaterialType::Billboard_SixWayLightmap)
 				return true;
 		}
-		else {
+		else
+		{
 			if (DefaultMaterialType >= EPopcornFXDefaultMaterialType::Billboard_AlphaBlend && DefaultMaterialType <= EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive_Lit)
 				return true;
 		}

@@ -19,7 +19,7 @@ if %passed% == 0 (
 
 bitsadmin /reset
 bitsadmin /create third_party_download_mobile
-bitsadmin /addfile third_party_download_mobile https://downloads.popcornfx.com/Plugins/UE4/UnrealEngine_PopcornFXPlugin_2.20.0_iOS_Android.7z "%~dp0\_PopcornFX_Runtime_SDK_Mobile.7z"
+bitsadmin /addfile third_party_download_mobile https://downloads.popcornfx.com/Plugins/UE4/UnrealEngine_PopcornFXPlugin_2.20.1_iOS_Android.7z "%~dp0\_PopcornFX_Runtime_SDK_Mobile.7z"
 bitsadmin /setpriority third_party_download_mobile "FOREGROUND"
 bitsadmin /resume third_party_download_mobile
 

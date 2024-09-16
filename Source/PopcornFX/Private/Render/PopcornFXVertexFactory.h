@@ -29,9 +29,10 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardVSUniforms, POPCORNFX_AP
 	SHADER_PARAMETER(uint32, VPP)
 	SHADER_PARAMETER(uint32, TotalParticleCount)
 	SHADER_PARAMETER(uint32, BasicTransform)
-	//SHADER_PARAMETER(int, InTextureIDsOffset)
+	SHADER_PARAMETER(int32, InTextureIDsOffset)
 	SHADER_PARAMETER(int32, InColorsOffset)
-	SHADER_PARAMETER(int32, InEmissiveColorsOffset)
+	SHADER_PARAMETER(int32, InEmissiveColorsOffset3)
+	SHADER_PARAMETER(int32, InEmissiveColorsOffset4)
 	SHADER_PARAMETER(int32, InPreviousPositionOffset)
 	SHADER_PARAMETER(int32, InAlphaCursorsOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter1sOffset)
@@ -71,7 +72,6 @@ public:
 	FPopcornFXVertexBufferView		m_Texcoord2s;
 	FPopcornFXVertexBufferView		m_UVFactors;
 	FPopcornFXVertexBufferView		m_UVScalesAndOffsets;
-	FPopcornFXVertexBufferView		m_AtlasIDs; // This should be an additional input
 
 	static bool			ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters);
 

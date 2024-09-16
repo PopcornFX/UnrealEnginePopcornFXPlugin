@@ -22,7 +22,8 @@
 // Skeletal mesh shader uniforms
 BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXSkelMeshUniforms, POPCORNFX_API)
 	SHADER_PARAMETER(int32, InColorsOffset)
-	SHADER_PARAMETER(int32, InEmissiveColorsOffset)
+	SHADER_PARAMETER(int32, InEmissiveColorsOffset3)
+	SHADER_PARAMETER(int32, InEmissiveColorsOffset4)
 	SHADER_PARAMETER(int32, InAlphaCursorsOffset)
 	SHADER_PARAMETER(int32, InTextureIDsOffset)
 	SHADER_PARAMETER(int32, InVATCursorsOffset)

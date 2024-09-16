@@ -52,7 +52,7 @@ struct	FVertexFactoryIntermediates
 #endif
 
 	float4		ParticleColor;
-	float3		ParticleEmissiveColor;
+	float4		ParticleEmissiveColor;
 
 	float3		VertexWorldNormal;
 	float4		VertexWorldTangent;
@@ -454,8 +454,11 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	if (PopcornFXGPUBillboardVSUniforms.InColorsOffset != -1)
 		intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InColorsOffset);
 	BRANCH
-	if (PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset != -1)
-		intermediates.ParticleEmissiveColor = PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset);
+	if (PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset3 != -1)
+		intermediates.ParticleEmissiveColor = float4(PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset3), 1.0f);
+	BRANCH
+	if (PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset4 != -1)
+		intermediates.ParticleEmissiveColor = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InEmissiveColorsOffset4);
 	BRANCH
 	if (PopcornFXGPUBillboardVSUniforms.InAlphaCursorsOffset != -1)
 		alphaCursor = PKSimData_Loadf(particleID, PopcornFXGPUBillboardVSUniforms.InAlphaCursorsOffset);

@@ -124,7 +124,8 @@ public:
 	enum	EPopcornFXAdditionalStreamOffsets
 	{
 		StreamOffset_Colors = 0,
-		StreamOffset_EmissiveColors,
+		StreamOffset_EmissiveColors3,
+		StreamOffset_EmissiveColors4,
 		StreamOffset_PreviousPosition,
 		StreamOffset_TextureIDs,
 		StreamOffset_AlphaCursors,

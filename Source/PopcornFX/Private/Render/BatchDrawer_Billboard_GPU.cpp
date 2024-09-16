@@ -539,11 +539,13 @@ bool	CBatchDrawer_Billboard_GPUBB::_IsAdditionalInputSupported(const PopcornFX::
 			outStreamOffsetType = StreamOffset_DynParam2s;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
 			outStreamOffsetType = StreamOffset_DynParam3s;
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
+			outStreamOffsetType = StreamOffset_EmissiveColors4;
 	}
 	else if (type == PopcornFX::BaseType_Float3)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
-			outStreamOffsetType = StreamOffset_EmissiveColors;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
+			outStreamOffsetType = StreamOffset_EmissiveColors3;
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_PreviousPosition())
 			outStreamOffsetType = StreamOffset_PreviousPosition;
 	}
@@ -1246,7 +1248,8 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 				vsUniformsGPUBillboard.InTextureIDsOffset = m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InPreviousPositionOffset = m_AdditionalStreamOffsets[StreamOffset_PreviousPosition].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_PreviousPosition] / sizeof(float)) : -1;
-				vsUniformsGPUBillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_AlphaCursors] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) : -1;

@@ -447,7 +447,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		FPopcornFXSubRendererMaterial &mat = self->SubMaterials[0];
 
 		// Default values:
-		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
 		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
@@ -794,7 +794,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 		mat.CorrectDeformation = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
-		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
 
 		bool success = true;
 
@@ -1090,7 +1090,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		// Default values:
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Mesh_Solid;
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Mesh_Solid;
-		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
 		mat.PerParticleLOD = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshLOD());
 		mat.MotionBlur = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MotionBlur());
 		mat.MeshAtlas = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshAtlas());
@@ -1387,7 +1387,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
-		mat.IsLegacy = decl.m_MaterialPath.StartsWith("Library/PopcornFXCore/Materials/Legacy");
+		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
 
 		bool success = true;
 		if (mat.IsLegacy)
@@ -1480,6 +1480,7 @@ FPopcornFXSubRendererMaterial::FPopcornFXSubRendererMaterial()
 ,	StaticMeshLOD(0)
 ,	PerParticleLOD(false)
 ,	MotionBlur(false)
+,	IsLegacy(false)
 ,	m_RMId(-1)
 ,	MaterialInstance(null)
 {

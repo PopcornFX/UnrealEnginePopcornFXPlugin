@@ -153,11 +153,13 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 			outStreamOffsetType = StreamOffset_DynParam2s;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
 			outStreamOffsetType = StreamOffset_DynParam3s;
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
+			outStreamOffsetType = StreamOffset_EmissiveColors4;
 	}
 	else if (type == PopcornFX::BaseType_Float3)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
-			outStreamOffsetType = StreamOffset_EmissiveColors;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
+			outStreamOffsetType = StreamOffset_EmissiveColors3;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
@@ -455,7 +457,8 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 	vsUniformsMesh.InTextureIDsOffset =				m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) + buffersOffset) : -1;
 	vsUniformsMesh.InVATCursorsOffset =				m_AdditionalStreamOffsets[StreamOffset_VATCursors].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_VATCursors] / sizeof(float)) + buffersOffset) : -1;
 
-	vsUniformsMesh.InEmissiveColorsOffset =			m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors] / sizeof(float)) + buffersOffset * 3) : -1;
+	vsUniformsMesh.InEmissiveColorsOffset3 =		m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3] / sizeof(float)) + buffersOffset * 3) : -1;
+	vsUniformsMesh.InEmissiveColorsOffset4 =		m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4] / sizeof(float)) + buffersOffset * 4) : -1;
 
 	vsUniformsMesh.InColorsOffset =					m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter0sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam0s] / sizeof(float)) + buffersOffset * 4) : -1;

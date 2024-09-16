@@ -193,11 +193,13 @@ bool	CBatchDrawer_Ribbon_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CSt
 			outStreamOffsetType = StreamOffset_DynParam2s;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_ShaderInput3_Input3())
 			outStreamOffsetType = StreamOffset_DynParam3s;
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
+			outStreamOffsetType = StreamOffset_EmissiveColors4;
 	}
 	else if (type == PopcornFX::BaseType_Float3)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor())
-			outStreamOffsetType = StreamOffset_EmissiveColors;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
+			outStreamOffsetType = StreamOffset_EmissiveColors3;
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_PreviousPosition())
 			outStreamOffsetType = StreamOffset_PreviousPosition;
 	}
@@ -205,6 +207,8 @@ bool	CBatchDrawer_Ribbon_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CSt
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
+			outStreamOffsetType = StreamOffset_TextureID;
 	}
 	return outStreamOffsetType != EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
 }
@@ -706,9 +710,11 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vsUniformsbillboard.TubesPlanesOffset = m_VPP > 0 ? 0 : vsUniformsbillboard.TotalParticleCount; // For now, no batching of tube/multiplane ribbons with quad bb modes
 			vsUniformsbillboard.VPP = m_VPP;
 			vsUniformsbillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
-			vsUniformsbillboard.InEmissiveColorsOffset = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors].OffsetForShaderConstant();
+			vsUniformsbillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].OffsetForShaderConstant();
+			vsUniformsbillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].OffsetForShaderConstant();
 			vsUniformsbillboard.InPreviousPositionOffset = m_AdditionalStreamOffsets[StreamOffset_PreviousPosition].OffsetForShaderConstant();
 			vsUniformsbillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
+			vsUniformsbillboard.InTextureIDsOffset = m_AdditionalStreamOffsets[StreamOffset_TextureID].OffsetForShaderConstant();
 			vsUniformsbillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();
 			vsUniformsbillboard.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].OffsetForShaderConstant();
 			vsUniformsbillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
