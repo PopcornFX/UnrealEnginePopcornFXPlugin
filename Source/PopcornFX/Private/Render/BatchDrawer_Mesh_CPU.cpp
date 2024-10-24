@@ -270,6 +270,12 @@ bool	CBatchDrawer_Mesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 			if (!particleDataVBPool->Allocate(m_SimData, elementCount, sizeof(float), false))
 				return false;
 		}
+		else
+		{
+			// Dummy allocate to fix crash when the only additional input is unsupported.
+			if (!particleDataVBPool->Allocate(m_SimData, 1, sizeof(float), false))
+				return false;
+		}
 
 		{
 			PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_CPUBB::AllocBuffers (map atlas data)");

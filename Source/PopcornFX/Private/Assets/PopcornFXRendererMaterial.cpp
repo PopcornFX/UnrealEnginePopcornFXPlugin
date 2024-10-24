@@ -251,7 +251,7 @@ namespace
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 
-		switch (mat.LegacyMaterialType)
+		switch (finalMatType)
 		{
 		case	EPopcornFXLegacyMaterialType::Billboard_Additive_NoAlpha:
 			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Additive;
@@ -312,7 +312,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
 			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
-			finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend;
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive;
+			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend;
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
@@ -661,8 +663,10 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
 		{
-			finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend;
+			finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlendAdditive;
 			mat.DrawOrder = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Transparent_GlobalSortOverride(), 0);
+			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+				finalMatType = EPopcornFXDefaultMaterialType::Billboard_AlphaBlend;
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
@@ -1731,10 +1735,13 @@ void	FPopcornFXSubRendererMaterial::BuildDynamicParameterMask(const PopcornFX::C
 {
 	// Note: ShaderInput0 is mapped to DynamicParameter0 only for mesh particles (currently other renderers reserve it for the texture ID & alpha remap cursor in .xy)
 	// This means that currently mesh renderers do not support alpha remap and linear/mv atlas blending
+	// For mesh particles ShaderInput3.w is also mapped to alphaRect, which means you can only pass ShaderInput3.xyz on mesh particles.
+	// FIXME harmonize how reserved dynamicParameters work, with a clear reserved dynamicParameter
 	if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput0()))
 			DynamicParameterMask |= 0x000F;
+		DynamicParameterMask |= 0x8000;
 	}
 	else
 	{

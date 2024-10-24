@@ -107,7 +107,7 @@ struct FVertexFactoryInterpolantsVSToPS
 #if USE_PARTICLE_SUBUVS
 	nointerpolation float4	EmissiveColor : COLOR6;
 #endif
-#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
 	nointerpolation float4	AtlasRect : COLOR7;
 #endif
 };
@@ -204,9 +204,9 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	Result.Particle.SubUVCoords[0] = Interpolants.EmissiveColor.xy;
 	Result.Particle.SubUVCoords[1] = Interpolants.EmissiveColor.zw;
 #endif
-#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
 	Result.Particle.SubUVLerp = Interpolants.AtlasRect.x;
-	Result.Particle.SpriteRotation = Interpolants.AtlasRect.y;
+	Result.Particle.DynamicParameter3.w = Interpolants.AtlasRect.y;
 	Result.Particle.Size = Interpolants.AtlasRect.zw;
 #endif
 	Result.Particle.RelativeTime = Interpolants.Cursor;
@@ -224,7 +224,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	Result.Particle.DynamicParameter2 = Interpolants.DynamicParameter2;
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 8)
-	Result.Particle.DynamicParameter3 = Interpolants.DynamicParameter3;
+	Result.Particle.DynamicParameter3.xyz = Interpolants.DynamicParameter3.xyz;
 #endif
 
 #if USE_PARTICLE_POSITION
@@ -348,9 +348,9 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.SubUVCoords[0] = Intermediates.EmissiveColor.xy;
 	Result.Particle.SubUVCoords[1] = Intermediates.EmissiveColor.zw;
 #endif
-#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
 	Result.Particle.SubUVLerp = Intermediates.AtlasRect.x;
-	Result.Particle.SpriteRotation = Intermediates.AtlasRect.y;
+	Result.Particle.DynamicParameter3.w = Intermediates.AtlasRect.y;
 	Result.Particle.Size = Intermediates.AtlasRect.zw;
 #endif
 	Result.Particle.RelativeTime = Intermediates.Cursor;
@@ -368,7 +368,8 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.DynamicParameter2 = Intermediates.DynamicParameter2;
 #endif
 #if (DYNAMIC_PARAMETERS_MASK & 8)
-	Result.Particle.DynamicParameter3 = Intermediates.DynamicParameter3;
+	Result.Particle.DynamicParameter3.xyz = Intermediates.DynamicParameter3.xyz;
+
 #endif
 
 	Result.Particle.TranslatedWorldPositionAndSize.xyz = Intermediates.ParticleTranslatedWorldPosition.xyz;
@@ -694,7 +695,7 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 #if USE_PARTICLE_SUBUVS
 	Interpolants.EmissiveColor = Intermediates.EmissiveColor;
 #endif
-#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && USE_PARTICLE_SPRITE_ROTATION
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
 	Interpolants.AtlasRect = Intermediates.AtlasRect;
 #endif
 

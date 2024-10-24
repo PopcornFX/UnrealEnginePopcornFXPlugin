@@ -19,7 +19,7 @@ if %passed% == 0 (
 
 bitsadmin /reset
 bitsadmin /create third_party_download_desktop
-bitsadmin /addfile third_party_download_desktop https://downloads.popcornfx.com/Plugins/UE4/UnrealEngine_PopcornFXPlugin_2.20.2_Win64_Linux64_Mac64.7z "%~dp0\_PopcornFX_Runtime_SDK_Desktop.7z"
+bitsadmin /addfile third_party_download_desktop https://downloads.popcornfx.com/Plugins/UE4/UnrealEngine_PopcornFXPlugin_2.20.3_Win64_Linux64_Mac64.7z "%~dp0\_PopcornFX_Runtime_SDK_Desktop.7z"
 bitsadmin /setpriority third_party_download_desktop "FOREGROUND"
 bitsadmin /resume third_party_download_desktop
 
@@ -44,7 +44,7 @@ mkdir "%~dp0\PopcornFX_Runtime_SDK"
 
 echo "---------- Unzipping _PopcornFX_Runtime_SDK.7z ----------"
 
-%zip% x _PopcornFX_Runtime_SDK_Desktop.7z -o_PopcornFX_Runtime_SDK_Desktop
+"%zip%" x _PopcornFX_Runtime_SDK_Desktop.7z -o_PopcornFX_Runtime_SDK_Desktop
 
 echo "---------- Copying PopcornFX Runtime SDK ----------"
 
