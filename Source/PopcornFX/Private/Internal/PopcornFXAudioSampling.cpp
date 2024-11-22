@@ -205,7 +205,8 @@ void	FPopcornFXFillAudioBuffers::PostUpdate()
 
 const float * const	*FPopcornFXFillAudioBuffers::AsyncGetAudioSpectrum(const FName &channelName, uint32 &outBaseCount) const
 {
-	PK_ASSERT(m_AudioChannels.Num() == m_AudioSpectrumPyramids.Num());
+	if (m_AudioChannels.Num() != m_AudioSpectrumPyramids.Num())
+		return null;
 	PK_ASSERT(channelName.IsValid());
 
 	const u32	audioChannelCount = m_AudioChannels.Num();
@@ -227,7 +228,8 @@ const float * const	*FPopcornFXFillAudioBuffers::AsyncGetAudioSpectrum(const FNa
 
 const float * const	*FPopcornFXFillAudioBuffers::AsyncGetAudioWaveform(const FName &channelName, uint32 &outBaseCount) const
 {
-	PK_ASSERT(m_AudioChannels.Num() == m_AudioWaveformPyramids.Num());
+	if (m_AudioChannels.Num() != m_AudioWaveformPyramids.Num())
+		return null;
 	PK_ASSERT(channelName.IsValid());
 
 	const u32	audioChannelCount = m_AudioChannels.Num();

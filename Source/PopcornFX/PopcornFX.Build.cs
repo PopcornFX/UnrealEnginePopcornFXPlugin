@@ -535,6 +535,8 @@ namespace UnrealBuildTool.Rules
 
 #if UE_5_0_OR_LATER
 						"RHICore", // D3D12 GPU sim: include D3D12RHIPrivate.h
+						"SignalProcessing",
+						"AudioMixerCore",
 #endif // UE_5_0_OR_LATER
 
 					"ClothingSystemRuntimeCommon",

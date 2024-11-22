@@ -59,5 +59,3 @@ const float	*APopcornFXAudioSamplerActor::GetRawWaveformBuffer(const FName &Chan
 	OutBufferSize = m_WaveformData.Num();
 	return m_WaveformData.GetData();
 }
-
-//----------------------------------------------------------------------------
