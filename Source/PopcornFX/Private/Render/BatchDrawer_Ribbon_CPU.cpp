@@ -349,6 +349,9 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 		// View deps
 		for (u32 iView = 0; iView < activeViewCount; ++iView)
 		{
+			SViewDependent	&viewDep = m_ViewDependents[iView];
+			viewDep.m_ViewIndex = toGenerate.m_PerViewGeneratedInputs[iView].m_ViewIndex;
+
 			const u32	inputFlags = toGenerate.m_PerViewGeneratedInputs[iView].m_GeneratedInputs;
 			if (inputFlags == 0)
 				continue;
@@ -359,10 +362,7 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 			const bool	viewNeedsTangents = (inputFlags & PopcornFX::Drawers::GenInput_Tangent) != 0;
 			const bool	viewNeedsUVFactors = (inputFlags & PopcornFX::Drawers::GenInput_UVFactors) != 0;
 
-			SViewDependent	&viewDep = m_ViewDependents[iView];
-
 			PK_ASSERT(viewNeedsNormals == viewNeedsTangents);
-			viewDep.m_ViewIndex = toGenerate.m_PerViewGeneratedInputs[iView].m_ViewIndex;
 			if (!mainIBPool->AllocateIf(viewNeedsIndices, viewDep.m_Indices, largeIndices, totalIndexCount, false))
 				return false;
 			if (!mainVBPool->AllocateIf(viewNeedsPositions, viewDep.m_Positions, totalVertexCount, sizeof(CFloat4), false))
@@ -669,9 +669,9 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 		}
 
 		const bool	fullViewIndependent = viewDep == null;
-		const bool	viewIndependentIndices = (fullViewIndependent && m_Indices.Valid()) || (!fullViewIndependent && !viewDep->m_Indices.Valid());
-		const bool	viewIndependentPNT = (fullViewIndependent && m_Positions.Valid()) || (!fullViewIndependent && !viewDep->m_Positions.Valid());
-		const bool	viewIndependentUVFactors = (fullViewIndependent && m_UVFactors.Valid()) || (!fullViewIndependent && !viewDep->m_UVFactors.Valid());
+		const bool	viewIndependentIndices = (fullViewIndependent) || (!fullViewIndependent && !viewDep->m_Indices.Valid());
+		const bool	viewIndependentPNT = (fullViewIndependent) || (!fullViewIndependent && !viewDep->m_Positions.Valid());
+		const bool	viewIndependentUVFactors = (fullViewIndependent) || (!fullViewIndependent && !viewDep->m_UVFactors.Valid());
 
 		// This should never happen
 		if (!viewIndependentIndices && (viewDep == null || !viewDep->m_Indices.Valid()))
