@@ -3315,6 +3315,31 @@ public:
 			dstValues[0] = trackCount;
 	}
 
+	virtual void	GetTrackDuration(const TStridedMemoryView<float> &dstValues, const TStridedMemoryView<const s32> &trackIds) const override
+	{
+		PK_NAMEDSCOPEDPROFILE_C("CParticleSamplerDescriptor_AnimTrack_UE::GetTrackDuration", POPCORNFX_UE_PROFILER_COLOR);
+		(void)trackIds;
+		PK_ASSERT(!dstValues.Empty());
+		const float	broadcast = m_SplineLength;
+		if (!dstValues.Virtual())
+			PopcornFX::Mem::Fill32(dstValues.Data(), *reinterpret_cast<const u32*>(&broadcast), dstValues.Count());
+		else
+			dstValues[0] = broadcast;
+	}
+
+	virtual void	GetTrackLength(const TStridedMemoryView<float> &dstValues, const TStridedMemoryView<const s32> &trackIds) const override
+	{
+		PK_NAMEDSCOPEDPROFILE_C("CParticleSamplerDescriptor_AnimTrack_UE::GetTrackLength", POPCORNFX_UE_PROFILER_COLOR);
+		(void)trackIds;
+		PK_ASSERT(!dstValues.Empty());
+		const float	broadcast = 1.0f;
+		if (!dstValues.Virtual())
+			PopcornFX::Mem::Fill32(dstValues.Data(), *reinterpret_cast<const u32*>(&broadcast), dstValues.Count());
+		else
+			dstValues[0] = broadcast;
+	}
+
+
 private:
 	template<bool _InverseTransforms>
 	void	_Transform(const TStridedMemoryView<CFloat3>		&outSamples,
@@ -3644,7 +3669,7 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 
 		// (Re)setup the descriptor
 		m_Data->m_DescFast->m_Tracks.Clear();
-		const PopcornFX::CGuid	id = m_Data->m_DescFast->m_Tracks.PushBack(PopcornFX::CParticleSamplerDescriptor_AnimTrack_Default::SPathDefinition(m_Data->m_Positions, null, m_Data->m_Scales));
+		const PopcornFX::CGuid	id = m_Data->m_DescFast->m_Tracks.PushBack(PopcornFX::CParticleSamplerDescriptor_AnimTrack_Default::SPathDefinition(m_Data->m_Positions, null, m_Data->m_Scales, splineLength));
 		PK_ASSERT(id.Valid());
 		return id.Valid();
 	}

@@ -102,10 +102,11 @@ private:
 	CPooledVertexBuffer				m_Normals;
 	CPooledVertexBuffer				m_Tangents;
 	CPooledVertexBuffer				m_UVRemaps;
+	CPooledVertexBuffer				m_UV1Remaps;
 	CPooledVertexBuffer				m_UVFactors;
 
 	CPooledVertexBuffer				m_Texcoords;
-	//CPooledVertexBuffer			m_Texcoord2s;
+	CPooledVertexBuffer				m_Texcoord2s;
 
 	// Additional input fields
 	PopcornFX::TArray<SAdditionalInput>						m_AdditionalInputs;

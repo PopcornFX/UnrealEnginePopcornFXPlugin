@@ -138,6 +138,7 @@ void	FPopcornFXVertexFactory::InitRHI()
 
 	_SetupStream(5, m_UVFactors, VET_Float4, vDeclElements);
 	_SetupStream(6, m_UVScalesAndOffsets, VET_Float4, vDeclElements);
+	_SetupStream(7, m_UV1ScalesAndOffsets, VET_Float4, vDeclElements);
 
 	InitDeclaration(vDeclElements);
 }

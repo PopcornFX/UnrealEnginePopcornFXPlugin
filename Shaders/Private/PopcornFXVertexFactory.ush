@@ -34,6 +34,7 @@ struct FVertexFactoryInput
 	float2	TexCoord2				: ATTRIBUTE4;
 	float4	UVFactors				: ATTRIBUTE5;
 	float4	UVScalesAndOffsets		: ATTRIBUTE6;
+	float4	UV1ScalesAndOffsets		: ATTRIBUTE7;
 
 	// Optional instance ID for vertex layered rendering
 #if FEATURE_LEVEL >= FEATURE_LEVEL_SM4 && ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER
@@ -90,6 +91,7 @@ struct FVertexFactoryInterpolantsVSToPS
 	float3					Tangent					: TEXCOORD4;
 	float4					UVFactors				: TEXCOORD5;
 	float4					UVScalesAndOffsets		: TEXCOORD10; // TEXCOORD6-9 are reserved
+	float4					UV1ScalesAndOffsets		: TEXCOORD11; // TEXCOORD6-9 are reserved
 	
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
 	float4					DynamicParameter 		: PARTICLE_DYNAMIC_PARAM0;
@@ -130,6 +132,9 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 		if (PopcornFXBillboardCommonUniforms.FlipUVs)
 			UVs = float2(UVs.y, UVs.x);
 		Interpolants.TexCoord.xy = (UVs * Interpolants.UVScalesAndOffsets.xy) + Interpolants.UVScalesAndOffsets.zw;
+
+		if (PopcornFXBillboardCommonUniforms.HasSecondUVSet)
+			Interpolants.TexCoord.zw = (UVs * Interpolants.UV1ScalesAndOffsets.xy) + Interpolants.UV1ScalesAndOffsets.zw;
 	}
 	else
     {
@@ -441,8 +446,13 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 	Interpolants.Normal = Input.Normal;
 	Interpolants.Tangent = Input.Tangent.xyz;
 
-	Interpolants.UVFactors = Input.UVFactors;
-	Interpolants.UVScalesAndOffsets = Input.UVScalesAndOffsets;
+	if (PopcornFXBillboardCommonUniforms.CorrectRibbonDeformation)
+	{
+		Interpolants.UVFactors = Input.UVFactors;
+		Interpolants.UVScalesAndOffsets = Input.UVScalesAndOffsets;
+		if (PopcornFXBillboardCommonUniforms.HasSecondUVSet)
+			Interpolants.UV1ScalesAndOffsets = Input.UV1ScalesAndOffsets;
+	}
 
 #if (DYNAMIC_PARAMETERS_MASK & 1) || USE_DYNAMIC_PARAMETERS
 	Interpolants.DynamicParameter = Intermediates.DynamicParameter;

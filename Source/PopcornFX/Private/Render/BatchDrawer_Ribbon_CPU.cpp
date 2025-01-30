@@ -77,7 +77,9 @@ CBatchDrawer_Ribbon_CPUBB::~CBatchDrawer_Ribbon_CPUBB()
 	PK_ASSERT(!m_Normals.Valid());
 	PK_ASSERT(!m_Tangents.Valid());
 	PK_ASSERT(!m_Texcoords.Valid());
+	PK_ASSERT(!m_Texcoord2s.Valid());
 	PK_ASSERT(!m_UVRemaps.Valid());
+	PK_ASSERT(!m_UV1Remaps.Valid());
 	PK_ASSERT(!m_UVFactors.Valid());
 
 	PK_ASSERT(!m_SimData.Valid());
@@ -260,10 +262,12 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 
 	// Ribbon complex
 	const bool	needsUVRemaps = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVRemap) != 0;
+	const bool	needsUV1Remaps = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1Remap) != 0;
 	const bool	needsUVFactors = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVFactors) != 0;
 
 	// Billboard View independent
 	const bool	needsUV0 = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV0) != 0;
+	const bool	needsUV1 = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1) != 0;
 
 	bool	largeIndices = false;
 
@@ -280,7 +284,11 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 			return false;
 		if (!mainVBPool->AllocateIf(needsUV0, m_Texcoords, totalVertexCount, sizeof(CFloat2), false))
 			return false;
+		if (!mainVBPool->AllocateIf(needsUV1, m_Texcoord2s, totalVertexCount, sizeof(CFloat2), false))
+			return false;
 		if (!mainVBPool->AllocateIf(needsUVRemaps, m_UVRemaps, totalVertexCount, sizeof(CFloat4), false))
+			return false;
+		if (!mainVBPool->AllocateIf(needsUV1Remaps, m_UV1Remaps, totalVertexCount, sizeof(CFloat4), false))
 			return false;
 		if (!mainVBPool->AllocateIf(needsUVFactors, m_UVFactors, totalVertexCount, sizeof(CFloat4), false))
 			return false;
@@ -393,7 +401,9 @@ bool	CBatchDrawer_Ribbon_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx)
 	m_Normals.Unmap();
 	m_Tangents.Unmap();
 	m_Texcoords.Unmap();
+	m_Texcoord2s.Unmap();
 	m_UVRemaps.Unmap();
+	m_UV1Remaps.Unmap();
 	m_UVFactors.Unmap();
 
 	m_SimData.Unmap();
@@ -417,7 +427,9 @@ void	CBatchDrawer_Ribbon_CPUBB::_ClearBuffers()
 	m_Normals.UnmapAndClear();
 	m_Tangents.UnmapAndClear();
 	m_Texcoords.UnmapAndClear();
+	m_Texcoord2s.UnmapAndClear();
 	m_UVRemaps.UnmapAndClear();
+	m_UV1Remaps.UnmapAndClear();
 	m_UVFactors.UnmapAndClear();
 
 	m_SimData.UnmapAndClear();
@@ -490,6 +502,14 @@ bool	CBatchDrawer_Ribbon_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 			return false;
 		m_BBJobs_Ribbon.m_Exec_Texcoords.m_Texcoords = uv0s;
 	}
+	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1)
+	{
+		PK_ASSERT(m_Texcoord2s.Valid());
+		TStridedMemoryView<CFloat2>	uv1s(null, totalVertexCount);
+		if (!m_Texcoord2s->Map(uv1s))
+			return false;
+		m_BBJobs_Ribbon.m_Exec_Texcoords.m_Texcoords2 = uv1s;
+	}
 	bool	hasUVFactors = false;
 	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVRemap)
 	{
@@ -498,6 +518,14 @@ bool	CBatchDrawer_Ribbon_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 		if (!m_UVRemaps->Map(uvRemap))
 			return false;
 		m_BBJobs_Ribbon.m_Exec_UVRemap.m_UVRemap = uvRemap;
+	}
+	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1Remap)
+	{
+		PK_ASSERT(m_UV1Remaps.Valid());
+		TStridedMemoryView<CFloat4>	uv1Remap(null, totalVertexCount);
+		if (!m_UV1Remaps->Map(uv1Remap))
+			return false;
+		m_BBJobs_Ribbon.m_Exec_UVRemap.m_UV1Remap = uv1Remap;
 	}
 	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVFactors)
 	{
@@ -695,6 +723,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			// be carefull streams could change Strides and/or formats on the fly !
 			vertexFactory = collectorRes->m_VertexFactory;
 			vertexFactory->m_Texcoords.Setup(m_Texcoords);
+			vertexFactory->m_Texcoord2s.Setup(m_Texcoord2s);
 
 			vertexFactory->m_Positions.Setup(viewIndependentPNT ? m_Positions : viewDep->m_Positions);
 			vertexFactory->m_Normals.Setup(viewIndependentPNT ? m_Normals : viewDep->m_Normals);
@@ -702,6 +731,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 
 			vertexFactory->m_UVFactors.Setup(viewIndependentUVFactors ? m_UVFactors : viewDep->m_UVFactors);
 			vertexFactory->m_UVScalesAndOffsets.Setup(m_UVRemaps);
+			vertexFactory->m_UV1ScalesAndOffsets.Setup(m_UV1Remaps);
 
 			FPopcornFXUniforms					vsUniforms;
 			FPopcornFXBillboardVSUniforms		vsUniformsbillboard;

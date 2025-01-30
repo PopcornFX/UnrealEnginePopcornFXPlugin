@@ -72,6 +72,7 @@ public:
 	FPopcornFXVertexBufferView		m_Texcoord2s;
 	FPopcornFXVertexBufferView		m_UVFactors;
 	FPopcornFXVertexBufferView		m_UVScalesAndOffsets;
+	FPopcornFXVertexBufferView		m_UV1ScalesAndOffsets;
 
 	static bool			ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters);
 
