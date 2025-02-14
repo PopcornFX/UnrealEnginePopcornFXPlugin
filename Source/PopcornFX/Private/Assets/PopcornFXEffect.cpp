@@ -562,6 +562,8 @@ namespace
 					return EPopcornFXAssetDepType::TextureAtlas;
 				case	PopcornFX::Nodegraph::DataType_DataAudio:
 					return EPopcornFXAssetDepType::Sound;
+				case	PopcornFX::Nodegraph::DataType_DataAnimPath:
+					return EPopcornFXAssetDepType::Mesh;
 				default:
 					break;
 				}
@@ -610,11 +612,16 @@ namespace
 			else if (basePath.EndsWith(TEXT(".ttf")) || basePath.EndsWith(TEXT(".otf")))
 				basePath = basePath.LeftChop(4) + TEXT(".pkfm");
 
-			if ((PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_AnimTrack>(&hbo) != null
-				|| PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_AnimTrack>(&hbo) != null)
-				&& basePath.EndsWith(TEXT(".fbx")))
 			{
-				basePath = basePath.LeftChop(4) + TEXT(".pkan");
+				// This is necessary to check if the path is an inline animtrack sampler
+				const PopcornFX::CParticleNodePinIn				*pin = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodePinIn>(&hbo);
+				const PopcornFX::CParticleNodeTemplateExport	*exportNode = PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeTemplateExport>(&hbo); // Material nodes (default values on renderers)
+
+				const bool	isInlineAnimTrack = (pin != null && pin->Type() == PopcornFX::Nodegraph::DataType_DataAnimPath) || (exportNode != null && exportNode->Type() == PopcornFX::Nodegraph::DataType_DataAnimPath);
+				if ((PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_AnimTrack>(&hbo) != null || PopcornFX::HBO::Cast<const PopcornFX::CParticleNodeSamplerData_AnimTrack>(&hbo) || isInlineAnimTrack) && basePath.EndsWith(TEXT(".fbx")))
+				{
+					basePath = basePath.LeftChop(4) + TEXT(".pkan");
+				}
 			}
 
 			FString				sourcePathOrNot;
@@ -848,7 +855,11 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	if (forEditor)
 		bakeConfig->SetBakeMode(PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsText);
 	else
+	{
 		bakeConfig->SetBakeMode(FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects ? PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsText : PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsBinary); // "Final" bake when cooking: store as binary
+		// GOREFIX: #12621 - UnrealEngine: texture sampling does not work in packaged games
+		bakeConfig->SetCompilerSwitches("--no-sam-cfl");
+	}
 
 	// build versions
 	PopcornFX::COvenBakeConfig_Particle::_TypeOfBuildVersions	buildVersions;
