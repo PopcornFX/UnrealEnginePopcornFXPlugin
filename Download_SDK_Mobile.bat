@@ -6,7 +6,7 @@ setlocal
 
 @rem Find 7zip
 set passed=0
-FOR /F "tokens=*" %%g IN ('where 7z') do (set passed=1 && set zip=%%g)
+FOR /F "tokens=*" %%g IN ('where 7z') do (set passed=1 && set zip="%%g")
 if %passed% == 0 (
     if exist "C:\Program Files\7-Zip\7z.exe" (
         set zip="C:\Program Files\7-Zip\7z.exe"
@@ -43,7 +43,7 @@ rem rmdir /s /q "%~dp0\PopcornFX_Runtime_SDK"
 mkdir "%~dp0\PopcornFX_Runtime_SDK"
 
 echo "---------- Unzipping _PopcornFX_Runtime_SDK_Mobile.7z ----------"
-"%zip%" x _PopcornFX_Runtime_SDK_Mobile.7z -o_PopcornFX_Runtime_SDK_Mobile
+%zip% x _PopcornFX_Runtime_SDK_Mobile.7z -o_PopcornFX_Runtime_SDK_Mobile
 
 echo "---------- Copying PopcornFX Runtime SDK ----------"
 
