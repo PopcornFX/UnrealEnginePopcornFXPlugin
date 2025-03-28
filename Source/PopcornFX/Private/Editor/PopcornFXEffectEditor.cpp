@@ -273,13 +273,6 @@ void	FPopcornFXEffectEditor::InitEffectEditor(const EToolkitMode::Type Mode, con
 		FTabManager::NewPrimaryArea()->SetOrientation(Orient_Vertical)
 		->Split
 		(
-			FTabManager::NewStack()
-			->SetSizeCoefficient(0.1f)
-			->SetHideTabWell(true)
-			->AddTab(ToolbarTabId, ETabState::OpenedTab)
-		)
-		->Split
-		(
 			FTabManager::NewSplitter()->SetOrientation(Orient_Horizontal)
 			->Split
 			(
