@@ -35,6 +35,11 @@
 //----------------------------------------------------------------------------
 
 DECLARE_LOG_CATEGORY_EXTERN(LogD3D11RHI, Log, All);
+# if PLATFORM_WINDOWS
+#		ifdef WINDOWS_PLATFORM_TYPES_GUARD
+#			include "Windows/HideWindowsPlatformTypes.h"
+#		endif
+# endif
 #	include "D3D11RHI.h"
 #	include "D3D11State.h"
 #	include "D3D11Resources.h"

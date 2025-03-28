@@ -2261,7 +2261,12 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 	if (m_D3D11_DummyResource != null && m_D3D11_DummyView != null)
 	{
 		// Delete view, release resource for proper ref count tracking.
+#	if (ENGINE_MINOR_VERSION <= 4)
 		m_D3D11_DummyView->Delete();
+#	else
+		m_D3D11_DummyView->AddRef();
+		m_D3D11_DummyView->Release();
+#	endif
 		m_D3D11_DummyResource->Release();
 		m_D3D11_DummyView = null;
 		m_D3D11_DummyResource = null;

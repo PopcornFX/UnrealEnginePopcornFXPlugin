@@ -142,7 +142,7 @@ FVertexFactoryIntermediates		GetVertexFactoryIntermediates(FVertexFactoryInput I
 //	Get material vertex params
 //----------------------------------------------------------------------------
 
-FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal)
+FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal, bool bIsPreviousFrame = false)
 {
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	FMaterialVertexParameters	VertexParameters = MakeInitializedMaterialVertexParameters();

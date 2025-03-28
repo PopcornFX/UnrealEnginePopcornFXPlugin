@@ -421,7 +421,7 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stre
 	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource, resourceState, ED3D12ResourceStateMode::Default, resourceState, desc, NULL, D3D12_HEAP_TYPE_DEFAULT);
 	FD3D12Adapter			*adapter = device->GetParentAdapter();
 #if (ENGINE_MAJOR_VERSION == 5)
-	FD3D12Buffer			*buffer = adapter->CreateLinkedObject<FD3D12Buffer>(device->GetVisibilityMask(), [&](FD3D12Device* device)
+	FD3D12Buffer			*buffer = adapter->CreateLinkedObject<FD3D12Buffer>(device->GetVisibilityMask(), [&](FD3D12Device* device, void* empty = nullptr)
 		{
 #if (ENGINE_MINOR_VERSION >= 3)
 			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, FRHIBufferDesc(stream->m_ByteSize, stride, bufferUsage));

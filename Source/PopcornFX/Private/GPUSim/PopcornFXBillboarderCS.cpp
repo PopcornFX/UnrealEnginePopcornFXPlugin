@@ -16,6 +16,11 @@
 #		include <d3d11.h>
 #	endif // defined(PK_DURANGO)
 #	include "D3D11RHI.h"
+#   if PLATFORM_WINDOWS
+#		ifdef WINDOWS_PLATFORM_TYPES_GUARD
+#			include "Windows/HideWindowsPlatformTypes.h"
+#		endif
+#	endif
 #	include "D3D11State.h"
 #	include "D3D11Resources.h"
 #endif // (PK_GPU_D3D11 == 1)
