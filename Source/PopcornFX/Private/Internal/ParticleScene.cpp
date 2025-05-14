@@ -2208,6 +2208,9 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 			FRHIViewDesc	viewDesc;
 			viewDesc.Common.ViewType = FRHIViewDesc::EViewType::BufferUAV;
 			self->m_D3D11_DummyView = new FRHIUnorderedAccessView(self->m_D3D11_DummyResource, viewDesc);
+#		if (ENGINE_MINOR_VERSION >= 5)
+			self->m_D3D11_DummyView->AddRef();
+#		endif
 #else
 			self->m_D3D11_DummyResource = new FRHIBuffer();
 			self->m_D3D11_DummyView = new FRHIUnorderedAccessView(self->m_D3D11_DummyResource);
@@ -2264,7 +2267,6 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 #	if (ENGINE_MINOR_VERSION <= 4)
 		m_D3D11_DummyView->Delete();
 #	else
-		m_D3D11_DummyView->AddRef();
 		m_D3D11_DummyView->Release();
 #	endif
 		m_D3D11_DummyResource->Release();
