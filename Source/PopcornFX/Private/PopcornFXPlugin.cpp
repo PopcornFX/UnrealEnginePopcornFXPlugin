@@ -42,6 +42,10 @@
 #include <pk_toolkit/include/pk_toolkit_version.h>
 #include <pk_kernel/include/kr_resources.h>
 
+#if WITH_HAVOK_PHYSICS
+#include "HavokDllSync.h"
+#endif
+
 //----------------------------------------------------------------------------
 
 IMPLEMENT_MODULE(FPopcornFXPlugin, PopcornFX)
@@ -458,6 +462,9 @@ void	FPopcornFXPlugin::StartupModule()
 
 #endif
 
+#if WITH_HAVOK_PHYSICS
+	HAVOK_REGISTER_SYNC();
+#endif
 }
 
 //----------------------------------------------------------------------------
@@ -555,6 +562,15 @@ void	FPopcornFXPlugin::ShutdownModule()
 #endif // WITH_EDITOR
 	m_Settings = null;
 	s_Self = null;
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXPlugin::PreUnloadCallback()
+{
+#if WITH_HAVOK_PHYSICS
+	HAVOK_UNREGISTER_SYNC();
+#endif // WITH_HAVOK_PHYSICS
 }
 
 //----------------------------------------------------------------------------

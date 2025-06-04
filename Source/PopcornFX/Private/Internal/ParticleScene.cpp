@@ -120,6 +120,16 @@
 #endif
 
 #include "PopcornFXEmitterComponent.h"
+#include "HAL/PlatformMisc.h"
+
+#if WITH_HAVOK_PHYSICS
+#include "Runtime/Engine/Private/PhysicsEngine/HavokPhysicsSupport.h"
+#include "HavokStartIncludes.h"
+#include "Physics/Physics/Collide/Query/hknpCollisionResult.h"
+#include "Physics/Physics/Collide/Query/Collector/hknpClosestHitCollector.h"
+#include "Physics/Physics/Collide/Filter/hknpCollisionFilter.h"
+#include "HavokEndIncludes.h"
+#endif // WITH_HAVOK_PHYSICS
 
 DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXScene, Log, All);
 
@@ -1394,6 +1404,7 @@ void	CParticleScene::RayTracePacket(
 	const PopcornFX::Colliders::SRayPacket &packet,
 	const PopcornFX::Colliders::STracePacket &results)
 {
+	SCOPED_NAMED_EVENT(CParticleScene_RayTracePacket, FColor::Purple);
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::RayTracePacket", POPCORNFX_UE_PROFILER_COLOR);
 
 	RAYTRACE_PROFILE_DECLARE(
@@ -1612,6 +1623,158 @@ void	CParticleScene::RayTracePacket(
 
 	// !! UNLOCK physics scene
 	physxScene->unlockRead();
+
+#elif WITH_HAVOK_PHYSICS
+
+	u32 hitResultBufferCurrentIndex = 0;
+	struct FRaycastBufferAndIndex
+	{
+		UPhysicalMaterial* m_Material;
+		float m_Distance;
+		u32 m_RayIndex;
+		hkFloat3 m_Normal;
+	};
+	PK_STACKMEMORYVIEW(FRaycastBufferAndIndex, hitResultBuffers, resCount);
+
+	FPhysicsCommand::ExecuteRead(m_CurrentChaosScene, [&]()
+	{
+		FHavokPhysicsWorld* HkWorld = m_CurrentChaosScene->GetHavokWorld();
+		for (u32 rayi = 0; rayi < resCount; ++rayi)
+		{
+			if (!emptyMasks && packet.m_RayMasks_Aligned16[rayi] == 0)
+				continue;
+
+			CFloat3		start;
+			CFloat3		rayDir;
+			float		rayLen;
+			{
+				RAYTRACE_PROFILE_CAPTURE_CYCLES(RayTrace_CHAOS_BuildQuery);
+				const CFloat4	&_rayDirAndLen = packet.m_RayDirectionsAndLengths_Aligned16[rayi];
+
+				if (_rayDirAndLen.w() <= 0)
+					continue;
+				start = packet.m_RayOrigins_Aligned16[rayi].xyz() * scalePkToUE;
+				rayDir = _rayDirAndLen.xyz();
+				rayLen = _rayDirAndLen.w() * scalePkToUE;
+			}
+
+			bool					hasHit = false;
+			FRaycastBufferAndIndex	&resultBufferAndIndex = hitResultBuffers[hitResultBufferCurrentIndex];
+			{
+				RAYTRACE_PROFILE_CAPTURE_CYCLES(RayTrace_CHAOS_Exec);
+
+				class HavokPopcornFXCollisionFilter : public hknpCollisionFilter
+				{
+				public:
+					HavokPopcornFXCollisionFilter() : hknpCollisionFilter(hknpCollisionFilter::TYPE_USER) {}
+
+					// Query-only collision filter, not used for body pairs
+					int filterBodyPairs(const hknpWorld& world, hknpBodyIndexPair* pairs, int numPairs) const override { unimplemented(); return 0; }
+
+					// Query body is not set
+					bool isCollisionEnabled(hknpCollisionQueryType::Enum queryType, hknpBodyId bodyIdA, hknpBodyId bodyIdB) const override { unimplemented(); return false; }
+
+					// Collide with all layers
+					bool isCollisionEnabled(hknpCollisionQueryType::Enum queryType, hknpBroadPhaseLayerIndex layerIndex, hkUint64 userData) const override { return true; }
+
+					// Query vs body
+					bool isCollisionEnabled(hknpCollisionQueryType::Enum queryType, const hknpQueryFilterData& queryFilterData, const hknpBody& body) const override
+					{
+						return IsCollisionEnabled(queryFilterData.m_collisionFilterInfo, body.m_collisionFilterInfo);
+					}
+
+					// Query vs leaf shape
+					bool isCollisionEnabled(hknpCollisionQueryType::Enum queryType, bool targetShapeIsB, const FilterInput& shapeInputA, const FilterInput& shapeInputB) const override
+					{
+						const FilterInput& QueryInput = targetShapeIsB ? shapeInputA : shapeInputB;
+						const FilterInput& TargetInput = targetShapeIsB ? shapeInputB : shapeInputA;
+						return IsCollisionEnabled(QueryInput.m_filterData.m_collisionFilterInfo, TargetInput.m_filterData.m_collisionFilterInfo);
+					}
+
+					bool IsCollisionEnabled(uint32 EnabledChannels, hkUint32 FilterInfo) const
+					{
+						const FHavokPhysicsContext* PhysicsContext = FHavokPhysicsContext::GetInstance();
+						const FHavokPhysicsCollisionProfile& Profile = PhysicsContext->GetCollisionProfile(FilterInfo);
+						return EnabledChannels & (1 << Profile.ObjectChannel);
+					}
+				};
+
+				HavokPopcornFXCollisionFilter CollisionFilter;
+				auto SetupQuery = [&](hknpCollisionQuery& Query)
+				{
+					Query.m_levelOfDetail = traceComplexGeometry ? hknpLevelOfDetail::HIGH : hknpLevelOfDetail::MEDIUM;
+					Query.m_filter = &CollisionFilter;
+					Query.m_filterData.m_collisionFilterInfo = (hkUint32)objectTypesToQuery;
+					Query.m_shapeTagCodec = HkWorld->getShapeTagCodec();
+				};
+
+				hknpClosestHitCollector Collector;
+				if (emptySphereSweeps || packet.m_RaySweepRadii_Aligned16[rayi] == 0.0f)
+				{
+					hknpRayCastQuery Query;
+					SetupQuery(Query);
+					Query.m_ray.setOriginDirection(U2Hk(ToUE(start)) * UU2HK, U2Hk(ToUE(rayDir) * rayLen) * UU2HK);
+					HkWorld->castRay(Query, &Collector);
+					if (Collector.hasHit())
+					{
+						hasHit = true;
+						const hknpRayCastQueryResult& Hit = Collector.getHit().asRayCast();
+						resultBufferAndIndex.m_Normal = Hit.getSurfaceNormal();
+						resultBufferAndIndex.m_Material = (UPhysicalMaterial*)HkWorld->getMaterialLibrary()->getEntry(Hit.getShapeMaterialId()).m_userData;
+						resultBufferAndIndex.m_Distance = Hit.getDistance(Query);
+					}
+				}
+				else
+				{
+					hknpShapeCastQuery Query;
+					SetupQuery(Query);
+					Query.m_ray.setOriginDirection(U2Hk(ToUE(start)) * UU2HK, U2Hk(ToUE(rayDir) * rayLen) * UU2HK);
+					Query.m_shape = hknpShape::makeSphere(packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE * UU2HK);
+					HkWorld->castShape(Query, hkRotation::getIdentity(), &Collector);
+					if (Collector.hasHit())
+					{
+						hasHit = true;
+						const hknpShapeCastQueryResult& Hit = Collector.getHit().asShapeCast();
+						resultBufferAndIndex.m_Normal = Hit.getHitShapeContactNormal();
+						resultBufferAndIndex.m_Material = (UPhysicalMaterial*)HkWorld->getMaterialLibrary()->getEntry(Hit.getHitShapeMaterialId()).m_userData;
+						resultBufferAndIndex.m_Distance = Hit.getDistance(Query);
+					}
+				}
+
+				if (PK_PREDICT_LIKELY(!hasHit))
+					continue;
+			}
+			resultBufferAndIndex.m_RayIndex = rayi;
+			++hitResultBufferCurrentIndex;
+		}
+	});
+
+	void** contactSurfaces = queryPhysicalMaterial ? results.m_ContactSurfaces_Aligned16 : null;
+
+	for (u32 hiti = 0; hiti < hitResultBufferCurrentIndex; ++hiti)
+	{
+		RAYTRACE_PROFILE_CAPTURE_CYCLES(RayTrace_CHAOS_Results_Hit);
+		const FRaycastBufferAndIndex& resultBufferAndIndex = hitResultBuffers[hiti];
+
+		u32					rayi = hitResultBuffers[hiti].m_RayIndex;
+		const FRaycastBufferAndIndex& hit = hitResultBuffers[hiti];
+
+		PK_ASSERT(rayi < resCount);
+
+		if (contactSurfaces != null)
+		{
+			RAYTRACE_PROFILE_CAPTURE_CYCLES_N(RayTrace_Results_Hit_Mat, 1);
+			contactSurfaces[rayi] = hit.m_Material;
+		}
+
+		const float		hitTime = hit.m_Distance * HK2UU * scaleUEToPk;
+
+		results.m_HitTimes_Aligned16[rayi] = hitTime;
+		FVector3f UENormal;
+		Hk2UVector(hit.m_Normal.asVec4(), UENormal);
+		CFloat3			normal = ToPk(UENormal);
+		results.m_ContactNormals_Aligned16[rayi].xyz() = normal;
+	}
 
 #elif PK_WITH_CHAOS
 
