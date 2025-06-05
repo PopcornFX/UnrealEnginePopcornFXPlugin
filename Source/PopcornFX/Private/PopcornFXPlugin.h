@@ -24,6 +24,10 @@
 #	include <pk_particles/include/Storage/D3D11/storage_d3d11_stream.h>
 #endif // (PK_GPU_D3D11 != 0)
 
+#if !defined(WITH_HAVOK_PHYSICS)
+#define WITH_HAVOK_PHYSICS 0
+#endif
+
 FWD_PK_API_BEGIN
 class	CParticleSceneInterface;
 PK_FORWARD_DECLARE(FilePack);
@@ -101,6 +105,7 @@ public:
 
 	virtual void						StartupModule() override;
 	virtual void						ShutdownModule() override;
+	virtual void						PreUnloadCallback() override;
 
 	static PopcornFX::SEngineVersion	PopcornFXBuildVersion();
 

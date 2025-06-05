@@ -544,6 +544,8 @@ namespace UnrealBuildTool.Rules
 				}
 				);
 
+			SetupModulePhysicsSupport(Target);
+
 #if !UE_5_1_OR_LATER
 			bool compileWithPhysX = Target.bCompilePhysX;
 #else
