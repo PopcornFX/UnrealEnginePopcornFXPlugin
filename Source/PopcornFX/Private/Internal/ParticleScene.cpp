@@ -173,6 +173,7 @@ void	CParticleScene::SafeDelete(CParticleScene *&scene)
 
 CParticleScene::CParticleScene()
 :	m_ParticleMediumCollection(null)
+,	m_Bounds(ForceInitToZero)
 ,	m_FillAudioBuffers(null)
 ,	m_AudioInterface(null)
 #if (PK_GPU_D3D11 == 1)
@@ -544,19 +545,19 @@ void	CParticleScene::StartUpdate(float dt)
 		//	TEXT("Nans found on Bounds for Primitive %s: Origin %s, BoxExtent %s, SphereRadius %f"), *Primitive->GetName(), *Primitive->Bounds.Origin.ToString(), *Primitive->Bounds.BoxExtent.ToString(), Primitive->Bounds.SphereRadius);
 
 		FBoxSphereBounds	_boundsCheck = ToUE(m_CachedBounds.CachedBounds() * FPopcornFXPlugin::GlobalScale());
-		if (PK_VERIFY(!_boundsCheck.BoxExtent.ContainsNaN()) &&
-			PK_VERIFY(!_boundsCheck.Origin.ContainsNaN()) &&
-			PK_VERIFY(!FMath::IsNaN(_boundsCheck.SphereRadius)) &&
-			PK_VERIFY(FMath::IsFinite(_boundsCheck.SphereRadius)))
+		if (!_boundsCheck.BoxExtent.ContainsNaN() &&
+			!_boundsCheck.Origin.ContainsNaN() &&
+			!FMath::IsNaN(_boundsCheck.SphereRadius) &&
+			FMath::IsFinite(_boundsCheck.SphereRadius))
 		{
-			if (boundsInit)
-				m_CachedBounds.SetExactBounds(bounds);
-			else
-				m_CachedBounds.SetExactBounds(PopcornFX::CAABB::ZERO);
-			m_CachedBounds.Update();
-
 			m_Bounds = _boundsCheck;
 		}
+
+		if (boundsInit)
+			m_CachedBounds.SetExactBounds(bounds);
+		else
+			m_CachedBounds.SetExactBounds(PopcornFX::CAABB::ZERO);
+		m_CachedBounds.Update();
 
 		FPopcornFXPlugin::IncTotalParticleCount(totalParticleCount - m_LastTotalParticleCount);
 		m_LastTotalParticleCount = totalParticleCount;
@@ -2364,9 +2365,13 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		if (self->m_D3D11_DummyResource == null)
 		{
 			check(self->m_D3D11_DummyView == null);
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferCreateDesc());
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferDesc());
-			self->m_D3D11_DummyResource->AddRef();
+#endif
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		self->m_D3D11_DummyResource->AddRef();
 
 			FRHIViewDesc	viewDesc;
 			viewDesc.Common.ViewType = FRHIViewDesc::EViewType::BufferUAV;

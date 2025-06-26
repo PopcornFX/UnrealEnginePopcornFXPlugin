@@ -174,6 +174,8 @@ public:
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UTexture2D					*TextureNormal;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	UTexture2D					*TextureRoughMetal;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UTexture2D					*TextureSpecular;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UTexture2D					*TextureAlphaRemapper;
@@ -223,6 +225,12 @@ public:
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	uint32						CorrectDeformation : 1;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	float						Roughness;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	float						Metalness;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	float						SoftnessDistance;

@@ -126,6 +126,7 @@ namespace
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_IS_MOTION_VECTORS_BLENDING(), mat.MotionVectorsBlending != 0);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_IS_LIT(), mat.Lit!= 0); // Currently used by VAT materials only
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_NORMAL_TEXTURE(), mat.TextureNormal != null);
+		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_ROUGH_METAL_TEXTURE(), mat.TextureRoughMetal != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_ALPHA_REMAPPER(), mat.TextureAlphaRemapper != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_DIFFUSE_RAMP(), mat.TextureDiffuseRamp != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_EMISSIVE_TEXTURE(), mat.TextureEmissive != null);
@@ -173,6 +174,9 @@ namespace
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+				mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+				mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 			}
 		}
 
@@ -250,7 +254,7 @@ namespace
 			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
-
+		
 		switch (finalMatType)
 		{
 		case	EPopcornFXLegacyMaterialType::Billboard_Additive_NoAlpha:
@@ -307,6 +311,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
@@ -449,7 +456,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		FPopcornFXSubRendererMaterial &mat = self->SubMaterials[0];
 
 		// Default values:
-		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
+		mat.IsLegacy = decl.FindAdditionalFieldDefinition(PopcornFX::CStringId("Diffuse.Color")) != null
+						|| (decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive)
+							&& decl.m_MaterialPath.Contains("PopcornFXCore", PopcornFX::CaseInsensitive));
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
 		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
@@ -476,6 +485,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_DiffuseTextureRamp(), mat.TextureDiffuseRamp);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_EmissiveTexture(), mat.TextureEmissive);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_NormalTexture(), mat.TextureNormal);
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_RoughMetalTexture(), mat.TextureRoughMetal);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_SpecularTexture(), mat.TextureSpecular);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_AlphaRemapper(), mat.TextureAlphaRemapper);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_MotionVectorsTexture(), mat.TextureMotionVectors);
@@ -483,6 +493,8 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_SixWayLightmap_RLTSTexture(), mat.TextureSixWay_RLTS);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_SixWayLightmap_BBFTexture(), mat.TextureSixWay_BBF);
 
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_Roughness(), mat.Roughness);
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_Metalness(), mat.Metalness);
 		material->SetScalarParameterValue(FPopcornFXPlugin::Name_SoftnessDistance(), mat.SoftnessDistance * FPopcornFXPlugin::GlobalScale());
 		material->SetScalarParameterValue(FPopcornFXPlugin::Name_MaskThreshold(), mat.MaskThreshold);
 		material->SetScalarParameterValue(FPopcornFXPlugin::Name_SphereMaskHardness(), mat.SphereMaskHardness);
@@ -500,6 +512,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_DiffuseTextureRamp(), mat.TextureDiffuseRamp);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_EmissiveTexture(), mat.TextureEmissive);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_NormalTexture(), mat.TextureNormal);
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_RoughMetalTexture(), mat.TextureRoughMetal);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_SpecularTexture(), mat.TextureSpecular);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_AlphaRemapper(), mat.TextureAlphaRemapper);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_MotionVectorsTexture(), mat.TextureMotionVectors);
@@ -507,6 +520,8 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_SixWayLightmap_RLTSTexture(), mat.TextureSixWay_RLTS);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_SixWayLightmap_BBFTexture(), mat.TextureSixWay_BBF);
 
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_Roughness(), mat.Roughness);
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_Metalness(), mat.Metalness);
 		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_SoftnessDistance(), mat.SoftnessDistance * FPopcornFXPlugin::GlobalScale());
 		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_MaskThreshold(), mat.MaskThreshold);
 		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_SphereMaskHardness(), mat.SphereMaskHardness);
@@ -539,6 +554,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+				mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+				mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 			}
 		}
 
@@ -658,6 +676,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		
 		}
 
@@ -798,7 +819,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 		mat.CorrectDeformation = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
-		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
+		mat.IsLegacy = decl.FindAdditionalFieldDefinition(PopcornFX::CStringId("Diffuse.Color")) != null
+						|| (decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive)
+							&& decl.m_MaterialPath.Contains("PopcornFXCore", PopcornFX::CaseInsensitive));
 
 		bool success = true;
 
@@ -845,6 +868,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 				mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+				mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+				mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 			}
 		}
 
@@ -976,17 +1002,19 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
+			const u32 OpaqueType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0);
+
 			// * 2 because unlit/lit pair per enum value
 			if (fluidVAT)
-				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Fluid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
+				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Fluid + OpaqueType * 2);
 			else if (softVAT)
-				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Soft + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
+				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Soft + OpaqueType * 2);
 			else if (rigidVAT)
-				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Rigid + decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0) * 2);
+				type = static_cast<EPopcornFXLegacyMaterialType>((uint32)EPopcornFXLegacyMaterialType::Mesh_VAT_Opaque_Rigid + OpaqueType * 2);
 			else
-				type = kOpaqueMesh_LegacyMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
+				type = kOpaqueMesh_LegacyMaterial_ToUE[OpaqueType];
 
-			if (type == EPopcornFXLegacyMaterialType::Mesh_Masked)
+			if (static_cast<PopcornFX::BasicRendererProperties::EOpaqueType>(OpaqueType) == PopcornFX::BasicRendererProperties::EOpaqueType::Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
 
 			if (mat.Lit)
@@ -1035,10 +1063,16 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
@@ -1094,7 +1128,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		// Default values:
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Mesh_Solid;
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Mesh_Solid;
-		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
+		mat.IsLegacy = decl.FindAdditionalFieldDefinition(PopcornFX::CStringId("Diffuse.Color")) != null
+						|| (decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive)
+							&& decl.m_MaterialPath.Contains("PopcornFXCore", PopcornFX::CaseInsensitive));
 		mat.PerParticleLOD = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshLOD());
 		mat.MotionBlur = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MotionBlur());
 		mat.MeshAtlas = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MeshAtlas());
@@ -1117,6 +1153,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_DiffuseTextureRamp(), mat.TextureDiffuseRamp);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_EmissiveTexture(), mat.TextureEmissive);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_NormalTexture(), mat.TextureNormal);
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_RoughMetalTexture(), mat.TextureRoughMetal);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_SpecularTexture(), mat.TextureSpecular);
 
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_VATPositionTexture(), mat.VATTexturePosition);
@@ -1132,9 +1169,11 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			material->SetScalarParameterValue(FPopcornFXPlugin::Name_VATPositionBoundsMin(), mat.VATPositionBoundsMin);
 			material->SetScalarParameterValue(FPopcornFXPlugin::Name_VATPositionBoundsMax(), mat.VATPositionBoundsMax);
 		}
-
+		
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_AlphaRemapper(), mat.TextureAlphaRemapper);
 		material->SetTextureParameterValue(FPopcornFXPlugin::Name_MotionVectorsTexture(), mat.TextureMotionVectors);
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_Roughness(), mat.Roughness);
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_Metalness(), mat.Metalness);
 		material->SetScalarParameterValue(FPopcornFXPlugin::Name_SoftnessDistance(), mat.SoftnessDistance * FPopcornFXPlugin::GlobalScale());
 		material->SetScalarParameterValue(FPopcornFXPlugin::Name_MaskThreshold(), mat.MaskThreshold);
 		material->SetScalarParameterValue(FPopcornFXPlugin::Name_MVDistortionStrengthColumns(), mat.MVDistortionStrengthColumns);
@@ -1151,6 +1190,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_DiffuseTextureRamp(), mat.TextureDiffuseRamp);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_EmissiveTexture(), mat.TextureEmissive);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_NormalTexture(), mat.TextureNormal);
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_RoughMetalTexture(), mat.TextureRoughMetal);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_SpecularTexture(), mat.TextureSpecular);
 
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_VATPositionTexture(), mat.VATTexturePosition);
@@ -1169,6 +1209,8 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_AlphaRemapper(), mat.TextureAlphaRemapper);
 		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_MotionVectorsTexture(), mat.TextureMotionVectors);
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_Roughness(), mat.Roughness);
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_Metalness(), mat.Metalness);
 		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_SoftnessDistance(), mat.SoftnessDistance * FPopcornFXPlugin::GlobalScale());
 		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_MaskThreshold(), mat.MaskThreshold);
 		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_MVDistortionStrengthColumns(), mat.MVDistortionStrengthColumns);
@@ -1196,6 +1238,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
@@ -1295,6 +1340,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
+			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Transparent()))
@@ -1328,7 +1376,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
 			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
-		switch (mat.DefaultMaterialType)
+		switch (finalMatType)
 		{
 #if 0
 		case	EPopcornFXDefaultMaterialType::Billboard_Additive_NoAlpha:
@@ -1391,7 +1439,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;
 		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Billboard_Additive;
-		mat.IsLegacy = decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive);
+		mat.IsLegacy = decl.FindAdditionalFieldDefinition(PopcornFX::CStringId("Diffuse.Color")) != null
+						|| (decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive)
+							&& decl.m_MaterialPath.Contains("PopcornFXCore", PopcornFX::CaseInsensitive));
 
 		bool success = true;
 		if (mat.IsLegacy)
@@ -1440,6 +1490,7 @@ FPopcornFXSubRendererMaterial::FPopcornFXSubRendererMaterial()
 ,	TextureDiffuseRamp(null)
 ,	TextureEmissive(null)
 ,	TextureNormal(null)
+,	TextureRoughMetal(null)
 ,	TextureSpecular(null)
 ,	TextureAlphaRemapper(null)
 ,	TextureMotionVectors(null)
@@ -1460,6 +1511,8 @@ FPopcornFXSubRendererMaterial::FPopcornFXSubRendererMaterial()
 ,	Lit(false)
 ,	SortIndices(false)
 ,	CorrectDeformation(false)
+,	Roughness(1)
+,	Metalness(0)
 ,	SoftnessDistance(0)
 ,	SphereMaskHardness(100.0f)
 ,	MVDistortionStrengthColumns(1.0f)
@@ -1577,6 +1630,7 @@ void	FPopcornFXSubRendererMaterial::RenameDependenciesIFN(UObject* oldAsset, UOb
 	PK_RENAME_MAT_PROP_IFN(TextureDiffuseRamp, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(TextureEmissive, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(TextureNormal, UTexture2D);
+	PK_RENAME_MAT_PROP_IFN(TextureRoughMetal, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(TextureSpecular, UTexture2D);
 	PK_RENAME_MAT_PROP_IFN(TextureAtlas, UPopcornFXTextureAtlas);
 	PK_RENAME_MAT_PROP_IFN(TextureMotionVectors, UTexture2D);
@@ -1737,25 +1791,67 @@ void	FPopcornFXSubRendererMaterial::BuildDynamicParameterMask(const PopcornFX::C
 	// This means that currently mesh renderers do not support alpha remap and linear/mv atlas blending
 	// For mesh particles ShaderInput3.w is also mapped to alphaRect, which means you can only pass ShaderInput3.xyz on mesh particles.
 	// FIXME harmonize how reserved dynamicParameters work, with a clear reserved dynamicParameter
+
+	// In versions older than 5.3, certain binary mask checks in Unreal shaders ("DynamicParameterMask & 8" for example),
+	// Seem to not get converted to hexadecimal mask checks (we get "& 0b1000" instead of "& 0xF000").
+	// To account for that, mask values are set in binary instead of hexadecimal in UE 5.2 and below.
+#define HEX_MASK (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION > 2)
+
 	if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput0()))
+		{
+			#if HEX_MASK
 			DynamicParameterMask |= 0x000F;
+			#else
+			DynamicParameterMask |= 0b0001;
+			#endif
+		}
+		#if HEX_MASK
 		DynamicParameterMask |= 0x8000;
+		#else
+		DynamicParameterMask |= 0b1000;
+		#endif
 	}
 	else
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()) ||
 			SoftAnimBlending || MotionVectorsBlending) // Atlas enabled, with motion vectors blending or linear frame blending
+		{
+			#if HEX_MASK
 			DynamicParameterMask |= 0x0003;
+			#else
+			DynamicParameterMask |= 0b0001;
+			#endif
+		}
 	}
 
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput1()))
+	{
+		#if HEX_MASK
 		DynamicParameterMask |= 0x00F0;
+		#else
+		DynamicParameterMask |= 0b0010;
+		#endif
+	}
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput2()))
+	{
+		#if HEX_MASK
 		DynamicParameterMask |= 0x0F00;
+		#else
+		DynamicParameterMask |= 0b0100;
+		#endif
+	}
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput3()))
+	{
+		#if HEX_MASK
 		DynamicParameterMask |= 0xF000;
+		#else
+		DynamicParameterMask |= 0b1000;
+		#endif
+	}
+
+#undef HEX_MASK
 }
 
 #endif // WITH_EDITOR
@@ -1772,6 +1868,7 @@ bool	FPopcornFXSubRendererMaterial::CanBeMergedWith(const FPopcornFXSubRendererM
 		TextureDiffuseRamp == other.TextureDiffuseRamp &&
 		TextureEmissive == other.TextureEmissive &&
 		TextureNormal == other.TextureNormal &&
+		TextureRoughMetal == other.TextureRoughMetal &&
 		TextureSpecular == other.TextureSpecular &&
 		TextureAlphaRemapper == other.TextureAlphaRemapper &&
 		TextureAtlas == other.TextureAtlas &&
@@ -1799,6 +1896,8 @@ bool	FPopcornFXSubRendererMaterial::CanBeMergedWith(const FPopcornFXSubRendererM
 		SkeletalAnimationLinearInterpolate == other.SkeletalAnimationLinearInterpolate &&
 		SkeletalAnimationLinearInterpolateTracks == other.SkeletalAnimationLinearInterpolateTracks &&
 		CastShadow == other.CastShadow &&
+		Roughness == other.Roughness &&
+		Metalness == other.Metalness &&
 		SoftnessDistance == other.SoftnessDistance &&
 		MaskThreshold == other.MaskThreshold &&
 		DrawOrder == other.DrawOrder &&

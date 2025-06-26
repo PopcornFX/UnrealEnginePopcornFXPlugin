@@ -55,7 +55,7 @@ struct FAutoReimportDirectoryConfig;
 /**
 * Implements the settings for the PopcornFX Plugin.
 */
-UCLASS(MinimalAPI, Config=Editor)
+UCLASS(MinimalAPI, Config=PopcornFXEditor)
 class UPopcornFXSettingsEditor : public UObject
 {
 	GENERATED_UCLASS_BODY()
