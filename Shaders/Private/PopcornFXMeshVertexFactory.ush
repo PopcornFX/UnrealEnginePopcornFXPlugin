@@ -237,7 +237,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 #	if USE_PARTICLE_LOCAL_TO_WORLD
-	Result.Particle.ParticleToWorld = DFFromTileOffset(LWCPromote(transpose(float4x4(Interpolants.ParticleToWorld[0], Interpolants.ParticleToWorld[1], Interpolants.ParticleToWorld[2], float4(0.0f, 0.0f, 0.0f, 1.0f))));;
+	Result.Particle.ParticleToWorld = DFFromTileOffset(LWCPromote(transpose(float4x4(Interpolants.ParticleToWorld[0], Interpolants.ParticleToWorld[1], Interpolants.ParticleToWorld[2], float4(0.0f, 0.0f, 0.0f, 1.0f)))));
 #		if NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
 	Result.InstanceLocalToWorld = Result.Particle.ParticleToWorld;
 #		endif // NEEDS_INSTANCE_LOCAL_TO_WORLD_PS

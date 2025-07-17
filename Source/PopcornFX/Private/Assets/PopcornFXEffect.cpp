@@ -323,6 +323,7 @@ namespace
 	static const char	*kPS4 = "ps4";
 	static const char	*kUNKNOWN2 = "UNKNOWN2";
 	static const char	*kSwitch = "switch"; // console?
+	static const char	*kUNKNOWN3 = "UNKNOWN3"; // console?
 
 	static const char	*kMobile = "mobile";
 	static const char	*kIOS = "ios";
@@ -440,6 +441,11 @@ namespace
 		{
 			PK_VERIFY(buildTags.PushBack(kConsole).Valid());
 			PK_VERIFY(buildTags.PushBack(kSwitch).Valid());
+		}
+		else if (platformName == "UNKNOWN3")
+		{
+			PK_VERIFY(buildTags.PushBack(kConsole).Valid());
+			PK_VERIFY(buildTags.PushBack(kUNKNOWN3).Valid());
 		}
 		else if (platformName.Contains("Android"))
 		{

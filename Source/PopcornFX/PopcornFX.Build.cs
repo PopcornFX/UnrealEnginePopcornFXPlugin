@@ -298,6 +298,13 @@ namespace UnrealBuildTool.Rules
 				libExt = ".a";
 			}
 #endif // !UE_5_0_OR_LATER
+#if UE_5_6_OR_LATER
+			else if (Target.Platform == UnrealTargetPlatform.UNKNOWN3)
+			{
+				libPrefix = clientLibDir + "vs2022_UNKNOWN3/";
+				libExt = ".a";
+			}
+#endif // !UE_5_0_OR_LATER
 			else
 			{
 				LogError("Target Platform " + Target.Platform.ToString() + " not supported by PopcornFX");

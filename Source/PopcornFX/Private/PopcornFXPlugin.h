@@ -144,6 +144,7 @@ public:
 	static FName						Name_DiffuseTextureRamp() { static FName n(TEXT("DiffuseTextureRamp")); return n; }
 	static FName						Name_EmissiveTexture() { static FName n(TEXT("EmissiveTexture")); return n; }
 	static FName						Name_NormalTexture() { static FName n(TEXT("NormalTexture")); return n; }
+	static FName						Name_RoughMetalTexture() { static FName n(TEXT("RoughMetalTexture")); return n; }
 	static FName						Name_SpecularTexture() { static FName n(TEXT("SpecularTexture")); return n; }
 
 	static FName						Name_VATPositionTexture() { static FName n(TEXT("VATPositionTexture")); return n; }
@@ -157,6 +158,8 @@ public:
 	static FName						Name_VATPositionBoundsMin() { static FName n(TEXT("VATPositionBoundsMin")); return n; }
 	static FName						Name_VATPositionBoundsMax() { static FName n(TEXT("VATPositionBoundsMax")); return n; }
 
+	static FName						Name_Roughness() { static FName n(TEXT("Roughness")); return n; }
+	static FName						Name_Metalness() { static FName n(TEXT("Metalness")); return n; }
 	static FName						Name_AlphaRemapper() { static FName n(TEXT("AlphaRemapper")); return n; }
 	static FName						Name_MotionVectorsTexture() { static FName n(TEXT("MotionVectorsTexture")); return n; }
 	static FName						Name_SixWayLightmap_RLTSTexture() { static FName n(TEXT("PopcornFX_SixWay_RLTSTexture")); return n; }
@@ -172,6 +175,7 @@ public:
 	static FName						Name_POPCORNFX_IS_MOTION_VECTORS_BLENDING() { static FName n(TEXT("POPCORNFX_IS_MOTION_VECTORS_BLENDING")); return n; }
 	static FName						Name_POPCORNFX_IS_LIT() { static FName n(TEXT("POPCORNFX_IS_LIT")); return n; }
 	static FName						Name_POPCORNFX_HAS_NORMAL_TEXTURE() { static FName n(TEXT("POPCORNFX_HAS_NORMAL_TEXTURE")); return n; }
+	static FName						Name_POPCORNFX_HAS_ROUGH_METAL_TEXTURE() { static FName n(TEXT("POPCORNFX_HAS_ROUGH_METAL_TEXTURE")); return n; }
 	static FName						Name_POPCORNFX_HAS_ALPHA_REMAPPER() { static FName n(TEXT("POPCORNFX_HAS_ALPHA_REMAPPER")); return n; }
 	static FName						Name_POPCORNFX_HAS_DIFFUSE_RAMP() { static FName n(TEXT("POPCORNFX_HAS_DIFFUSE_RAMP")); return n; }
 	static FName						Name_POPCORNFX_HAS_EMISSIVE_TEXTURE() { static FName n(TEXT("POPCORNFX_HAS_EMISSIVE_TEXTURE")); return n; }

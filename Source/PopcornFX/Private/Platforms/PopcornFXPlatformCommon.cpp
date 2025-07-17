@@ -82,7 +82,7 @@ PopcornFX::CImage	*PopcornFXPlatform_NewImageFromTexture(UTexture *texture)
 
 #define	TEXTURE_ERROR_COMMON(__msg)			TEXTURE_ERROR_COMMONF(TEXT("%s"), __msg)
 
-#if PLATFORM_SWITCH
+#if (defined(PLATFORM_SWITCH) && PLATFORM_SWITCH) || (defined(PLATFORM_UNKNOWN3) && PLATFORM_UNKNOWN3)
 	TEXTURE_ERROR_COMMON(TEXT("Texture sampling not supported yet on Switch"));
 	return _CreateFallbackImage();
 #endif
