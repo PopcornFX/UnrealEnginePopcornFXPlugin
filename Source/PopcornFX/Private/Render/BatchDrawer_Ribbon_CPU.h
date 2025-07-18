@@ -24,7 +24,7 @@ private:
 		StreamOffset_Colors = 0,
 		StreamOffset_EmissiveColors3,
 		StreamOffset_EmissiveColors4,
-		StreamOffset_Velocity,
+		StreamOffset_PreviousPosition,
 		StreamOffset_AlphaCursors,
 		StreamOffset_TextureID,
 		StreamOffset_DynParam1s,

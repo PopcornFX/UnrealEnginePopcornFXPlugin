@@ -53,10 +53,10 @@ FReply		FPopcornFXDetailsSceneComponent::OnClear()
 	{
 		if (objects[obji].IsValid())
 		{
-			UPopcornFXSceneComponent	*sceneComponent = Cast<UPopcornFXSceneComponent>(objects[obji].Get());
+			UPopcornFXSceneComponent* sceneComponent = Cast<UPopcornFXSceneComponent>(objects[obji].Get());
 			if (sceneComponent == null)
 			{
-				APopcornFXSceneActor	*actor = Cast<APopcornFXSceneActor>(objects[obji].Get());
+				APopcornFXSceneActor* actor = Cast<APopcornFXSceneActor>(objects[obji].Get());
 				if (actor != null)
 					sceneComponent = actor->PopcornFXSceneComponent;
 			}
@@ -78,7 +78,7 @@ void	FPopcornFXDetailsSceneComponent::RebuildDetails()
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXDetailsSceneComponent::CustomizeDetails(IDetailLayoutBuilder &DetailLayout)
+void	FPopcornFXDetailsSceneComponent::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
 	m_DetailLayout = &DetailLayout;
 
@@ -86,17 +86,12 @@ void	FPopcornFXDetailsSceneComponent::CustomizeDetails(IDetailLayoutBuilder &Det
 
 	//DetailLayout.HideProperty("AttributeList");
 
-	FTextBlockStyle			buttonTextStyle;
-	buttonTextStyle.SetFont(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"));
-	buttonTextStyle.SetColorAndOpacity(FAppStyle::GetColor("Colors.AccentGray"));
-
 	IDetailCategoryBuilder	&sceneCategory = DetailLayout.EditCategory("PopcornFX Scene");
 	sceneCategory.AddCustomRow(LOCTEXT("Editor Actions", "Editor Actions"), false)
 		.NameContent()
 		[
 			SNew(STextBlock)
 			.Text(LOCTEXT("SceneActions", "Scene Actions"))
-			.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
 		]
 	.ValueContent()
 		.MinDesiredWidth(125.0f * 3.0f)
@@ -104,12 +99,7 @@ void	FPopcornFXDetailsSceneComponent::CustomizeDetails(IDetailLayoutBuilder &Det
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot()
-			[
-				SNew(SButton)
-					.Text(LOCTEXT("Clear", "Clear"))
-					.TextStyle(&buttonTextStyle)
-					.OnClicked(this, &FPopcornFXDetailsSceneComponent::OnClear)
-			]
+			[SNew(SButton).Text(LOCTEXT("Clear", "Clear")).OnClicked(this, &FPopcornFXDetailsSceneComponent::OnClear)]
 		];
 
 	{

@@ -347,8 +347,8 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float3	prevVertexPosition = vertexPosition;
 
 	BRANCH
-	if (PopcornFXBillboardVSUniforms.InVelocityOffset != -1)
-		prevVertexPosition -= PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InVelocityOffset);
+	if (PopcornFXBillboardVSUniforms.InPreviousPositionOffset != -1)
+		prevVertexPosition = PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InPreviousPositionOffset);
 
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), DFDemote(GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld)).xyz;

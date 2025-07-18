@@ -81,13 +81,10 @@ FD3D12Buffer::~FD3D12Buffer()
 	//}
 }
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION < 6)
 uint32 FD3D12Buffer::GetParentGPUIndex() const
 {
 	return Parent->GetGPUIndex();
 }
-#endif // (ENGINE_MINOR_VERSION < 6)
-
 #else
 FD3D12VertexBuffer::~FD3D12VertexBuffer()
 {
@@ -291,7 +288,6 @@ FD3D12Resource::~FD3D12Resource()
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION <= 5)
 void	CResourceState::Initialize(uint32 SubresourceCount)
 {
 	check(0 == m_SubresourceState.Num());
@@ -322,7 +318,6 @@ void	CResourceState::SetResourceState(D3D12_RESOURCE_STATES State)
 	}
 #endif
 }
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION <= 5)
 
 //----------------------------------------------------------------------------
 
@@ -428,9 +423,7 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stre
 #if (ENGINE_MAJOR_VERSION == 5)
 	FD3D12Buffer			*buffer = adapter->CreateLinkedObject<FD3D12Buffer>(device->GetVisibilityMask(), [&](FD3D12Device* device, void* empty = nullptr)
 		{
-#if (ENGINE_MINOR_VERSION >= 6)
-			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, FRHIBufferCreateDesc(TEXT("PopcornFXBuffer"), stream->m_ByteSize, stride, bufferUsage));
-#elif (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MINOR_VERSION >= 3)
 			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, FRHIBufferDesc(stream->m_ByteSize, stride, bufferUsage));
 #else
 			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, stream->m_ByteSize, bufferUsage, stride);

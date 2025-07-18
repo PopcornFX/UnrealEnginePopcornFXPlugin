@@ -34,7 +34,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, POPCORNFX
 	SHADER_PARAMETER(int32, InColorsOffset)
 	SHADER_PARAMETER(int32, InEmissiveColorsOffset3)
 	SHADER_PARAMETER(int32, InEmissiveColorsOffset4)
-	SHADER_PARAMETER(int32, InVelocityOffset)
+	SHADER_PARAMETER(int32, InPreviousPositionOffset)
 	SHADER_PARAMETER(int32, InAlphaCursorsOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter1sOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter2sOffset)

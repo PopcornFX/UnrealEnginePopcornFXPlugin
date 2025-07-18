@@ -190,8 +190,9 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
 			outStreamOffsetType = StreamOffset_EmissiveColors3;
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_MoveVector())
-			outStreamOffsetType = StreamOffset_Velocity;
+
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_PreviousPosition())
+			outStreamOffsetType = StreamOffset_PreviousPosition;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
@@ -674,7 +675,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vsUniformsBillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsBillboard.CapsulesOffset = m_CapsulesOffset;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
-			vsUniformsBillboard.InVelocityOffset = m_AdditionalStreamOffsets[StreamOffset_Velocity].OffsetForShaderConstant();
+			vsUniformsBillboard.InPreviousPositionOffset = m_AdditionalStreamOffsets[StreamOffset_PreviousPosition].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].OffsetForShaderConstant();
 			vsUniformsBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();

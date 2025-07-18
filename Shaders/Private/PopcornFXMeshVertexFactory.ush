@@ -21,9 +21,6 @@
 #define USE_PARTICLE_LOCAL_TO_WORLD (NEEDS_PARTICLE_LOCAL_TO_WORLD || NEEDS_INSTANCE_LOCAL_TO_WORLD_PS)
 #define USE_PARTICLE_WORLD_TO_LOCAL (NEEDS_PARTICLE_WORLD_TO_LOCAL || NEEDS_INSTANCE_WORLD_TO_LOCAL_PS)
 
-// See PopcornFXGPUBillboard.ush
-#define VELOCITY_SCALE	100.0f
-
 struct FVertexFactoryInput
 {
 	float4	Position : ATTRIBUTE0;
@@ -156,7 +153,7 @@ struct FVertexFactoryIntermediates
 	float4x4	ParticleToWorld;
 	float4x4	WorldToParticle;
 
-	float3		Velocity;
+	float4		PreviousPosition;
 
 #if (ENGINE_MAJOR_VERSION == 5)
 	/** Cached primitive and instance data */
@@ -448,7 +445,7 @@ float4 CalcWorldPosition(FVertexFactoryInput Input)
 float4 CalcPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
 	// FIXME only offsets the particle position, properly store the previous rotation transforms as well.
-    float4x4 Transform = float4x4(Input.Transform1, Input.Transform2, Input.Transform3, Input.Transform4 - float4(Intermediates.Velocity, 0));
+	float4x4 Transform = float4x4(Input.Transform1, Input.Transform2, Input.Transform3, Intermediates.PreviousPosition);
 
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.TileOffset.PrevPreViewTranslation);
@@ -498,10 +495,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	else if (PopcornFXMeshVSUniforms.InEmissiveColorsOffset4 != -1)
 		Intermediates.EmissiveColor = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InEmissiveColorsOffset4);
 	BRANCH
-	if (PopcornFXMeshVSUniforms.InVelocityOffset != -1)
-		Intermediates.Velocity = PKSimData_Load3f(particleID, PopcornFXMeshVSUniforms.InVelocityOffset) * VELOCITY_SCALE;
+	if (PopcornFXMeshVSUniforms.InPreviousPositionOffset != -1)
+		Intermediates.PreviousPosition = float4(PKSimData_Load3f(particleID, PopcornFXMeshVSUniforms.InPreviousPositionOffset), Input.Transform4.w);
 	else
-        Intermediates.Velocity = float3(0.0f, 0.0f, 0.0f);
+		Intermediates.PreviousPosition = Input.Transform4;
 
 	// Cursor sent through RelativeTime (either one)
 	BRANCH

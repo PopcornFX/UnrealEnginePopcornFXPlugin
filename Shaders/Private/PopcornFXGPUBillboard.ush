@@ -312,8 +312,8 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 #endif // (ENGINE_MAJOR_VERSION == 5)
 
 	BRANCH
-	if (PopcornFXGPUBillboardVSUniforms.InVelocityOffset != -1)
-        intermediates.VertexPrevWorldPosition = (worldPos + bbCorner - PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InVelocityOffset)) * GLOBAL_SCALE;
+	if (PopcornFXGPUBillboardVSUniforms.InPreviousPositionOffset != -1)
+		intermediates.VertexPrevWorldPosition = (PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InPreviousPositionOffset) + bbCorner) * GLOBAL_SCALE;
 	else
 		intermediates.VertexPrevWorldPosition = (worldPos + bbCorner) * GLOBAL_SCALE; // no velocity
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)

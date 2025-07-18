@@ -11,7 +11,6 @@
 #include <pk_particles/include/ps_mediums.h>
 
 #include "SceneManagement.h"
-#include "SceneView.h"
 
 #if RHI_RAYTRACING
 #	include "RayTracingInstance.h"

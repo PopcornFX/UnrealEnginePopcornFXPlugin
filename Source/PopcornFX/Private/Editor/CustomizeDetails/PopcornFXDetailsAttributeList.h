@@ -11,13 +11,11 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 #include "PropertyEditorModule.h"
-#include "PopcornFXAttributeList.h"
 
 #include "IDetailCustomization.h"
 
 class	UPopcornFXAttributeList;
 class	UPopcornFXEffect;
-class	IDetailGroup;
 namespace { class	SPopcornFXAttributeCategory; }
 
 class FPopcornFXDetailsAttributeList : public IDetailCustomization
@@ -55,9 +53,7 @@ private:
 	void						Rebuild();
 	void						RebuildIFN();
 	void						RebuildAttributes();
-	void						BuildAttribute(const FPopcornFXAttributeDesc *desc, const UPopcornFXAttributeList *attrList, uint32 attri, uint32 iCategory);
 	void						RebuildSamplers();
-	void						BuildSampler(const FPopcornFXSamplerDesc *desc, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory);
 
 	bool						m_RefreshQueued;
 
@@ -71,8 +67,7 @@ private:
 	uint32								m_FileVersionId;
 	const UPopcornFXEffect				*m_Effect;
 
-	TArray<IDetailGroup*>				m_IGroups;
-	TArray<uint32>						m_NumAttributes;
+	TArray<TSharedPtr<SPopcornFXAttributeCategory> >	m_SCategories;
 };
 
 #endif // WITH_EDITOR

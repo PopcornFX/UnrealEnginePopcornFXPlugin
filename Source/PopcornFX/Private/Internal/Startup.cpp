@@ -18,7 +18,6 @@
 #include "HAL/PlatformAffinity.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Render/PopcornFXRendererProperties.h"
-#include "Async/TaskGraphInterfaces.h"
 
 #include "PopcornFXSDK.h"
 
@@ -768,9 +767,9 @@ bool	PopcornFXStartup()
 	SDllVersion	engineVersion;
 	bool		success = false;
 
-	if (!PK_VERIFY(engineVersion.Major == PK_VERSION_MAJOR && engineVersion.Minor == PK_VERSION_MINOR))
+	if (engineVersion.Major != PK_VERSION_MAJOR || engineVersion.Minor != PK_VERSION_MINOR)
 	{
-		UE_LOG(LogPopcornFXStartup, Error, TEXT("PopcornFX Runtime version mismatch: PopcornFX Runtime is v%d.%d, but Plugin has been built with v%d.%d headers !"), engineVersion.Major, engineVersion.Minor, PK_VERSION_MAJOR, PK_VERSION_MINOR);
+		UE_LOG(LogPopcornFXStartup, Error, TEXT("PopcornFX Runtime version missmatch: PopcornFX Runtime is v%d.%d, but Plugin has been build with v%d.%d headers !"), engineVersion.Major, engineVersion.Minor, PK_VERSION_MAJOR, PK_VERSION_MINOR);
 		return false;
 	}
 

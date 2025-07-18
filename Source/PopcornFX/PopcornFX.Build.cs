@@ -305,20 +305,6 @@ namespace UnrealBuildTool.Rules
 				libExt = ".a";
 			}
 #endif // !UE_5_0_OR_LATER
-#if UE_5_6_OR_LATER
-			else if (Target.Platform == UnrealTargetPlatform.UNKNOWN3)
-			{
-				libPrefix = clientLibDir + "vs2022_UNKNOWN3/";
-				libExt = ".a";
-			}
-#endif // !UE_5_0_OR_LATER
-#if UE_5_6_OR_LATER
-			else if (Target.Platform == UnrealTargetPlatform.UNKNOWN3)
-			{
-				libPrefix = clientLibDir + "vs2022_UNKNOWN3/";
-				libExt = ".a";
-			}
-#endif // !UE_5_0_OR_LATER
 			else
 			{
 				LogError("Target Platform " + Target.Platform.ToString() + " not supported by PopcornFX");
@@ -473,11 +459,7 @@ namespace UnrealBuildTool.Rules
 
 				// Needed for RHI buffers creation from native resources
 				PublicIncludePaths.Add("Runtime/D3D12RHI/Private");
-#if UE_5_6_OR_LATER
-				PublicIncludePaths.Add("Runtime/D3D12RHI/Internal");
-                PublicIncludePaths.Add("Runtime/RHICore/Internal");
-#endif // UE_5_6_OR_LATER
-                if (
+				if (
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 					Target.Platform == UnrealTargetPlatform.XboxOne ||
 #endif // !UE_5_0_OR_LATER
