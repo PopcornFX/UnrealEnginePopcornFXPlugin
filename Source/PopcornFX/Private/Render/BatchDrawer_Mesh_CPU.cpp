@@ -160,6 +160,8 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
 			outStreamOffsetType = StreamOffset_EmissiveColors3;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_MoveVector())
+			outStreamOffsetType = StreamOffset_Velocity;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
@@ -467,6 +469,7 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 	vsUniformsMesh.InEmissiveColorsOffset4 =		m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4] / sizeof(float)) + buffersOffset * 4) : -1;
 
 	vsUniformsMesh.InColorsOffset =					m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) + buffersOffset * 4) : -1;
+	vsUniformsMesh.InVelocityOffset =				m_AdditionalStreamOffsets[StreamOffset_Velocity].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Velocity] / sizeof(float)) + buffersOffset * 3) : -1;
 	vsUniformsMesh.InDynamicParameter0sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam0s] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter1sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter2sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) + buffersOffset * 4) : -1;

@@ -209,6 +209,8 @@ namespace UnrealBuildTool.Rules
 			bool	isUNKNOWN = false;
 			bool	isUNKNOWN2Compatible = false;
 			bool	isUNKNOWN2 = false;
+			bool	isUNKNOWN3Compatible = false;
+			bool	isUNKNOWN3 = false;
 
 			// Makes sure the plugin is compatible with Vanilla UnrealEngine
 			isUNKNOWNCompatible = UnrealTargetPlatform.IsValidName("WinUNKNOWN") || UnrealTargetPlatform.IsValidName("XboxOneUNKNOWN") || UnrealTargetPlatform.IsValidName("UNKNOWN");
@@ -218,6 +220,8 @@ namespace UnrealBuildTool.Rules
 			isUNKNOWN = isUNKNOWNCompatible && (Target.Platform.ToString() == "UNKNOWN");
 			isUNKNOWN2Compatible = UnrealTargetPlatform.IsValidName("UNKNOWN2");
 			isUNKNOWN2 = isUNKNOWN2Compatible && (Target.Platform.ToString() == "UNKNOWN2");
+            isUNKNOWN3Compatible = UnrealTargetPlatform.IsValidName("UNKNOWN3");
+            isUNKNOWN3 = isUNKNOWN3Compatible && (Target.Platform.ToString() == "UNKNOWN3");
 
 			if (isUNKNOWNCompatible)
 				Log("Detected UNKNOWN compatible Unreal Engine");
@@ -299,12 +303,12 @@ namespace UnrealBuildTool.Rules
 			}
 #endif // !UE_5_0_OR_LATER
 #if UE_5_6_OR_LATER
-			else if (Target.Platform == UnrealTargetPlatform.UNKNOWN3)
+			else if (isUNKNOWN3)
 			{
 				libPrefix = clientLibDir + "vs2022_UNKNOWN3/";
 				libExt = ".a";
 			}
-#endif // !UE_5_0_OR_LATER
+#endif // !UE_6_0_OR_LATER
 			else
 			{
 				LogError("Target Platform " + Target.Platform.ToString() + " not supported by PopcornFX");
@@ -459,7 +463,11 @@ namespace UnrealBuildTool.Rules
 
 				// Needed for RHI buffers creation from native resources
 				PublicIncludePaths.Add("Runtime/D3D12RHI/Private");
-				if (
+#if UE_5_6_OR_LATER
+				PublicIncludePaths.Add("Runtime/D3D12RHI/Internal");
+                PublicIncludePaths.Add("Runtime/RHICore/Internal");
+#endif // UE_5_6_OR_LATER
+                if (
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 					Target.Platform == UnrealTargetPlatform.XboxOne ||
 #endif // !UE_5_0_OR_LATER

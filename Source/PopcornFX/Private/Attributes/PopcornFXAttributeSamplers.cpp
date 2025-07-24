@@ -3339,6 +3339,27 @@ public:
 			dstValues[0] = broadcast;
 	}
 
+	virtual bool	SupportsSim(const PopcornFX::CParticleUpdater *updater) const override
+	{
+		(void)updater;
+		PK_ASSERT(updater != null);
+#if (PK_PARTICLES_UPDATER_USE_D3D12 != 0)
+		if (updater->Manager()->UpdateClass() == PopcornFX::CParticleUpdateManager_D3D12::DefaultUpdateClass())
+			return m_TrackResourceD3D12 != null;
+#endif
+		
+		return true;
+	}
+#if (PK_PARTICLES_UPDATER_USE_D3D12 != 0)
+	virtual void	BindAnimTrackResourceD3D12(const PopcornFX::SBindingContextD3D12 &context) const override
+	{
+		if (m_TrackResourceD3D12 != null)
+		{
+			context.m_Heap.BindTextureShaderResourceView(context.m_Device, m_TrackResourceD3D12, context.m_Location, m_TrackResourceD3D12->GetDesc().Format, D3D12_SRV_DIMENSION_TEXTURE2D);
+			context.m_Heap.KeepResourceReference(m_TrackResourceD3D12);
+		}
+	}
+#endif
 
 private:
 	template<bool _InverseTransforms>
@@ -3423,6 +3444,9 @@ private:
 	u32						m_TransformFlags;
 	float					m_SplineLength;
 	const FMatrix44f		*m_TrackTransforms;
+#if (PK_PARTICLES_UPDATER_USE_D3D12 != 0)
+	ID3D12Resource			*m_TrackResourceD3D12 = null;
+#endif
 };
 PK_DECLARE_REFPTRCLASS(ParticleSamplerDescriptor_AnimTrack_UE);
 

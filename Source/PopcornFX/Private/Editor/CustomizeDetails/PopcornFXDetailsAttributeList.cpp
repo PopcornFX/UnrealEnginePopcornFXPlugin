@@ -9,7 +9,6 @@
 #include "Assets/PopcornFXEffect.h"
 #include "PopcornFXEmitter.h"
 #include "PopcornFXEmitterComponent.h"
-#include "PopcornFXAttributeList.h"
 #include "Editor/EditorHelpers.h"
 #include "Editor/PopcornFXStyle.h"
 
@@ -18,6 +17,7 @@
 #include "PropertyCustomizationHelpers.h"
 #include "PropertyHandle.h"
 #include "IPropertyUtilities.h"
+#include "IDetailGroup.h"
 #include "ScopedTransaction.h"
 
 #include "Widgets/SBoxPanel.h"
@@ -119,7 +119,7 @@ namespace
 			SLATE_ATTRIBUTE(float, MaxWidth)
 			SLATE_END_ARGS()
 
-		void Construct(const FArguments& InArgs)
+		void Construct(const FArguments &InArgs)
 		{
 			MinWidth = InArgs._MinWidth;
 			MaxWidth = InArgs._MaxWidth;
@@ -225,165 +225,141 @@ namespace
 	//float SDetailTableRowBase::ScrollbarPaddingSize = 16.0f
 	static const float	kDefaultScrollBarPaddingSize = 16.0f;
 
-	class	SAttributeDesc : public SCompoundWidget
+	// Data needed to craft a widget representing an attribute
+	struct FAttributeDesc
 	{
 	public:
-		typedef SAttributeDesc						TSelf;
-		typedef FPopcornFXDetailsAttributeList		TParent;
+		typedef FAttributeDesc					TSelf;
+		typedef FPopcornFXDetailsAttributeList	TParent;
 
-		SLATE_BEGIN_ARGS(SAttributeDesc)
-		{}
-			SLATE_ARGUMENT(int32, AttribI)
+		TWeakPtr<TParent>						m_Parent;
+
+		bool									m_ReadOnly = false;
+
+		uint32									m_Index = 0;
+		u32										m_VectorDimension = 0;
+		const PopcornFX::CBaseTypeTraits*		m_Traits = null;
+
+		FText									m_Title;
+		FText									m_Description;
+		FText									m_ShortDescription;
+
+		bool									m_IsColor = false;
+		bool									m_IsQuaternion = false;
+		bool									m_IsOneShotTrigger = false;
+		EPopcornFXAttributeDropDownMode::Type	m_DropDownMode;
+		TArray<FString>							m_EnumList; // copy
+		TArray<TSharedPtr<int32>>				m_EnumListIndices;
+		bool									m_HasMin;
+		bool									m_HasMax;
+
+		PopcornFX::SAttributesContainer_SAttrib	m_Min;
+		PopcornFX::SAttributesContainer_SAttrib	m_Max;
+		PopcornFX::SAttributesContainer_SAttrib	m_Def;
+	};
+
+	// A widget representing an attribute
+	struct SAttributeWidget : SCompoundWidget
+	{
+		typedef SAttributeWidget				TSelf;
+		typedef FPopcornFXDetailsAttributeList	TParent;
+
+		FAttributeDesc							m_SlateDesc;
+		bool									m_IsExpanded = false;
+		uint32									m_Dimi = 0;
+
+		SLATE_BEGIN_ARGS(SAttributeWidget) { }
+			SLATE_ARGUMENT(FAttributeDesc, SlateDesc)
 			SLATE_ARGUMENT(TWeakPtr<FPopcornFXDetailsAttributeList>, Parent)
-			SLATE_ARGUMENT(TOptional<bool>, Dirtify)
-			SLATE_ARGUMENT(TOptional<bool>, ReadOnly)
 			SLATE_ARGUMENT(TOptional<bool>, Expanded)
-			SLATE_END_ARGS()
-		SAttributeDesc()
+			SLATE_ARGUMENT(TOptional<uint32>, Dimi)
+		SLATE_END_ARGS()
+
+		void			Construct(const FArguments &InArgs)
 		{
-			ATTRDEBUB_LOG(LogPopcornFXDetailsAttributeList, Log, TEXT("SAttributeDesc ctor %p"), this);
-		}
+			m_SlateDesc = InArgs._SlateDesc;
+			m_IsExpanded = InArgs._Expanded.Get(false);
+			m_Dimi = InArgs._Dimi.Get(0);
 
-		~SAttributeDesc()
-		{
-			ATTRDEBUB_LOG(LogPopcornFXDetailsAttributeList, Log, TEXT("SAttributeDesc dotr %p"), this);
-		}
-
-		void	OnLeftColumnResized(float InNewWidth)
-		{
-			// SDetailSingleItemRow.cpp:
-			// This has to be bound or the splitter will take it upon itself to determine the size
-			// We do nothing here because it is handled by the column size data
-		}
-
-		void	Construct(const FArguments& InArgs)
-		{
-			m_Parent = InArgs._Parent;
-			m_Index = uint32(InArgs._AttribI);
-
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
-
-			m_Dirtify = InArgs._Dirtify.Get(true);
-			m_ReadOnly = InArgs._ReadOnly.Get(false);
-			m_ExpandOnly = InArgs._Expanded.Get(false);
-
-			if (!Init())
-				return;
-
-			TSharedPtr<SVerticalBox>	vbox;
-			SAssignNew(vbox, SVerticalBox);
-
-			if (!m_ExpandOnly)
+			TSharedPtr<SHorizontalBox>	hbox;
+			SAssignNew(hbox, SHorizontalBox);
+			if (m_IsExpanded)
 			{
-				TSharedPtr<SHorizontalBox>	attrDesc;
-				TSharedPtr<SHorizontalBox>	attrValuesInline;
-
-				SAssignNew(attrDesc, SHorizontalBox)
-					+SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
+				hbox->AddSlot()
 					.VAlign(VAlign_Center)
+					.FillWidth(1.0f)
+					.Padding(3.0f, 1.0f, 2.0f, 1.0f)
 					[
-						SAssignNew(m_ExpanderArrow, SButton)
-						.ButtonStyle(FCoreStyle::Get(), "NoBorder")
-						.VAlign(VAlign_Center)
-						.HAlign(HAlign_Center)
-						.Visibility(this, &SAttributeDesc::GetExpanderVisibility)
-						.ClickMethod(EButtonClickMethod::MouseDown)
-						.OnClicked(this, &SAttributeDesc::OnArrowClicked)
-						.ContentPadding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
-						.ForegroundColor(FSlateColor::UseForeground())
-						.IsFocusable(false)
-						[
-							SNew(SImage)
-							.Image(this, &SAttributeDesc::GetExpanderImage)
-							.ColorAndOpacity(FSlateColor::UseForeground())
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.Padding(1.f)
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					[
-						SNew(SBox)
-						.WidthOverride(20)
-						.HeightOverride(20)
-						[
-							SNew(SImage)
-							.Image(FPopcornFXStyle::GetBrush(m_AttributeIcon))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(m_Title)
-						.ToolTipText(m_Description)
+						SNew(SMyConstrainedBox)
+							.MinWidth(125.f)
+							.MaxWidth(125.f)
+							[
+								MakeAxis(m_Dimi)
+							]
 					];
-
-				SAssignNew(attrValuesInline, SHorizontalBox);
-				if (m_DropDownMode == EPopcornFXAttributeDropDownMode::AttributeDropDownMode_SingleSelect)
+			}
+			else
+			{
+				if (m_SlateDesc.m_DropDownMode == EPopcornFXAttributeDropDownMode::AttributeDropDownMode_SingleSelect)
 				{
-					attrValuesInline->AddSlot()
+					hbox->AddSlot()
 						.VAlign(VAlign_Center)
 						.FillWidth(1.0f)
 						.Padding(3.0f, 1.0f, 2.0f, 1.0f)
 						[
 							SNew(SMyConstrainedBox)
-							.MinWidth(125.f)
-							.MaxWidth(125.f)
-							[
-								MakeSingleSelectEnum()
-							]
+								.MinWidth(125.f)
+								.MaxWidth(125.f)
+								[
+									MakeSingleSelectEnum()
+								]
 						];
 				}
 				else
 				{
-					for (u32 dimi = 0; dimi < m_VectorDimension; ++dimi)
+					for (u32 dimi = 0; dimi < m_SlateDesc.m_VectorDimension; ++dimi)
 					{
-						attrValuesInline->AddSlot()
+						hbox->AddSlot()
 							.VAlign(VAlign_Center)
 							.FillWidth(1.0f)
 							.Padding(3.0f, 1.0f, 2.0f, 1.0f)
 							[
 								SNew(SMyConstrainedBox)
-								.MinWidth(125.f)
-								.MaxWidth(125.f)
-								[
-									MakeAxis(dimi)
-								]
+									.MinWidth(125.f)
+									.MaxWidth(125.f)
+									[
+										MakeAxis(dimi)
+									]
 							];
 					}
 				}
-				attrValuesInline->AddSlot()
+				hbox->AddSlot()
 					.HAlign(HAlign_Right)
 					.VAlign(VAlign_Center)
 					.AutoWidth()
 					[
 						SNew(SBox)
-						.WidthOverride(20)
-						.HeightOverride(20)
-						[
-							SNew(SButton)
-							.ButtonStyle(FCoreStyle::Get(), "NoBorder")
-							.VAlign(VAlign_Center)
-							.HAlign(HAlign_Right)
-							.Visibility(this, &SAttributeDesc::GetColorPickerVisibility)
-							.ClickMethod(EButtonClickMethod::MouseDown)
-							.OnClicked(this, &SAttributeDesc::OnColorPickerClicked)
-							.ContentPadding(0.f)
-							.ForegroundColor(FSlateColor::UseForeground())
-							.IsFocusable(false)
-							.ToolTipText(LOCTEXT("DisplayColorPickerTooltip", "Color Picker"))
+							.WidthOverride(20)
+							.HeightOverride(20)
 							[
-								SNew(SImage)
-								.Image(FCoreStyle::Get().GetBrush("ColorPicker.Mode"))
+								SNew(SButton)
+									.ButtonStyle(FCoreStyle::Get(), "NoBorder")
+									.VAlign(VAlign_Center)
+									.HAlign(HAlign_Right)
+									.Visibility(this, &SAttributeWidget::GetColorPickerVisibility)
+									.ClickMethod(EButtonClickMethod::MouseDown)
+									.OnClicked(this, &SAttributeWidget::OnColorPickerClicked)
+									.ContentPadding(5.f)
+									.ForegroundColor(FSlateColor::UseForeground())
+									.IsFocusable(false)
+									.ToolTipText(LOCTEXT("DisplayColorPickerTooltip", "Color Picker"))
+									[
+										SNew(SImage)
+											.Image(FCoreStyle::Get().GetBrush("ColorPicker.Mode"))
+									]
 							]
-						]
 					];
-				attrValuesInline->AddSlot()
+				hbox->AddSlot()
 					.Padding(1.f)
 					.AutoWidth()
 					.HAlign(HAlign_Center)
@@ -391,237 +367,28 @@ namespace
 					[
 						MakeResetButton()
 					];
-
-				TSharedPtr<SSplitter>		inlineSplitter;
-				SAssignNew(inlineSplitter, SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5)
-				.Style(FAppStyle::Get(), "DetailsView.Splitter")
-#else
-				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif // (ENGINE_MAJOR_VERSION == 5)
-				.PhysicalSplitterHandleSize(1.0f)
-				.HitDetectionSplitterHandleSize(5.0f)
-					+ SSplitter::Slot()
-					.Value(parent->LeftColumnWidth)
-					.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(this, &SAttributeDesc::OnLeftColumnResized))
-					[
-						attrDesc.ToSharedRef()
-					]
-					+ SSplitter::Slot()
-					.Value(parent->RightColumnWidth)
-					.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(parent.Get(), &FPopcornFXDetailsAttributeList::OnSetColumnWidth))
-					[
-						attrValuesInline.ToSharedRef()
-					];
-
-				vbox->AddSlot()
-					[
-						SNew(SBorder)
-#if (ENGINE_MAJOR_VERSION == 5)
-						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
-						.BorderBackgroundColor(this, &SAttributeDesc::GetOuterBackgroundColor)
-#else
-						.BorderImage(this, &SAttributeDesc::GetBorderImage)
-#endif
-						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
-						[
-							inlineSplitter.ToSharedRef()
-						]
-					];
 			}
-			else
-			{
-				TSharedPtr<SVerticalBox>	attrValuesExpanded;
-				SAssignNew(attrValuesExpanded, SVerticalBox);
-
-				for (u32 dimi = 0; dimi < m_VectorDimension; ++dimi)
-				{
-					attrValuesExpanded->AddSlot()
-						.FillHeight(1.0f)
-						.Padding(0.0f, 2.0f)
-						[
-							SNew(SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5)
-							.Style(FAppStyle::Get(), "DetailsView.Splitter")
-#else
-							.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif // (ENGINE_MAJOR_VERSION == 5)
-							.PhysicalSplitterHandleSize(1.0f)
-							.HitDetectionSplitterHandleSize(5.0f)
-								+ SSplitter::Slot()
-								.Value(parent->LeftColumnWidth)
-								.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(this, &SAttributeDesc::OnLeftColumnResized))
-								[
-									SNew(SHorizontalBox)
-								]
-								+ SSplitter::Slot()
-								.Value(parent->RightColumnWidth)
-								.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(parent.Get(), &FPopcornFXDetailsAttributeList::OnSetColumnWidth))
-								[
-									SNew(SHorizontalBox)
-										+ SHorizontalBox::Slot()
-										.FillWidth(1.f)
-										.HAlign(HAlign_Fill)
-										.Padding(3.0f, 0.0f)
-										[
-											SNew(SMyConstrainedBox)
-											.MinWidth(125.f)
-											.MaxWidth(125.f)
-											[
-												MakeAxis(dimi)
-											]
-										]
-										+ SHorizontalBox::Slot()
-										.Padding(1.f)
-										.AutoWidth()
-										.HAlign(HAlign_Center)
-										.VAlign(VAlign_Center)
-										[
-											MakeResetButton(dimi)
-										]
-								]
-						];
-				}
-				vbox->AddSlot()
-					[
-						SNew(SBorder)
-#if (ENGINE_MAJOR_VERSION == 5)
-						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
-						.BorderBackgroundColor(this, &SAttributeDesc::GetOuterBackgroundColor)
-#else
-						.BorderImage(this, &SAttributeDesc::GetBorderImage)
-#endif
-						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
-						[
-							attrValuesExpanded.ToSharedRef()
-						]
-					];
-			}
-
 			ChildSlot
 			[
-				vbox.ToSharedRef()
+				hbox.ToSharedRef()
 			];
-		}
-
-	private:
-		bool		Init()
-		{
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
-			if (!parent.IsValid())
-				return false;
-
-			//m_AttributesPty = parent->m_SamplersPty;
-			//if (!m_AttributesPty->IsValidHandle())
-			//	return false;
-
-			//m_AttributesRawDataPty = parent->m_AttributesRawDataPty;
-
-			const UPopcornFXAttributeList		*attrList = parent->AttrList();
-			check(attrList != null);
-
-			//m_Parent = parent;
-			//m_Index = index;
-			UPopcornFXEffect			*effect = ResolveEffect(attrList);
-			if (effect == null)
-				return false;
-			// Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
-			const PopcornFX::CParticleAttributeDeclaration		*decl = static_cast<const PopcornFX::CParticleAttributeDeclaration*>(attrList->GetAttributeDeclaration(effect, m_Index));
-			if (decl == null)
-				return false;
-			const FPopcornFXAttributeDesc	*desc = attrList->GetAttributeDesc(m_Index);
-			check(desc != null);
-
-			const PopcornFX::EBaseTypeID	attributeBaseTypeID = (PopcornFX::EBaseTypeID)desc->AttributeBaseTypeID();
-
-			m_Traits = &(PopcornFX::CBaseTypeTraits::Traits(attributeBaseTypeID));
-
-			m_IsQuaternion = attributeBaseTypeID == PopcornFX::BaseType_Quaternion;
-			m_IsOneShotTrigger = decl->OneShotTrigger();
-
-			// force vector dimension to 3 for quaternion, allow to display 3 float and use euler angles in editor
-			m_VectorDimension = (!m_IsQuaternion) ? m_Traits->VectorDimension : 3;
-
-			m_DropDownMode = desc->m_DropDownMode;
-			m_EnumList = desc->m_EnumList;
-			m_EnumListIndices.SetNum(m_EnumList.Num());
-			for (s32 i = 0; i < m_EnumListIndices.Num(); ++i)
-				m_EnumListIndices[i] = MakeShareable(new int32(i)); // SEnumComboBox::Construct
-
-			const FString	name = desc->AttributeName();
-			m_Title = FText::FromString(name);
-
-			{
-				FString	description = ToUE(decl->Description().MapDefault()).Replace(TEXT("\\n"), TEXT("\n"));
-				FString	shortDescription;
-				int32	shortOffset;
-				if (description.FindChar('\n', shortOffset))
-					shortDescription = description.Left(shortOffset - 1);
-				else
-					shortDescription = description;
-				m_Description = FText::FromString(description);
-				m_ShortDescription = FText::FromString(shortDescription);
-			}
-
-			// TODO: add an icon for quaternion attributes, right now fallbacks to F3
-			const FString	typeName = (!m_IsQuaternion) ? GenerateTypeName(attributeBaseTypeID) : TEXT("F3");
-			m_AttributeIcon = *(TEXT("PopcornFX.Attribute.") + typeName);
-
-			m_IsColor =
-				m_Traits->IsFp && m_Traits->VectorDimension >= 3 &&
-				(desc->m_AttributeSemantic == EPopcornFXAttributeSemantic::Type::AttributeSemantic_Color || name.Contains(TEXT("color")) || name.Contains(TEXT("colour")) || name.Contains(TEXT("rgb")));
-			PK_ASSERT(m_IsColor || desc->m_AttributeSemantic != EPopcornFXAttributeSemantic::Type::AttributeSemantic_Color); // Something is wrong
-
-			// force min and max for quaternion
-			if (!m_IsQuaternion)
-			{
-				m_HasMin = decl->HasMin();
-				m_HasMax = decl->HasMax();
-
-				m_Min = decl->GetMinValue();
-				m_Max = decl->GetMaxValue();
-			}
-			else
-			{
-				// for quaternion min = 0.f, max = 360.f
-				PopcornFX::SAttributesContainer_SAttrib quaternionAttribMin;
-				quaternionAttribMin.m_Data32f[0] = quaternionAttribMin.m_Data32f[1] = quaternionAttribMin.m_Data32f[2] = 0.f;
-
-				PopcornFX::SAttributesContainer_SAttrib quaternionAttribMax;
-				quaternionAttribMax.m_Data32f[0] = quaternionAttribMax.m_Data32f[1] = quaternionAttribMax.m_Data32f[2] = 360.f;
-
-				m_HasMin = true;
-				m_HasMax = true;
-
-				m_Min = quaternionAttribMin;
-				m_Max = quaternionAttribMax;
-			}
-
-			m_Def = decl->GetDefaultValue();
-
-			return true;
-		}
-
-		EVisibility		GetExpanderVisibility() const
-		{
-			return m_Traits->VectorDimension > 1 ? EVisibility::Visible : EVisibility::Hidden;
 		}
 
 		EVisibility		GetColorPickerVisibility() const
 		{
-			return m_IsColor ? EVisibility::Visible : EVisibility::Hidden;
+			return m_SlateDesc.m_IsColor ? EVisibility::Visible : EVisibility::Hidden;
 		}
 
 		FReply			OnColorPickerClicked()
 		{
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
+			TSharedPtr<TParent>		parent = m_SlateDesc.m_Parent.Pin();
 			if (!parent.IsValid())
 				return FReply::Unhandled();
 			UPopcornFXAttributeList	*attrList = parent->AttrList();
 			check(attrList != null);
 
 			PopcornFX::SAttributesContainer_SAttrib	attribValue;
-			attrList->GetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+			attrList->GetAttribute(m_SlateDesc.m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 
 			const float	r = attribValue.m_Data32f[0];
 			const float	g = attribValue.m_Data32f[1];
@@ -631,12 +398,12 @@ namespace
 			FLinearColor		initialColor(r, g, b, a);
 			FColorPickerArgs	pickerArgs;
 			{
-				pickerArgs.bUseAlpha = m_Traits->VectorDimension == 4;
+				pickerArgs.bUseAlpha = m_SlateDesc.m_Traits->VectorDimension == 4;
 				pickerArgs.bOnlyRefreshOnMouseUp = false;
 				pickerArgs.bOnlyRefreshOnOk = false;
 				pickerArgs.sRGBOverride = false;//sRGBOverride;
 				pickerArgs.DisplayGamma = TAttribute<float>::Create(TAttribute<float>::FGetter::CreateUObject(GEngine, &UEngine::GetDisplayGamma));
-				pickerArgs.OnColorCommitted = FOnLinearColorValueChanged::CreateSP(this, &SAttributeDesc::OnSetColorFromColorPicker);
+				pickerArgs.OnColorCommitted = FOnLinearColorValueChanged::CreateSP(this, &SAttributeWidget::OnSetColorFromColorPicker);
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 				pickerArgs.InitialColor = initialColor;
 #else
@@ -652,18 +419,18 @@ namespace
 
 		void			OnSetColorFromColorPicker(FLinearColor newColor)
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return;
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
+			TSharedPtr<TParent>		parent = m_SlateDesc.m_Parent.Pin();
 			if (!parent.IsValid())
 				return;
-			UPopcornFXAttributeList		*attrList = parent->AttrList();
+			UPopcornFXAttributeList	*attrList = parent->AttrList();
 			check(attrList != null);
-			UPopcornFXEffect			*effect = ResolveEffect(attrList);
+			UPopcornFXEffect		*effect = ResolveEffect(attrList);
 			if (effect == null)
 				return;
 			// Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
-			const PopcornFX::CParticleAttributeDeclaration	*decl = static_cast<const PopcornFX::CParticleAttributeDeclaration*>(attrList->GetAttributeDeclaration(effect, m_Index));
+			const PopcornFX::CParticleAttributeDeclaration	*decl = static_cast<const PopcornFX::CParticleAttributeDeclaration*>(attrList->GetAttributeDeclaration(effect, m_SlateDesc.m_Index));
 			if (decl == null)
 				return;
 
@@ -677,85 +444,20 @@ namespace
 				attribValue.m_Data32f[0] = newColor.R;
 				attribValue.m_Data32f[1] = newColor.G;
 				attribValue.m_Data32f[2] = newColor.B;
-				if (m_Traits->VectorDimension > 3)
+				if (m_SlateDesc.m_Traits->VectorDimension > 3)
 					attribValue.m_Data32f[3] = newColor.A;
 				decl->ClampToRangeIFN(attribValue);
-				attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+				attrList->SetAttribute(m_SlateDesc.m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 			}
 			attrList->PostEditChange();
 		}
 
-		FReply			OnArrowClicked()
-		{
-			PK_ASSERT(GetExpanderVisibility() == EVisibility::Visible);
-
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
-			if (!parent.IsValid())
-				return FReply::Handled();
-
-			UPopcornFXAttributeList	*attrList = parent->AttrList();
-			check(attrList != null);
-			attrList->ToggleExpandedAttributeDetails(m_Index);
-
-			parent->RebuildDetails();
-			return FReply::Handled();
-		}
-
-		const FSlateBrush	*GetExpanderImage() const
-		{
-			FName	resourceName;
-			if (m_ExpandOnly)
-			{
-				if (m_ExpanderArrow->IsHovered())
-				{
-					static FName ExpandedHoveredName = "TreeArrow_Expanded_Hovered";
-					resourceName = ExpandedHoveredName;
-				}
-				else
-				{
-					static FName	expandedName = "TreeArrow_Expanded";
-					resourceName = expandedName;
-				}
-			}
-			else
-			{
-				if (m_ExpanderArrow->IsHovered())
-				{
-					static FName CollapsedHoveredName = "TreeArrow_Collapsed_Hovered";
-					resourceName = CollapsedHoveredName;
-				}
-				else
-				{
-					static FName	collapsedName = "TreeArrow_Collapsed";
-					resourceName = collapsedName;
-				}
-			}
-			return FCoreStyle::Get().GetBrush(resourceName);
-		}
-
-#if (ENGINE_MAJOR_VERSION == 5)
-	/** Get the background color of the outer part of the row, which contains the edit condition and extension widgets. */
-	FSlateColor	GetOuterBackgroundColor() const
-	{
-		if (IsHovered())
-			return FAppStyle::Get().GetSlateColor("Colors.Header");
-		return FAppStyle::Get().GetSlateColor("Colors.Panel");
-	}
-#else
-		const FSlateBrush	*GetBorderImage() const
-		{
-			if (IsHovered())
-				return FEditorStyle::GetBrush("DetailsView.CategoryMiddle_Hovered");
-			return FEditorStyle::GetBrush("DetailsView.CategoryMiddle");
-		}
-#endif
-
 		TSharedRef<SWidget>		MakeAxis(uint32 dimi)
 		{
-			check(dimi < m_Traits->VectorDimension);
-			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
+			check(dimi < m_SlateDesc.m_Traits->VectorDimension);
+			if (m_SlateDesc.m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 				return _MakeBoolAxis(dimi);
-			if (m_Traits->IsFp)
+			if (m_SlateDesc.m_Traits->IsFp)
 				return _MakeAxis<float>(dimi);
 			return _MakeAxis<int32>(dimi);
 		}
@@ -766,33 +468,39 @@ namespace
 			TSharedPtr<SComboBox<TSharedPtr<int32>>>	comboBox;
 
 			// Custom SEnumComboBox. Attribute enums aren't reflected enums
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 			{
 				SAssignNew(comboBox, SComboBox<TSharedPtr<int32>>)
-					.OptionsSource(&m_EnumListIndices)
+					.OptionsSource(&m_SlateDesc.m_EnumListIndices)
 					.OnGenerateWidget_Lambda([sharedThis](TSharedPtr<int32> Item)
 						{
-							return SNew(STextBlock).Text(Item.IsValid() ? FText::FromString(sharedThis->m_EnumList[*Item]) : FText::GetEmpty());
+							return SNew(STextBlock)
+								.Text(Item.IsValid() ? FText::FromString(sharedThis->m_SlateDesc.m_EnumList[*Item]) : FText::GetEmpty())
+								.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"));
 						})
 					.Content()
 					[
 						SNew(STextBlock)
-						.Text(sharedThis, &TSelf::GetValueEnumText)
+							.Text(sharedThis, &TSelf::GetValueEnumText)
+							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
 					];
 			}
 			else
 			{
 				SAssignNew(comboBox, SComboBox<TSharedPtr<int32>>)
-					.OptionsSource(&m_EnumListIndices)
+					.OptionsSource(&m_SlateDesc.m_EnumListIndices)
 					.OnGenerateWidget_Lambda([sharedThis](TSharedPtr<int32> Item)
 						{
-							return SNew(STextBlock).Text(Item.IsValid() ? FText::FromString(sharedThis->m_EnumList[*Item]) : FText::GetEmpty());
+							return SNew(STextBlock)
+								.Text(Item.IsValid() ? FText::FromString(sharedThis->m_SlateDesc.m_EnumList[*Item]) : FText::GetEmpty())
+								.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"));
 						})
 					.OnSelectionChanged(sharedThis, &TSelf::OnValueChangedEnum)
 					.Content()
 					[
 						SNew(STextBlock)
-						.Text(sharedThis, &TSelf::GetValueEnumText)
+							.Text(sharedThis, &TSelf::GetValueEnumText)
+							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
 					];
 			}
 			return comboBox.ToSharedRef();
@@ -803,11 +511,11 @@ namespace
 			// Access a shared reference to 'this'
 			TSharedRef<TSelf> sharedThis = SharedThis(this);
 
-			check(dimi < m_Traits->VectorDimension);
-			if (!m_IsOneShotTrigger)
+			check(dimi < m_SlateDesc.m_Traits->VectorDimension);
+			if (!m_SlateDesc.m_IsOneShotTrigger)
 			{
 				TSharedPtr<SCheckBox>	axis;
-				if (m_ReadOnly)
+				if (m_SlateDesc.m_ReadOnly)
 				{
 					SAssignNew(axis, SCheckBox)
 						.IsChecked(sharedThis, &TSelf::GetValueBool, dimi);
@@ -842,21 +550,21 @@ namespace
 			// Access a shared reference to 'this'
 			TSharedRef<TSelf> sharedThis = SharedThis(this);
 
-			check(dimi < m_Traits->VectorDimension);
+			check(dimi < m_SlateDesc.m_Traits->VectorDimension);
 
-			const bool		isColor = m_IsColor;
-			const bool		isQuaternion = m_IsQuaternion;
+			const bool		isColor = m_SlateDesc.m_IsColor;
+			const bool		isQuaternion = m_SlateDesc.m_IsQuaternion;
 
 			TSharedPtr< SNumericEntryBox<_Scalar> >	axis;
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 			{
 				SAssignNew(axis, SNumericEntryBox<_Scalar>)
 					.AllowSpin(true)
 
-					.MinValue(m_HasMin ? TOptional<_Scalar>(m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
-					.MaxValue(m_HasMax ? TOptional<_Scalar>(m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
-					.MinSliderValue(m_HasMin ? TOptional<_Scalar>(m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
-					.MaxSliderValue(m_HasMax ? TOptional<_Scalar>(m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MinValue(m_SlateDesc.m_HasMin ? TOptional<_Scalar>(m_SlateDesc.m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MaxValue(m_SlateDesc.m_HasMax ? TOptional<_Scalar>(m_SlateDesc.m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MinSliderValue(m_SlateDesc.m_HasMin ? TOptional<_Scalar>(m_SlateDesc.m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MaxSliderValue(m_SlateDesc.m_HasMax ? TOptional<_Scalar>(m_SlateDesc.m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
 
 					.Value(sharedThis, &TSelf::GetValue<_Scalar>, dimi)
 
@@ -864,7 +572,7 @@ namespace
 					.LabelPadding(0)
 					.Label()
 					[
-						SNumericEntryBox<float>::BuildLabel(s_AxisTexts[(isQuaternion) ? 2 : isColor][dimi], FLinearColor::White, s_AxisColors[dimi])
+						SNumericEntryBox<float>::BuildLabel(s_AxisTexts[(isQuaternion) ? 2 : isColor][dimi], FSlateColor::UseForeground(), s_AxisColors[dimi])
 					];
 			}
 			else
@@ -872,10 +580,10 @@ namespace
 				SAssignNew(axis, SNumericEntryBox<_Scalar>)
 					.AllowSpin(true)
 
-					.MinValue(m_HasMin ? TOptional<_Scalar>(m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
-					.MaxValue(m_HasMax ? TOptional<_Scalar>(m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
-					.MinSliderValue(m_HasMin ? TOptional<_Scalar>(m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
-					.MaxSliderValue(m_HasMax ? TOptional<_Scalar>(m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MinValue(m_SlateDesc.m_HasMin ? TOptional<_Scalar>(m_SlateDesc.m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MaxValue(m_SlateDesc.m_HasMax ? TOptional<_Scalar>(m_SlateDesc.m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MinSliderValue(m_SlateDesc.m_HasMin ? TOptional<_Scalar>(m_SlateDesc.m_Min.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
+					.MaxSliderValue(m_SlateDesc.m_HasMax ? TOptional<_Scalar>(m_SlateDesc.m_Max.Get<_Scalar>()[dimi]) : TOptional<_Scalar>())
 
 					.Value(sharedThis, &TSelf::GetValue<_Scalar>, dimi)
 					.OnValueChanged(sharedThis, &TSelf::OnValueChanged<_Scalar>, dimi)
@@ -885,7 +593,7 @@ namespace
 					.LabelPadding(0)
 					.Label()
 					[
-						SNumericEntryBox<float>::BuildLabel(s_AxisTexts[(isQuaternion) ? 2 : isColor][dimi], FLinearColor::White, s_AxisColors[dimi])
+						SNumericEntryBox<float>::BuildLabel(s_AxisTexts[(isQuaternion) ? 2 : isColor][dimi], FSlateColor::UseForeground(), s_AxisColors[dimi])
 					];
 			}
 			return axis.ToSharedRef();
@@ -906,9 +614,9 @@ namespace
 				[
 					SNew(SImage)
 #if (ENGINE_MAJOR_VERSION == 5)
-					.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
 #else
-					.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+						.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
 #endif // (ENGINE_MAJOR_VERSION == 5)
 				];
 		}
@@ -918,7 +626,8 @@ namespace
 			return SNew(SButton)
 				.OnClicked(this, &TSelf::OnResetClicked)
 				.Visibility(this, &TSelf::GetResetVisibility)
-				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
+				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset this property to its default value"))
+				.ButtonColorAndOpacity(FSlateColor::UseForeground())
 #if (ENGINE_MAJOR_VERSION == 5)
 				.ButtonStyle(FAppStyle::Get(), "NoBorder")
 #else
@@ -928,16 +637,16 @@ namespace
 				[
 					SNew(SImage)
 #if (ENGINE_MAJOR_VERSION == 5)
-					.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
 #else
-					.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+						.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
 #endif // (ENGINE_MAJOR_VERSION == 5)
 				];
 		}
 
 		bool			_GetAttrib(UPopcornFXAttributeList *&outAttribList) const
 		{
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
+			TSharedPtr<TParent>		parent = m_SlateDesc.m_Parent.Pin();
 
 			if (!parent.IsValid())
 				return false;
@@ -952,10 +661,10 @@ namespace
 			if (!_GetAttrib(attrList))
 				return TOptional<_Scalar>();
 
-			if (!m_IsQuaternion)
-				return attrList->GetAttributeDim<_Scalar>(m_Index, dimi);
+			if (!m_SlateDesc.m_IsQuaternion)
+				return attrList->GetAttributeDim<_Scalar>(m_SlateDesc.m_Index, dimi);
 			else
-				return attrList->GetAttributeQuaternionDim(m_Index, dimi);
+				return attrList->GetAttributeQuaternionDim(m_SlateDesc.m_Index, dimi);
 		}
 
 		ECheckBoxState	GetValueBool(uint32 dimi) const
@@ -963,12 +672,12 @@ namespace
 			UPopcornFXAttributeList	*attrList;
 			if (!_GetAttrib(attrList))
 				return ECheckBoxState::Undetermined;
-			return attrList->GetAttributeDim<bool>(m_Index, dimi) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+			return attrList->GetAttributeDim<bool>(m_SlateDesc.m_Index, dimi) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 		}
 
 		void	OnValueChangedBool(ECheckBoxState value, uint32 dimi)
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return;
 			UPopcornFXAttributeList	*attrList;
 			if (!_GetAttrib(attrList))
@@ -979,13 +688,13 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Commit"));
 
 			attrList->Modify();
-			attrList->SetAttributeDim<bool>(m_Index, dimi, value == ECheckBoxState::Checked, true);
+			attrList->SetAttributeDim<bool>(m_SlateDesc.m_Index, dimi, value == ECheckBoxState::Checked, true);
 			attrList->PostEditChange();
 		}
 
 		FReply	OnValuePulsedBool(uint32 dimi)
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return FReply::Handled();
 			UPopcornFXAttributeList	*attrList;
 			if (!_GetAttrib(attrList))
@@ -994,7 +703,7 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Pulse"));
 			attrList->SetFlags(RF_Transactional);
 			attrList->Modify();
-			attrList->PulseBoolAttributeDim(m_Index, dimi, true);
+			attrList->PulseBoolAttributeDim(m_SlateDesc.m_Index, dimi, true);
 			attrList->PostEditChange();
 			return FReply::Handled();
 		}
@@ -1004,12 +713,12 @@ namespace
 			UPopcornFXAttributeList	*attrList;
 			if (!_GetAttrib(attrList))
 				return FText();
-			return FText::FromString(m_EnumList[attrList->GetAttributeDim<int32>(m_Index, 0)]);
+			return FText::FromString(m_SlateDesc.m_EnumList[attrList->GetAttributeDim<int32>(m_SlateDesc.m_Index, 0)]);
 		}
 
 		void	OnValueChangedEnum(TSharedPtr<int32> selectedItem, ESelectInfo::Type selectInfo)
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return;
 			UPopcornFXAttributeList	*attrList;
 			if (!_GetAttrib(attrList))
@@ -1020,14 +729,14 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeCommit", "Attribute Value Commit"));
 
 			attrList->Modify();
-			attrList->SetAttributeDim<int32>(m_Index, 0, *selectedItem, true);
+			attrList->SetAttributeDim<int32>(m_SlateDesc.m_Index, 0, *selectedItem, true);
 			attrList->PostEditChange();
 		}
 
 		template <typename _Scalar>
 		void		OnValueChanged(const _Scalar value, uint32 dimi)
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return;
 			UPopcornFXAttributeList	*attrList;
 			if (!_GetAttrib(attrList))
@@ -1035,16 +744,16 @@ namespace
 			//attrList->SetFlags(RF_Transactional);
 			//attrList->Modify();
 
-			if (!m_IsQuaternion)
-				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value, true);
+			if (!m_SlateDesc.m_IsQuaternion)
+				attrList->SetAttributeDim<_Scalar>(m_SlateDesc.m_Index, dimi, value, true);
 			else
-				attrList->SetAttributeQuaternionDim(m_Index, dimi, value, true);
+				attrList->SetAttributeQuaternionDim(m_SlateDesc.m_Index, dimi, value, true);
 		}
 
 		template <typename _Scalar>
 		void		OnValueCommitted(const _Scalar value, ETextCommit::Type CommitInfo, uint32 dimi)
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return;
 			UPopcornFXAttributeList	*attrList;
 			if (!_GetAttrib(attrList))
@@ -1058,17 +767,17 @@ namespace
 
 			attrList->Modify();
 
-			if (!m_IsQuaternion)
-				attrList->SetAttributeDim<_Scalar>(m_Index, dimi, value, true);
+			if (!m_SlateDesc.m_IsQuaternion)
+				attrList->SetAttributeDim<_Scalar>(m_SlateDesc.m_Index, dimi, value, true);
 			else
-				attrList->SetAttributeQuaternionDim(m_Index, dimi, value, true);
+				attrList->SetAttributeQuaternionDim(m_SlateDesc.m_Index, dimi, value, true);
 
 			attrList->PostEditChange();
 		}
 
 		FReply				OnResetClicked()
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return FReply::Handled();
 
 			UPopcornFXAttributeList	*attrList;
@@ -1078,14 +787,14 @@ namespace
 			const FScopedTransaction Transaction(LOCTEXT("AttributeReset", "Attribute Reset"));
 			attrList->SetFlags(RF_Transactional);
 			attrList->Modify();
-			attrList->SetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&m_Def), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+			attrList->SetAttribute(m_SlateDesc.m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&m_SlateDesc.m_Def), true); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 			attrList->PostEditChange();
 			return FReply::Handled();
 		}
 
 		FReply				OnDimResetClicked(uint32 dimi)
 		{
-			if (m_ReadOnly)
+			if (m_SlateDesc.m_ReadOnly)
 				return FReply::Handled();
 
 			UPopcornFXAttributeList	*attrList;
@@ -1096,15 +805,15 @@ namespace
 			attrList->SetFlags(RF_Transactional);
 			attrList->Modify();
 
-			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
+			if (m_SlateDesc.m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
-				const bool	defaultValue = reinterpret_cast<const bool*>(m_Def.Get<u32>())[dimi];
-				attrList->SetAttributeDim<bool>(m_Index, dimi, defaultValue, true);
+				const bool	defaultValue = reinterpret_cast<const bool*>(m_SlateDesc.m_Def.Get<u32>())[dimi];
+				attrList->SetAttributeDim<bool>(m_SlateDesc.m_Index, dimi, defaultValue, true);
 			}
 			else
 			{
-				const s32	defaultValue = m_Def.Get<s32>()[dimi];
-				attrList->SetAttributeDim<s32>(m_Index, dimi, defaultValue, true);
+				const s32	defaultValue = m_SlateDesc.m_Def.Get<s32>()[dimi];
+				attrList->SetAttributeDim<s32>(m_SlateDesc.m_Index, dimi, defaultValue, true);
 			}
 			attrList->PostEditChange();
 			return FReply::Handled();
@@ -1117,21 +826,21 @@ namespace
 				return EVisibility::Hidden;
 
 			PopcornFX::SAttributesContainer_SAttrib	attribValue;
-			attrList->GetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+			attrList->GetAttribute(m_SlateDesc.m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 
-			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
+			if (m_SlateDesc.m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
-				for (uint32 dimi = 0; dimi < m_Traits->VectorDimension; ++dimi)
+				for (uint32 dimi = 0; dimi < m_SlateDesc.m_Traits->VectorDimension; ++dimi)
 				{
-					if (reinterpret_cast<bool*>(attribValue.Get<uint32>())[dimi] != reinterpret_cast<const bool*>(m_Def.Get<uint32>())[dimi])
+					if (reinterpret_cast<bool*>(attribValue.Get<uint32>())[dimi] != reinterpret_cast<const bool*>(m_SlateDesc.m_Def.Get<uint32>())[dimi])
 						return EVisibility::Visible;
 				}
 			}
 			else
 			{
-				for (uint32 dimi = 0; dimi < m_Traits->VectorDimension; ++dimi)
+				for (uint32 dimi = 0; dimi < m_SlateDesc.m_Traits->VectorDimension; ++dimi)
 				{
-					if (attribValue.Get<uint32>()[dimi] != m_Def.Get<uint32>()[dimi])
+					if (attribValue.Get<uint32>()[dimi] != m_SlateDesc.m_Def.Get<uint32>()[dimi])
 						return EVisibility::Visible;
 				}
 			}
@@ -1145,667 +854,20 @@ namespace
 				return EVisibility::Hidden;
 
 			PopcornFX::SAttributesContainer_SAttrib	attribValue;
-			attrList->GetAttribute(m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+			attrList->GetAttribute(m_SlateDesc.m_Index, *reinterpret_cast<FPopcornFXAttributeValue*>(&attribValue)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 
-			if (m_Traits->ScalarType == PopcornFX::BaseType_Bool)
+			if (m_SlateDesc.m_Traits->ScalarType == PopcornFX::BaseType_Bool)
 			{
-				if (reinterpret_cast<bool*>(attribValue.Get<uint32>())[dimi] != reinterpret_cast<const bool*>(m_Def.Get<uint32>())[dimi])
+				if (reinterpret_cast<bool*>(attribValue.Get<uint32>())[dimi] != reinterpret_cast<const bool*>(m_SlateDesc.m_Def.Get<uint32>())[dimi])
 					return EVisibility::Visible;
 			}
 			else
 			{
-				if (attribValue.Get<uint32>()[dimi] != m_Def.Get<uint32>()[dimi])
+				if (attribValue.Get<uint32>()[dimi] != m_SlateDesc.m_Def.Get<uint32>()[dimi])
 					return EVisibility::Visible;
 			}
 			return EVisibility::Hidden;
 		}
-
-	private:
-		TWeakPtr<TParent>	m_Parent;
-
-		//TSharedPtr<IPropertyHandle>		m_AttributesPty;
-		//TSharedPtr<IPropertyHandle>	m_AttributesRawDataPty;
-
-		TSharedPtr<SButton>	m_ExpanderArrow;
-
-		bool				m_Dirtify = true;
-		bool				m_ReadOnly = false;
-		bool				m_ExpandOnly = false;
-
-		uint32				m_Index = 0;
-		u32					m_VectorDimension = 0;
-		const PopcornFX::CBaseTypeTraits	*m_Traits = null;
-
-		FText				m_Title;
-		FText				m_Description;
-		FText				m_ShortDescription;
-		FName				m_AttributeIcon;
-
-		bool									m_IsColor = false;
-		bool									m_IsQuaternion = false;
-		bool									m_IsOneShotTrigger = false;
-		EPopcornFXAttributeDropDownMode::Type	m_DropDownMode;
-		TArray<FString>							m_EnumList; // copy
-		TArray<TSharedPtr<int32>>				m_EnumListIndices;
-		bool									m_HasMin;
-		bool									m_HasMax;
-
-		PopcornFX::SAttributesContainer_SAttrib	m_Min;
-		PopcornFX::SAttributesContainer_SAttrib	m_Max;
-		PopcornFX::SAttributesContainer_SAttrib	m_Def;
-	};
-
-
-	class	SAttributeSamplerDesc : public SCompoundWidget
-	{
-	public:
-		typedef SAttributeSamplerDesc				TSelf;
-		typedef FPopcornFXDetailsAttributeList		TParent;
-
-		SLATE_BEGIN_ARGS(SAttributeSamplerDesc)
-		{}
-			SLATE_ARGUMENT(int32, SamplerI)
-			SLATE_ARGUMENT(TWeakPtr<FPopcornFXDetailsAttributeList>, Parent)
-			SLATE_ARGUMENT(TOptional<bool>, Dirtify)
-			SLATE_ARGUMENT(TOptional<bool>, ReadOnly)
-			SLATE_ARGUMENT(TOptional<bool>, Expanded)
-			SLATE_END_ARGS()
-			SAttributeSamplerDesc()
-		{
-			ATTRDEBUB_LOG(LogPopcornFXDetailsAttributeList, Log, TEXT("SAttributeSamplerDesc ctor %p"), this);
-		}
-
-		~SAttributeSamplerDesc()
-		{
-			ATTRDEBUB_LOG(LogPopcornFXDetailsAttributeList, Log, TEXT("SAttributeSamplerDesc dotr %p"), this);
-		}
-
-		void	Construct(const FArguments& InArgs)
-		{
-			m_Parent = InArgs._Parent;
-			m_Index = uint32(InArgs._SamplerI);
-
-			TSharedPtr<TParent>	parent = m_Parent.Pin();
-			if (!parent.IsValid())
-				return;
-
-			m_Dirtify = InArgs._Dirtify.Get(true);
-			m_ReadOnly = InArgs._ReadOnly.Get(false);
-			m_ExpandOnly = InArgs._Expanded.Get(false);
-
-			if (!Init())
-				return;
-
-			uint32	childCount = 0;
-			const FVector2D Icon32(32.0f, 32.0f);
-
-			m_SamplersPty->GetNumChildren(childCount);
-			if (m_Index >= childCount)
-				return;
-
-			TSharedPtr<IPropertyHandle>		samplerPty = m_SamplersPty->GetChildHandle(m_Index);
-			PK_ASSERT(samplerPty.IsValid() && samplerPty->IsValidHandle());
-
-			TSharedPtr<SVerticalBox>	vbox;
-			SAssignNew(vbox, SVerticalBox);
-			if (!m_ExpandOnly)
-			{
-				TSharedPtr<SHorizontalBox>	samplerDesc;
-				SAssignNew(samplerDesc, SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					[
-						SAssignNew(m_ExpanderArrow, SButton)
-						.ButtonStyle(FCoreStyle::Get(), "NoBorder")
-						.VAlign(VAlign_Center)
-						.HAlign(HAlign_Center)
-						.ClickMethod(EButtonClickMethod::MouseDown)
-						.OnClicked(this, &SAttributeSamplerDesc::OnArrowClicked)
-						.ContentPadding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
-						.ForegroundColor(FSlateColor::UseForeground())
-						.IsFocusable(false)
-						[
-							SNew(SImage)
-							.Image(this, &SAttributeSamplerDesc::GetExpanderImage)
-							.ColorAndOpacity(FSlateColor::UseForeground())
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.Padding(1.f)
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.HAlign(HAlign_Center)
-					[
-						SNew(SBox)
-						.WidthOverride(20)
-						.HeightOverride(20)
-						[
-							SNew(SImage)
-							.Image(FPopcornFXStyle::GetBrush(m_SamplerIcon))
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(m_Title)
-						.ToolTipText(m_Description)
-					];
-
-				TSharedPtr<SHorizontalBox>	samplerValueInline;
-				SAssignNew(samplerValueInline, SHorizontalBox)/*
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.FillWidth(1.0f)
-					.Padding(3.0f, 0.0f)
-					[
-						samplerActorPty->CreatePropertyValueWidget()
-					]*/;
-
-				TSharedPtr<SSplitter>	inlineSplitter;
-				SAssignNew(inlineSplitter, SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5)
-				.Style(FAppStyle::Get(), "DetailsView.Splitter")
-#else
-				.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif // (ENGINE_MAJOR_VERSION == 5)
-				.PhysicalSplitterHandleSize(1.0f)
-				.HitDetectionSplitterHandleSize(5.0f)
-					+ SSplitter::Slot()
-					.Value(parent->LeftColumnWidth)
-					.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(this, &SAttributeSamplerDesc::OnLeftColumnResized))
-					[
-						samplerDesc.ToSharedRef()
-					]
-					+ SSplitter::Slot()
-					.Value(parent->RightColumnWidth)
-					.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(parent.Get(), &FPopcornFXDetailsAttributeList::OnSetColumnWidth))
-					[
-						samplerValueInline.ToSharedRef()
-					];
-
-				vbox->AddSlot()
-					[
-						SNew(SBorder)
-#if (ENGINE_MAJOR_VERSION == 5)
-						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
-						.BorderBackgroundColor(this, &SAttributeSamplerDesc::GetOuterBackgroundColor)
-#else
-						.BorderImage(this, &SAttributeSamplerDesc::GetBorderImage)
-#endif
-						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
-						[
-							inlineSplitter.ToSharedRef()
-						]
-					];
-			}
-			else
-			{
-				TSharedPtr<IPropertyHandle>		samplerActorPty = samplerPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerActor));
-				PK_ASSERT(samplerActorPty.IsValid() && samplerActorPty->IsValidHandle());
-
-				TSharedPtr<IPropertyHandle>		samplerCpntPty = samplerPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerComponentProperty));
-				PK_ASSERT(samplerCpntPty.IsValid() && samplerCpntPty->IsValidHandle());
-
-				SAssignNew(m_ExpandedNames, SVerticalBox)
-					+ SVerticalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					.Padding(0.0f, 2.0f)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("AttrSamplerActorName", "Target Actor"))
-						.ToolTipText(LOCTEXT("AttrSamplerActorTooltip", "Actor to look into for a UPopcornFXAttributeSampler"))
-					]
-					+ SVerticalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					.Padding(0.0f, 2.0f)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("AttrSamplerSubPropertyName", "Child Component Name"))
-						.ToolTipText(LOCTEXT("AttrSamplerSubPropertyTooltip", "Looks for a component with this name in the specified actor.\n- Leave this blank to use the target actor's RootComponent.\n- If no target actor is specified, looks into this emitter's RootComponent."))
-					];
-
-				SAssignNew(m_ExpandedContent, SVerticalBox)
-					+ SVerticalBox::Slot()
-					.Padding(0.0f, 2.0f)
-					[
-						samplerActorPty->CreatePropertyValueWidget()
-					]
-					+ SVerticalBox::Slot()
-					.Padding(0.0f, 2.0f)
-					[
-						samplerCpntPty->CreatePropertyValueWidget()
-					];
-
-				TSharedPtr<SVerticalBox>	samplerValueExpanded;
-				SAssignNew(samplerValueExpanded, SVerticalBox)
-					+ SVerticalBox::Slot()
-					.FillHeight(1.0f)
-					[
-						SNew(SSplitter)
-#if (ENGINE_MAJOR_VERSION == 5)
-						.Style(FAppStyle::Get(), "DetailsView.Splitter")
-#else
-						.Style(FEditorStyle::Get(), "DetailsView.Splitter")
-#endif // (ENGINE_MAJOR_VERSION == 5)
-						.PhysicalSplitterHandleSize(1.0f)
-						.HitDetectionSplitterHandleSize(5.0f)
-							+ SSplitter::Slot()
-							.Value(parent->LeftColumnWidth)
-							.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(this, &SAttributeSamplerDesc::OnLeftColumnResized))
-							[
-								SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									.Padding(30.0f, 0.0f)
-									.HAlign(HAlign_Fill)
-									.VAlign(VAlign_Center)
-									.FillWidth(1.0f)
-									.AutoWidth()
-									[
-										m_ExpandedNames.ToSharedRef()
-									]
-							]
-							+ SSplitter::Slot()
-							.Value(parent->RightColumnWidth)
-							.OnSlotResized(SSplitter::FOnSlotResized::CreateSP(parent.Get(), &FPopcornFXDetailsAttributeList::OnSetColumnWidth))
-							[
-								SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot()
-									.HAlign(HAlign_Fill)
-									.Padding(3.0f, 0.0f)
-									[
-										m_ExpandedContent.ToSharedRef()
-									]
-							]
-					];
-
-				vbox->AddSlot()
-					[
-						SNew(SBorder)
-#if (ENGINE_MAJOR_VERSION == 5)
-						.BorderImage(FAppStyle::Get().GetBrush("DetailsView.CategoryMiddle"))
-						.BorderBackgroundColor(this, &SAttributeSamplerDesc::GetOuterBackgroundColor)
-#else
-						.BorderImage(this, &SAttributeSamplerDesc::GetBorderImage)
-#endif
-						.Padding(FMargin(0.0f, 0.0f, kDefaultScrollBarPaddingSize, 0.0f))
-						[
-							samplerValueExpanded.ToSharedRef()
-						]
-					];
-			}
-
-			ChildSlot
-				[
-					vbox.ToSharedRef()
-				];
-		}
-
-	private:
-		bool		Init()
-		{
-			TSharedPtr<TParent>					parent = m_Parent.Pin();
-			if (!parent.IsValid())
-				return false;
-
-			m_SamplersPty = parent->m_SamplersPty;
-			if (!m_SamplersPty->IsValidHandle())
-				return false;
-
-			const UPopcornFXAttributeList		*attrList = parent->AttrList();
-			check(attrList != null);
-
-			const FPopcornFXSamplerDesc			*desc = attrList->GetSamplerDesc(m_Index);
-			if (desc == null)
-				return false;
-
-			m_SamplerType = desc->m_SamplerType;
-
-			const FString	name = desc->SamplerName();
-			m_Title = FText::FromString(name);
-
-			FString			defNode;
-
-			UPopcornFXEffect			*effect = ResolveEffect(attrList);
-			if (effect == null)
-				return false;
-
-			// Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
-
-			// TODO(Attributes refactor): This should not use 'CParticleNodeSamplerData'
-			const PopcornFX::CParticleAttributeSamplerDeclaration	*particleSampler = static_cast<const PopcornFX::CParticleAttributeSamplerDeclaration*>(attrList->GetParticleSampler(effect, m_Index));
-			if (particleSampler == null)
-				return true;
-			m_HasDefaultDescriptor = particleSampler->GetSamplerDefaultDescriptor() != null;
-			const char			*nodeName = ResolveAttribSamplerNodeName(particleSampler, m_SamplerType);
-			if (nodeName != null)
-			{
-				defNode = nodeName;
-				m_SamplerIcon = FName(*("PopcornFX.Node." + defNode));
-			}
-			else
-			{
-				defNode = "?????";
-				m_SamplerIcon = FName(TEXT("PopcornFX.BadIcon32"));
-			}
-
-			m_Description = FText::FromString(name + " (default: " + defNode + ")");
-			m_ShortDescription = FText::FromString(defNode);
-			return true;
-		}
-
-		void	OnLeftColumnResized(float InNewWidth)
-		{
-			// SDetailSingleItemRow.cpp:
-			// This has to be bound or the splitter will take it upon itself to determine the size
-			// We do nothing here because it is handled by the column size data
-		}
-
-		FReply			OnArrowClicked()
-		{
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
-			if (!parent.IsValid())
-				return FReply::Handled();
-
-			UPopcornFXAttributeList	*attrList = parent->AttrList();
-			check(attrList != null);
-			attrList->ToggleExpandedSamplerDetails(m_Index);
-
-			parent->RebuildDetails();
-			return FReply::Handled();
-		}
-
-		const FSlateBrush	*GetExpanderImage() const
-		{
-			FName	resourceName;
-			if (m_ExpandOnly)
-			{
-				if (m_ExpanderArrow->IsHovered())
-				{
-					static FName ExpandedHoveredName = "TreeArrow_Expanded_Hovered";
-					resourceName = ExpandedHoveredName;
-				}
-				else
-				{
-					static FName	expandedName = "TreeArrow_Expanded";
-					resourceName = expandedName;
-				}
-			}
-			else
-			{
-				if (m_ExpanderArrow->IsHovered())
-				{
-					static FName CollapsedHoveredName = "TreeArrow_Collapsed_Hovered";
-					resourceName = CollapsedHoveredName;
-				}
-				else
-				{
-					static FName	collapsedName = "TreeArrow_Collapsed";
-					resourceName = collapsedName;
-				}
-			}
-			return FCoreStyle::Get().GetBrush(resourceName);
-		}
-
-
-#if (ENGINE_MAJOR_VERSION == 5)
-		/** Get the background color of the outer part of the row, which contains the edit condition and extension widgets. */
-		FSlateColor	GetOuterBackgroundColor() const
-		{
-			if (IsHovered())
-				return FAppStyle::Get().GetSlateColor("Colors.Header");
-			return FAppStyle::Get().GetSlateColor("Colors.Panel");
-		}
-#else
-		const FSlateBrush	*GetBorderImage() const
-		{
-			if (IsHovered())
-				return FEditorStyle::GetBrush("DetailsView.CategoryMiddle_Hovered");
-			return FEditorStyle::GetBrush("DetailsView.CategoryMiddle");
-		}
-#endif
-
-	private:
-		TWeakPtr<TParent>	m_Parent;
-
-		//TSharedPtr<IPropertyHandle>	m_AttributesPty;
-		TSharedPtr<IPropertyHandle>		m_SamplersPty;
-
-		TSharedPtr<SButton>				m_ExpanderArrow;
-		TSharedPtr<SVerticalBox>		m_ExpandedContent;
-		TSharedPtr<SVerticalBox>		m_ExpandedNames;
-
-		bool				m_Dirtify = true;
-		bool				m_ReadOnly = false;
-		bool				m_ExpandOnly = false;
-		bool				m_HasDefaultDescriptor = false;
-
-		uint32				m_Index;
-
-		EPopcornFXAttributeSamplerType::Type	m_SamplerType;
-
-		FText				m_Title;
-		FText				m_Description;
-		FText				m_ShortDescription;
-		FName				m_SamplerIcon;
-	};
-
-	class	SPopcornFXAttributeCategory : public SCompoundWidget
-	{
-	public:
-		typedef SPopcornFXAttributeCategory			TSelf;
-		typedef FPopcornFXDetailsAttributeList		TParent;
-
-		SLATE_BEGIN_ARGS(SPopcornFXAttributeCategory)
-		{}
-			SLATE_ARGUMENT(uint32, CategoryI)
-			SLATE_ARGUMENT(FText, CategoryName)
-			SLATE_ARGUMENT(TWeakPtr<FPopcornFXDetailsAttributeList>, Parent)
-			SLATE_END_ARGS()
-
-		SPopcornFXAttributeCategory() { }
-		~SPopcornFXAttributeCategory() { }
-
-		void	Construct(const FArguments& InArgs)
-		{
-			m_CategoryName = InArgs._CategoryName;
-			m_Parent = InArgs._Parent;
-			m_Index = uint32(InArgs._CategoryI);
-
-			const float		kBorderVerticalPadding = 3.0f;
-
-			SAssignNew(m_Attributes, SVerticalBox);
-
-			SAssignNew(m_VBox, SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.VAlign(VAlign_Fill)
-			.HAlign(HAlign_Fill)
-			[
-				SAssignNew(m_Border, SBorder)
-				.BorderImage(this, &SPopcornFXAttributeCategory::GetBorderImage)
-				.Padding(FMargin( 0.0f, kBorderVerticalPadding, kDefaultScrollBarPaddingSize, kBorderVerticalPadding))
-				.BorderBackgroundColor(FLinearColor(0.6f, 0.6f, 0.6f, 1.0f))
-				[
-					SNew(SHorizontalBox)
-					+SHorizontalBox::Slot()
-					.AutoWidth()
-					.HAlign(HAlign_Left)
-					.VAlign(VAlign_Center)
-					[
-						SAssignNew(m_ExpanderArrow, SButton)
-						.ButtonStyle(FCoreStyle::Get(), "NoBorder")
-						.VAlign(VAlign_Center)
-						.HAlign(HAlign_Center)
-						.ClickMethod(EButtonClickMethod::MouseDown)
-						.OnClicked(this, &SPopcornFXAttributeCategory::OnArrowClicked)
-						.ContentPadding(0.f)
-						.ForegroundColor(FSlateColor::UseForeground())
-						.IsFocusable(false)
-						[
-							SNew(SImage)
-							.Image(this, &SPopcornFXAttributeCategory::GetExpanderImage)
-							.ColorAndOpacity(FSlateColor::UseForeground())
-						]
-					]
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-						.Text(m_CategoryName)
-#if (ENGINE_MAJOR_VERSION == 5)
-						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-#else
-						.Font(FEditorStyle::GetFontStyle("PropertyWindow.NormalFont"))
-#endif // (ENGINE_MAJOR_VERSION == 5)
-					]
-				]
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.VAlign(VAlign_Fill)
-			.HAlign(HAlign_Fill)
-			[
-				m_Attributes.ToSharedRef()
-			];
-
-			ChildSlot
-			[
-				m_VBox.ToSharedRef()
-			];
-		}
-
-		void	AddAttribute(const FPopcornFXAttributeDesc *desc, uint32 attri)
-		{
-			PK_ASSERT(desc != null);
-
-			m_Attributes->AddSlot()
-			.AutoHeight()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SAttributeDesc)
-				.Parent(m_Parent)
-				.AttribI(attri)
-				.Expanded(false)
-			];
-
-			if (desc->m_IsExpanded)
-			{
-				m_Attributes->AddSlot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				[
-					SNew(SAttributeDesc)
-					.Parent(m_Parent)
-					.AttribI(attri)
-					.Expanded(true)
-				];
-			}
-		}
-
-		void	AddSampler(const FPopcornFXSamplerDesc *desc, uint32 sampleri)
-		{
-			PK_ASSERT(desc != null);
-
-			TSharedPtr<SAttributeSamplerDesc>	sdesc;
-			m_Attributes->AddSlot()
-			.AutoHeight()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Fill)
-			[
-				SNew(SAttributeSamplerDesc)
-				.Parent(m_Parent)
-				.SamplerI(sampleri)
-			];
-
-			if (desc->m_IsExpanded)
-			{
-				m_Attributes->AddSlot()
-				.AutoHeight()
-				.HAlign(HAlign_Fill)
-				.VAlign(VAlign_Fill)
-				[
-					SNew(SAttributeSamplerDesc)
-					.Parent(m_Parent)
-					.SamplerI(sampleri)
-					.Expanded(true)
-				];
-			}
-		}
-
-		void	ClearAttributes()
-		{
-			PK_ASSERT(m_Attributes.IsValid());
-			m_Attributes->ClearChildren();
-		}
-
-		uint32	NumAttributes()
-		{
-			PK_ASSERT(m_Attributes.IsValid());
-			return m_Attributes->NumSlots();
-		}
-
-	private:
-		const FSlateBrush	*GetExpanderImage() const
-		{
-			FName	resourceName;
-			if (m_ExpanderArrow->IsHovered())
-			{
-				static FName	collapsedHoveredName = "TreeArrow_Collapsed_Hovered";
-				resourceName = collapsedHoveredName;
-			}
-			else
-			{
-				static FName	collapsedName = "TreeArrow_Collapsed";
-				resourceName = collapsedName;
-			}
-			return FCoreStyle::Get().GetBrush(resourceName);
-		}
-
-		const FSlateBrush	*GetBorderImage() const
-		{
-#if (ENGINE_MAJOR_VERSION == 5)
-			if (m_Border->IsHovered())
-				return FAppStyle::Get().GetBrush("DetailsView.CategoryTop_Hovered");
-			return FAppStyle::Get().GetBrush("DetailsView.CategoryTop");
-#else
-			if (m_Border->IsHovered())
-				return FEditorStyle::GetBrush("DetailsView.CategoryTop_Hovered");
-			return FEditorStyle::GetBrush("DetailsView.CategoryTop");
-#endif // (ENGINE_MAJOR_VERSION == 5)
-		}
-
-		FReply			OnArrowClicked()
-		{
-			TSharedPtr<TParent>		parent = m_Parent.Pin();
-			if (!parent.IsValid())
-				return FReply::Handled();
-
-			UPopcornFXAttributeList	*attrList = parent->AttrList();
-			check(attrList != null);
-			attrList->ToggleExpandedCategoryDetails(m_Index);
-
-			parent->RebuildDetails();
-			return FReply::Handled();
-		}
-
-	private:
-		TWeakPtr<TParent>	m_Parent;
-		FText				m_CategoryName;
-		uint32				m_Index;
-
-		TSharedPtr<SBorder>			m_Border;
-		TSharedPtr<SVerticalBox>	m_Attributes;
-		TSharedPtr<SVerticalBox>	m_VBox;
-		TSharedPtr<SButton>			m_ExpanderArrow;
 	};
 }
 
@@ -1900,9 +962,9 @@ UPopcornFXAttributeList		*FPopcornFXDetailsAttributeList::AttrList()
 		if (!m_RefreshQueued) // Avoid queueing tons of events in the same frame
 		{
 			bool	rebuild = false;
-			const u32	categoryCount = m_SCategories.Num();
+			const u32	categoryCount = m_IGroups.Num();
 			for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
-				rebuild |= m_SCategories[iCategory]->NumAttributes() > 0;
+				rebuild |= m_NumAttributes[iCategory] > 0;
 			rebuild &= PK_VERIFY(m_PropertyUtilities.IsValid());
 
 			// We need to clear the remaining attributes
@@ -1955,6 +1017,146 @@ void	FPopcornFXDetailsAttributeList::Rebuild()
 	RebuildAndRefresh();
 }
 
+void	FPopcornFXDetailsAttributeList::BuildAttribute(const FPopcornFXAttributeDesc *desc, const UPopcornFXAttributeList *attrList, uint32 attri, uint32 iCategory)
+{
+	UPopcornFXEffect	*effect = ResolveEffect(attrList);
+	if (effect == null)
+		return;
+	// Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	const PopcornFX::CParticleAttributeDeclaration	*decl = static_cast<const PopcornFX::CParticleAttributeDeclaration*>(attrList->GetAttributeDeclaration(effect, attri));
+	if (decl == null)
+		return;
+
+	const PopcornFX::EBaseTypeID	attributeBaseTypeID = (PopcornFX::EBaseTypeID)desc->AttributeBaseTypeID();
+
+	FAttributeDesc		slateDesc;
+
+	slateDesc.m_Parent = SharedThis(this);
+	slateDesc.m_Index = attri;
+	slateDesc.m_Traits = &(PopcornFX::CBaseTypeTraits::Traits(attributeBaseTypeID));
+
+	slateDesc.m_IsQuaternion = attributeBaseTypeID == PopcornFX::BaseType_Quaternion;
+	slateDesc.m_IsOneShotTrigger = decl->OneShotTrigger();
+
+	// force vector dimension to 3 for quaternion, allow to display 3 float and use euler angles in editor
+	slateDesc.m_VectorDimension = (!slateDesc.m_IsQuaternion) ? slateDesc.m_Traits->VectorDimension : 3;
+
+	slateDesc.m_DropDownMode = desc->m_DropDownMode;
+	slateDesc.m_EnumList = desc->m_EnumList;
+	slateDesc.m_EnumListIndices.SetNum(slateDesc.m_EnumList.Num());
+	for (s32 i = 0; i < slateDesc.m_EnumListIndices.Num(); ++i)
+		slateDesc.m_EnumListIndices[i] = MakeShareable(new int32(i)); // SEnumComboBox::Construct
+
+	const FString		name = desc->AttributeName();
+
+	FString				description = ToUE(decl->Description().MapDefault()).Replace(TEXT("\\n"), TEXT("\n"));
+	FString				shortDescription;
+	int32				shortOffset;
+	if (description.FindChar('\n', shortOffset))
+		shortDescription = description.Left(shortOffset - 1);
+	else
+		shortDescription = description;
+
+	// TODO: add an icon for quaternion attributes, right now fallbacks to F3
+	const FString		typeName = (!slateDesc.m_IsQuaternion) ? GenerateTypeName(attributeBaseTypeID) : TEXT("F3");
+
+	slateDesc.m_IsColor =
+		slateDesc.m_Traits->IsFp && slateDesc.m_Traits->VectorDimension >= 3 &&
+		(desc->m_AttributeSemantic == EPopcornFXAttributeSemantic::Type::AttributeSemantic_Color || name.Contains(TEXT("color")) || name.Contains(TEXT("colour")) || name.Contains(TEXT("rgb")));
+	PK_ASSERT(slateDesc.m_IsColor || desc->m_AttributeSemantic != EPopcornFXAttributeSemantic::Type::AttributeSemantic_Color); // Something is wrong
+
+	// force min and max for quaternion
+	if (!slateDesc.m_IsQuaternion)
+	{
+		slateDesc.m_HasMin = decl->HasMin();
+		slateDesc.m_HasMax = decl->HasMax();
+
+		slateDesc.m_Min = decl->GetMinValue();
+		slateDesc.m_Max = decl->GetMaxValue();
+	}
+	else
+	{
+		// for quaternion min = 0.f, max = 360.f
+		PopcornFX::SAttributesContainer_SAttrib quaternionAttribMin;
+		quaternionAttribMin.m_Data32f[0] = quaternionAttribMin.m_Data32f[1] = quaternionAttribMin.m_Data32f[2] = 0.f;
+
+		PopcornFX::SAttributesContainer_SAttrib quaternionAttribMax;
+		quaternionAttribMax.m_Data32f[0] = quaternionAttribMax.m_Data32f[1] = quaternionAttribMax.m_Data32f[2] = 360.f;
+
+		slateDesc.m_HasMin = true;
+		slateDesc.m_HasMax = true;
+
+		slateDesc.m_Min = quaternionAttribMin;
+		slateDesc.m_Max = quaternionAttribMax;
+	}
+
+	slateDesc.m_Def = decl->GetDefaultValue();
+
+	FDetailWidgetDecl	*nameContent = nullptr;
+
+	if (slateDesc.m_VectorDimension == 1)
+	{
+		FDetailWidgetRow	&customWidget = m_IGroups[iCategory]->AddWidgetRow();
+		nameContent = &customWidget.NameContent();
+
+		customWidget.ValueContent()
+		[
+			SNew(SAttributeWidget).SlateDesc(slateDesc).Expanded(false)
+		];
+	}
+	else
+	{
+		IDetailGroup		&group = m_IGroups[iCategory]->AddGroup(desc->m_AttributeFName, FText::FromName(desc->m_AttributeFName));
+		
+		FDetailWidgetRow	&headerRow = group.HeaderRow();
+		nameContent = &headerRow.NameContent();
+			
+		for (u32 dimi = 0; dimi < slateDesc.m_VectorDimension; ++dimi)
+		{
+			group.AddWidgetRow().ValueContent()
+				[
+					SNew(SAttributeWidget).SlateDesc(slateDesc).Expanded(true).Dimi(dimi)
+				];
+		}
+		headerRow.ValueContent()
+			[
+				SNew(SAttributeWidget).SlateDesc(slateDesc).Expanded(false)
+			];
+	}
+
+	if (nameContent)
+	{
+		(*nameContent)
+			[
+				SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.Padding(1.f)
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					.HAlign(HAlign_Center)
+					[
+						SNew(SBox)
+							.WidthOverride(16)
+							.HeightOverride(16)
+							[
+								SNew(SImage)
+									.Image(FPopcornFXStyle::GetBrush(*(TEXT("PopcornFX.Attribute.") + typeName)))
+									.ColorAndOpacity(FSlateColor::UseForeground())
+							]
+					]
+					+ SHorizontalBox::Slot()
+					.HAlign(HAlign_Fill)
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+							.Text(FText::FromString(name))
+							.ToolTipText(FText::FromString(description))
+							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+					]
+			];
+	}
+}
+
 void	FPopcornFXDetailsAttributeList::RebuildAttributes()
 {
 	ATTRDEBUB_LOG(LogPopcornFXDetailsAttributeList, Log, TEXT("rebuild attributes"));
@@ -1973,25 +1175,22 @@ void	FPopcornFXDetailsAttributeList::RebuildAttributes()
 	}
 	if (!validAttributeList)
 	{
-		if (m_SCategories.Num() > 0)
+		if (m_IGroups.Num() > 0 || m_NumAttributes.Num() > 0)
 		{
 			// Wrong state, rebuild everything
-			m_SCategories.Empty();
+			m_IGroups.Empty();
+			m_NumAttributes.Empty();
 			RebuildDetails();
 		}
 		return;
 	}
 
-	PK_ASSERT((int32)defAttrList->GetCategoryCount() == m_SCategories.Num());
+	PK_ASSERT((int32)defAttrList->GetCategoryCount() == m_IGroups.Num());
 
 	// Browse back name list
 	const u32	categoryCount = defAttrList->GetCategoryCount();
 	for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
 	{
-		PK_ASSERT(m_SCategories[iCategory].IsValid());
-		m_SCategories[iCategory]->ClearAttributes(); // Will also clear samplers
-		if (!attrList->IsCategoryExpanded(iCategory)) // Expanded state is recovered from the attr list, not the default
-			continue;
 		const uint32	attrCount = attrList->AttributeCount();
 		for (u32 attri = 0; attri < attrCount; ++attri)
 		{
@@ -2003,9 +1202,90 @@ void	FPopcornFXDetailsAttributeList::RebuildAttributes()
 				if ((desc->m_AttributeCategoryName.IsValid() && !desc->m_AttributeCategoryName.IsNone()) || iCategory > 0)
 					continue;
 			}
-			m_SCategories[iCategory]->AddAttribute(desc, attri);
+			BuildAttribute(desc, attrList, attri, iCategory);
+			m_NumAttributes[iCategory]++;
 		}
 	}
+}
+
+void	FPopcornFXDetailsAttributeList::BuildSampler(const FPopcornFXSamplerDesc *desc, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory)
+{
+	const FString		name = desc->SamplerName();
+
+	FString				defNode;
+	FName				samplerIconName;
+
+	UPopcornFXEffect	*effect = ResolveEffect(attrList);
+	if (effect == null)
+		return ;
+
+	// Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+
+	// TODO(Attributes refactor): This should not use 'CParticleNodeSamplerData'
+	const PopcornFX::CParticleAttributeSamplerDeclaration	*particleSampler = static_cast<const PopcornFX::CParticleAttributeSamplerDeclaration*>(attrList->GetParticleSampler(effect, sampleri));
+	if (particleSampler == null)
+		return ;
+
+	const char			*nodeName = ResolveAttribSamplerNodeName(particleSampler, desc->m_SamplerType);
+	if (nodeName != null)
+	{
+		defNode = nodeName;
+		samplerIconName = FName(*("PopcornFX.Node." + defNode));
+	}
+	else
+	{
+		defNode = "?????";
+		samplerIconName = FName(TEXT("PopcornFX.BadIcon32"));
+	}
+
+	FString				failString("");
+
+	TSharedPtr<IPropertyHandle>		samplerPty = m_SamplersPty->GetChildHandle(sampleri);
+	if (!samplerPty.IsValid() || !samplerPty->IsValidHandle())
+	{
+		UE_LOG(LogPopcornFXDetailsAttributeList, Error, TEXT("Can't retrieve emitter properties"));
+		failString = " - Can't retrieve propreties. Try recompiling the Blueprint";
+	}
+
+	IDetailGroup		&group = m_IGroups[iCategory]->AddGroup(desc->m_SamplerFName, FText::FromName(desc->m_SamplerFName));
+	group.HeaderRow()
+		[
+			SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.Padding(1.f)
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				[
+					SNew(SBox)
+						.WidthOverride(16)
+						.HeightOverride(16)
+						[
+							SNew(SImage)
+								.Image(FPopcornFXStyle::GetBrush(samplerIconName))
+								.ColorAndOpacity(FSlateColor::UseForeground())
+						]
+				]
+				+ SHorizontalBox::Slot()
+				.VAlign(VAlign_Center)
+				[
+					SNew(STextBlock)
+						.Text(FText::FromString(name + failString))
+						.ToolTipText(FText::FromString(name + " (default: " + defNode + ")"))
+						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+
+				]
+		];
+
+	if (!samplerPty.IsValid() || !samplerPty->IsValidHandle())
+		return;
+
+	TSharedPtr<IPropertyHandle>		samplerActorPty = samplerPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerActor));
+	PK_ASSERT(samplerActorPty.IsValid() && samplerActorPty->IsValidHandle());
+	group.AddPropertyRow(samplerActorPty.ToSharedRef()).DisplayName(FText::FromString("Target Actor"));
+
+	TSharedPtr<IPropertyHandle>		samplerCpntPty = samplerPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerComponentProperty));
+	PK_ASSERT(samplerCpntPty.IsValid() && samplerCpntPty->IsValidHandle());
+	group.AddPropertyRow(samplerCpntPty.ToSharedRef()).DisplayName(FText::FromString("Child Component Name"));
 }
 
 void	FPopcornFXDetailsAttributeList::RebuildSamplers()
@@ -2020,14 +1300,12 @@ void	FPopcornFXDetailsAttributeList::RebuildSamplers()
 	if (defAttrList == null)
 		return;
 
-	PK_ASSERT((int32)defAttrList->GetCategoryCount() == m_SCategories.Num());
+	PK_ASSERT((int32)defAttrList->GetCategoryCount() == m_IGroups.Num());
 
 	const u32	categoryCount = defAttrList->GetCategoryCount();
 	for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
 	{
 		const uint32	samplerCount = attrList->SamplerCount();
-		if (!attrList->IsCategoryExpanded(iCategory)) // Expanded state is recovered from the attr list, not the default
-			continue;
 		for (u32 sampleri = 0; sampleri < samplerCount; ++sampleri)
 		{
 			const FPopcornFXSamplerDesc		*desc = attrList->GetSamplerDesc(sampleri);
@@ -2039,7 +1317,8 @@ void	FPopcornFXDetailsAttributeList::RebuildSamplers()
 				if ((desc->m_AttributeCategoryName.IsValid() && !desc->m_AttributeCategoryName.IsNone()) || iCategory > 0)
 					continue;
 			}
-			m_SCategories[iCategory]->AddSampler(desc, sampleri);
+			BuildSampler(desc, attrList, sampleri, iCategory);
+			m_NumAttributes[iCategory]++;
 		}
 	}
 }
@@ -2084,11 +1363,24 @@ void	FPopcornFXDetailsAttributeList::CustomizeDetails(IDetailLayoutBuilder &deta
 
 	m_FileVersionIdPty = detailBuilder.GetProperty("m_FileVersionId");
 	if (!PK_VERIFY(IsValidHandle(m_FileVersionIdPty)))
+	{
+		UE_LOG(LogPopcornFXDetailsAttributeList, Error, TEXT("Invalid file version ID property!"));
 		return;
+	}
+
+	m_AttributesPty = detailBuilder.GetProperty("m_Attributes");
+	if (!PK_VERIFY(IsValidHandle(m_AttributesPty)))
+	{
+		UE_LOG(LogPopcornFXDetailsAttributeList, Error, TEXT("Can't retrieve attributes property!"));
+		return;
+	}
 
 	m_SamplersPty = detailBuilder.GetProperty("m_Samplers");
 	if (!PK_VERIFY(IsValidHandle(m_SamplersPty)))
+	{
+		UE_LOG(LogPopcornFXDetailsAttributeList, Error, TEXT("Can't retrieve samplers property!"));
 		return;
+	}
 
 	const UPopcornFXAttributeList	*attrList = UnsafeAttrList();
 
@@ -2103,9 +1395,19 @@ void	FPopcornFXDetailsAttributeList::CustomizeDetails(IDetailLayoutBuilder &deta
 	const UPopcornFXAttributeList	*defAttrList = null;
 	if (attrList != null)
 	{
-		defAttrList = attrList->GetDefaultAttributeList(ResolveEffect(attrList));
+		UPopcornFXEffect	*resolvedEffect = ResolveEffect(attrList);
+		if (!resolvedEffect)
+			return;
+		defAttrList = attrList->GetDefaultAttributeList(resolvedEffect);
 		if (defAttrList != null)
-			m_SCategories.SetNum(defAttrList->GetCategoryCount());
+		{
+			m_IGroups.SetNum(defAttrList->GetCategoryCount());
+			m_NumAttributes.SetNum(defAttrList->GetCategoryCount());
+		}
+		else
+		{
+			UE_LOG(LogPopcornFXDetailsAttributeList, Error, TEXT("Could not retrieve categories!"));
+		}
 	}
 
 	// Hacky callback to trigger refresh.
@@ -2114,37 +1416,15 @@ void	FPopcornFXDetailsAttributeList::CustomizeDetails(IDetailLayoutBuilder &deta
 		TAttribute<EVisibility>::Create(
 			TAttribute<EVisibility>::FGetter::CreateSP(this, &FPopcornFXDetailsAttributeList::AttribVisibilityAndRefresh));
 
-	TSharedPtr<SVerticalBox>	mainWidget;
 	{
-		SAssignNew(mainWidget, SVerticalBox);
+		const u32	categoryCount = m_IGroups.Num();
 
-		const u32	categoryCount = m_SCategories.Num();
 		for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
 		{
 			PK_ASSERT(defAttrList != null);
-
-			mainWidget->AddSlot()
-			.AutoHeight()
-			.VAlign(VAlign_Fill)
-			.HAlign(HAlign_Fill)
-			.Padding(0.0f)
-			[
-				SAssignNew(m_SCategories[iCategory], SPopcornFXAttributeCategory)
-				.CategoryName(FText::FromName(defAttrList->GetCategoryName(iCategory)))
-				.Parent(SharedThis(this))
-				.CategoryI(iCategory)
-			];
+			m_IGroups[iCategory] = &attrListCategory.AddGroup(defAttrList->GetCategoryName(iCategory), FText::FromName(defAttrList->GetCategoryName(iCategory)));
 		}
 	}
-
-	attrListCategory.AddCustomRow(LOCTEXT("Attributes", "Attributes"), false)
-		.Visibility(attribVisibilityAndRefresh)
-		.WholeRowContent()
-		.VAlign(VAlign_Fill)
-		.HAlign(HAlign_Fill)
-		[
-			mainWidget.ToSharedRef()
-		];
 
 	Rebuild();
 

@@ -120,7 +120,7 @@ void	CUEFrameCollector::ReleaseRenderedFrameIFP()
 		if (m_CollectedLock.TryLock())
 		{
 			const u32	expectedDrawCalledCount = PopcornFX::PKMax(1U, m_LastFrameDrawCalledCount);
-			if (m_Collected != null &&
+			if (m_CollectedInFight == null && m_Collected != null &&
 				m_Collected->m_RenderedCount >= expectedDrawCalledCount)
 			{
 				if (m_Collected->m_Built) // if actually rendered
