@@ -36,6 +36,7 @@ DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Ribbon)"), STAT_Popco
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Triangle)"), STAT_PopcornFX_DrawCallsTriangleCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Mesh)"), STAT_PopcornFX_DrawCallsMeshCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Skeletal Mesh)"), STAT_PopcornFX_DrawCallsSkelMeshCount, STATGROUP_PopcornFX, );
+DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: DrawCalls (Decal)"), STAT_PopcornFX_DrawCallsDecalCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: Lights"), STAT_PopcornFX_LightCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: Sounds"), STAT_PopcornFX_SoundCount, STATGROUP_PopcornFX, );
 DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Render: Batches"), STAT_PopcornFX_BatchesCount, STATGROUP_PopcornFX, );

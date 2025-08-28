@@ -339,10 +339,14 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 
 			if (output.bSucceeded)
 			{
-				const TArray<uint8>	&shaderCodeWithOptionalData = output.ShaderCode.GetReadAccess();
-				const u8			*fullShaderCode = shaderCodeWithOptionalData.GetData();
-				const u8			*fullShaderCodeEnd = fullShaderCode + shaderCodeWithOptionalData.Num();
-				const u8			*shaderCodeStart = fullShaderCode;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+				const TConstArrayView<uint8>	&shaderCodeWithOptionalData = output.ShaderCode.GetReadView();
+#else
+				const TArray<uint8> &shaderCodeWithOptionalData = output.ShaderCode.GetReadAccess();
+#endif
+				const u8						*fullShaderCode = shaderCodeWithOptionalData.GetData();
+				const u8						*fullShaderCodeEnd = fullShaderCode + shaderCodeWithOptionalData.Num();
+				const u8						*shaderCodeStart = fullShaderCode;
 				{
 					// Look for the beginning of DXBC bytecode, we don't need UE's metadata
 					while (shaderCodeStart < fullShaderCodeEnd && *shaderCodeStart != bytecodeMagic[0])

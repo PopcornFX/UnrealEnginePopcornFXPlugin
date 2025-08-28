@@ -11,6 +11,7 @@
 #include "PopcornFXSkeletalMeshVertexFactory.h"
 #include "PopcornFXVertexFactory.h"
 #include "PopcornFXGPUVertexFactory.h"
+#include "BatchDrawer_Decal_CPU.h"
 #include "AudioPools.h"
 #include "PopcornFXPlugin.h"
 
@@ -386,8 +387,7 @@ void	CMaterialDesc_GameThread::_BuildSkelMesh()
 {
 	const u32	baseLODLevel = 0; // TODO
 	m_SkeletalMeshRenderData = m_SkeletalMesh->GetResourceForRendering();
-	const TArray<FSkeletalMeshLODInfo>	&LODInfos = m_SkeletalMesh->GetLODInfoArray();
-	m_SkeletalMeshLODInfos = PopcornFX::TMemoryView<const FSkeletalMeshLODInfo>(LODInfos.GetData(), LODInfos.Num());
+
 	m_BaseLODLevel = PopcornFX::PKMin(baseLODLevel, (u32)m_SkeletalMeshRenderData->LODRenderData.Num() - 1);
 	m_TotalBoneCount = m_SkeletalMesh->GetRefSkeleton().GetNum();
 
@@ -637,7 +637,6 @@ bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &g
 	m_DynamicParameterMask = gameMat.m_DynamicParameterMask;
 	m_SkeletalMesh = gameMat.m_SkeletalMesh;
 	m_SkeletalMeshRenderData = gameMat.m_SkeletalMeshRenderData;
-	m_SkeletalMeshLODInfos = gameMat.m_SkeletalMeshLODInfos;
 	m_SkeletalAnimationTexture = gameMat.m_SkeletalAnimationTexture;
 	m_SkeletalAnimationCount = gameMat.m_SkeletalAnimationCount;
 	m_SkeletalAnimationPosBoundsMin = gameMat.m_SkeletalAnimationPosBoundsMin;
@@ -723,6 +722,10 @@ bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardi
 				if (!FPopcornFXMeshVertexFactory::IsCompatible(materialInstance))
 					m_MaterialInterface[i] = UMaterial::GetDefaultMaterial(MD_Surface);
 			}
+			break;
+		case	PopcornFX::Renderer_Decal:
+			if (!CBatchDrawer_Decal_CPUBB::IsCompatible(materialInstance)) // No VertexFactory for decals, so function is in BatchDrawer
+				m_MaterialInterface[i] = UMaterial::GetDefaultMaterial(MD_DeferredDecal);
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();

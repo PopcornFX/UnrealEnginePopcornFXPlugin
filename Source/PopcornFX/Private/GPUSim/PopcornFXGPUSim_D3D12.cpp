@@ -386,7 +386,22 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D12 *s
 
 	PK_ASSERT(bufferD3D12 != null);
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+	FRHICommandListBase &RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+	if (bufferD3D12 && EnumHasAnyFlags(bufferD3D12->GetDesc().Usage, BUF_ByteAddressBuffer))
+	{
+		return RHICmdList.CreateShaderResourceView(bufferD3D12, FRHIViewDesc::CreateBufferSRV()
+			.SetType(FRHIViewDesc::EBufferType::Raw)
+		);
+	}
+	else
+	{
+		return RHICmdList.CreateShaderResourceView(bufferD3D12, FRHIViewDesc::CreateBufferSRV()
+			.SetType(FRHIViewDesc::EBufferType::Typed)
+			.SetFormat(EPixelFormat(pixelFormat))
+		);
+	}
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
 	FRHICommandListBase			&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 	return RHICmdList.CreateShaderResourceView(bufferD3D12, sizeof(uint32), pixelFormat);
 #else
@@ -447,6 +462,12 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stre
 
 	resource->AddRef();
 	buffer->ResourceLocation.AsFastAllocation(resource, stream->m_ByteSize, resource->GetGPUVirtualAddress(), NULL, 0 /* resourceOffsetBase */, stream->m_ByteOffset);
+
+	// Fix crash in UE 5.4 builds: Resource requires residency tracking, but StartTrackingForResidency() was not called.
+#if !WITH_EDITOR && ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 4
+	buffer->GetResource()->StartTrackingForResidency();
+#endif
+
 	return buffer;
 }
 

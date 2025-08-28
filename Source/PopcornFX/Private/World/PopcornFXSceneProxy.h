@@ -23,7 +23,11 @@ public:
 	virtual void					GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override;
 
 #if RHI_RAYTRACING
-	virtual void					GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext& Context, TArray<FRayTracingInstance>& OutRayTracingInstances) override;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+	virtual void					GetDynamicRayTracingInstances(FRayTracingInstanceCollector &Context) override;
+#else
+	virtual void					GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext &Context, TArray<FRayTracingInstance> &OutRayTracingInstances) override;
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 	virtual bool					IsRayTracingRelevant() const override { return true; }
 #endif // RHI_RAYTRACING
 

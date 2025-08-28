@@ -72,6 +72,11 @@ public:
 	{
 		return BaseObjectUID == baseObjectUID && FieldName == fieldName;
 	}
+
+	FPopcornFXFieldPath()
+	:	BaseObjectUID()
+	,	FieldName()
+	{ }
 };
 
 /** Describe an Asset needed by a PopcornFX Asset. */

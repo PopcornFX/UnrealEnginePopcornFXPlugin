@@ -213,13 +213,20 @@ public:
 #endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	{
 		const u32				sizeInBytes = sizeof(CFloat2) * 6;
-		FRHIResourceCreateInfo	info(TEXT("PopcornFX Texcoords buffer"));
 
 		void	*data = null;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		FRHIBufferCreateDesc	CreateDesc =
+			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Texcoords buffer"), sizeInBytes, sizeof(CFloat2), BUF_Static | BUF_VertexBuffer)
+			.SetInitialState(ERHIAccess::VertexOrIndexBuffer);
+		VertexBufferRHI = RHICmdList.CreateBuffer(CreateDesc);
+		data = RHICmdList.LockBuffer(VertexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		FRHIResourceCreateInfo	info(TEXT("PopcornFX Texcoords buffer"));
 		VertexBufferRHI = RHICmdList.CreateBuffer(sizeInBytes, BUF_Static | BUF_VertexBuffer, sizeof(CFloat2), ERHIAccess::VertexOrIndexBuffer, info);
 		data = RHICmdList.LockBuffer(VertexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
 #elif (ENGINE_MAJOR_VERSION == 5)
+		FRHIResourceCreateInfo	info(TEXT("PopcornFX Texcoords buffer"));
 		VertexBufferRHI = RHICreateBuffer(sizeInBytes, BUF_Static | BUF_VertexBuffer, sizeof(CFloat2), ERHIAccess::VertexOrIndexBuffer, info);
 		data = RHILockBuffer(VertexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
 #else

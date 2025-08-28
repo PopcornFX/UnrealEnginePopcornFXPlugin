@@ -96,9 +96,9 @@ namespace	PopcornFXGPU
 		}
 #endif // WITH_EDITOR
 
-		bool	_Bind_RHITexture(FRHITexture2D *texRHI, const PopcornFX::SLinkGPUContext &context)
+		bool	_Bind_RHITexture(FRHITexture *texRHI, const PopcornFX::SLinkGPUContext &context)
 		{
-			if (texRHI == null)
+			if (texRHI == null || texRHI->GetDesc().Dimension != ETextureDimension::Texture2D)
 				return false;
 
 			if (context.m_ContextType == PopcornFX::ContextD3D12)

@@ -66,21 +66,45 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<c
 	if (empty || bytes > m_AtlasBufferCapacity)
 	{
 		m_AtlasBufferCapacity = PopcornFX::Mem::Align<0x100>(bytes + 0x10);
+		const EBufferUsageFlags	usage = BUF_Static | BUF_ShaderResource;
 
 #if (ENGINE_MAJOR_VERSION == 5)
+#	if (ENGINE_MINOR_VERSION >= 6)
+		FRHIBufferCreateDesc CreateDesc =
+			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Atlas buffer"), m_AtlasBufferCapacity, sizeof(CFloat4), usage)
+			.SetInitialState(RHIGetDefaultResourceState(usage | EBufferUsageFlags::VertexBuffer, false));
+#	else
 		FRHIResourceCreateInfo	info(TEXT("PopcornFX Atlas buffer"));
+#	endif // (ENGINE_MINOR_VERSION >= 6)
 #else
 		FRHIResourceCreateInfo	info;
 #endif // (ENGINE_MAJOR_VERSION == 5)
-		const EBufferUsageFlags	usage = BUF_Static | BUF_ShaderResource;
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		m_AtlasBuffer_Raw = RHICmdList.CreateBuffer(CreateDesc);
+
+		// For back-compat reasons, SRVs of byte-address buffers created via this function ignore the Format, and instead create raw views.
+		if (m_AtlasBuffer_Raw && EnumHasAnyFlags(m_AtlasBuffer_Raw->GetDesc().Usage, BUF_ByteAddressBuffer))
+		{
+			m_AtlasBufferSRV = RHICmdList.CreateShaderResourceView(m_AtlasBuffer_Raw, FRHIViewDesc::CreateBufferSRV()
+				.SetType(FRHIViewDesc::EBufferType::Raw)
+			);
+		}
+		else
+		{
+			m_AtlasBufferSRV = RHICmdList.CreateShaderResourceView(m_AtlasBuffer_Raw, FRHIViewDesc::CreateBufferSRV()
+				.SetType(FRHIViewDesc::EBufferType::Typed)
+				.SetFormat(EPixelFormat(PF_A32B32G32R32F))
+			);
+		}
+
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		m_AtlasBuffer_Raw = RHICmdList.CreateVertexBuffer(m_AtlasBufferCapacity, usage, info);
 		m_AtlasBufferSRV = RHICmdList.CreateShaderResourceView(m_AtlasBuffer_Raw, sizeof(CFloat4), PF_A32B32G32R32F);
 #else
 		m_AtlasBuffer_Raw = RHICreateVertexBuffer(m_AtlasBufferCapacity, usage, info);
 		m_AtlasBufferSRV = RHICreateShaderResourceView(m_AtlasBuffer_Raw, sizeof(CFloat4), PF_A32B32G32R32F);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 		if (!PK_VERIFY(IsValidRef(m_AtlasBuffer_Raw)) ||
 			!PK_VERIFY(IsValidRef(m_AtlasBufferSRV)))
@@ -126,22 +150,46 @@ bool	FPopcornFXDrawRequestsBuffer::LoadIFN()
 	if (m_DrawRequestsBuffer == null)
 	{
 		const u32		totalByteCount = 0x100 * sizeof(PopcornFX::Drawers::SBillboardDrawRequest); // Is not exposed yet to PK-RenderHelpers
+		const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
 
 #if (ENGINE_MAJOR_VERSION == 5)
+#	if (ENGINE_MINOR_VERSION >= 6)
+		FRHIBufferCreateDesc	bufferDesc(TEXT("PopcornFX Draw requests buffer"), totalByteCount, 0, usage);
+#	else
 		FRHIResourceCreateInfo	info(TEXT("PopcornFX Draw requests buffer"));
+#	endif // (ENGINE_MINOR_VERSION >= 6)
 #else
 		FRHIResourceCreateInfo	info;
 #endif // (ENGINE_MAJOR_VERSION == 5)
-		const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
-		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+#if (ENGINE_MAJOR_VERSION == 5)
+		FRHICommandListImmediate &RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+#if		(ENGINE_MINOR_VERSION >= 6)
+		m_DrawRequestsBuffer = RHICmdList.CreateBuffer(bufferDesc);
+
+		// For back-compat reasons, SRVs of byte-address buffers created via this function ignore the Format, and instead create raw views.
+		if (m_DrawRequestsBuffer && EnumHasAnyFlags(m_DrawRequestsBuffer->GetDesc().Usage, BUF_ByteAddressBuffer))
+		{
+			m_DrawRequestsBufferSRV = RHICmdList.CreateShaderResourceView(m_DrawRequestsBuffer, FRHIViewDesc::CreateBufferSRV()
+				.SetType(FRHIViewDesc::EBufferType::Raw)
+			);
+		}
+		else
+		{
+			m_DrawRequestsBufferSRV = RHICmdList.CreateShaderResourceView(m_DrawRequestsBuffer, FRHIViewDesc::CreateBufferSRV()
+				.SetType(FRHIViewDesc::EBufferType::Typed)
+				.SetFormat(EPixelFormat(PF_A32B32G32R32F))
+			);
+		}
+#elif	(ENGINE_MINOR_VERSION >= 3)
 		m_DrawRequestsBuffer = RHICmdList.CreateVertexBuffer(totalByteCount, usage, info);
 		m_DrawRequestsBufferSRV = RHICmdList.CreateShaderResourceView(m_DrawRequestsBuffer, sizeof(PopcornFX::Drawers::SBillboardDrawRequest), PF_A32B32G32R32F);
+#endif	// (ENGINE_MINOR_VERSION >= 6)
+
 #else
 		m_DrawRequestsBuffer = RHICreateVertexBuffer(totalByteCount, usage, info);
 		m_DrawRequestsBufferSRV = RHICreateShaderResourceView(m_DrawRequestsBuffer, sizeof(PopcornFX::Drawers::SBillboardDrawRequest), PF_A32B32G32R32F);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 		if (!PK_VERIFY(IsValidRef(m_DrawRequestsBuffer)) ||
 			!PK_VERIFY(IsValidRef(m_DrawRequestsBufferSRV)))
@@ -221,14 +269,41 @@ void	FNullFloat4Buffer::InitRHI()
 	// Draw calls binding this null buffer will access its data.
 
 	const u32	totalByteCount = 4 * sizeof(float); // Whatever
+	const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
+
 #if (ENGINE_MAJOR_VERSION == 5)
+#	if (ENGINE_MINOR_VERSION >= 6)
+	FRHIBufferCreateDesc CreateDesc =
+		FRHIBufferCreateDesc::Create(TEXT("PopcornFX Null Float4 buffer"), totalByteCount, 0, usage)
+		.SetGPUMask(FRHIGPUMask::All())
+		.SetInitialState(ERHIAccess::VertexOrIndexBuffer | ERHIAccess::SRVMask)
+		.SetClassName(NAME_None)
+		.SetOwnerName(NAME_None);
+#	else
 	FRHIResourceCreateInfo	info(TEXT("PopcornFX Null Float4 buffer"));
+#	endif
 #else
 	FRHIResourceCreateInfo	info;
 #endif // (ENGINE_MAJOR_VERSION == 5)
-	const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+	VertexBufferRHI = RHICmdList.CreateBuffer(CreateDesc);
+
+	// For back-compat reasons, SRVs of byte-address buffers created via this function ignore the Format, and instead create raw views.
+	if (VertexBufferRHI && EnumHasAnyFlags(VertexBufferRHI->GetDesc().Usage, BUF_ByteAddressBuffer))
+	{
+		SRV = RHICmdList.CreateShaderResourceView(VertexBufferRHI, FRHIViewDesc::CreateBufferSRV()
+			.SetType(FRHIViewDesc::EBufferType::Raw)
+		);
+	}
+	else
+	{
+		SRV = RHICmdList.CreateShaderResourceView(VertexBufferRHI, FRHIViewDesc::CreateBufferSRV()
+			.SetType(FRHIViewDesc::EBufferType::Typed)
+			.SetFormat(EPixelFormat(PF_A32B32G32R32F))
+		);
+	}
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	VertexBufferRHI = RHICmdList.CreateBuffer(totalByteCount, usage, 0, ERHIAccess::VertexOrIndexBuffer | ERHIAccess::SRVMask, info);
 	SRV = RHICmdList.CreateShaderResourceView(VertexBufferRHI, sizeof(CFloat4), PF_A32B32G32R32F);
 #else
@@ -289,10 +364,24 @@ public:
 	{
 		const uint32			sizeInBytes = sizeof(u16) * 12;
 		const uint32			stride = sizeof(u16);
-		FRHIResourceCreateInfo	info(TEXT("PopcornFXGPUParticlesIndexBuffer"));
 
 		void	*data = null;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		FRHIBufferCreateDesc CreateDesc =
+			FRHIBufferCreateDesc::Create(TEXT("PopcornFXGPUParticlesIndexBuffer"), sizeInBytes, stride, BUF_Static | BUF_IndexBuffer)
+			.SetGPUMask(FRHIGPUMask::All())
+			.SetInitialState(ERHIAccess::VertexOrIndexBuffer)
+			.SetClassName(NAME_None)
+			.SetOwnerName(NAME_None);
+#else
+		FRHIResourceCreateInfo	info(TEXT("PopcornFXGPUParticlesIndexBuffer"));
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		IndexBufferRHI = RHICmdList.CreateBuffer(CreateDesc);
+		data = RHICmdList.LockBuffer(IndexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		IndexBufferRHI = RHICmdList.CreateBuffer(sizeInBytes, BUF_Static | BUF_IndexBuffer, stride, ERHIAccess::VertexOrIndexBuffer, info);
 		data = RHICmdList.LockBuffer(IndexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
 #elif (ENGINE_MAJOR_VERSION == 5)
@@ -1174,10 +1263,14 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 	const bool	gpuStorage = desc.m_DrawRequests.First()->GPUStorage();
 #if RHI_RAYTRACING
 	const bool											isRayTracingPass = view->RenderPass() == CRendererSubView::RenderPass_RT_AccelStructs;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5)
 	::TArray<FRayTracingDynamicGeometryUpdateParams>	*dynamicRayTracingGeometries = isRayTracingPass ? view->DynamicRayTracingGeometries() : null; // can be null if !isRayTracingPass
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5)
 	if (isRayTracingPass)
 	{
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5)
 		PK_ASSERT(dynamicRayTracingGeometries != null);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5)
 		if (gpuStorage) // not supported yet
 			return;
 		if (desc.m_ViewIndex != 0) // Submit once
@@ -1320,6 +1413,11 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 #if RHI_RAYTRACING
 			if (isRayTracingPass)
 			{
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+				FRayTracingInstanceCollector	*RTcollector = view->RTCollector();
+				PK_ASSERT(RTcollector != null);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+
 				FRayTracingInstance		rayTracingInstance;
 				rayTracingInstance.Geometry = &m_RayTracingGeometry;
 				rayTracingInstance.InstanceTransforms.Add(FMatrix::Identity);
@@ -1331,7 +1429,11 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 				const u32	totalVertexCount = m_CapsulesDC ? desc.m_TotalParticleCount * 12 : desc.m_TotalParticleCount * 6;
 				const u32	totalTriangleCount = m_CapsulesDC ? desc.m_TotalParticleCount * 4 : desc.m_TotalParticleCount * 2;
 				// Update dynamic ray tracing geometry
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+				RTcollector->AddRayTracingGeometryUpdate(
+#else
 				dynamicRayTracingGeometries->Add(
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 					FRayTracingDynamicGeometryUpdateParams
 						{
 							rayTracingInstance.Materials,
@@ -1350,7 +1452,11 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 #else
 				rayTracingInstance.BuildInstanceMaskAndFlags();
 #endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+				RTcollector->AddRayTracingInstance(rayTracingInstance);
+#else
 				view->OutRayTracingInstances()->Add(rayTracingInstance);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 			}
 			else
 #endif // RHI_RAYTRACING

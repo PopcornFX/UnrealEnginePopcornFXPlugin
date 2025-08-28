@@ -695,6 +695,19 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 	if (actor != null)
 		actor->OnEmitterStart.Broadcast(this, GetComponentTransform().GetLocation(), rotation);
 
+	for (auto &callback : m_EventCallbacksToRegister)
+	{
+		const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(ToPk(callback.Get<1>().ToString()));
+		m_CurrentScene->RegisterEventListener(Effect, m_EffectInstancePtr->EffectID(), eventNameId, callback.Get<0>());
+	}
+	m_EventCallbacksToRegister.Reset();
+
+	for (auto &callback : m_EventCallbacksToUnregister)
+	{
+		const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(ToPk(callback.Get<1>().ToString()));
+		m_CurrentScene->UnregisterEventListener(Effect, m_EffectInstancePtr->EffectID(), eventNameId, callback.Get<0>());
+	}
+	m_EventCallbacksToUnregister.Reset();
 	return true;
 }
 
@@ -762,7 +775,7 @@ void	UPopcornFXEmitterComponent::StopEmitter(bool killParticles)
 			sendEvent = true;
 		}
 		m_Stopped = true;
-		if (m_EffectInstancePtr == null) // we could have been destroy by the stop
+		if (m_EffectInstancePtr == null) // we could have been destroyed by the stop
 			m_Started = false;
 
 		// send only if not terminated
@@ -982,8 +995,8 @@ void	UPopcornFXEmitterComponent::ResetAttributesToDefault()
 bool	UPopcornFXEmitterComponent::RegisterEventListener(FPopcornFXRaiseEventSignature Delegate, FName EventName)
 {
 	LLM_SCOPE(ELLMTag::Particles);
-	if (!PK_VERIFY(m_CurrentScene != null))
-		return false;
+	const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(ToPk(EventName.ToString()));
+	PK_ASSERT(!eventNameId.Empty());
 
 	if (Effect == null)
 	{
@@ -996,8 +1009,6 @@ bool	UPopcornFXEmitterComponent::RegisterEventListener(FPopcornFXRaiseEventSigna
 		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Register Event Listener: Empty EventName"));
 		return false;
 	}
-	const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(ToPk(EventName.ToString()));
-	PK_ASSERT(!eventNameId.Empty());
 
 	if (!Delegate.IsBound())
 	{
@@ -1005,8 +1016,13 @@ bool	UPopcornFXEmitterComponent::RegisterEventListener(FPopcornFXRaiseEventSigna
 		return false;
 	}
 
-	if (m_EffectInstancePtr == null)
-		return false;
+	m_EventCallbacksToUnregister.Remove(TPair<FPopcornFXRaiseEventSignature, FName>(Delegate, EventName));
+
+	if (!PK_VERIFY(m_CurrentScene != null && m_EffectInstancePtr != null))
+	{
+		m_EventCallbacksToRegister.AddUnique(TPair<FPopcornFXRaiseEventSignature, FName>(Delegate, EventName));
+		return true;
+	}
 
 	return m_CurrentScene->RegisterEventListener(Effect, m_EffectInstancePtr->EffectID(), eventNameId, Delegate);
 }
@@ -1016,9 +1032,6 @@ bool	UPopcornFXEmitterComponent::RegisterEventListener(FPopcornFXRaiseEventSigna
 void	UPopcornFXEmitterComponent::UnregisterEventListener(FPopcornFXRaiseEventSignature Delegate, FName EventName)
 {
 	LLM_SCOPE(ELLMTag::Particles);
-	if (!PK_VERIFY(m_CurrentScene != null))
-		return;
-
 	const PopcornFX::CStringId	eventNameId = PopcornFX::CStringId(ToPk(EventName.ToString()));
 	if (eventNameId.Empty())
 	{
@@ -1032,11 +1045,19 @@ void	UPopcornFXEmitterComponent::UnregisterEventListener(FPopcornFXRaiseEventSig
 		return;
 	}
 
-	if (!PK_VERIFY(Effect != null))
-		return;
+	m_EventCallbacksToRegister.Remove(TPair<FPopcornFXRaiseEventSignature, FName>(Delegate, EventName));
 
-	if (m_EffectInstancePtr == null)
+	if (!PK_VERIFY(Effect != null))
+	{
+		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Unregister Event Listener: Effect is nullptr"));
 		return;
+	}
+
+	if (!PK_VERIFY(m_CurrentScene != null && m_EffectInstancePtr != null))
+	{
+		m_EventCallbacksToUnregister.AddUnique(TPair<FPopcornFXRaiseEventSignature, FName>(Delegate, EventName));
+		return;
+	}
 
 	m_CurrentScene->UnregisterEventListener(Effect, m_EffectInstancePtr->EffectID(), eventNameId, Delegate);
 }
@@ -1498,7 +1519,7 @@ void	UPopcornFXEmitterComponent::Scene_InitForUpdate(CParticleScene *scene)
 
 void	UPopcornFXEmitterComponent::EmitterBeginPlayIFN()
 {
-	if ((!bPlayOnLoad || bHasAlreadyPlayOnLoad)
+	if ((!bPlayOnLoad || bHasAlreadyPlayOnLoad || m_Started)
 #if WITH_EDITOR
 		&& !m_ReplayAfterDead
 #endif

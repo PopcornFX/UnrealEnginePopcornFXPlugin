@@ -908,12 +908,9 @@ bool	UPopcornFXMesh::BuildMesh(_AssetType *mesh)
 	m_ResourceMesh->Swap(*newResource);
 
 #if WITH_EDITOR
-	const USkeletalMesh		*skelMesh = Cast<USkeletalMesh>(mesh);
-	const UStaticMesh		*staticMesh = Cast<UStaticMesh>(mesh);
-
-	const UAssetImportData	*assetImportData = skelMesh != null ? SkeletalMeshAssetImportData(skelMesh) : staticMesh->AssetImportData;
-	const bool				validStaticMesh = assetImportData != null;
-	if (validStaticMesh)
+	const UAssetImportData	*assetImportData = mesh->GetAssetImportData();
+	const bool				validMesh = assetImportData != null;
+	if (validMesh)
 		StaticMeshAssetImportData->SourceData.SourceFiles = assetImportData->SourceData.SourceFiles;
 	else
 		StaticMeshAssetImportData->SourceData.SourceFiles.Empty();

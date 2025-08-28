@@ -97,7 +97,11 @@ public:
 	void					GatherSimpleLights(const FSceneViewFamily& ViewFamily, FSimpleLightArray& OutParticleLights) const;
 
 #if RHI_RAYTRACING
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+	void					GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingInstanceCollector &context);
+#else
 	void					GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingMaterialGatheringContext &context, TArray<FRayTracingInstance> &outRayTracingInstances);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 #endif // RHI_RAYTRACING
 
 	void					GetDynamicMeshElements(const FPopcornFXSceneProxy *sceneProxy, const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector);

@@ -20,10 +20,6 @@
 #include <pk_base_object/include/hbo_file.h>
 #include <pk_base_object/include/hbo_object.h>
 
-#if (PK_GPU_D3D11 != 0)
-#	include <pk_particles/include/Storage/D3D11/storage_d3d11_stream.h>
-#endif // (PK_GPU_D3D11 != 0)
-
 #if !defined(WITH_HAVOK_PHYSICS)
 #define WITH_HAVOK_PHYSICS 0
 #endif
@@ -143,9 +139,15 @@ public:
 	static FName						Name_DiffuseTexture() { static FName n(TEXT("DiffuseTexture")); return n; }
 	static FName						Name_DiffuseTextureRamp() { static FName n(TEXT("DiffuseTextureRamp")); return n; }
 	static FName						Name_EmissiveTexture() { static FName n(TEXT("EmissiveTexture")); return n; }
+	static FName						Name_EmissiveTextureRamp() { static FName n(TEXT("EmissiveTextureRamp")); return n; }
 	static FName						Name_NormalTexture() { static FName n(TEXT("NormalTexture")); return n; }
 	static FName						Name_RoughMetalTexture() { static FName n(TEXT("RoughMetalTexture")); return n; }
 	static FName						Name_SpecularTexture() { static FName n(TEXT("SpecularTexture")); return n; }
+
+	static FName						Name_AlphaRemapper() { static FName n(TEXT("AlphaRemapper")); return n; }
+	static FName						Name_MotionVectorsTexture() { static FName n(TEXT("MotionVectorsTexture")); return n; }
+	static FName						Name_SixWayLightmap_RLTSTexture() { static FName n(TEXT("PopcornFX_SixWay_RLTSTexture")); return n; }
+	static FName						Name_SixWayLightmap_BBFTexture() { static FName n(TEXT("PopcornFX_SixWay_BBFTexture")); return n; }
 
 	static FName						Name_VATPositionTexture() { static FName n(TEXT("VATPositionTexture")); return n; }
 	static FName						Name_VATNormalTexture() { static FName n(TEXT("VATNormalTexture")); return n; }
@@ -158,12 +160,10 @@ public:
 	static FName						Name_VATPositionBoundsMin() { static FName n(TEXT("VATPositionBoundsMin")); return n; }
 	static FName						Name_VATPositionBoundsMax() { static FName n(TEXT("VATPositionBoundsMax")); return n; }
 
-	static FName						Name_Roughness() { static FName n(TEXT("Roughness")); return n; }
-	static FName						Name_Metalness() { static FName n(TEXT("Metalness")); return n; }
-	static FName						Name_AlphaRemapper() { static FName n(TEXT("AlphaRemapper")); return n; }
-	static FName						Name_MotionVectorsTexture() { static FName n(TEXT("MotionVectorsTexture")); return n; }
-	static FName						Name_SixWayLightmap_RLTSTexture() { static FName n(TEXT("PopcornFX_SixWay_RLTSTexture")); return n; }
-	static FName						Name_SixWayLightmap_BBFTexture() { static FName n(TEXT("PopcornFX_SixWay_BBFTexture")); return n; }
+	static FName						Name_AtlasSubDivX() { static FName n(TEXT("PopcornFX_AtlasSubDivX")); return n; }
+	static FName						Name_AtlasSubDivY() { static FName n(TEXT("PopcornFX_AtlasSubDivY")); return n; }
+	static FName						Name_Roughness() { static FName n(TEXT("PopcornFX_Roughness")); return n; }
+	static FName						Name_Metalness() { static FName n(TEXT("PopcornFX_Metalness")); return n; }
 	static FName						Name_SoftnessDistance() { static FName n(TEXT("PopcornFX_SoftnessDistance")); return n; }
 	static FName						Name_SphereMaskHardness() { static FName n(TEXT("PopcornFX_SphereMaskHardness")); return n; }
 	static FName						Name_MaskThreshold() { static FName n(TEXT("PopcornFX_MaskThreshold")); return n; }
@@ -178,6 +178,7 @@ public:
 	static FName						Name_POPCORNFX_HAS_ROUGH_METAL_TEXTURE() { static FName n(TEXT("POPCORNFX_HAS_ROUGH_METAL_TEXTURE")); return n; }
 	static FName						Name_POPCORNFX_HAS_ALPHA_REMAPPER() { static FName n(TEXT("POPCORNFX_HAS_ALPHA_REMAPPER")); return n; }
 	static FName						Name_POPCORNFX_HAS_DIFFUSE_RAMP() { static FName n(TEXT("POPCORNFX_HAS_DIFFUSE_RAMP")); return n; }
+	static FName						Name_POPCORNFX_HAS_EMISSIVE_RAMP() { static FName n(TEXT("POPCORNFX_HAS_EMISSIVE_RAMP")); return n; }
 	static FName						Name_POPCORNFX_HAS_EMISSIVE_TEXTURE() { static FName n(TEXT("POPCORNFX_HAS_EMISSIVE_TEXTURE")); return n; }
 	static FName						Name_POPCORNFX_HAS_SIXWAYLIGHTMAP_TEXTURES() { static FName n(TEXT("POPCORNFX_HAS_SIXWAYLIGHTMAP_TEXTURES")); return n; }
 	static FName						Name_POPCORNFX_IS_NO_ALPHA() { static FName n(TEXT("POPCORNFX_IS_NO_ALPHA")); return n; }
@@ -190,6 +191,7 @@ public:
 	static FName						Name_POPCORNFX_IS_RIBBON() { static FName n(TEXT("POPCORNFX_IS_RIBBON")); return n; }
 	static FName						Name_POPCORNFX_IS_MESH() { static FName n(TEXT("POPCORNFX_IS_MESH")); return n; }
 	static FName						Name_POPCORNFX_IS_TRIANGLE() { static FName n(TEXT("POPCORNFX_IS_TRIANGLE")); return n; }
+	static FName						Name_POPCORNFX_IS_DECAL() { static FName n(TEXT("POPCORNFX_IS_DECAL")); return n; }
 
 	static const FLinearColor			&Color_PopcornFX() { static const FLinearColor c(0.011765f, 0.501961f, 0.839216f, 1.0f); return c; }
 

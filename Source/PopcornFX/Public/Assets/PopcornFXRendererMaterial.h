@@ -57,7 +57,8 @@ class	UPopcornFXTextureAtlas;
 		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Rigid)				\
 		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Rigid)				\
 		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Opaque_Rigid_Lit)			\
-		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Rigid_Lit)	
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Mesh_VAT_Masked_Rigid_Lit)			\
+		X_POPCORNFX_LEGACY_MATERIAL_TYPE(Decal)								\
 
 #define EXEC_X_POPCORNFX_MATERIAL_TYPE()									\
 		X_POPCORNFX_MATERIAL_TYPE(Billboard_Additive)						\
@@ -76,6 +77,7 @@ class	UPopcornFXTextureAtlas;
 		X_POPCORNFX_MATERIAL_TYPE(Mesh_Solid_Lit)							\
 		X_POPCORNFX_MATERIAL_TYPE(Mesh_Masked)								\
 		X_POPCORNFX_MATERIAL_TYPE(Mesh_Masked_Lit)							\
+		X_POPCORNFX_MATERIAL_TYPE(Decal)									\
 
 
 UENUM()
@@ -114,6 +116,9 @@ enum class	EPopcornFXLegacyMaterialType
 	Mesh_VAT_Opaque_Rigid_Lit,
 	Mesh_VAT_Masked_Rigid,
 	Mesh_VAT_Masked_Rigid_Lit,
+
+	Decal,
+
 	// Put them in the end so that the material remap can work..
 	Billboard_Additive_NoAlpha,
 	Mesh_Additive_NoAlpha,
@@ -140,6 +145,8 @@ enum class	EPopcornFXDefaultMaterialType
 	Mesh_Solid_Lit,
 	Mesh_Masked,
 	Mesh_Masked_Lit,
+
+	Decal,
 
 	__Max UMETA(Hidden)
 };
@@ -171,6 +178,8 @@ public:
 	UTexture2D					*TextureDiffuseRamp;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UTexture2D					*TextureEmissive;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	UTexture2D					*TextureEmissiveRamp;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	UTexture2D					*TextureNormal;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
@@ -237,6 +246,12 @@ public:
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	float						SphereMaskHardness;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	float						AtlasSubDivX;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	float						AtlasSubDivY;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	float						MVDistortionStrengthColumns;
@@ -406,6 +421,28 @@ public:
 			SortIndices == other.SortIndices &&
 			IsLegacy == other.IsLegacy;
 	}
+
+	inline bool			RenderThread_SameMaterial_Decal(const FPopcornFXSubRendererMaterial &other) const
+	{
+		return
+			Material == other.Material &&
+			TextureDiffuse == other.TextureDiffuse &&
+			TextureDiffuseRamp == other.TextureDiffuseRamp &&
+			TextureEmissive == other.TextureEmissive &&
+			TextureEmissiveRamp == other.TextureEmissiveRamp &&
+			TextureAlphaRemapper == other.TextureAlphaRemapper &&
+			TextureAtlas == other.TextureAtlas &&
+			TextureMotionVectors == other.TextureMotionVectors &&
+			AtlasSubDivX == other.AtlasSubDivX &&
+			AtlasSubDivY == other.AtlasSubDivY &&
+			MVDistortionStrengthColumns == other.MVDistortionStrengthColumns &&
+			MVDistortionStrengthRows == other.MVDistortionStrengthRows &&
+			Raytraced == other.Raytraced &&
+			DynamicParameterMask == other.DynamicParameterMask &&
+			SortIndices == other.SortIndices &&
+			IsLegacy == other.IsLegacy;
+	}
+
 	inline bool NeedsSorting()
 	{
 		if (IsLegacy)

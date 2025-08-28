@@ -188,7 +188,11 @@ FReply	FPopcornFXDetailsEmitterComponent::OnReimportEffect()
 
 void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+	m_SelectedObjectsList = DetailLayout.GetDetailsViewSharedPtr()->GetSelectedObjects();
+#else
 	m_SelectedObjectsList = DetailLayout.GetDetailsView()->GetSelectedObjects();
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 
 	IDetailCategoryBuilder	&fxEditorCategory = DetailLayout.EditCategory("PopcornFX Emitter");
 

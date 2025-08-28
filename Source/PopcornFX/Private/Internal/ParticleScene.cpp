@@ -713,7 +713,11 @@ void	CParticleScene::_Clear()
 //----------------------------------------------------------------------------
 
 #if RHI_RAYTRACING
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingInstanceCollector &context)
+#else
 void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingMaterialGatheringContext &context, TArray<FRayTracingInstance> &outRayTracingInstances)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 {
 	// Right now, uses a reference view (first view).
 	// First thing called during render loop, before init views
@@ -731,7 +735,11 @@ void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *s
 	GPU_PreRender();
 #endif // PK_HAS_GPU != 0
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+	if (!m_RenderSubView.Setup_GetDynamicRayTracingInstances(sceneProxy, context))
+#else
 	if (!m_RenderSubView.Setup_GetDynamicRayTracingInstances(sceneProxy, context, outRayTracingInstances))
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 		return;
 	if (!PK_VERIFY(m_RenderSubView.BBViews().Count() > 0))
 		return;
@@ -1810,8 +1818,9 @@ void	CParticleScene::RayTracePacket(
 
 	// Note: There doesn't seem to be a lock necessary for the Chaos accel struct
 	{
-		if (const auto &solverAccelerationStructure = m_CurrentChaosScene->GetSpacialAcceleration())
+		if (m_CurrentChaosScene && m_CurrentChaosScene->GetSpacialAcceleration())
 		{
+			const auto &solverAccelerationStructure = m_CurrentChaosScene->GetSpacialAcceleration();
 			FChaosSQAccelerator sqAccelerator(*solverAccelerationStructure);
 			{
 				for (u32 rayi = 0; rayi < resCount; ++rayi)
@@ -3226,7 +3235,12 @@ void	CParticleScene::UnregisterEventListener(UPopcornFXEffect* particleEffect, P
 		}
 		if (!eventListener.m_Effects.Contains(particleEffect)) // No more emitters listening to this event, unregister from the effect for this event slot.
 		{
-			particleEffect->Effect()->UnregisterEventCallback(PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback>(this, &CParticleScene::BroadcastEvent), eventNameID);
+			const PopcornFX::CGuid	rEventId = m_RegisteredEvents.IndexOf(SPopcornFXRegisteredEvent(eventListener.m_EventName, particleEffect));
+			if (rEventId.Valid())
+			{
+				m_RegisteredEvents.Remove(rEventId);
+				particleEffect->Effect()->UnregisterEventCallback(PopcornFX::FastDelegate<PopcornFX::CParticleEffect::EventCallback>(this, &CParticleScene::BroadcastEvent), eventNameID);
+			}
 		}
 	}
 }

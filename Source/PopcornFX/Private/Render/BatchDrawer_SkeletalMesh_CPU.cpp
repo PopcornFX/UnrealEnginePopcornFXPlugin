@@ -857,12 +857,12 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh_Sections(	const FPopco
 	// Vertex factory and collector resource are either used to render all sections (if all sections of the mesh are being rendered of m_TotalParticleCount)
 	// If there is a mesh atlas, we have to create a vertex factory per mesh section, because we cannot specify per FMeshBatchElement an offset into the instances buffers
 	FPopcornFXSkelMeshVertexFactory	*vertexFactory = null;
-	FPopcornFXSkelMeshCollector			*collectorRes = null;
+	FPopcornFXSkelMeshCollector		*collectorRes = null;
 	if (!m_HasMeshIDs)
 		_CreateSkelMeshVertexFactory(matDesc, 0, collector, vertexFactory, collectorRes);
 
-	PK_ASSERT(LODLevel < (u32)matDesc.m_SkeletalMeshLODInfos.Count() || matDesc.m_SkeletalMeshLODInfos.Empty());
-	const FSkeletalMeshLODInfo	*LODInfo = !matDesc.m_SkeletalMeshLODInfos.Empty() ? &matDesc.m_SkeletalMeshLODInfos[LODLevel] : null;
+	PK_ASSERT(LODLevel < (u32)matDesc.m_SkeletalMesh->GetLODNum() || matDesc.m_SkeletalMesh->GetLODNum() == 0);
+	const FSkeletalMeshLODInfo	*LODInfo = matDesc.m_SkeletalMesh->GetLODNum() != 0 ? matDesc.m_SkeletalMesh->GetLODInfo(LODLevel) : null;
 
 	PK_ASSERT(desc.m_ViewIndex < m_RealViewCount);
 	PK_ASSERT(renderContext.m_RendererSubView->BBViews().Count() == m_RealViewCount);

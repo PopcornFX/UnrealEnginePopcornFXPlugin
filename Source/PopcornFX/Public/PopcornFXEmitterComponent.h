@@ -375,4 +375,8 @@ private:
 
 	uint64							m_LastFrameUpdate;
 	uint64							m_StartFrameUpdate;
+
+	// Events to register/unregister when the effect starts/restarts
+	TArray<TPair<FPopcornFXRaiseEventSignature, FName>> m_EventCallbacksToRegister;
+	TArray<TPair<FPopcornFXRaiseEventSignature, FName>> m_EventCallbacksToUnregister;
 };

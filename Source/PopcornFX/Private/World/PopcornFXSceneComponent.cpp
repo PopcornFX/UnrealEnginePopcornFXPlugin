@@ -62,7 +62,7 @@ UPopcornFXSceneComponent::UPopcornFXSceneComponent(const FObjectInitializer& PCI
 
 	SetGenerateOverlapEvents(false);
 
-	bReceivesDecals = false;
+	bReceivesDecals = true;
 
 	bCastVolumetricTranslucentShadow = true;
 	//bCastVolumetricTranslucentShadow = false;
@@ -247,8 +247,10 @@ void	UPopcornFXSceneComponent::TickComponent(float deltaTime, enum ELevelTick ti
 	{
 		bounds = Union(FBoxSphereBounds(FixedRelativeBoundingBox.ShiftBy(GetComponentLocation())), m_ParticleScene->Bounds());
 	}
-	else if (BoundingBoxMode == EPopcornFXSceneBBMode::Fixed)
+	else
+	{
 		bounds = FixedRelativeBoundingBox.ShiftBy(GetComponentLocation());
+	}
 
 	if (bounds.SphereRadius <= 0.001f)
 	{

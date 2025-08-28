@@ -21,6 +21,7 @@
 #include "Render/BatchDrawer_Ribbon_CPU.h"
 #include "Render/BatchDrawer_Triangle_CPU.h"
 #include "Render/BatchDrawer_Mesh_CPU.h"
+#include "Render/BatchDrawer_Decal_CPU.h"
 #include "Render/BatchDrawer_SkeletalMesh_CPU.h"
 #include "Render/BatchDrawer_Light.h"
 #include "Render/BatchDrawer_Sound.h"
@@ -314,6 +315,9 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 			case	PopcornFX::Renderer_Triangle:
 				hasValidMaterial = material->MaterialDomain == MD_Surface;
 				break;
+			case	PopcornFX::Renderer_Decal:
+				hasValidMaterial = material->MaterialDomain == MD_DeferredDecal;
+				break;
 			default:
 				PK_ASSERT_NOT_REACHED();
 				break;
@@ -344,6 +348,7 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 					rendererType == PopcornFX::Renderer_Triangle ||
 					rendererType == PopcornFX::Renderer_Light ||
 					rendererType == PopcornFX::Renderer_Mesh ||
+					rendererType == PopcornFX::Renderer_Decal ||
 					rendererType == PopcornFX::Renderer_Sound))
 		return null;
 
@@ -365,6 +370,8 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 				if (hasSkelMesh)
 					return PK_NEW(CBatchDrawer_SkeletalMesh_CPUBB);
 				return PK_NEW(CBatchDrawer_Mesh_CPUBB);
+			case	PopcornFX::Renderer_Decal:
+				return PK_NEW(CBatchDrawer_Decal_CPUBB);
 			case	PopcornFX::Renderer_Light:
 				return PK_NEW(CBatchDrawer_Light);
 			case	PopcornFX::Renderer_Sound:
@@ -429,12 +436,14 @@ bool	CRenderBatchManager::Setup(const CParticleScene *scene, PopcornFX::CParticl
 	PK_ASSERT(collection != null);
 	PK_ASSERT(m_ParticleMediumCollection == null);
 
-	const u32	enabledRenderers =	(1U << PopcornFX::Renderer_Billboard) |
-									(1U << PopcornFX::Renderer_Ribbon) |
-									(1U << PopcornFX::Renderer_Mesh) |
-									(1U << PopcornFX::Renderer_Triangle) |
-									(1U << PopcornFX::Renderer_Light);
-	CUEFrameCollector::SFrameCollectorInit	init_RenderThread_UE(	enabledRenderers,
+	const u32	gameThreadRenderers =	(1U << PopcornFX::Renderer_Decal) |
+										(1U << PopcornFX::Renderer_Sound);
+	const u32	renderThreadRenderers =	(1U << PopcornFX::Renderer_Billboard) |
+										(1U << PopcornFX::Renderer_Ribbon) |
+										(1U << PopcornFX::Renderer_Mesh) |
+										(1U << PopcornFX::Renderer_Triangle) |
+										(1U << PopcornFX::Renderer_Light);
+	CUEFrameCollector::SFrameCollectorInit	init_RenderThread_UE(	renderThreadRenderers,
 																	PopcornFX::CbNewBatchDrawer(this, &CRenderBatchManager::CreateBatchDrawer),
 																	PopcornFX::CbNewRendererCache(this, &CRenderBatchManager::CreateRendererCache),
 																	4 /* maxCollectedFrames */,
@@ -443,7 +452,7 @@ bool	CRenderBatchManager::Setup(const CParticleScene *scene, PopcornFX::CParticl
 		return false;
 	m_FrameCollector_UE_Render.InstallToMediumCollection(collection);
 	
-	CUEFrameCollector::SFrameCollectorInit	init_GameThread_UE(	(1U << PopcornFX::Renderer_Sound),
+	CUEFrameCollector::SFrameCollectorInit	init_GameThread_UE(	gameThreadRenderers,
 																PopcornFX::CbNewBatchDrawer(this, &CRenderBatchManager::CreateBatchDrawer),
 																PopcornFX::CbNewRendererCache(this, &CRenderBatchManager::CreateRendererCache),
 																4 /* maxCollectedFrames */,
@@ -625,12 +634,12 @@ void	CRenderBatchManager::GameThread_EndUpdate(PopcornFX::CRendererSubView &upda
 			if (m_LastCollectedUsedMaterials.Num() != m_CollectedUsedMaterialCount)
 			{
 				m_LastCollectedMaterialsChanged = true;
-				m_LastCollectedUsedMaterials.SetNum(m_CollectedUsedMaterialCount, false);
+				m_LastCollectedUsedMaterials.SetNum(m_CollectedUsedMaterialCount, EAllowShrinking::No);
 			}
 		}
 	}
 	{
-		// Sounds
+		// Decals/Sounds
 		PK_NAMEDSCOPEDPROFILE_C("CRenderBatchManager::GameThread_EndUpdate - Collect update thread frame", POPCORNFX_UE_PROFILER_COLOR);
 		m_FrameCollector_UE_Update.CollectFrame();
 	}
@@ -1002,6 +1011,10 @@ void	CRenderBatchManager::DrawHeavyDebug(const FPopcornFXSceneProxy *sceneProxy,
 			case	PopcornFX::Renderer_Mesh:
 				for (u32 dri = 0; dri < drs.m_MeshDrawRequests.Count(); ++dri)
 					_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, drs.m_MeshDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
+				break;
+			case	PopcornFX::Renderer_Decal:
+				for (u32 dri = 0; dri < drs.m_DecalDrawRequests.Count(); ++dri)
+					_DrawHeavyDebug(sceneProxy, PDI, view, debugModeMask, globalIndex++, drs.m_DecalDrawRequests[dri], m_DebugParticlePointSize, m_DebugBoundsLinesThickness);
 				break;
 			case	PopcornFX::Renderer_Light:
 				for (u32 dri = 0; dri < drs.m_LightDrawRequests.Count(); ++dri)

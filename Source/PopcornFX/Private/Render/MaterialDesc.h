@@ -68,7 +68,6 @@ public:
 	// Skeletal meshes
 	USkeletalMesh									*m_SkeletalMesh = null;
 	const FSkeletalMeshRenderData					*m_SkeletalMeshRenderData = null;
-	PopcornFX::TMemoryView<const FSkeletalMeshLODInfo>	m_SkeletalMeshLODInfos;
 	UTexture2D										*m_SkeletalAnimationTexture = null;
 	u32												m_SkeletalAnimationCount = 0;
 	FVector3f										m_SkeletalAnimationPosBoundsMin = FVector3f::ZeroVector;

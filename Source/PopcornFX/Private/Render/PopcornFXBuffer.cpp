@@ -35,7 +35,6 @@ void	FPopcornFXVertexBuffer::InitRHI()
 	m_SRV = null;
 	if (m_CapacityInBytes > 0)
 	{
-		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Buffer"));
 #if (ENGINE_MAJOR_VERSION == 5)
 		EBufferUsageFlags		usage = EBufferUsageFlags::None;
 #else
@@ -53,7 +52,11 @@ void	FPopcornFXVertexBuffer::InitRHI()
 		}
 		else
 			usage |= BUF_Dynamic;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		FRHIBufferCreateDesc	BufferDesc(TEXT("PopcornFX Buffer"), m_CapacityInBytes, 0, usage);
+		VertexBufferRHI = RHICmdList.CreateBuffer(BufferDesc);
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Buffer"));
 		VertexBufferRHI = RHICmdList.CreateVertexBuffer(m_CapacityInBytes, usage, emptyInformations);
 #else
 		VertexBufferRHI = RHICreateVertexBuffer(m_CapacityInBytes, usage, emptyInformations);
@@ -167,7 +170,21 @@ const FUnorderedAccessViewRHIRef	&FPopcornFXVertexBuffer::UAV()
 	PK_ASSERT(UsedAsUAV());
 	if (!IsValidRef(m_UAV))
 	{
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		if (VertexBufferRHI && EnumHasAnyFlags(VertexBufferRHI->GetDesc().Usage, BUF_ByteAddressBuffer))
+		{
+			m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(VertexBufferRHI, FRHIViewDesc::CreateBufferUAV()
+				.SetType(FRHIViewDesc::EBufferType::Raw)
+			);
+		}
+		else
+		{
+			m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(VertexBufferRHI, FRHIViewDesc::CreateBufferUAV()
+				.SetType(FRHIViewDesc::EBufferType::Typed)
+				.SetFormat(EPixelFormat(PF_R32_UINT))
+			);
+		}
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(VertexBufferRHI, PF_R32_UINT);
 #else
 		m_UAV = RHICreateUnorderedAccessView(VertexBufferRHI, PF_R32_UINT);
@@ -187,7 +204,21 @@ const FShaderResourceViewRHIRef		&FPopcornFXVertexBuffer::SRV()
 	PK_ASSERT(UsedAsSRV());
 	if (!IsValidRef(m_SRV))
 	{
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		if (VertexBufferRHI && EnumHasAnyFlags(VertexBufferRHI->GetDesc().Usage, BUF_ByteAddressBuffer))
+		{
+			m_SRV = FRHICommandListExecutor::GetImmediateCommandList().CreateShaderResourceView(VertexBufferRHI, FRHIViewDesc::CreateBufferSRV()
+				.SetType(FRHIViewDesc::EBufferType::Raw)
+			);
+		}
+		else
+		{
+			m_SRV = FRHICommandListExecutor::GetImmediateCommandList().CreateShaderResourceView(VertexBufferRHI, FRHIViewDesc::CreateBufferSRV()
+				.SetType(FRHIViewDesc::EBufferType::Typed)
+				.SetFormat(EPixelFormat(PF_R32_UINT))
+			);
+		}
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		m_SRV = FRHICommandListExecutor::GetImmediateCommandList().CreateShaderResourceView(VertexBufferRHI, sizeof(u32), PF_R32_UINT);
 #else
 		m_SRV = RHICreateShaderResourceView(VertexBufferRHI, sizeof(u32), PF_R32_UINT);
@@ -229,7 +260,6 @@ void	FPopcornFXIndexBuffer::InitRHI()
 		m_Flags &= ~Flag_Large;
 	if (m_Capacity > 0)
 	{
-		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Index Buffer"));
 #if (ENGINE_MAJOR_VERSION == 5)
 		EBufferUsageFlags		usage = EBufferUsageFlags::None;
 #else
@@ -247,7 +277,13 @@ void	FPopcornFXIndexBuffer::InitRHI()
 		}
 		else
 			usage |= BUF_Dynamic;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		FRHIBufferCreateDesc	bufferDesc =
+			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Buffer"), m_Capacity * Stride(), 0, usage)
+			.SetInitialState(RHIGetDefaultResourceState(usage | EBufferUsageFlags::IndexBuffer, false));
+		IndexBufferRHI = RHICmdList.CreateBuffer(bufferDesc);
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Index Buffer"));
 		IndexBufferRHI = RHICmdList.CreateIndexBuffer(Stride(), m_Capacity * Stride(), usage, emptyInformations);
 #else
 		IndexBufferRHI = RHICreateIndexBuffer(Stride(), m_Capacity * Stride(), usage, emptyInformations);
@@ -364,7 +400,21 @@ const FUnorderedAccessViewRHIRef	&FPopcornFXIndexBuffer::UAV()
 	PK_ASSERT(UsedAsUAV());
 	if (!IsValidRef(m_UAV))
 	{
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+		if (IndexBufferRHI && EnumHasAnyFlags(IndexBufferRHI->GetDesc().Usage, BUF_ByteAddressBuffer))
+		{
+			m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(IndexBufferRHI, FRHIViewDesc::CreateBufferUAV()
+				.SetType(FRHIViewDesc::EBufferType::Raw)
+			);
+		}
+		else
+		{
+			m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(IndexBufferRHI, FRHIViewDesc::CreateBufferUAV()
+				.SetType(FRHIViewDesc::EBufferType::Typed)
+				.SetFormat(EPixelFormat(PF_R32_UINT))
+			);
+		}
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		m_UAV = FRHICommandListExecutor::GetImmediateCommandList().CreateUnorderedAccessView(IndexBufferRHI, PF_R32_UINT);
 #else
 		m_UAV = RHICreateUnorderedAccessView(IndexBufferRHI, PF_R32_UINT);

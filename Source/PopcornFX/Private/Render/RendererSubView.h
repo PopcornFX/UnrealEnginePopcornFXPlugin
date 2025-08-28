@@ -73,10 +73,16 @@ public:
 		FMeshElementCollector &collector);
 
 #if RHI_RAYTRACING
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+	bool			Setup_GetDynamicRayTracingInstances(
+		const FPopcornFXSceneProxy *sceneProxy,
+		FRayTracingInstanceCollector &context);
+#else
 	bool			Setup_GetDynamicRayTracingInstances(
 		const FPopcornFXSceneProxy *sceneProxy,
 		FRayTracingMaterialGatheringContext &context,
 		::TArray<FRayTracingInstance> &outRayTracingInstances);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 #endif //RHI_RAYTRACING
 
 	bool						Setup_PostUpdate();
@@ -94,10 +100,14 @@ public:
 	FMeshElementCollector		*Collector() const { return m_Collector; }
 
 #if RHI_RAYTRACING
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+	FRayTracingInstanceCollector						*RTCollector() const { return m_RTCollector; }
+#else
 	const FScene										*Scene() const { return m_Scene; }
 	FRayTracingMeshResourceCollector					*RTCollector() const { return m_RTCollector; }
 	::TArray<FRayTracingDynamicGeometryUpdateParams>	*DynamicRayTracingGeometries() { return m_DynamicRayTracingGeometries; }
 	::TArray<FRayTracingInstance>						*OutRayTracingInstances() { return m_OutRayTracingInstances; }
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 #endif // RHI_RAYTRACING
 
 	const TStaticCountedArray<SSceneView, kMaxViews>	&SceneViews() const { return m_SceneViews; }
@@ -111,10 +121,14 @@ private:
 	const FSceneViewFamily				*m_ViewFamily = null;
 	FMeshElementCollector				*m_Collector = null;
 #if RHI_RAYTRACING
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
+	FRayTracingInstanceCollector						*m_RTCollector = null;
+#else
 	const FScene										*m_Scene = null;
 	FRayTracingMeshResourceCollector					*m_RTCollector = null;
 	::TArray<FRayTracingDynamicGeometryUpdateParams>	*m_DynamicRayTracingGeometries = null;
 	::TArray<FRayTracingInstance>						*m_OutRayTracingInstances = null;
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 #endif // RHI_RAYTRACING
 
 	u32									m_ViewsMask = 0;

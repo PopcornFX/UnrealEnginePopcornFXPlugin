@@ -48,7 +48,11 @@ FReply		FPopcornFXDetailsSceneComponent::OnClear()
 	if (!PK_VERIFY(m_DetailLayout != null))
 		return FReply::Unhandled();
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+	const TArray< TWeakObjectPtr<UObject> >		&objects = m_DetailLayout->GetDetailsViewSharedPtr()->GetSelectedObjects();
+#else
 	const TArray< TWeakObjectPtr<UObject> >		&objects = m_DetailLayout->GetDetailsView()->GetSelectedObjects();
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 	for (int32 obji = 0; obji < objects.Num(); ++obji)
 	{
 		if (objects[obji].IsValid())

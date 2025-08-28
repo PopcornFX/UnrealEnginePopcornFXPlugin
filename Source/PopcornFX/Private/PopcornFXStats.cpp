@@ -27,6 +27,7 @@ DEFINE_STAT(STAT_PopcornFX_DrawCallsRibbonCount);
 DEFINE_STAT(STAT_PopcornFX_DrawCallsTriangleCount);
 DEFINE_STAT(STAT_PopcornFX_DrawCallsMeshCount);
 DEFINE_STAT(STAT_PopcornFX_DrawCallsSkelMeshCount);
+DEFINE_STAT(STAT_PopcornFX_DrawCallsDecalCount);
 DEFINE_STAT(STAT_PopcornFX_LightCount);
 DEFINE_STAT(STAT_PopcornFX_SoundCount);
 DEFINE_STAT(STAT_PopcornFX_RayTracing_DrawCallsCount);

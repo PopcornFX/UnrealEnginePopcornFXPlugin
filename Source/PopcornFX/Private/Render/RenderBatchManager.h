@@ -129,6 +129,8 @@ public:
 public:
 	bool						ForceLightsTranslucent() { return m_ForceLightsTranslucent; }
 
+	const CParticleScene		&ParticleScene() { return *m_ParticleScene; }
+
 	CVertexBufferPool			&VBPool() { return *m_VertexBufferPool; }
 	CIndexBufferPool			&IBPool() { return *m_IndexBufferPool; }
 	const CVertexBufferPool		&VBPool() const { return *m_VertexBufferPool; }

@@ -67,6 +67,7 @@ namespace
 		RMID_Ribbon,
 		RMID_Mesh,
 		RMID_Triangle,
+		RMID_Decal,
 		_RMID_Count,
 	};
 
@@ -129,6 +130,7 @@ namespace
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_ROUGH_METAL_TEXTURE(), mat.TextureRoughMetal != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_ALPHA_REMAPPER(), mat.TextureAlphaRemapper != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_DIFFUSE_RAMP(), mat.TextureDiffuseRamp != null);
+		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_EMISSIVE_RAMP(), mat.TextureEmissiveRamp != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_EMISSIVE_TEXTURE(), mat.TextureEmissive != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_HAS_SIXWAYLIGHTMAP_TEXTURES(), mat.TextureSixWay_RLTS != null && mat.TextureSixWay_BBF != null);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_IS_NO_ALPHA(), mat.NoAlpha != 0);
@@ -141,6 +143,7 @@ namespace
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_IS_RIBBON(), mat.m_RMId == RMID_Ribbon);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_IS_MESH(), mat.m_RMId == RMID_Mesh);
 		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_IS_TRIANGLE(), mat.m_RMId == RMID_Triangle);
+		_SetStaticSwitch(params, FPopcornFXPlugin::Name_POPCORNFX_IS_DECAL(), mat.m_RMId == RMID_Decal);
 
 		material->UpdateStaticPermutation(params);
 	}
@@ -1455,6 +1458,161 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		return true;
 	}
 
+	bool		RM_Setup_Decal_Legacy(FPopcornFXSubRendererMaterial &mat, const PopcornFX::SRendererDeclaration &decl)
+	{
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
+		{
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+
+			const CInt2	&AtlasSubDiv = decl.GetPropertyValue_I2(PopcornFX::BasicRendererProperties::SID_Atlas_SubDiv(), CInt2::ONE);
+			mat.AtlasSubDivX = (float)AtlasSubDiv.x();
+			mat.AtlasSubDivY = (float)AtlasSubDiv.y();
+
+			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
+			mat.SoftAnimBlending = blendingType == 1;
+			mat.MotionVectorsBlending = blendingType == 2;
+
+			if (mat.MotionVectorsBlending)
+			{
+				mat.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+
+				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
+				mat.MVDistortionStrengthColumns = distortionStrength.x();
+				mat.MVDistortionStrengthRows = distortionStrength.y();
+			}
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+
+		return true;
+	}
+
+	bool		RM_Setup_Decal_Default(FPopcornFXSubRendererMaterial &mat, const PopcornFX::SRendererDeclaration &decl)
+	{
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
+		{
+			mat.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			const CInt2	&AtlasSubDiv = decl.GetPropertyValue_I2(PopcornFX::BasicRendererProperties::SID_Atlas_SubDiv(), CInt2::ONE);
+			mat.AtlasSubDivX = (float)AtlasSubDiv.x();
+			mat.AtlasSubDivY = (float)AtlasSubDiv.y();
+
+			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
+			mat.SoftAnimBlending = blendingType == 1;
+			mat.MotionVectorsBlending = blendingType == 2;
+
+			if (mat.MotionVectorsBlending)
+			{
+				mat.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+
+				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
+				mat.MVDistortionStrengthColumns = distortionStrength.x();
+				mat.MVDistortionStrengthRows = distortionStrength.y();
+			}
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
+			mat.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
+		{
+			mat.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
+				mat.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+		}
+
+		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
+		{
+			mat.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString)); 
+			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_EmissiveRamp()))
+				mat.TextureEmissiveRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_EmissiveRamp_RampMap(), PopcornFX::CString::EmptyString));
+		}
+
+		return true;
+	}
+
+	bool		RM_Setup_Decal(UPopcornFXRendererMaterial *self, const void *rendererBase)
+	{
+		const PopcornFX::CRendererDataBase	*_rendererBase = static_cast<const PopcornFX::CRendererDataBase*>(rendererBase);
+		if (_rendererBase->m_RendererType != PopcornFX::Renderer_Decal)
+			return false;
+		const PopcornFX::CRendererDataDecal	*renderer = static_cast<const PopcornFX::CRendererDataDecal*>(_rendererBase);
+		if (renderer == null)
+			return false;
+
+		// TODO: Remove sub materials
+		self->SubMaterials.SetNum(1);
+		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[0];
+
+		const PopcornFX::SRendererDeclaration	&decl = renderer->m_Declaration;
+
+		// Default values:
+		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Decal;
+		mat.DefaultMaterialType = EPopcornFXDefaultMaterialType::Decal;
+		mat.IsLegacy = decl.FindAdditionalFieldDefinition(PopcornFX::CStringId("Diffuse.Color")) != null
+			|| (decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive)
+				&& decl.m_MaterialPath.Contains("PopcornFXCore", PopcornFX::CaseInsensitive));
+		mat.MotionBlur = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_MotionBlur());
+		mat.Raytraced = decl.IsFeatureEnabled(PopcornFX::CStringId("Raytraced")); // tmp
+
+		if (mat.IsLegacy)
+			RM_Setup_Decal_Legacy(mat, decl);
+		else 
+			RM_Setup_Decal_Default(mat, decl);
+
+		mat.BuildDynamicParameterMask(_rendererBase, decl);
+		return true;
+	}
+
+	bool		RM_Params_Decal(UPopcornFXRendererMaterial *self, UMaterialInstanceDynamic *material, uint32 subMaterialIndex)
+	{
+		check(subMaterialIndex < uint32(self->SubMaterials.Num()));
+		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[subMaterialIndex];
+
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_DiffuseTexture(), mat.TextureDiffuse);
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_DiffuseTextureRamp(), mat.TextureDiffuseRamp);
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_EmissiveTexture(), mat.TextureEmissive);
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_EmissiveTextureRamp(), mat.TextureEmissiveRamp);
+
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_AlphaRemapper(), mat.TextureAlphaRemapper);
+		material->SetTextureParameterValue(FPopcornFXPlugin::Name_MotionVectorsTexture(), mat.TextureMotionVectors);
+
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_AtlasSubDivX(), mat.AtlasSubDivX);
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_AtlasSubDivY(), mat.AtlasSubDivY);
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_MVDistortionStrengthColumns(), mat.MVDistortionStrengthColumns);
+		material->SetScalarParameterValue(FPopcornFXPlugin::Name_MVDistortionStrengthRows(), mat.MVDistortionStrengthRows);
+
+		return true;
+	}
+
+	bool		RM_ParamsConst_Decal(UPopcornFXRendererMaterial *self, UMaterialInstanceConstant *material, uint32 subMaterialIndex)
+	{
+		check(subMaterialIndex < uint32(self->SubMaterials.Num()));
+		FPopcornFXSubRendererMaterial	&mat = self->SubMaterials[subMaterialIndex];
+
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_DiffuseTexture(), mat.TextureDiffuse);
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_DiffuseTextureRamp(), mat.TextureDiffuseRamp);
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_EmissiveTexture(), mat.TextureEmissive);
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_EmissiveTextureRamp(), mat.TextureEmissiveRamp);
+
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_AlphaRemapper(), mat.TextureAlphaRemapper);
+		material->SetTextureParameterValueEditorOnly(FPopcornFXPlugin::Name_MotionVectorsTexture(), mat.TextureMotionVectors);
+
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_AtlasSubDivX(), mat.AtlasSubDivX);
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_AtlasSubDivY(), mat.AtlasSubDivY);
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_MVDistortionStrengthColumns(), mat.MVDistortionStrengthColumns);
+		material->SetScalarParameterValueEditorOnly(FPopcornFXPlugin::Name_MVDistortionStrengthRows(), mat.MVDistortionStrengthRows);
+
+		_SetStaticSwitches_Common(material, mat);
+
+		// !!
+		material->PostEditChange();
+		return true;
+	}
+
 #endif // WITH_EDITOR
 
 #if WITH_EDITOR
@@ -1469,6 +1627,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		RENDERMATCALLBACKS(Ribbon, Billboard), // RMID_Ribbon
 		RENDERMATCALLBACKS(Mesh, Mesh), // RMID_Mesh
 		RENDERMATCALLBACKS(Triangle, Billboard), // RMID_Triangle
+		RENDERMATCALLBACKS(Decal, Decal), // RMID_Decal
 
 		// ONLY APPEND NEW RENDERERS (or it will mess-up ids)
 	};
@@ -1489,6 +1648,7 @@ FPopcornFXSubRendererMaterial::FPopcornFXSubRendererMaterial()
 ,	TextureDiffuse(null)
 ,	TextureDiffuseRamp(null)
 ,	TextureEmissive(null)
+,	TextureEmissiveRamp(null)
 ,	TextureNormal(null)
 ,	TextureRoughMetal(null)
 ,	TextureSpecular(null)
@@ -1515,6 +1675,8 @@ FPopcornFXSubRendererMaterial::FPopcornFXSubRendererMaterial()
 ,	Metalness(0)
 ,	SoftnessDistance(0)
 ,	SphereMaskHardness(100.0f)
+,	AtlasSubDivX(1.0f)
+,	AtlasSubDivY(1.0f)
 ,	MVDistortionStrengthColumns(1.0f)
 ,	MVDistortionStrengthRows(1.0f)
 ,	VATNumFrames(0)
