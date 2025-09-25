@@ -41,7 +41,9 @@ CBatchDrawer_Decal_CPUBB::~CBatchDrawer_Decal_CPUBB()
 	_ReleaseAllDecals();
 }
 
-bool CBatchDrawer_Decal_CPUBB::Setup(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::CParticleRenderMedium *owner, const PopcornFX::CFrameCollector *fc, const PopcornFX::CStringId &storageClass)
+//----------------------------------------------------------------------------
+
+bool	CBatchDrawer_Decal_CPUBB::Setup(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::CParticleRenderMedium *owner, const PopcornFX::CFrameCollector *fc, const PopcornFX::CStringId &storageClass)
 {
 	if (!Super::Setup(renderer, owner, fc, storageClass))
 		return false;
@@ -55,6 +57,9 @@ bool CBatchDrawer_Decal_CPUBB::Setup(const PopcornFX::CRendererDataBase *rendere
 	if (!PK_VERIFY(IsValid(materialInstance)))
 		return false;
 	m_WeakMaterial = materialInstance;
+
+	owner->m_OnRenderMediumActiveStateChanged	+= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*, bool)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumActiveStateChanged);
+	owner->m_OnRenderMediumDestroyed			+= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumDestroyed);
 
 	return true;
 }
@@ -73,11 +78,22 @@ bool	CBatchDrawer_Decal_CPUBB::AreRenderersCompatible(const PopcornFX::CRenderer
 
 	const CMaterialDesc_GameThread	&gDescA = matCacheA->GameThread_Desc();
 	const CMaterialDesc_GameThread	&gDescB = matCacheB->GameThread_Desc();
-	if (gDescA.m_RendererMaterial == null || gDescB.m_RendererMaterial == null)
-		return false;
-
+	PK_ASSERT(gDescA.m_RendererClass == PopcornFX::Renderer_Decal);
 	if (gDescA.m_RendererClass != gDescB.m_RendererClass)
 		return false;
+	if (gDescA.m_RendererMaterial == null || gDescB.m_RendererMaterial == null)
+		return false;
+	if (gDescA.m_RendererMaterial != gDescB.m_RendererMaterial)
+		return false;
+
+	const FPopcornFXSubRendererMaterial	*matA = gDescA.m_RendererMaterial->GetSubMaterial(0);
+	const FPopcornFXSubRendererMaterial	*matB = gDescB.m_RendererMaterial->GetSubMaterial(0);
+	if (matA == null || matB == null)
+		return false;
+	if (matA == matB ||
+		matA->RenderThread_SameMaterial_Decal(*matB))
+		return true;
+
 	return true;
 }
 
@@ -198,9 +214,10 @@ void CBatchDrawer_Decal_CPUBB::_BuildDecalUpdates(	TArray<FDeferredDecalUpdatePa
 		++activeDecalProxiesCounter;
 
 		// Rotation has offset in Y because decals face up in PK and right in UE by default
-		const FQuat		rotation	= FQuat(ToUE(ds.orientations[parti])) * FQuat::MakeFromEuler({ 0, -90, 0 });
+		const FQuat		rotOffset	= FQuat::MakeFromEuler({ 0, -90, 0 });
+		const FQuat		rotation	= FQuat(ToUE(ds.orientations[parti])) * rotOffset;
 		const FVector	position	= FVector(ToUE(ds.positions[parti] * globalScale));
-		const FVector	scale		= (ds.isScaleFloat3 ? FVector(ToUE(ds.scalesF3[parti])) : FVector(ds.scalesF1[parti])) * globalScale;
+		const FVector	scale		= rotOffset.Inverse() * (ds.isScaleFloat3 ? FVector(ToUE(ds.scalesF3[parti])) : FVector(ds.scalesF1[parti])) * globalScale;
 		const CFloat4	diffuse		= !ds.colorsDiffuse.Empty() ? ds.colorsDiffuse[parti] : CFloat4::ZERO;
 		const CFloat3	emissive	= !ds.colorsEmissive.Empty() ? ds.colorsEmissive[parti].xyz() * ds.colorsEmissive[parti].w() // Bake emissive alpha into RGB values
 									: (!ds.colorsEmissiveLegacy.Empty() ? ds.colorsEmissiveLegacy[parti] : CFloat3::ZERO);
@@ -314,6 +331,32 @@ void	CBatchDrawer_Decal_CPUBB::_IssueDrawCall_Decal(const SUERenderContext &rend
 }
 
 //----------------------------------------------------------------------------
+#include "Engine/Engine.h"
+void CBatchDrawer_Decal_CPUBB::_OnRenderMediumActiveStateChanged(PopcornFX::CParticleRenderMedium *renderMedium, bool active)
+{
+	if (active)
+		return;
+
+	// Sometimes this callback might be executed on a worker thread
+	// In that case we request the execution of the method on the game thread
+	if (!IsInGameThread())
+	{
+		CBatchDrawer_Decal_CPUBB	*self = this;
+		ExecuteOnGameThread(TEXT("CBatchDrawer_Decal_CPUBB::_ReleaseAllDecals"), [self](){ self->_ReleaseAllDecals(); });
+	}
+
+	_ReleaseAllDecals();
+}
+
+//----------------------------------------------------------------------------
+
+void CBatchDrawer_Decal_CPUBB::_OnRenderMediumDestroyed(PopcornFX::CParticleRenderMedium *renderMedium)
+{
+	renderMedium->m_OnRenderMediumActiveStateChanged	-= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*, bool)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumActiveStateChanged);
+	renderMedium->m_OnRenderMediumDestroyed				-= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumDestroyed);
+}
+
+//----------------------------------------------------------------------------
 
 void CBatchDrawer_Decal_CPUBB::_ReleaseAllDecals()
 {
@@ -329,7 +372,7 @@ void CBatchDrawer_Decal_CPUBB::_ReleaseAllDecals()
 		}
 
 		m_WeakWorld.Get()->Scene->BatchUpdateDecals(MoveTemp(decalUpdates));
-		m_ActiveDecalProxies.Empty();
+		m_ActiveDecalProxies.Clear();
 	}
 }
 

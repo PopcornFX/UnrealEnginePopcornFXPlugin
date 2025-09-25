@@ -1024,7 +1024,7 @@ void	FPopcornFXDetailsAttributeList::BuildAttribute(const FPopcornFXAttributeDes
 		return;
 	// Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
 	const PopcornFX::CParticleAttributeDeclaration	*decl = static_cast<const PopcornFX::CParticleAttributeDeclaration*>(attrList->GetAttributeDeclaration(effect, attri));
-	if (decl == null)
+	if (decl == null || decl->IsPrivate())
 		return;
 
 	const PopcornFX::EBaseTypeID	attributeBaseTypeID = (PopcornFX::EBaseTypeID)desc->AttributeBaseTypeID();
@@ -1196,6 +1196,9 @@ void	FPopcornFXDetailsAttributeList::RebuildAttributes()
 		{
 			const FPopcornFXAttributeDesc	*desc = attrList->GetAttributeDesc(attri);
 			check(desc != null);
+			
+			if (desc->m_IsPrivate)
+				continue;
 
 			if (desc->m_AttributeCategoryName != defAttrList->GetCategoryName(iCategory))
 			{
@@ -1310,7 +1313,7 @@ void	FPopcornFXDetailsAttributeList::RebuildSamplers()
 		{
 			const FPopcornFXSamplerDesc		*desc = attrList->GetSamplerDesc(sampleri);
 			check(desc != null);
-			if (desc->m_SamplerType == EPopcornFXAttributeSamplerType::None)
+			if (desc->m_SamplerType == EPopcornFXAttributeSamplerType::None || desc->m_IsPrivate)
 				continue;
 			if (desc->m_AttributeCategoryName != defAttrList->GetCategoryName(iCategory))
 			{

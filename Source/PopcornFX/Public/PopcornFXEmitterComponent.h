@@ -32,7 +32,7 @@ class	APopcornFXSceneActor;
 
 DECLARE_DYNAMIC_DELEGATE(FPopcornFXRaiseEventSignature);
 
-/** Instanciate and Emits and PopcornFX Effect into a PopcornFX Scene. */
+/** Instanciate and Emits a PopcornFX Effect into a PopcornFX Scene. */
 UCLASS(HideCategories=(Object, LOD, Physics, Collision, Activation, "Components|Activation"), EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
 class POPCORNFX_API UPopcornFXEmitterComponent : public USceneComponent
 {

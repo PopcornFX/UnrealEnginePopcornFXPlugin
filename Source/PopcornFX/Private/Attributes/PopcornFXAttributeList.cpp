@@ -113,6 +113,7 @@ void	ResetAttribute(FPopcornFXAttributeDesc &attrib, const PopcornFX::CParticleA
 	{
 		attrib.m_AttributeFName = *FString(ToUE(decl->ExportedName()));
 		attrib.m_AttributeType = decl->ExportedType();
+		attrib.m_IsPrivate = decl->IsPrivate();
 
 #if WITH_EDITOR
 		PK_STATIC_ASSERT(EPopcornFXAttributeSemantic::AttributeSemantic_None			== (u32)PopcornFX::DataSemantic_None);
@@ -154,6 +155,7 @@ void	ResetAttributeSampler(FPopcornFXSamplerDesc &attribSampler, const PopcornFX
 	{
 		attribSampler.m_SamplerFName = *FString(ToUE(decl->ExportedName()));
 		attribSampler.m_SamplerType = ResolveAttribSamplerType(decl);
+		attribSampler.m_IsPrivate = decl->IsPrivate();
 
 		attribSampler.m_AttributeCategoryName = *ToUE(decl->CategoryName().MapDefault());
 		if (!attribSampler.m_AttributeCategoryName.IsValid() || attribSampler.m_AttributeCategoryName.IsNone())
@@ -282,9 +284,27 @@ bool	UPopcornFXAttributeList::CheckDataIntegrity() const
 		{
 			const PopcornFX::SAttributesContainer	*instanceContainer = effectInstance->GetAllAttributes();
 
-			ok &= PK_VERIFY(instanceContainer->AttributeCount() == m_Attributes.Num());
-			ok &= PK_VERIFY(instanceContainer->SamplerCount() == m_Samplers.Num());
-			ok &= PK_VERIFY(instanceContainer->AttributeCount() * kAttributeSize == m_AttributesRawData.Num());
+			int32 privateAttrCount = 0;
+			// Private attributes are present in the editor (because we use source/unbaked assets here)
+#if !WITH_EDITOR
+			for (int32 attri = 0; attri < m_Attributes.Num(); attri++)
+			{
+				if (m_Attributes[attri].m_IsPrivate)
+					privateAttrCount++;
+			}
+#endif
+			int32 privateSamplerCount = 0;
+			// Private attribute samplers are present in the editor (because we use source/unbaked assets here)
+#if !WITH_EDITOR
+			for (int32 sampleri = 0; sampleri < m_Samplers.Num(); sampleri++)
+			{
+				if (m_Samplers[sampleri].m_IsPrivate)
+					privateSamplerCount++;
+			}
+#endif
+			ok &= PK_VERIFY(instanceContainer->AttributeCount() + privateAttrCount == m_Attributes.Num());
+			ok &= PK_VERIFY(instanceContainer->SamplerCount() + privateSamplerCount == m_Samplers.Num());
+			ok &= PK_VERIFY((instanceContainer->AttributeCount() + privateAttrCount) * kAttributeSize == m_AttributesRawData.Num());
 		}
 	}
 	return ok;
@@ -562,8 +582,11 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 	{
 		ResetAttribute(m_Attributes[attri], attrs[attri]);
 #if WITH_EDITOR
-		if (m_Attributes[attri].m_AttributeCategoryName.IsValid() && !m_Attributes[attri].m_AttributeCategoryName.IsNone())
+		if (m_Attributes[attri].m_AttributeCategoryName.IsValid() && !m_Attributes[attri].m_AttributeCategoryName.IsNone()
+			&& !m_Attributes[attri].m_IsPrivate)
+		{
 			m_Categories.AddUnique(m_Attributes[attri].m_AttributeCategoryName);
+		}
 #endif // WITH_EDITOR
 	}
 
@@ -572,8 +595,11 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 	{
 		ResetAttributeSampler(m_Samplers[sampleri], samplers[sampleri]);
 #if WITH_EDITOR
-		if (m_Samplers[sampleri].m_AttributeCategoryName.IsValid() && !m_Samplers[sampleri].m_AttributeCategoryName.IsNone())
+		if (m_Samplers[sampleri].m_AttributeCategoryName.IsValid() && !m_Samplers[sampleri].m_AttributeCategoryName.IsNone()
+			&& !m_Samplers[sampleri].m_IsPrivate)
+		{
 			m_Categories.AddUnique(m_Samplers[sampleri].m_AttributeCategoryName);
+		}
 #endif // WITH_EDITOR
 	}
 
@@ -1170,6 +1196,8 @@ void	UPopcornFXAttributeList::SetAttribute(uint32 attributeId, const FPopcornFXA
 #if WITH_EDITOR
 	if (!PK_VERIFY(attributeId < (u32)m_Attributes.Num()))
 		return;
+	if (m_Attributes[attributeId].m_IsPrivate)
+		return;
 	m_RestartEmitter |= fromUI && FPopcornFXPlugin::Get().SettingsEditor()->bRestartEmitterWhenAttributesChanged;
 #else
 	check(attributeId < (u32)m_Attributes.Num());
@@ -1377,13 +1405,21 @@ void	UPopcornFXAttributeList::_RefreshAttributes(const UPopcornFXEmitterComponen
 	const PopcornFX::TMemoryView<PopcornFX::SAttributesContainer_SAttrib>	attrValues = AttributeRawDataAttributes(this);
 
 	PK_ASSERT(attrCount == attrValues.Count());
+	u32	skippedAttributes = 0;
 	for (u32 iAttr = 0; iAttr < attrCount; ++iAttr)
 	{
 		const FPopcornFXAttributeDesc					&attrDesc = m_Attributes[iAttr];
 		const PopcornFX::SAttributesContainer_SAttrib	&value = attrValues[iAttr];
 
+#if !WITH_EDITOR
+		if (attrDesc.m_IsPrivate)
+		{
+			skippedAttributes++;
+			continue;
+		}
+#endif
 		// First call to effectInstance->SetAttribute will lazy create the SAttributesContainer
-		if (!PK_VERIFY(effectInstance->SetRawAttribute(iAttr, (PopcornFX::EBaseTypeID)attrDesc.AttributeBaseTypeID(), &value, true)))
+		if (!PK_VERIFY(effectInstance->SetRawAttribute(iAttr - skippedAttributes, (PopcornFX::EBaseTypeID)attrDesc.AttributeBaseTypeID(), &value, true)))
 		{
 			UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("Couldn't set attribute %s on effect instance %p"), *attrDesc.AttributeName(), effectInstance);
 		}
@@ -1420,20 +1456,37 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 
 	PK_ASSERT(CheckDataIntegrity());
 
+	int32	privateSamplerCount = 0;
+	// We use source assets in the editor, in which private attribute samplers are exported
+#if !WITH_EDITOR
+	for (int32 sampleri = 0; sampleri < m_Samplers.Num(); sampleri++)
+	{
+		if (m_Samplers[sampleri].m_IsPrivate)
+			privateSamplerCount++;
+	}
+#endif
 	if (effectInstance->GetAllAttributes() != null &&
-		!PK_VERIFY(m_Samplers.Num() == effectInstance->GetAllAttributes()->Samplers().Count()))
+		!PK_VERIFY(m_Samplers.Num() == effectInstance->GetAllAttributes()->Samplers().Count() + privateSamplerCount))
 		return;
 	const PopcornFX::PCParticleAttributeList	&attrListPtr = effect->Effect()->AttributeList();
 	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
 		return;
 	const PopcornFX::SAttributesContainer	*defCont = *(attrListPtr->DefaultAttributes());
-	if (!PK_VERIFY(defCont != null && defCont->Samplers().Count() == m_Samplers.Num()))
+	if (!PK_VERIFY(defCont != null && defCont->Samplers().Count() + privateSamplerCount == m_Samplers.Num()))
 		return;
 
+	u32	skippedSamplers = 0;
 	for (int32 sampleri = 0; sampleri < m_Samplers.Num(); ++sampleri)
 	{
-		PK_ASSERT(attrListPtr->UniqueSamplerList()[sampleri] != null);
-		const PopcornFX::PResourceDescriptor	defaultSampler = attrListPtr->UniqueSamplerList()[sampleri]->AttribSamplerDefaultValue();
+#if !WITH_EDITOR
+		if (m_Samplers[sampleri].m_IsPrivate)
+		{
+			skippedSamplers++;
+			continue;
+		}
+#endif
+		PK_ASSERT(attrListPtr->UniqueSamplerList()[sampleri - skippedSamplers] != null);
+		const PopcornFX::PResourceDescriptor	defaultSampler = attrListPtr->UniqueSamplerList()[sampleri - skippedSamplers]->AttribSamplerDefaultValue();
 		if (!PK_VERIFY(defaultSampler != null))
 			continue;
 
@@ -1446,7 +1499,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 			continue;
 		}
 
-		PK_ASSERT(desc.SamplerType() == ResolveAttribSamplerType(attrListPtr->UniqueSamplerList()[sampleri]));
+		PK_ASSERT(desc.SamplerType() == ResolveAttribSamplerType(attrListPtr->UniqueSamplerList()[sampleri - skippedSamplers]));
 		UPopcornFXAttributeSampler	*attribSampler = desc.ResolveAttributeSampler(emitter, emitter);
 		if (attribSampler == null ||
 			!PK_VERIFY(desc.SamplerType() == attribSampler->SamplerType()))

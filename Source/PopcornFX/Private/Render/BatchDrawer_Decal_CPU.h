@@ -32,15 +32,15 @@ public:
 	CBatchDrawer_Decal_CPUBB();
 	~CBatchDrawer_Decal_CPUBB();
 
-	virtual bool		Setup(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::CParticleRenderMedium *owner, const PopcornFX::CFrameCollector *fc, const PopcornFX::CStringId &storageClass) override;
+	virtual bool	Setup(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::CParticleRenderMedium *owner, const PopcornFX::CFrameCollector *fc, const PopcornFX::CStringId &storageClass) override;
 
-	virtual bool		AreRenderersCompatible(const PopcornFX::CRendererDataBase *rendererA, const PopcornFX::CRendererDataBase *rendererB) const override;
-	static bool			IsCompatible(UMaterialInterface *material);
+	virtual bool	AreRenderersCompatible(const PopcornFX::CRendererDataBase *rendererA, const PopcornFX::CRendererDataBase *rendererB) const override;
+	static bool		IsCompatible(UMaterialInterface *material);
 
-	virtual bool		CanRender(PopcornFX::SRenderContext &ctx) const override;
+	virtual bool	CanRender(PopcornFX::SRenderContext &ctx) const override;
 
-	virtual void		BeginFrame(PopcornFX::SRenderContext &ctx) override;
-	virtual bool		EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit) override;
+	virtual void	BeginFrame(PopcornFX::SRenderContext &ctx) override;
+	virtual bool	EmitDrawCall(PopcornFX::SRenderContext &ctx, const PopcornFX::SDrawCallDesc &toEmit) override;
 
 private:
 	struct	SDecalStreams
@@ -62,18 +62,21 @@ private:
 	};
 
 	template<typename T>
-	void				_GetStreamForReading(	TStridedMemoryView<const T> &outStream, const PopcornFX::CParticlePageToRender_MainMemory *page, 
-												PopcornFX::CGuid streamId, u32 pcount);
+	void	_GetStreamForReading(	TStridedMemoryView<const T> &outStream, const PopcornFX::CParticlePageToRender_MainMemory *page, 
+									PopcornFX::CGuid streamId, u32 pcount);
 
-	void				_GetDecalStreams(	SDecalStreams &outStreams, const PopcornFX::Drawers::SDecal_BillboardingRequest &bbRequest, 
-											const PopcornFX::CParticlePageToRender_MainMemory *page, u32 pcount);
+	void	_GetDecalStreams(	SDecalStreams &outStreams, const PopcornFX::Drawers::SDecal_BillboardingRequest &bbRequest, 
+								const PopcornFX::CParticlePageToRender_MainMemory *page, u32 pcount);
 
-	void				_BuildDecalUpdates(	TArray<FDeferredDecalUpdateParams> &decalUpdates, const SDecalStreams &ds, 
-											const UPopcornFXSceneComponent *sceneComp, u32 &activeDecalProxiesCounter, u32 pcount, float globalScale);
+	void	_BuildDecalUpdates(	TArray<FDeferredDecalUpdateParams> &decalUpdates, const SDecalStreams &ds, 
+								const UPopcornFXSceneComponent *sceneComp, u32 &activeDecalProxiesCounter, u32 pcount, float globalScale);
 
-	void				_IssueDrawCall_Decal(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc);
+	void	_IssueDrawCall_Decal(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc);
 
-	void				_ReleaseAllDecals();
+	void	_OnRenderMediumActiveStateChanged(PopcornFX::CParticleRenderMedium *renderMedium, bool active);
+	void	_OnRenderMediumDestroyed(PopcornFX::CParticleRenderMedium *renderMedium);
+	void	_ReleaseAllDecals();
+
 
 private:
 	PopcornFX::TArray<FDeferredDecalProxy*>	m_ActiveDecalProxies;

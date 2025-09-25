@@ -57,6 +57,8 @@ struct FPopcornFXAttributeDesc
 	UPROPERTY()
 	uint32					m_AttributeType;
 
+	UPROPERTY()
+	bool					m_IsPrivate;
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
 	TEnumAsByte<EPopcornFXAttributeSemantic::Type>	m_AttributeSemantic;
@@ -78,6 +80,7 @@ struct FPopcornFXAttributeDesc
 	:	m_AttributeFName()
 	,	m_AttributeCategoryName()
 	,	m_AttributeType(~0U)
+	,	m_IsPrivate(false)
 #if WITH_EDITORONLY_DATA
 	,	m_AttributeSemantic(EPopcornFXAttributeSemantic::AttributeSemantic_None)
 	,	m_IsExpanded(false)
@@ -131,18 +134,21 @@ struct FPopcornFXSamplerDesc
 	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
 	FName						m_AttributeSamplerComponentProperty;
 
+	UPROPERTY()
+	bool					m_IsPrivate;
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient)
 	uint32						m_IsExpanded : 1;
 #endif // WITH_EDITORONLY_DATA
 
-	bool					m_NeedUpdate;
+	bool						m_NeedUpdate;
 
 	FPopcornFXSamplerDesc()
 	:	m_SamplerFName()
 	,	m_AttributeCategoryName()
 	,	m_SamplerType(EPopcornFXAttributeSamplerType::None)
 	,	m_AttributeSamplerActor(nullptr)
+	,	m_IsPrivate(false)
 #if WITH_EDITORONLY_DATA
 	,	m_IsExpanded(false)
 #endif // WITH_EDITORONLY_DATA

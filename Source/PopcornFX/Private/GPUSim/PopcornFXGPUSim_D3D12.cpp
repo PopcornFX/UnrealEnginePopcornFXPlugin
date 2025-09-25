@@ -463,8 +463,8 @@ FRHIVertexBuffer	*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stre
 	resource->AddRef();
 	buffer->ResourceLocation.AsFastAllocation(resource, stream->m_ByteSize, resource->GetGPUVirtualAddress(), NULL, 0 /* resourceOffsetBase */, stream->m_ByteOffset);
 
-	// Fix crash in UE 5.4 builds: Resource requires residency tracking, but StartTrackingForResidency() was not called.
-#if !WITH_EDITOR && ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 4
+	// Fix crash in UE 5.4+ builds: Resource requires residency tracking, but StartTrackingForResidency() was not called.
+#if !WITH_EDITOR && ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 	buffer->GetResource()->StartTrackingForResidency();
 #endif
 

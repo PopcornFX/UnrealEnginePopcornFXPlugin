@@ -866,9 +866,9 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	else
 	{
 		bakeConfig->SetBakeMode(FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects ? PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsText : PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsBinary); // "Final" bake when cooking: store as binary
-		// GOREFIX: #12621 - UnrealEngine: texture sampling does not work in packaged games
-		bakeConfig->SetCompilerSwitches("--no-sam-cfl");
 	}
+	// GOREFIX: #14683 - UnrealEngine: Some effects that reference .exr files fail loading them once in unreal
+	bakeConfig->SetCompilerSwitches("--no-sam-cfl");
 
 	// build versions
 	PopcornFX::COvenBakeConfig_Particle::_TypeOfBuildVersions	buildVersions;
