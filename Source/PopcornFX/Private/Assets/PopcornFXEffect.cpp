@@ -386,13 +386,13 @@ namespace
 			}
 			else
 			{
-			const FString	hardwareDetails = FHardwareInfo::GetHardwareDetailsString();
+				const FString	hardwareDetails = FHardwareInfo::GetHardwareDetailsString();
 
-			if (hardwareDetails.Contains("D3D12") && FModuleManager::Get().IsModuleLoaded("D3D12RHI"))
-				outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D12;
-			else if (hardwareDetails.Contains("D3D11") && FModuleManager::Get().IsModuleLoaded("D3D11RHI"))
-				outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D11;
-		}
+				if (hardwareDetails.Contains("D3D12") && FModuleManager::Get().IsModuleLoaded("D3D12RHI"))
+					outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D12;
+				else if (hardwareDetails.Contains("D3D11") && FModuleManager::Get().IsModuleLoaded("D3D11RHI"))
+					outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D11;
+			}
 		}
 		else if (platformName.Contains("Win"))
 		{

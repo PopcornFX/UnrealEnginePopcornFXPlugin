@@ -756,7 +756,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vsUniformsbillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
 
 			commonUniformsBillboard.HasSecondUVSet = m_SecondUVSet;
-			commonUniformsBillboard.FlipUVs = m_RotateUV;
+			commonUniformsBillboard.FlipUVs = m_RotateUV && m_RibbonCorrectDeformation;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = m_RibbonCorrectDeformation;
 

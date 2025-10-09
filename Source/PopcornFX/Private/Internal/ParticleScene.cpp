@@ -809,7 +809,12 @@ void	CParticleScene::GatherSimpleLights(const FSceneViewFamily& ViewFamily, FSim
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::GatherSimpleLights", POPCORNFX_UE_PROFILER_COLOR);
 	SCOPE_CYCLE_COUNTER(STAT_PopcornFX_GatherSimpleLightsTime);
-	PK_ASSERT(IsInRenderingThread());
+#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 6
+	PK_ASSERT(IsInAnyRenderingThread());
+#else
+	// Be careful: IsInParallelRenderingThread() can mean in any other thread than the GameThread
+	PK_ASSERT(IsInRenderingThread() || IsInParallelRenderingThread());
+#endif
 
 	m_RenderBatchManager->GatherSimpleLights(ViewFamily, OutParticleLights);
 }

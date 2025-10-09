@@ -32,7 +32,10 @@ UPopcornFXSettingsEditor::UPopcornFXSettingsEditor(const FObjectInitializer& PCI
 ,	bAddSourcePackToMonitoredDirectories(false)
 ,	AssetDependenciesAutoImport(EPopcornFXAssetDependenciesAutoImport::Always)
 ,	bDebugBakedEffects(false)
-,	bBuildAllDesktopBytecodes(false)
+/*	GOREFIX #14716: For now we're building all supported RHIs to make sure effects will
+*	still be able to load their GPU backend when changing the editor's RHI.
+*	Otherwise we would have to force rebake every asset to update their GPU backend.. */
+,	bBuildAllDesktopBytecodes(true)
 ,	bAutoInsertSceneActor(true)
 ,	bAlwaysRenderAttributeSamplerShapes(false)
 ,	bRestartEmitterWhenAttributesChanged(false)
