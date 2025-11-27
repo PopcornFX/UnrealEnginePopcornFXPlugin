@@ -38,17 +38,17 @@ private:
 
 	void	AddScalarAttribute(FGuid objectBinding,
 		UPopcornFXAttributeTrack *attributeTrack,
-		FName attrName,
+		FString attrName,
 		u32 attrIndex);
 
 	void	AddVectorAttribute(FGuid objectBinding,
 		UPopcornFXAttributeTrack *attributeTrack,
-		FName attrName,
+		FString attrName,
 		u32 attrIndex);
 
 	void	AddColorAttribute(FGuid objectBinding,
 		UPopcornFXAttributeTrack *attributeTrack,
-		FName attrName,
+		FString attrName,
 		u32 attrIndex);
 };
 

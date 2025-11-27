@@ -14,6 +14,7 @@
 #include "HardwareInfo.h"
 #include "PopcornFXPayloadHelper.h"
 #include "Assets/PopcornFXEffectPriv.h"
+#include "Render/PopcornFXRenderUtils.h"
 
 #ifdef USE_DEFAULT_AUDIO_INTERFACE
 #	include "PopcornFXAudioDefault.h"
@@ -39,11 +40,6 @@
 
 #if PK_WITH_CHAOS
 #	include "SQAccelerator.h"
-
-#	if (ENGINE_MAJOR_VERSION == 4)
-#	include "Experimental/ChaosInterfaceWrapper.h"
-#	include "SQVerifier.h"
-#	endif // (ENGINE_MAJOR_VERSION == 4)
 
 #	include "PhysTestSerializer.h"
 
@@ -93,9 +89,28 @@
 #include <pk_particles_toolbox/include/pt_transforms.h>
 
 #if (PK_GPU_D3D11 == 1)
+
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+
+#	if PLATFORM_WINDOWS
+#		ifdef WINDOWS_PLATFORM_TYPES_GUARD
+#			include "Windows/HideWindowsPlatformTypes.h"
+#		endif
+#	elif PLATFORM_XBOXONE
+#		ifdef XBOXONE_PLATFORM_TYPES_GUARD
+#			include "XboxOneHidePlatformTypes.h"
+#		endif
+#	endif
+
+#	include "D3D11Resources.h"
+
+#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+
 #	include <d3d11.h>
 #	include <pk_particles/include/Updaters/D3D11/updater_d3d11.h>
+
 #endif
+
 #if (PK_GPU_D3D12 == 1)
 
 #	if PLATFORM_WINDOWS
@@ -121,6 +136,13 @@
 
 #include "PopcornFXEmitterComponent.h"
 #include "HAL/PlatformMisc.h"
+
+#include "SceneInterface.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#	include "SceneProxies/DeferredDecalProxy.h"
+#else
+#	include "Components/SceneComponent.h"
+#endif
 
 #if WITH_HAVOK_PHYSICS
 #include "Runtime/Engine/Private/PhysicsEngine/HavokPhysicsSupport.h"
@@ -290,7 +312,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	// This is what allows us to forbid certain layers from being run on the GPU
 	// Here, we don't support the light, ribbon, mesh, and sound renderers in GPU sims,
 	// so this callback makes layers fallback on the CPU whenever they have any of those.
-	m_ParticleMediumCollection->SetSimDispatchMaskCallback(PopcornFX::CParticleMediumCollection::CbSimDispatchMask(&_SimDispatchMask));
+	m_ParticleMediumCollection->SetSimDispatchFallbackOnCPUCallback(PopcornFX::CParticleMediumCollection::CbSimDispatchFallbackOnCPU(&_SimDispatchFallbackOnCPU));
 
 	if (updateManager != null)
 	{
@@ -306,8 +328,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 
 //----------------------------------------------------------------------------
 // Simulation callback dispatch mask: Disable renderers not supported on GPU
-
-bool	CParticleScene::_SimDispatchMask(const PopcornFX::CParticleDescriptor *descriptor, PopcornFX::SSimDispatchHint &outHint)
+bool	CParticleScene::_SimDispatchFallbackOnCPU(const PopcornFX::CParticleDescriptor *descriptor)
 {
 	const PopcornFX::SParticleDeclaration	&decl = descriptor->ParticleDeclaration();
 
@@ -315,24 +336,14 @@ bool	CParticleScene::_SimDispatchMask(const PopcornFX::CParticleDescriptor *desc
 	if (!decl.m_LightRenderers.Empty() ||
 		!decl.m_SoundRenderers.Empty() ||
 		!decl.m_RibbonRenderers.Empty() ||
-		!decl.m_TriangleRenderers.Empty() ||
-		!decl.m_DecalRenderers.Empty())
+		!decl.m_TriangleRenderers.Empty())
 	{
-		outHint.m_AllowedDispatchMask &= ~(1 << PopcornFX::SSimDispatchHint::Location_GPU);	// can't draw any of these on the GPU
+		return true;
 	}
-	const bool	preferGPU = descriptor->PreferredSimLocation() == PopcornFX::SimLocationHint_GPU;
-
-	// if we are allowed on GPU & layer is set to 'GPU', prefer GPU, otherwise prefer CPU:
-	if (outHint.m_AllowedDispatchMask & (1 << PopcornFX::SSimDispatchHint::Location_GPU) && preferGPU)
-		outHint.m_PreferredDispatchMask = (1 << PopcornFX::SSimDispatchHint::Location_GPU);
-	else
-		outHint.m_PreferredDispatchMask = (1 << PopcornFX::SSimDispatchHint::Location_CPU);
+	return descriptor->PreferredSimLocation() != PopcornFX::SimLocationHint_GPU;
 #else	// (PK_HAS_GPU != 0)
-	outHint.m_PreferredDispatchMask = (1 << PopcornFX::SSimDispatchHint::Location_CPU);
-	outHint.m_AllowedDispatchMask = outHint.m_PreferredDispatchMask;
-#endif	// (PK_HAS_GPU != 0)
-
 	return true;
+#endif	//
 }
 
 //----------------------------------------------------------------------------
@@ -641,6 +652,7 @@ void	CParticleScene::StartUpdate(float dt)
 	}
 
 	_PostUpdate_Events();
+	_PostUpdate_Decals();
 }
 
 //----------------------------------------------------------------------------
@@ -700,6 +712,7 @@ void	CParticleScene::_Clear()
 
 	_Clear_Emitters();
 	_Clear_Events();
+	_Clear_Decals();
 }
 
 //----------------------------------------------------------------------------
@@ -713,11 +726,7 @@ void	CParticleScene::_Clear()
 //----------------------------------------------------------------------------
 
 #if RHI_RAYTRACING
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingInstanceCollector &context)
-#else
-void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingMaterialGatheringContext &context, TArray<FRayTracingInstance> &outRayTracingInstances)
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 {
 	// Right now, uses a reference view (first view).
 	// First thing called during render loop, before init views
@@ -735,11 +744,7 @@ void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *s
 	GPU_PreRender();
 #endif // PK_HAS_GPU != 0
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 	if (!m_RenderSubView.Setup_GetDynamicRayTracingInstances(sceneProxy, context))
-#else
-	if (!m_RenderSubView.Setup_GetDynamicRayTracingInstances(sceneProxy, context, outRayTracingInstances))
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 		return;
 	if (!PK_VERIFY(m_RenderSubView.BBViews().Count() > 0))
 		return;
@@ -763,7 +768,6 @@ void	CParticleScene::GetDynamicMeshElements(
 	FPopcornFXPlugin::RegisterRenderThreadIFN();
 
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::GetDynamicMeshElements", POPCORNFX_UE_PROFILER_COLOR);
-
 	SCOPE_CYCLE_COUNTER(STAT_PopcornFX_GDMETime);
 
 #if (PK_HAS_GPU != 0)
@@ -809,12 +813,12 @@ void	CParticleScene::GatherSimpleLights(const FSceneViewFamily& ViewFamily, FSim
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::GatherSimpleLights", POPCORNFX_UE_PROFILER_COLOR);
 	SCOPE_CYCLE_COUNTER(STAT_PopcornFX_GatherSimpleLightsTime);
-#if ENGINE_MAJOR_VERSION >= 5 && ENGINE_MINOR_VERSION >= 6
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 	PK_ASSERT(IsInAnyRenderingThread());
 #else
 	// Be careful: IsInParallelRenderingThread() can mean in any other thread than the GameThread
 	PK_ASSERT(IsInRenderingThread() || IsInParallelRenderingThread());
-#endif
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 
 	m_RenderBatchManager->GatherSimpleLights(ViewFamily, OutParticleLights);
 }
@@ -1007,7 +1011,6 @@ void	CParticleScene::_PostUpdate_Emitters(float dt)
 	}
 }
 
-
 //----------------------------------------------------------------------------
 
 void	CParticleScene::_Clear_Emitters()
@@ -1033,6 +1036,85 @@ void	CParticleScene::_Clear_Emitters()
 		}
 		m_Emitters.Clear();
 	}
+}
+
+//----------------------------------------------------------------------------
+
+void CParticleScene::ClearDecals(CBatchDrawer_Decal_CPUBB *drawer, bool removeEntry)
+{
+	const UWorld	*world = SceneComponent()->GetWorld();
+	if (!IsValid(world))
+		return;
+
+	TPair<u32, TArray<FDeferredDecalProxy*>>	*activeDecals = m_ActiveDecals.Find(drawer);
+	if (activeDecals == nullptr)
+		return;
+
+	TArray<FDeferredDecalProxy*>	&activeDecalProxies = activeDecals->Value;
+	const u32	activeDecalProxiesCount = (u32)activeDecalProxies.Num();
+	if (activeDecalProxiesCount == 0)
+		return;
+
+	// Create deletion updates for all decals
+	m_DecalUpdates.AddDefaulted(activeDecalProxiesCount);
+	for (u32 i = 0; i < activeDecalProxiesCount; ++i)
+	{
+		m_DecalUpdates[i].OperationType = FDeferredDecalUpdateParams::EOperationType::RemoveFromSceneAndDelete;
+		m_DecalUpdates[i].DecalProxy = activeDecalProxies[i];
+	}
+
+	// Send updates to RT
+	world->Scene->BatchUpdateDecals(MoveTemp(m_DecalUpdates));
+
+	// Remove batch drawer entry or clear its array
+	if (removeEntry)
+		m_ActiveDecals.Remove(drawer);
+	else
+		activeDecalProxies.Empty();
+}
+
+//----------------------------------------------------------------------------
+
+void CParticleScene::_PostUpdate_Decals()
+{
+	const UWorld	*world = SceneComponent()->GetWorld();
+	if (!IsValid(world))
+		return;
+
+	for (auto iter = m_ActiveDecals.CreateIterator(); iter; ++iter)
+	{
+		u32								&activeDecalCounter = iter.Value().Key;
+		TArray<FDeferredDecalProxy*>	&activeDecalProxies = iter.Value().Value;
+
+		// Remove any unused decals
+		while ((u32)activeDecalProxies.Num() > activeDecalCounter)
+		{
+			FDeferredDecalUpdateParams	&updateParams = m_DecalUpdates.AddDefaulted_GetRef();
+			updateParams.OperationType = FDeferredDecalUpdateParams::EOperationType::RemoveFromSceneAndDelete;
+			updateParams.DecalProxy = activeDecalProxies.Pop();
+		}
+
+		// Remove material entries with no decals
+		if (activeDecalCounter == 0)
+			iter.RemoveCurrent();
+
+		// Reset per-frame counter
+		activeDecalCounter = 0;
+	}
+
+	// Send updates to RT and reset the array
+	if (m_DecalUpdates.Num() > 0)
+		world->Scene->BatchUpdateDecals(MoveTemp(m_DecalUpdates));
+	m_DecalUpdates.Empty(m_DecalUpdates.Max());
+}
+
+//----------------------------------------------------------------------------
+
+void CParticleScene::_Clear_Decals()
+{
+	for (auto &iter : m_ActiveDecals)
+		ClearDecals(iter.Key, false);
+	m_ActiveDecals.Empty();
 }
 
 //----------------------------------------------------------------------------
@@ -1103,11 +1185,7 @@ void	CParticleScene::_PreUpdate_Views()
 					PK_NAMEDSCOPEDPROFILE_C("CParticleScene::_PreUpdate_Views BuildProjectionMatrix", POPCORNFX_UE_PROFILER_COLOR);
 
 					FSceneViewProjectionData	projectionData;
-#if (ENGINE_MAJOR_VERSION == 5)
 					if (localPlayer->GetProjectionData(viewport, projectionData, INDEX_NONE)) // Returns false if viewport or player is invalid
-#else
-					if (localPlayer->GetProjectionData(viewport, eSSP_FULL, projectionData)) // Returns false if viewport or player is invalid
-#endif // (ENGINE_MAJOR_VERSION == 5)
 					{
 						const CFloat4x4	worldToView = ToPk(FTranslationMatrix(-projectionData.ViewOrigin * scaleUEToPk) * projectionData.ViewRotationMatrix);
 
@@ -1371,11 +1449,7 @@ class FBlockQueryCallbackChaos : public ICollisionQueryFilterCallbackBase
 public:
 	virtual ~FBlockQueryCallbackChaos() {}
 	virtual ECollisionQueryHitType PostFilter(const FCollisionFilterData &filterData, const ChaosInterface::FQueryHit &hit) override { return ECollisionQueryHitType::Block; }
-#if (ENGINE_MAJOR_VERSION == 5)
 	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticle &actor) override
-#else
-	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::TGeometryParticle<float, 3> &actor) override
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	{
 		const FCollisionFilterData	&shapeData = shape.GetQueryData();
 		const ECollisionChannel		shapeChannel = GetCollisionChannel(shapeData.Word3);
@@ -1395,21 +1469,12 @@ public:
 		return ECollisionQueryHitType::Block;
 	}
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	virtual ECollisionQueryHitType PostFilter(const FCollisionFilterData &filterData, const ChaosInterface::FPTQueryHit &hit) override { return ECollisionQueryHitType::Block; }
 	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticleHandle &actor)
 	{
 		// TODO
 		return ECollisionQueryHitType::None;
 	}
-#else
-#	if PHYSICS_INTERFACE_PHYSX
-	virtual ECollisionQueryHitType	PostFilter(const FCollisionFilterData& FilterData, const physx::PxQueryHit& Hit) { PK_ASSERT_NOT_REACHED(); return ECollisionQueryHitType::None; }
-	virtual ECollisionQueryHitType	PreFilter(const FCollisionFilterData& FilterData, const physx::PxShape& Shape, physx::PxRigidActor& Actor) { PK_ASSERT_NOT_REACHED(); return ECollisionQueryHitType::None; }
-	virtual PxQueryHitType::Enum	preFilter(const PxFilterData& filterData, const PxShape* shape, const PxRigidActor* actor, PxHitFlags& queryFlags) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
-	virtual PxQueryHitType::Enum	postFilter(const PxFilterData& filterData, const PxQueryHit& hit) { PK_ASSERT_NOT_REACHED(); return PxQueryHitType::eNONE; }
-#	endif // PHYSICS_INTERFACE_PHYSX
-#endif // (ENGINE_MAJOR_VERSION == 5)
 };
 #endif
 
@@ -1418,7 +1483,6 @@ void	CParticleScene::RayTracePacket(
 	const PopcornFX::Colliders::SRayPacket &packet,
 	const PopcornFX::Colliders::STracePacket &results)
 {
-	SCOPED_NAMED_EVENT(CParticleScene_RayTracePacket, FColor::Purple);
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::RayTracePacket", POPCORNFX_UE_PROFILER_COLOR);
 
 	RAYTRACE_PROFILE_DECLARE(
@@ -1812,13 +1876,8 @@ void	CParticleScene::RayTracePacket(
 		filterData.Word3 |= EPDF_ComplexCollision;
 
 	EQueryFlags						queryFlags = EQueryFlags::AnyHit | EQueryFlags::PreFilter;
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 	ChaosInterface::FQueryFilterData	queryFilterData = ChaosInterface::MakeQueryFilterData(filterData, queryFlags, FCollisionQueryParams());
 	ChaosInterface::FQueryDebugParams	debugParams;
-#else
-	FQueryFilterData					queryFilterData = ChaosInterface::MakeQueryFilterData(filterData, queryFlags, FCollisionQueryParams());
-	FQueryDebugParams					debugParams;
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 	FCollisionShape						sphere;
 
 	// Note: There doesn't seem to be a lock necessary for the Chaos accel struct
@@ -1867,11 +1926,7 @@ void	CParticleScene::RayTracePacket(
 							const FTransform	startTM = FTransform(FVector(ToUE(start)));
 
 							FSingleHitBuffer<FHitSweep>		hitBuffer;
-#if (ENGINE_MAJOR_VERSION == 5)
 							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callback, debugParams);
-#else
-							sqAccelerator.Sweep(Chaos::TSphere<float, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, _Reinterpret<FVector>(rayDir), rayLen, hitBuffer, outFlags, queryFilterData, callback, debugParams);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 							if (hitBuffer.HasBlockingHit())
 							{
 								resultBufferAndIndex.m_HitLocation = *hitBuffer.GetBlock();
@@ -2375,33 +2430,24 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		// Fake a UAV transition so UE is happy, and disables UAV overlap (undefined behavior, generates random artefacts in the D3D11 GPU sim)
 		// This is ugly, but they removed the implementations of FD3D11DynamicRHI::RHIBeginUAVOverlap/RHIEndUAVOverlap in 4.26.
 		FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
-#if (ENGINE_MAJOR_VERSION == 5)
 		if (self->m_D3D11_DummyResource == null)
 		{
 			check(self->m_D3D11_DummyView == null);
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 7)
+			self->m_D3D11_DummyResource = new FD3D11Buffer(nullptr, FRHIBufferCreateDesc());
+#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferCreateDesc());
-#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#else
 			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferDesc());
-#endif
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 		self->m_D3D11_DummyResource->AddRef();
 
 			FRHIViewDesc	viewDesc;
 			viewDesc.Common.ViewType = FRHIViewDesc::EViewType::BufferUAV;
 			self->m_D3D11_DummyView = new FRHIUnorderedAccessView(self->m_D3D11_DummyResource, viewDesc);
-#		if (ENGINE_MINOR_VERSION >= 5)
 			self->m_D3D11_DummyView->AddRef();
-#		endif
-#else
-			self->m_D3D11_DummyResource = new FRHIBuffer();
-			self->m_D3D11_DummyView = new FRHIUnorderedAccessView(self->m_D3D11_DummyResource);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 		RHICmdList.Transition(FRHITransitionInfo(self->m_D3D11_DummyView, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
-#else
-		RHICmdList.Transition(FRHITransitionInfo((FRHIUnorderedAccessView*)0x1234, ERHIAccess::UAVGraphics, ERHIAccess::UAVCompute));
-#endif // (ENGINE_MAJOR_VERSION == 5)
 		RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 
 		for (u32 i = 0; i < m_Exec_D3D11_Tasks.Count(); ++i)
@@ -2442,15 +2488,10 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 			updateManager_D3D11->BindD3D11(null, null);
 		}
 	}
-#if (ENGINE_MAJOR_VERSION == 5)
 	if (m_D3D11_DummyResource != null && m_D3D11_DummyView != null)
 	{
 		// Delete view, release resource for proper ref count tracking.
-#	if (ENGINE_MINOR_VERSION <= 4)
-		m_D3D11_DummyView->Delete();
-#	else
 		m_D3D11_DummyView->Release();
-#	endif
 		m_D3D11_DummyResource->Release();
 		m_D3D11_DummyView = null;
 		m_D3D11_DummyResource = null;
@@ -2460,7 +2501,6 @@ void	CParticleScene::D3D11_Destroy() // GPU_Destroy()
 		check(m_D3D11_DummyResource == null);
 		check(m_D3D11_DummyView == null);
 	}
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	m_D3D11_DeferedContext = null;
 	m_D3D11_Device = null;
 
@@ -2608,11 +2648,7 @@ namespace
 #endif
 
 #if	(PK_PARTICLES_HAS_STATS != 0)
-#	if (ENGINE_MAJOR_VERSION == 5)
 			m_DirectCommandQueue = GetID3D12DynamicRHI()->RHIGetCommandQueue();
-#	else
-			m_DirectCommandQueue = dynamicRHI->RHIGetD3DCommandQueue(); // Returns the direct command queue
-#	endif // (ENGINE_MAJOR_VERSION == 5)
 #endif // (PK_PARTICLES_HAS_STATS != 0)
 			if (!PK_VERIFY(m_Device != null))
 			{
@@ -2636,13 +2672,7 @@ static void		_D3D12_ExecuteTasksArray(CParticleScene *self)
 	auto			&m_Exec_D3D12_Tasks = self->m_Exec_D3D12_Tasks;
 	//auto			&m_UpdateLock = self->m_UpdateLock;
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	ID3D12CommandQueue	*commandQueue = GetID3D12DynamicRHI()->RHIGetCommandQueue();
-#else
-	PK_RELEASE_ASSERT(GDynamicRHI != null);
-	FD3D12DynamicRHI	*dynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
-	ID3D12CommandQueue	*commandQueue = dynamicRHI->RHIGetD3DCommandQueue(); // Returns the direct command queue
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	// TODO: Investigate performance when using the compute command queue
 
@@ -2663,7 +2693,17 @@ static void		_D3D12_ExecuteTasksArray(CParticleScene *self)
 
 void	CParticleScene::D3D12_SubmitSimCommandLists()
 {
-	_D3D12_ExecuteTasksArray(this);
+	// Note: How this works to execute sim command lists at the very beginning of the GPU frame
+	// - This method is bound to the end of the render thread frame with FCoreDelegates::OnEndFrameRT
+	// - ExecuteOnRHIThread_DoNotWait requests execution on the RHI thread (waiting for other dispatches to be done, without blocking the render thread)
+	// - _D3D12_ExecuteTasksArray can finally dispatch the D3D12 command lists on the right thread at the right time, so they are executed on the GPU at the start of the next frame
+
+	CParticleScene	*self = this;
+	ExecuteOnRHIThread_DoNotWait(
+		[self]()
+		{
+			_D3D12_ExecuteTasksArray(self);
+		});
 }
 
 //----------------------------------------------------------------------------
@@ -2690,7 +2730,7 @@ bool	CParticleScene::D3D12_InitIFN()
 	if (D3D12Ready())
 		return true;
 
-	FCoreDelegates::OnBeginFrameRT.AddRaw(this, &CParticleScene::D3D12_SubmitSimCommandLists);
+	FCoreDelegates::OnEndFrameRT.AddRaw(this, &CParticleScene::D3D12_SubmitSimCommandLists);
 
 	PK_ASSERT(m_D3D12_Device == null);
 
@@ -2755,7 +2795,7 @@ void	CParticleScene::D3D12_Destroy() // GPU_Destroy()
 			updateManager_D3D12->UnbindContext();
 	}
 	m_D3D12_Device = null;
-	FCoreDelegates::OnBeginFrameRT.RemoveAll(this);
+	FCoreDelegates::OnEndFrameRT.RemoveAll(this);
 }
 
 //----------------------------------------------------------------------------
@@ -3320,10 +3360,10 @@ namespace	EPopcornFXPayloadType
 
 //----------------------------------------------------------------------------
 
-bool	CParticleScene::GetPayloadValue(const FName &payloadName, EPopcornFXPayloadType::Type expectedPayloadType, void *outValue) const
+bool	CParticleScene::GetPayloadValue(const FString &payloadName, EPopcornFXPayloadType::Type expectedPayloadType, void *outValue) const
 {
 	PK_ASSERT(IsInGameThread());
-	PK_ASSERT(!payloadName.IsNone() && payloadName.IsValid());
+	PK_ASSERT(!payloadName.IsEmpty());
 	PK_ASSERT(outValue != null);
 
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::GetPayloadValue", POPCORNFX_UE_PROFILER_COLOR);
@@ -3334,12 +3374,12 @@ bool	CParticleScene::GetPayloadValue(const FName &payloadName, EPopcornFXPayload
 		return false;
 	}
 
-	const PopcornFX::CStringId		payloadNameID(ToPk(payloadName.ToString())); // Expensive
+	const PopcornFX::CStringId		payloadNameID(ToPk(payloadName)); // Expensive
 	const PopcornFX::CGuid			payloadIndex = m_CurrentPayloadView->m_Payloads.IndexOf(payloadNameID);
 
 	if (!payloadIndex.Valid())
 	{
-		UE_LOG(LogPopcornFXScene, Warning, TEXT("Get Payload Value: Cannot retrieve event payload '%s', no event payload registered."), *payloadName.ToString());
+		UE_LOG(LogPopcornFXScene, Warning, TEXT("Get Payload Value: Cannot retrieve event payload '%s', no event payload registered."), *payloadName);
 		return false;
 	}
 
@@ -3347,13 +3387,13 @@ bool	CParticleScene::GetPayloadValue(const FName &payloadName, EPopcornFXPayload
 
 	if (payload.m_PayloadType != expectedPayloadType)
 	{
-		UE_LOG(LogPopcornFXScene, Warning, TEXT("Get Payload Value: mismatching types for event payload '%s'"), *payloadName.ToString());
+		UE_LOG(LogPopcornFXScene, Warning, TEXT("Get Payload Value: mismatching types for event payload '%s'"), *payloadName);
 		return false;
 	}
 
 	if (!PK_VERIFY(m_CurrentPayloadView->m_CurrentParticle < payload.m_Values.Count()))
 	{
-		UE_LOG(LogPopcornFXScene, Warning, TEXT("Get Payload Value: Couldn't find event payload '%s' (payload doesn't exist)"), *payloadName.ToString());
+		UE_LOG(LogPopcornFXScene, Warning, TEXT("Get Payload Value: Couldn't find event payload '%s' (payload doesn't exist)"), *payloadName);
 		return false;
 	}
 

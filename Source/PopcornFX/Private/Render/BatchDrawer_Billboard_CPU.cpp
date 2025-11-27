@@ -693,11 +693,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vertexFactory->m_BillboardCommonUniformBuffer = FPopcornFXBillboardCommonUniformsRef::CreateUniformBufferImmediate(commonUniformsBillboard, UniformBuffer_SingleDraw);
 
 			PK_ASSERT(!vertexFactory->IsInitialized());
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			vertexFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
-#else
-			vertexFactory->InitResource();
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 
 		if (!PK_VERIFY(vertexFactory->IsInitialized()))
@@ -724,13 +720,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 		meshElement.MaxVertexIndex = m_TotalVertexCount - 1;
 
 		FDynamicPrimitiveUniformBuffer	&dynamicPrimitiveUniformBuffer = collector->AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 		dynamicPrimitiveUniformBuffer.Set(FRHICommandListExecutor::GetImmediateCommandList(), localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
-#elif (ENGINE_MAJOR_VERSION == 5)
-		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
-#else
-		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, drawsVelocity, outputVelocity);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 		meshElement.PrimitiveUniformBuffer = dynamicPrimitiveUniformBuffer.UniformBuffer.GetUniformBufferRHI();
 
 		PK_ASSERT(meshElement.NumPrimitives > 0);

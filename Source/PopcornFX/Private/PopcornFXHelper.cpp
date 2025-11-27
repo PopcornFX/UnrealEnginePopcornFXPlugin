@@ -73,11 +73,7 @@ FString	ToUE(const PopcornFX::CStringUnicode &str)
 #if WITH_EDITOR
 EAppReturnType::Type	OpenMessageBox(EAppMsgType::Type messageType, const FText& message, const FText& title)
 {
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	return FMessageDialog::Open(messageType, message, title);
-#else
-	return FMessageDialog::Open(messageType, message, &title);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 #endif
 

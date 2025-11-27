@@ -12,9 +12,7 @@
 #include "PopcornFXSettings.h"
 #include "RendererInterface.h"
 
-#if (ENGINE_MAJOR_VERSION == 5)
-#	include "UObject/ObjectSaveContext.h"
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#include "UObject/ObjectSaveContext.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_base_object/include/hbo_file.h>
@@ -256,11 +254,7 @@ private:
 #if WITH_EDITOR
 	// Global Editor callbacks
 	FDelegateHandle						m_OnObjectSavedDelegateHandle;
-#if (ENGINE_MAJOR_VERSION == 5)
 	void								_OnObjectSaved(UObject *object, FObjectPreSaveContext context);
-#else
-	void								_OnObjectSaved(UObject *object);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	void								_UpdateSimInterfaceBindings(const FString &libraryDir);
 #endif // WITH_EDITOR
 

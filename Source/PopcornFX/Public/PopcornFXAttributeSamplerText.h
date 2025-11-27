@@ -13,6 +13,17 @@
 
 struct	FAttributeSamplerTextData;
 
+
+USTRUCT(BlueprintType)
+struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesText : public FPopcornFXAttributeSamplerProperties
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** The Text to be sampled */
+	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadOnly, EditAnywhere)
+	FString		Text;
+};
+
 /** Can override an Attribute Sampler **Text** by a **FString**. */
 UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
 class POPCORNFX_API UPopcornFXAttributeSamplerText : public UPopcornFXAttributeSampler
@@ -20,9 +31,9 @@ class POPCORNFX_API UPopcornFXAttributeSamplerText : public UPopcornFXAttributeS
 	GENERATED_UCLASS_BODY()
 
 public:
-	/** The Text to be sampled */
-	UPROPERTY(Category="PopcornFX AttributeSampler", BlueprintReadOnly, EditAnywhere)
-	FString		Text;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
+	FPopcornFXAttributeSamplerPropertiesText	Properties;
 
 	UFUNCTION(BlueprintCallable, Category="PopcornFX|AttributeSampler")
 	void		SetText(FString InText);
@@ -33,8 +44,13 @@ public:
 	void		PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif // WITH_EDITOR
 
+	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
+#if WITH_EDITOR
+	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
+#endif
+
 	// PopcornFX Internal
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
 private:
 	FAttributeSamplerTextData	*m_Data;

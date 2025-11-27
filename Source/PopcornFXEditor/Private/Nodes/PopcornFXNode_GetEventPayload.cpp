@@ -24,7 +24,7 @@ UPopcornFXNode_GetEventPayload::UPopcornFXNode_GetEventPayload(const FObjectInit
 
 	SetValuesPrefix("Out");
 
-	m_CustomParameters.Add(TPair<FName, FName>(TPairInitializer<FName, FName>("PayloadName", UEdGraphSchema_K2::PC_Name)));
+	m_CustomParameters.Add(TPair<FName, FName>(TPairInitializer<FName, FName>("PayloadName", UEdGraphSchema_K2::PC_String)));
 	m_CustomParameters.Add(TPair<FName, FName>(TPairInitializer<FName, FName>("InApplyGlobalScale", UEdGraphSchema_K2::PC_Boolean)));
 
 	m_CustomParametersTooltip.Add("Payload Name\nName\n\nName of the payload to retrieve");

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "PopcornFXAttributeSampler.h"
+
 #include "PopcornFXAttributeList.generated.h"
 
 class	AActor;
@@ -49,10 +50,10 @@ struct FPopcornFXAttributeDesc
 	GENERATED_USTRUCT_BODY();
 
 	UPROPERTY()
-	FName					m_AttributeFName;
+	FString					m_AttributeName;
 
 	UPROPERTY()
-	FName					m_AttributeCategoryName;
+	FString					m_AttributeCategoryName;
 
 	UPROPERTY()
 	uint32					m_AttributeType;
@@ -62,9 +63,6 @@ struct FPopcornFXAttributeDesc
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
 	TEnumAsByte<EPopcornFXAttributeSemantic::Type>	m_AttributeSemantic;
-
-	UPROPERTY(Transient)
-	uint32					m_IsExpanded : 1;
 
 	UPROPERTY()
 	FVector					m_AttributeEulerAngles;
@@ -77,28 +75,26 @@ struct FPopcornFXAttributeDesc
 #endif // WITH_EDITORONLY_DATA
 
 	FPopcornFXAttributeDesc()
-	:	m_AttributeFName()
+	:	m_AttributeName()
 	,	m_AttributeCategoryName()
 	,	m_AttributeType(~0U)
 	,	m_IsPrivate(false)
 #if WITH_EDITORONLY_DATA
 	,	m_AttributeSemantic(EPopcornFXAttributeSemantic::AttributeSemantic_None)
-	,	m_IsExpanded(false)
 	,	m_AttributeEulerAngles(FVector(0.f, 0.f, 0.f))
 	,	m_DropDownMode(EPopcornFXAttributeDropDownMode::AttributeDropDownMode_None)
 #endif // WITH_EDITORONLY_DATA
 	{ }
 
-	bool					Valid() const { return m_AttributeFName.IsValid() && !m_AttributeFName.IsNone(); }
-	FName					AttributeFName() const { return m_AttributeFName; }
-	FString					AttributeName() const { return (Valid() ? m_AttributeFName.ToString() : FString()); }
+	bool					Valid() const { return !m_AttributeName.IsEmpty(); }
+	FName					AttributeFName() const { return FName(m_AttributeName); }
 	bool					ValidAttributeType() const { return m_AttributeType != ~0U; }
 	uint32					AttributeBaseTypeID() const { verify(ValidAttributeType());  return m_AttributeType; }
 
 	void		Reset()
 	{
-		m_AttributeFName = FName();
-		m_AttributeCategoryName = FName();
+		m_AttributeName = FString();
+		m_AttributeCategoryName = FString();
 		m_AttributeType = ~0U;
 #if WITH_EDITORONLY_DATA
 		m_AttributeSemantic = EPopcornFXAttributeSemantic::AttributeSemantic_None;
@@ -110,7 +106,7 @@ struct FPopcornFXAttributeDesc
 
 	bool		ExactMatch(const FPopcornFXAttributeDesc &other) const
 	{
-		return Valid() && m_AttributeFName == other.m_AttributeFName && m_AttributeType == other.m_AttributeType && m_AttributeCategoryName == other.m_AttributeCategoryName;
+		return Valid() && m_AttributeName == other.m_AttributeName && m_AttributeType == other.m_AttributeType && m_AttributeCategoryName == other.m_AttributeCategoryName;
 	}
 };
 
@@ -119,74 +115,86 @@ struct FPopcornFXSamplerDesc
 {
 	GENERATED_USTRUCT_BODY();
 
-	UPROPERTY(Category="PopcornFX AttributeSampler", VisibleAnywhere)
-	FName						m_SamplerFName;
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
+	FString												m_SamplerName;
 
-	UPROPERTY(Category="PopcornFX AttributeSampler", VisibleAnywhere)
-	FName						m_AttributeCategoryName;
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
+	FString												m_AttributeCategoryName;
 
-	UPROPERTY(Category="PopcornFX AttributeSampler", VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
 	TEnumAsByte<EPopcornFXAttributeSamplerType::Type>	m_SamplerType;
 
-	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
-	AActor						*m_AttributeSamplerActor;
+	/** The actor that contains a sampler component to use for this attribute */
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	AActor												*m_AttributeSamplerActor;
 
-	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
-	FName						m_AttributeSamplerComponentProperty;
+	/** The name of the sampler component in the target actor. Will try to use the root component if none is specified */
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	FString												m_AttributeSamplerComponentName;
+
+	/**
+		False if we can't find any sampler component with this name in the target actor
+		Target actor can't be invalid since it falls back on the emitter's owner in not given
+	*/
+	UPROPERTY(VisibleAnywhere)
+	mutable bool										m_IsSamplerComponentValid = false; // Useless?
+
+	/** Use an external sampler for this attribute */
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	bool												m_UseExternalSampler;
+
+	/** Restart the emitter when this sampler changes? */
+	UPROPERTY(EditAnywhere)
+	bool												m_RestartWhenSamplerChanges = true;
 
 	UPROPERTY()
 	bool					m_IsPrivate;
-#if WITH_EDITORONLY_DATA
-	UPROPERTY(Transient)
-	uint32						m_IsExpanded : 1;
-#endif // WITH_EDITORONLY_DATA
 
-	bool						m_NeedUpdate;
+	bool					m_NeedUpdate;
 
 	FPopcornFXSamplerDesc()
-	:	m_SamplerFName()
+	:	m_SamplerName()
 	,	m_AttributeCategoryName()
 	,	m_SamplerType(EPopcornFXAttributeSamplerType::None)
 	,	m_AttributeSamplerActor(nullptr)
+	,	m_AttributeSamplerComponentName()
+	,	m_UseExternalSampler(false)
 	,	m_IsPrivate(false)
-#if WITH_EDITORONLY_DATA
-	,	m_IsExpanded(false)
-#endif // WITH_EDITORONLY_DATA
 	,	m_NeedUpdate(false)
 	{ }
 
-	bool		Valid() const { return m_SamplerFName.IsValid() && !m_SamplerFName.IsNone(); }
-	FName		SamplerFName() const { return m_SamplerFName; }
-	FString		SamplerName() const { return (Valid() ? m_SamplerFName.ToString() : FString()); }
+	bool		Valid() const { return true; }
+	FName		SamplerFName() const { return FName(m_SamplerName); }
 	EPopcornFXAttributeSamplerType::Type	SamplerType() const { return m_SamplerType; }
 
-	UPopcornFXAttributeSampler		*ResolveAttributeSampler(UPopcornFXEmitterComponent *emitter, UObject *enableLogForOwner) const;
+	UPopcornFXAttributeSampler		*ResolveExternalAttributeSampler(UPopcornFXEmitterComponent *emitter, const UObject *enableLogForOwner) const;
+	UPopcornFXAttributeSampler		*ResolveAttributeSampler(UPopcornFXEmitterComponent *emitter, const UObject *enableLogForOwner) const;
 
 	void		Reset()
 	{
-		m_SamplerFName = FName();
-		m_AttributeCategoryName = FName();
+		m_SamplerName = FString();
+		m_AttributeCategoryName = FString();
 		m_SamplerType = EPopcornFXAttributeSamplerType::None;
 	}
 
 	void		CopyValuesFrom(const FPopcornFXSamplerDesc &other)
 	{
 		m_AttributeSamplerActor = other.m_AttributeSamplerActor;
-		m_AttributeSamplerComponentProperty = other.m_AttributeSamplerComponentProperty;
+		m_AttributeSamplerComponentName = other.m_AttributeSamplerComponentName;
 	}
 
 	void		SwapValuesWith(FPopcornFXSamplerDesc &other)
 	{
 		Swap(m_AttributeSamplerActor, other.m_AttributeSamplerActor);
-		Swap(m_AttributeSamplerComponentProperty, other.m_AttributeSamplerComponentProperty);
+		Swap(m_AttributeSamplerComponentName, other.m_AttributeSamplerComponentName);
 	}
 
-	void		ResetValue() { m_AttributeSamplerActor = nullptr; m_AttributeSamplerComponentProperty = FName(); }
-	bool		ValueIsEmpty() const { return m_AttributeSamplerActor == nullptr && m_AttributeSamplerComponentProperty.IsNone(); }
+	void		ResetValue() { m_AttributeSamplerActor = nullptr; m_AttributeSamplerComponentName = FString(); }
+	bool		ValueIsEmpty() const { return m_AttributeSamplerActor == nullptr && m_AttributeSamplerComponentName.IsEmpty(); }
 
 	bool		ExactMatch(const FPopcornFXSamplerDesc &other) const
 	{
-		return Valid() && m_SamplerFName == other.m_SamplerFName && m_SamplerType == other.m_SamplerType && m_AttributeCategoryName == other.m_AttributeCategoryName;
+		return Valid() && m_SamplerName == other.m_SamplerName && m_SamplerType == other.m_SamplerType && m_AttributeCategoryName == other.m_AttributeCategoryName;
 	}
 };
 
@@ -196,7 +204,7 @@ struct	FPopcornFXAttributeValue
 	uint32	m_Value[4];
 };
 
-UCLASS(MinimalAPI, EditInlineNew, DefaultToInstanced)
+UCLASS(MinimalAPI)
 class UPopcornFXAttributeList : public UObject
 {
 	GENERATED_UCLASS_BODY()
@@ -217,35 +225,28 @@ public:
 
 	const UPopcornFXAttributeList		*GetDefaultAttributeList(UPopcornFXEffect *effect) const; // can be self
 
-	void			ResetToDefaultValues(UPopcornFXEffect *effect);
+	void			ResetToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
 
 	void			RefreshAttributeSamplers(UPopcornFXEmitterComponent *emitter, bool reload = false) { if (m_Samplers.Num() > 0) _RefreshAttributeSamplers(emitter, reload); }
-	void			RefreshAttributes(UPopcornFXEmitterComponent *emitter) { if (m_Attributes.Num() > 0) _RefreshAttributes(emitter); }
+	void			RefreshAttributes(const UPopcornFXEmitterComponent *emitter) { if (m_Attributes.Num() > 0) _RefreshAttributes(emitter); }
 
 	void			Scene_PreUpdate(UPopcornFXEmitterComponent *emitter, float deltaTime);
 #if WITH_EDITOR
 	void			AttributeSamplers_IndirectSelectedThisTick(UPopcornFXEmitterComponent *emitter) const;
 
-	float			GetColumnWidth() const { return m_ColumnWidth; }
-	void			SetColumnWidth(float width) { m_ColumnWidth = width; }
-
 	// Gets & resets restart state
 	bool			GetRestartEmitter() { const bool restartEmitter = m_RestartEmitter; m_RestartEmitter = false; return restartEmitter; }
 
 	uint32			GetCategoryCount() const { return m_Categories.Num(); }
-	FName			GetCategoryName(uint32 categoryId) const { return m_Categories[categoryId]; }
-	bool			IsCategoryExpanded(uint32 categoryId) const;
+	FString			GetCategoryName(uint32 categoryId) const { return m_Categories[categoryId]; }
 
-	void			ToggleExpandedAttributeDetails(uint32 attributeId);
-	void			ToggleExpandedSamplerDetails(uint32 samplerId);
-	void			ToggleExpandedCategoryDetails(uint32 categoryId);
 #endif
 
 	uint32			AttributeCount() const { return m_Attributes.Num(); }
-	int32			FindAttributeIndex(FName fname) const;
+	int32			FindAttributeIndex(const FString &name) const;
 
 	uint32			SamplerCount() const { return m_Samplers.Num(); }
-	int32			FindSamplerIndex(FName fname) const;
+	int32			FindSamplerIndex(const FString &name) const;
 
 	const FPopcornFXAttributeDesc						*GetAttributeDesc(uint32 attributeId) const;
 	const FPopcornFXSamplerDesc							*GetSamplerDesc(uint32 samplerId) const;
@@ -257,7 +258,7 @@ public:
 	void												GetAttribute(uint32 attributeId, FPopcornFXAttributeValue &outValue) const;
 	void												SetAttribute(uint32 attributeId, const FPopcornFXAttributeValue &value, bool fromUI = false);
 
-	bool												SetAttributeSampler(FName samplerName, AActor *actor, FName propertyName);
+	bool												SetAttributeSampler(const FString &samplerName, AActor *actor, const FString &propertyName);
 
 #if WITH_EDITOR
 	float												GetAttributeQuaternionDim(uint32 attributeId, uint32 dim);
@@ -272,18 +273,14 @@ public:
 #endif // WITH_EDITOR
 
 	uint32					FileVersionId() const { return m_FileVersionId; }
-	const UPopcornFXEffect	*Effect() const { return m_Effect; }
+	UPopcornFXEffect		*Effect() const { return m_Effect; }
 
 	// overrides UObject
 	virtual bool	IsSafeForRootSet() const override { return false; }
 	virtual void	PostLoad() override;
 	virtual void	PostInitProperties() override;
 	virtual void	BeginDestroy() override;
-#if (ENGINE_MAJOR_VERSION == 5)
 	virtual void	PreSave(FObjectPreSaveContext SaveContext) override;
-#else
-	virtual void	PreSave(const class ITargetPlatform* TargetPlatform) override;
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	virtual void	Serialize(FArchive& Ar) override;
 #if WITH_EDITOR
 	virtual void	PostEditUndo() override;
@@ -295,6 +292,7 @@ private:
 	void			_RefreshAttributes(const UPopcornFXEmitterComponent *emitter);
 	void			_RefreshAttributeSamplers(UPopcornFXEmitterComponent *emitter, bool reload);
 
+public:
 	UPROPERTY()
 	UPopcornFXEffect					*m_Effect;
 
@@ -309,13 +307,7 @@ private:
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
-	TArray<FName>						m_Categories; // Per effect, we don't need that info per emitter
-
-	UPROPERTY(Transient)
-	TArray<uint32>						m_CategoriesExpanded; // Per instance and effect
-
-	UPROPERTY(Transient)
-	float								m_ColumnWidth;
+	TArray<FString>						m_Categories; // Per effect, we don't need that info per emitter
 
 	bool								m_RestartEmitter = false; // UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
 #endif // WITH_EDITORONLY_DATA
@@ -324,7 +316,6 @@ private:
 	bool								m_HasPendingOneShotReset = false;
 #endif // WITH_EDITOR
 
-public:
 	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere, BlueprintReadOnly, EditFixedSize)
 	TArray<uint8>						m_AttributesRawData;
 

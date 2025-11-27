@@ -9,7 +9,7 @@
 #include "SceneManagement.h"
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 #include "SceneProxies/DeferredDecalProxy.h"
-#endif
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 #include <pk_particles/include/Renderers/ps_renderer_base.h>
 #include <pk_render_helpers/include/batch_jobs/rh_batch_jobs_decal_cpu.h>
@@ -33,6 +33,7 @@ public:
 	~CBatchDrawer_Decal_CPUBB();
 
 	virtual bool	Setup(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::CParticleRenderMedium *owner, const PopcornFX::CFrameCollector *fc, const PopcornFX::CStringId &storageClass) override;
+	virtual void	Destroy() override;
 
 	virtual bool	AreRenderersCompatible(const PopcornFX::CRendererDataBase *rendererA, const PopcornFX::CRendererDataBase *rendererB) const override;
 	static bool		IsCompatible(UMaterialInterface *material);
@@ -68,20 +69,16 @@ private:
 	void	_GetDecalStreams(	SDecalStreams &outStreams, const PopcornFX::Drawers::SDecal_BillboardingRequest &bbRequest, 
 								const PopcornFX::CParticlePageToRender_MainMemory *page, u32 pcount);
 
-	void	_BuildDecalUpdates(	TArray<FDeferredDecalUpdateParams> &decalUpdates, const SDecalStreams &ds, 
-								const UPopcornFXSceneComponent *sceneComp, u32 &activeDecalProxiesCounter, u32 pcount, float globalScale);
+	void	_BuildDecalUpdates(const SDecalStreams &ds, u32 pcount, float globalScale);
 
 	void	_IssueDrawCall_Decal(const SUERenderContext &renderContext, const PopcornFX::SDrawCallDesc &desc);
 
-	void	_OnRenderMediumActiveStateChanged(PopcornFX::CParticleRenderMedium *renderMedium, bool active);
-	void	_OnRenderMediumDestroyed(PopcornFX::CParticleRenderMedium *renderMedium);
 	void	_ReleaseAllDecals();
 
-
 private:
-	PopcornFX::TArray<FDeferredDecalProxy*>	m_ActiveDecalProxies;
-	TWeakObjectPtr<UMaterialInterface>		m_WeakMaterial = nullptr;
-	TWeakObjectPtr<const UWorld>			m_WeakWorld = nullptr;
+	TWeakObjectPtr<const UPopcornFXSceneComponent>	m_WeakSceneComp = nullptr;
+	TWeakObjectPtr<UMaterialInterface>				m_WeakMaterial = nullptr;
+	TWeakObjectPtr<const UWorld>					m_WeakWorld = nullptr;
 };
 
 //----------------------------------------------------------------------------

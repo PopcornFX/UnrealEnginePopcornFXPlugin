@@ -12,10 +12,8 @@
 #include "MeshBatch.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/Material.h"
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
-#	include "MaterialDomain.h"
-#	include "GlobalRenderResources.h"
-#endif
+#include "MaterialDomain.h"
+#include "GlobalRenderResources.h"
 
 #include "GPUSkinPublicDefs.h"
 
@@ -43,11 +41,7 @@ IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXSkelMeshUniforms, "PopcornFXS
 class FPopcornFXSkelMeshVertexFactoryShaderParameters : public FVertexFactoryShaderParameters
 {
 public:
-#if (ENGINE_MAJOR_VERSION == 5)
 	DECLARE_TYPE_LAYOUT(FPopcornFXSkelMeshVertexFactoryShaderParameters, NonVirtual);
-#else
-	DECLARE_INLINE_TYPE_LAYOUT(FPopcornFXSkelMeshVertexFactoryShaderParameters, NonVirtual);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	void	Bind(const FShaderParameterMap &ParameterMap)
 	{
@@ -136,7 +130,6 @@ void	FPopcornFXComputeBoneTransformsCS::Dispatch(FRHICommandList& RHICmdList, co
 {
 	FCSRHIParamRef	shader = RHICmdList.GetBoundComputeShader();
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	FRHIBatchedShaderParameters	&batchedParameters = RHICmdList.GetScratchShaderParameters();
 
 	SetShaderValue(batchedParameters, TotalParticleCount, params.m_TotalParticleCount);
@@ -147,14 +140,6 @@ void	FPopcornFXComputeBoneTransformsCS::Dispatch(FRHICommandList& RHICmdList, co
 	SetUAVParameter(batchedParameters, BoneMatrices, params.m_BoneMatrices);
 
 	RHICmdList.SetBatchedShaderParameters(shader, batchedParameters);
-#else
-	SetShaderValue(RHICmdList, shader, TotalParticleCount, params.m_TotalParticleCount);
-	SetShaderValue(RHICmdList, shader, TotalBoneCount, params.m_TotalBoneCount);
-
-	SetUniformBufferParameter(RHICmdList, shader, GetUniformBufferParameter<FPopcornFXUniforms>(), params.m_UniformBuffer);
-	SetUniformBufferParameter(RHICmdList, shader, GetUniformBufferParameter<FPopcornFXSkelMeshUniforms>(), params.m_MeshUniformBuffer);
-	SetUAVParameter(RHICmdList, shader, BoneMatrices, params.m_BoneMatrices);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 	{
 		PK_NAMEDSCOPEDPROFILE("FPopcornFXComputeBoneTransformsCS::Dispatch");
@@ -200,7 +185,6 @@ void	FPopcornFXComputeMBBoneTransformsCS::Dispatch(FRHICommandList& RHICmdList, 
 {
 	FCSRHIParamRef	shader = RHICmdList.GetBoundComputeShader();
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	FRHIBatchedShaderParameters	&batchedParameters = RHICmdList.GetScratchShaderParameters();
 
 	SetShaderValue(batchedParameters, TotalParticleCount, params.m_TotalParticleCount);
@@ -211,15 +195,6 @@ void	FPopcornFXComputeMBBoneTransformsCS::Dispatch(FRHICommandList& RHICmdList, 
 	SetUAVParameter(batchedParameters, BoneMatrices, params.m_BoneMatrices);
 	SetUAVParameter(batchedParameters, PrevBoneMatrices, params.m_PrevBoneMatrices);
 	RHICmdList.SetBatchedShaderParameters(shader, batchedParameters);
-#else
-	SetShaderValue(RHICmdList, shader, TotalParticleCount, params.m_TotalParticleCount);
-	SetShaderValue(RHICmdList, shader, TotalBoneCount, params.m_TotalBoneCount);
-
-	SetUniformBufferParameter(RHICmdList, shader, GetUniformBufferParameter<FPopcornFXUniforms>(), params.m_UniformBuffer);
-	SetUniformBufferParameter(RHICmdList, shader, GetUniformBufferParameter<FPopcornFXSkelMeshUniforms>(), params.m_MeshUniformBuffer);
-	SetUAVParameter(RHICmdList, shader, BoneMatrices, params.m_BoneMatrices);
-	SetUAVParameter(RHICmdList, shader, PrevBoneMatrices, params.m_PrevBoneMatrices);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 	{
 		PK_NAMEDSCOPEDPROFILE("FPopcornFXComputeMBBoneTransformsCS::Dispatch");
@@ -235,16 +210,10 @@ void	FPopcornFXComputeMBBoneTransformsCS::Dispatch(FRHICommandList& RHICmdList, 
 //
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MAJOR_VERSION == 5)
 IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXSkelMeshVertexFactory, PKUE_SHADER_PATH("PopcornFXSkeletalMeshVertexFactory"),
 	EVertexFactoryFlags::UsedWithMaterials | EVertexFactoryFlags::SupportsDynamicLighting); // TODO
-#else
-IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXSkelMeshVertexFactory, PKUE_SHADER_PATH("PopcornFXSkeletalMeshVertexFactory"), true, false, true, false, false);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
-#if (ENGINE_MAJOR_VERSION == 5)
 IMPLEMENT_TYPE_LAYOUT(FPopcornFXSkelMeshVertexFactoryShaderParameters);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXSkelMeshVertexFactory, SF_Vertex, FPopcornFXSkelMeshVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXSkelMeshVertexFactory, SF_Compute, FPopcornFXSkelMeshVertexFactoryShaderParameters);
@@ -279,20 +248,12 @@ void	FPopcornFXSkelMeshVertexFactory::SetData(const FDataType& InData)
 {
 	check(IsInRenderingThread());
 	Data = InData;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
-#else
-	UpdateRHI();
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 void	FPopcornFXSkelMeshVertexFactory::InitRHI(FRHICommandListBase &RHICmdList)
-#else
-void	FPopcornFXSkelMeshVertexFactory::InitRHI()
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	FVertexDeclarationElementList Elements;
 

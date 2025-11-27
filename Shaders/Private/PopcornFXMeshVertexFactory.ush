@@ -58,9 +58,7 @@ struct FVertexFactoryInterpolantsVSToPS
 	TANGENTTOWORLD_INTERPOLATOR_BLOCK
 
 #if NUM_TEX_COORD_INTERPOLATORS
-#	if NUM_TEX_COORD_INTERPOLATORS
 	float4	TexCoords[(NUM_TEX_COORD_INTERPOLATORS+1)/2] : TEXCOORD0;
-#	endif
 #endif
 
 #if INTERPOLATE_VERTEX_COLOR
@@ -158,10 +156,8 @@ struct FVertexFactoryIntermediates
 
 	float3		Velocity;
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	float4		AtlasRect;
 };
@@ -233,64 +229,23 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #if USE_PARTICLE_POSITION
 	Result.Particle.TranslatedWorldPositionAndSize.xyz = Interpolants.ParticleTranslatedWorldPosition.xyz;
 	Result.Particle.TranslatedWorldPositionAndSize.w = 1;
-#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	Result.Particle.PrevTranslatedWorldPositionAndSize = Result.Particle.PrevTranslatedWorldPositionAndSize;
-#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 #endif
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
-#	if USE_PARTICLE_LOCAL_TO_WORLD
+#if USE_PARTICLE_LOCAL_TO_WORLD
 	Result.Particle.ParticleToWorld = DFFromTileOffset(LWCPromote(transpose(float4x4(Interpolants.ParticleToWorld[0], Interpolants.ParticleToWorld[1], Interpolants.ParticleToWorld[2], float4(0.0f, 0.0f, 0.0f, 1.0f)))));
-#		if NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
+#	if NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
 	Result.InstanceLocalToWorld = Result.Particle.ParticleToWorld;
-#		endif // NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
-#	endif // USE_PARTICLE_LOCAL_TO_WORLD
+#	endif // NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
+#endif // USE_PARTICLE_LOCAL_TO_WORLD
 
-#	if USE_PARTICLE_WORLD_TO_LOCAL
+#if USE_PARTICLE_WORLD_TO_LOCAL
 	Result.Particle.WorldToParticle = DFFromTileOffset(LWCPromoteInverse(transpose(float4x4(Interpolants.WorldToParticle[0], Interpolants.WorldToParticle[1], Interpolants.WorldToParticle[2], float4(0.0f, 0.0f, 0.0f, 1.0f)))));
-#		if NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
+#	if NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
 	Result.InstanceWorldToLocal = Result.Particle.WorldToParticle;
-#		endif // NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
-#	endif // USE_PARTICLE_WORLD_TO_LOCAL
-#elif (ENGINE_MAJOR_VERSION == 5)
-#	if USE_PARTICLE_LOCAL_TO_WORLD
-	Result.Particle.ParticleToWorld = LWCPromote(transpose(float4x4(Interpolants.ParticleToWorld[0], Interpolants.ParticleToWorld[1], Interpolants.ParticleToWorld[2], float4(0.0f, 0.0f, 0.0f, 1.0f))));
-#		if NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
-	Result.InstanceLocalToWorld = Result.Particle.ParticleToWorld;
-#		endif // NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
-#	endif // USE_PARTICLE_LOCAL_TO_WORLD
+#	endif // NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
+#endif // USE_PARTICLE_WORLD_TO_LOCAL
 
-#	if USE_PARTICLE_WORLD_TO_LOCAL
-	Result.Particle.WorldToParticle = LWCPromoteInverse(transpose(float4x4(Interpolants.WorldToParticle[0], Interpolants.WorldToParticle[1], Interpolants.WorldToParticle[2], float4(0.0f, 0.0f, 0.0f, 1.0f))));
-#		if NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
-	Result.InstanceWorldToLocal = Result.Particle.WorldToParticle;
-#		endif // NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
-#	endif // USE_PARTICLE_WORLD_TO_LOCAL
-#else
-
-#	if NEEDS_PARTICLE_TRANSFORM
-	Result.Particle.LocalToWorld[0] = Interpolants.LocalToWorld[0];
-	Result.Particle.LocalToWorld[1] = Interpolants.LocalToWorld[1];
-	Result.Particle.LocalToWorld[2] = Interpolants.LocalToWorld[2];
-	Result.Particle.LocalToWorld[3] = Interpolants.LocalToWorld[3];
-#	endif // NEEDS_PARTICLE_TRANSFORM
-
-#	if USE_PARTICLE_LOCAL_TO_WORLD
-	Result.Particle.ParticleToWorld = transpose(float4x4(
-		Interpolants.ParticleToWorld[0],
-		Interpolants.ParticleToWorld[1],
-		Interpolants.ParticleToWorld[2],
-		float4(0.0f, 0.0f, 0.0f, 1.0f)));
-#	endif // USE_PARTICLE_LOCAL_TO_WORLD
-
-#	if USE_PARTICLE_WORLD_TO_LOCAL
-	Result.Particle.WorldToParticle = transpose(float4x4(
-		Interpolants.WorldToParticle[0],
-		Interpolants.WorldToParticle[1],
-		Interpolants.WorldToParticle[2],
-		float4(0.0f, 0.0f, 0.0f, 1.0f)));
-#	endif // USE_PARTICLE_WORLD_TO_LOCAL
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 
 	Result.Particle.MotionBlurFade = 1.0f;
 	Result.TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
@@ -331,15 +286,9 @@ float4x4 InverseTransform(float4x4 InTransform)
 /** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
 FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal, bool bIsPreviousFrame = false)
 {
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	FMaterialVertexParameters	Result = MakeInitializedMaterialVertexParameters();
-#else
-	FMaterialVertexParameters	Result = (FMaterialVertexParameters)0;
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	Result.SceneData = Intermediates.SceneData;
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	Result.WorldPosition = WorldPosition;
 	Result.VertexColor = Intermediates.VertexColor;
 	Result.PreSkinnedPosition = Input.Position.xyz;
@@ -377,40 +326,15 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 
 	Result.Particle.TranslatedWorldPositionAndSize.xyz = Intermediates.ParticleTranslatedWorldPosition.xyz;
 	Result.Particle.TranslatedWorldPositionAndSize.w = 1;
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	Result.Particle.PrevTranslatedWorldPositionAndSize = Result.Particle.TranslatedWorldPositionAndSize;
-#endif
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	float4x4	_transform = GetParticleTransform(Input);
-#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	FDFMatrix	Transform = MakeDFMatrix((float3)0, _transform);
-#	else
-	FLWCMatrix	Transform = LWCPromote(_transform);
-#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
-#else
-	float4x4	Transform = GetParticleTransform(Input);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Result.InstanceLocalToWorld = Transform;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	Result.InstanceWorldToLocal = MakeDFInverseMatrix((float3)0, InverseTransform(_transform));
-#elif (ENGINE_MAJOR_VERSION == 5)
-	Result.InstanceWorldToLocal = LWCPromoteInverse(InverseTransform(_transform));
-#else
-#	if NEEDS_PARTICLE_TRANSFORM
-	Result.Particle.LocalToWorld[0] = Transform[0];
-	Result.Particle.LocalToWorld[1] = Transform[1];
-	Result.Particle.LocalToWorld[2] = Transform[2];
-	Result.Particle.LocalToWorld[3] = Transform[3];
-#	endif // NEEDS_PARTICLE_TRANSFORM
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	Result.TangentToWorld = mul(TangentToLocal, (float3x3)_transform);
-#else
-	Result.TangentToWorld = mul(TangentToLocal, (float3x3)Transform);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if NUM_MATERIAL_TEXCOORDS_VERTEX
 	for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
@@ -422,12 +346,10 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.Particle.ParticleToWorld = Transform;
 	Result.Particle.WorldToParticle = Result.InstanceWorldToLocal;
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 #if ENABLE_NEW_HLSL_GENERATOR
 	EvaluateVertexMaterialAttributes(Result);
 #endif // ENABLE_NEW_HLSL_GENERATOR
-	Result.LWCData = MakeMaterialLWCData(Result);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
+    Result.LWCData = MakeMaterialLWCData(Result);
 
 	return Result;
 }
@@ -435,13 +357,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 float4 CalcWorldPosition(FVertexFactoryInput Input)
 {
 	float4x4 Transform = GetParticleTransform(Input);
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.TileOffset.PreViewTranslation);
-#elif (ENGINE_MAJOR_VERSION == 5)
-	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.PreViewTranslation);
-#else
-	float3 WorldPosition = mul(Input.Position, Transform).xyz + ResolvedView.PreViewTranslation;
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	return float4(WorldPosition, Input.Position.w);
 }
 
@@ -450,22 +366,14 @@ float4 CalcPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryInterm
 	// FIXME only offsets the particle position, properly store the previous rotation transforms as well.
     float4x4 Transform = float4x4(Input.Transform1, Input.Transform2, Input.Transform3, Input.Transform4 - float4(Intermediates.Velocity, 0));
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.TileOffset.PrevPreViewTranslation);
-#elif (ENGINE_MAJOR_VERSION == 5)
-	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.PrevPreViewTranslation);
-#else
-	float3 WorldPosition = mul(Input.Position, Transform).xyz + ResolvedView.PrevPreViewTranslation;
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	return float4(WorldPosition, Input.Position.w);
 }
 
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
 {
 	FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
-#if (ENGINE_MAJOR_VERSION == 5)
 	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 	// Swizzle vertex color.
 	Intermediates.VertexColor = Input.VertexColor FCOLOR_COMPONENT_SWIZZLE;
 
@@ -479,13 +387,7 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	Intermediates.LocalToWorld[3] = LocalToWorldMat[3];
 #endif
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 	Intermediates.ParticleTranslatedWorldPosition = ParticleWorldPosition + LWCHackToFloat(ResolvedView.TileOffset.PreViewTranslation).xyz;
-#elif (ENGINE_MAJOR_VERSION == 5)
-	Intermediates.ParticleTranslatedWorldPosition = ParticleWorldPosition + LWCHackToFloat(ResolvedView.PreViewTranslation).xyz;
-#else
-	Intermediates.ParticleTranslatedWorldPosition = ParticleWorldPosition + ResolvedView.PreViewTranslation.xyz;
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 
 	uint	particleID = GetInstanceId(Input.InstanceId); // Necessary for VR Instanced Stereo rendering (returns Input.InstanceId / 2)
 	
@@ -618,11 +520,7 @@ void CalcTangentToWorld(FVertexFactoryInput Input, FVertexFactoryIntermediates I
 
 	// Normalize to remove scaling. Incorrect but faster than computing the inverse-transpose.
 	TangentToWorld0 = normalize(TangentToWorld[0]);
-#if (ENGINE_MAJOR_VERSION == 5)
 	TangentToWorld2 = float4(normalize(TangentToWorld[2]), TangentBias(Input.TangentZ.w) * GetPrimitive_DeterminantSign_FromFlags(Primitive.Flags));
-#else
-	TangentToWorld2 = float4(normalize(TangentToWorld[2]), TangentBias(Input.TangentZ.w) * Primitive.InvNonUniformScaleAndDeterminantSign.w);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, FMaterialVertexParameters VertexParameters)
@@ -819,6 +717,4 @@ float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryInte
 	return TangentBias(Input.TangentZ.xyz);
 }
 
-#if (ENGINE_MAJOR_VERSION == 5)
 #	include "/Engine/Private/VertexFactoryDefaultInterface.ush"
-#endif // (ENGINE_MAJOR_VERSION == 5)

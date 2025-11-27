@@ -5,13 +5,16 @@
 
 #if WITH_EDITOR
 #include "PopcornFXDetailsAttributeSamplerImage.h"
+
 #include "PopcornFXAttributeSamplerImage.h"
 #include "PopcornFXSDK.h"
 
 #include "DetailLayoutBuilder.h"
 #include "DetailCategoryBuilder.h"
-#include "PropertyCustomizationHelpers.h"
-#include "PropertyHandle.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXDetailsAttributeSamplerImage, Log, All);
+
+class FPopcornFXEffectPreviewViewportClient;
 
 //----------------------------------------------------------------------------
 
@@ -68,4 +71,5 @@ void	FPopcornFXDetailsAttributeSamplerImage::CustomizeDetails(IDetailLayoutBuild
 }
 
 //----------------------------------------------------------------------------
+
 #endif // WITH_EDITOR

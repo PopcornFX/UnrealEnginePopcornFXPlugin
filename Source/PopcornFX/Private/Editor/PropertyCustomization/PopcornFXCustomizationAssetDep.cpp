@@ -15,11 +15,7 @@
 #include "DetailWidgetRow.h"
 #include "PropertyCustomizationHelpers.h"
 #include "AssetThumbnail.h"
-#if (ENGINE_MAJOR_VERSION == 5)
-#	include "AssetRegistry/AssetData.h"
-#else
-#	include "AssetData.h"
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#include "AssetRegistry/AssetData.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Layout/SSpacer.h"
@@ -75,11 +71,7 @@ void	FPopcornFXCustomizationAssetDep::CustomizeHeader(
 	// Source\Editor\PropertyEditor\Private\UserInterface\PropertyEditor\PropertyEditorConstants.cpp
 	static const FName		PropertyFontStyle( TEXT("PropertyWindow.NormalFont") );
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	FSlateFontInfo			FontStyle = FAppStyle::GetFontStyle(PropertyFontStyle);
-#else
-	FSlateFontInfo			FontStyle = FEditorStyle::GetFontStyle(PropertyFontStyle);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	HeaderRow.NameContent()
 		.MinDesiredWidth(125.f * 3.f)
@@ -117,19 +109,11 @@ void	FPopcornFXCustomizationAssetDep::CustomizeHeader(
 					.OnClicked(this, &FPopcornFXCustomizationAssetDep::OnResetClicked)
 					.Visibility(this, &FPopcornFXCustomizationAssetDep::GetResetVisibility)
 					.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
-#if (ENGINE_MAJOR_VERSION == 5)
 					.ButtonStyle(FAppStyle::Get(), "NoBorder")
-#else
-					.ButtonStyle(FEditorStyle::Get(), "NoBorder")
-#endif // (ENGINE_MAJOR_VERSION == 5)
 					.Content()
 					[
 						SNew(SImage)
-#if (ENGINE_MAJOR_VERSION == 5)
 						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
-#else
-						.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
-#endif // (ENGINE_MAJOR_VERSION == 5)
 					]
 				]
 			]
@@ -184,11 +168,7 @@ bool	FPopcornFXCustomizationAssetDep::OnFilterAssetPicker(const FAssetData& InAs
 	UClass	*assetClass = InAssetData.GetClass();
 	// return filterOut;
 	return !self->IsCompatibleClass(assetClass) ||
-#if (ENGINE_MAJOR_VERSION == 5)
 		!InAssetData.GetSoftObjectPath().ToString().StartsWith(FPopcornFXPlugin::Get().Settings()->PackMountPoint);
-#else
-		!InAssetData.ObjectPath.ToString().StartsWith(FPopcornFXPlugin::Get().Settings()->PackMountPoint);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 FReply		FPopcornFXCustomizationAssetDep::OnResetClicked()
@@ -197,11 +177,7 @@ FReply		FPopcornFXCustomizationAssetDep::OnResetClicked()
 	if (!PK_VERIFY(self != null))
 		return FReply::Handled();
 	self->SetAsset(self->ParentPopcornFXFile(), self->FindDefaultAsset());
-#if (ENGINE_MAJOR_VERSION == 5)
 	m_AssetPty->NotifyPostChange(EPropertyChangeType::ValueSet);
-#else
-	m_AssetPty->NotifyPostChange();
-#endif
 	return FReply::Handled();
 }
 
@@ -227,11 +203,7 @@ FReply	FPopcornFXCustomizationAssetDep::OnImportDefaultClicked()
 
 	self->ReimportAndResetDefaultAsset(self->ParentPopcornFXFile(), true);
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	m_AssetPty->NotifyPostChange(EPropertyChangeType::ValueSet);
-#else
-	m_AssetPty->NotifyPostChange();
-#endif
 
 	return FReply::Handled();
 }

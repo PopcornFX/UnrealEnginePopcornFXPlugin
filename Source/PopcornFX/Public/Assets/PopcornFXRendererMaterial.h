@@ -93,6 +93,8 @@ enum class	EPopcornFXLegacyMaterialType
 	Billboard_Solid_Lit,
 	Billboard_Masked,
 	Billboard_Masked_Lit,
+	Billboard_Dithered,
+	Billboard_Dithered_Lit,
 
 	Billboard_VolumetricFog,
 	Billboard_SixWayLightmap,
@@ -104,6 +106,8 @@ enum class	EPopcornFXLegacyMaterialType
 	Mesh_Solid_Lit,
 	Mesh_Masked,
 	Mesh_Masked_Lit,
+	Mesh_Dithered,
+	Mesh_Dithered_Lit,
 	Mesh_VAT_Opaque_Fluid,
 	Mesh_VAT_Opaque_Fluid_Lit,
 	Mesh_VAT_Masked_Fluid,
@@ -138,6 +142,8 @@ enum class	EPopcornFXDefaultMaterialType
 	Billboard_Solid_Lit,
 	Billboard_Masked,
 	Billboard_Masked_Lit,
+	Billboard_Dithered,
+	Billboard_Dithered_Lit,
 
 	Mesh_Additive,
 	Mesh_AlphaBlend,
@@ -145,6 +151,8 @@ enum class	EPopcornFXDefaultMaterialType
 	Mesh_Solid_Lit,
 	Mesh_Masked,
 	Mesh_Masked_Lit,
+	Mesh_Dithered,
+	Mesh_Dithered_Lit,
 
 	Decal,
 
@@ -152,10 +160,10 @@ enum class	EPopcornFXDefaultMaterialType
 };
 
 extern const EPopcornFXLegacyMaterialType		kLegacyTransparentBillboard_Material_ToUE[4];
-extern const EPopcornFXLegacyMaterialType		kOpaqueBillboard_LegacyMaterial_ToUE[2];
-extern const EPopcornFXDefaultMaterialType		kOpaqueBillboard_DefaultMaterial_ToUE[2];
-extern const EPopcornFXLegacyMaterialType		kOpaqueMesh_LegacyMaterial_ToUE[2];
-extern const EPopcornFXDefaultMaterialType		kOpaqueMesh_DefaultMaterial_ToUE[2];
+extern const EPopcornFXLegacyMaterialType		kOpaqueBillboard_LegacyMaterial_ToUE[3];
+extern const EPopcornFXDefaultMaterialType		kOpaqueBillboard_DefaultMaterial_ToUE[3];
+extern const EPopcornFXLegacyMaterialType		kOpaqueMesh_LegacyMaterial_ToUE[3];
+extern const EPopcornFXDefaultMaterialType		kOpaqueMesh_DefaultMaterial_ToUE[3];
 
 USTRUCT(BlueprintType)
 struct FPopcornFXSubRendererMaterial
@@ -494,11 +502,7 @@ public:
 	virtual void		PostEditUndo();
 #endif // WITH_EDITOR
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	virtual void		PreSave(FObjectPreSaveContext SaveContext) override;
-#else
-	virtual void		PreSave(const class ITargetPlatform* TargetPlatform) override;
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if WITH_EDITOR
 	void				TriggerParticleRenderersModification();

@@ -23,7 +23,7 @@
 #include "SceneProxies/DeferredDecalProxy.h"
 #else
 #include "Components/SceneComponent.h"
-#endif
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 #include <pk_particles/include/Storage/MainMemory/storage_ram.h>
 #include <pk_render_helpers/include/render_features/rh_features_basic.h>
@@ -38,7 +38,6 @@ CBatchDrawer_Decal_CPUBB::CBatchDrawer_Decal_CPUBB()
 
 CBatchDrawer_Decal_CPUBB::~CBatchDrawer_Decal_CPUBB()
 {
-	_ReleaseAllDecals();
 }
 
 //----------------------------------------------------------------------------
@@ -58,10 +57,14 @@ bool	CBatchDrawer_Decal_CPUBB::Setup(const PopcornFX::CRendererDataBase *rendere
 		return false;
 	m_WeakMaterial = materialInstance;
 
-	owner->m_OnRenderMediumActiveStateChanged	+= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*, bool)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumActiveStateChanged);
-	owner->m_OnRenderMediumDestroyed			+= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumDestroyed);
-
 	return true;
+}
+
+//----------------------------------------------------------------------------
+
+void	CBatchDrawer_Decal_CPUBB::Destroy()
+{
+	_ReleaseAllDecals();
 }
 
 //----------------------------------------------------------------------------
@@ -190,9 +193,15 @@ void CBatchDrawer_Decal_CPUBB::_GetDecalStreams(SDecalStreams &outStreams, const
 
 //----------------------------------------------------------------------------
 
-void CBatchDrawer_Decal_CPUBB::_BuildDecalUpdates(	TArray<FDeferredDecalUpdateParams> &decalUpdates, const SDecalStreams &ds, 
-													const UPopcornFXSceneComponent *sceneComp, u32 &activeDecalProxiesCounter, u32 pcount, float globalScale)
+void CBatchDrawer_Decal_CPUBB::_BuildDecalUpdates(const SDecalStreams &ds, u32 pcount, float globalScale)
 {
+	const UPopcornFXSceneComponent				*sceneComp			= m_WeakSceneComp.Get();
+	CParticleScene								*scene				= sceneComp->ParticleScene();
+	TArray<FDeferredDecalUpdateParams>			&decalUpdates		= scene->DecalUpdates();
+	TPair<u32, TArray<FDeferredDecalProxy*>>	&activeDecals		= scene->ActiveDecals(this);
+	u32											&activeDecalCounter	= activeDecals.Key;
+	TArray<FDeferredDecalProxy*>				&activeDecalProxies	= activeDecals.Value;
+
 	for (u32 parti = 0; parti < pcount; ++parti)
 	{
 		if (!ds.enableds[parti])
@@ -200,18 +209,18 @@ void CBatchDrawer_Decal_CPUBB::_BuildDecalUpdates(	TArray<FDeferredDecalUpdatePa
 
 		// Create Update Parameters
 		FDeferredDecalUpdateParams	&updateParams = decalUpdates.AddDefaulted_GetRef();
-		if (activeDecalProxiesCounter < m_ActiveDecalProxies.Count())
+		if (activeDecalCounter < (u32)activeDecalProxies.Num())
 		{
 			updateParams.OperationType = FDeferredDecalUpdateParams::EOperationType::Update;
-			updateParams.DecalProxy = m_ActiveDecalProxies[activeDecalProxiesCounter];
+			updateParams.DecalProxy = activeDecalProxies[activeDecalCounter];
 		}
 		else
 		{
 			updateParams.OperationType = FDeferredDecalUpdateParams::EOperationType::AddToSceneAndUpdate;
 			updateParams.DecalProxy = new FDeferredDecalProxy(sceneComp, m_WeakMaterial.Get());
-			m_ActiveDecalProxies.PushBack(updateParams.DecalProxy);
+			activeDecalProxies.Push(updateParams.DecalProxy);
 		}
-		++activeDecalProxiesCounter;
+		++activeDecalCounter;
 
 		// Rotation has offset in Y because decals face up in PK and right in UE by default
 		const FQuat		rotOffset	= FQuat::MakeFromEuler({ 0, -90, 0 });
@@ -274,15 +283,11 @@ void	CBatchDrawer_Decal_CPUBB::_IssueDrawCall_Decal(const SUERenderContext &rend
 	if (m_WeakWorld == null)
 		m_WeakWorld = world; // Used to release decals in destructor
 
-	const UPopcornFXSceneComponent	*sceneComp = renderContext.m_RenderBatchManager->ParticleScene().SceneComponent();
-	if (!PK_VERIFY(IsValid(sceneComp)))
+	m_WeakSceneComp = renderContext.m_RenderBatchManager->ParticleScene().SceneComponent();
+	if (!PK_VERIFY(m_WeakSceneComp.IsValid()))
 		return;
 
-	// Generate list of decals to update
-	u32	activeDecalProxiesCounter = 0;
-	TArray<FDeferredDecalUpdateParams>	decalUpdates;
-	decalUpdates.Reserve(totalParticleCount);
-
+	// Generate the list of decals to update
 	const u32	drCount = desc.m_DrawRequests.Count();
 	for (u32 iDr = 0; iDr < drCount; ++iDr)
 	{
@@ -311,69 +316,19 @@ void	CBatchDrawer_Decal_CPUBB::_IssueDrawCall_Decal(const SUERenderContext &rend
 			// Get streams for the current page and create decal updates with per-particle values
 			SDecalStreams decalStreams;
 			_GetDecalStreams(decalStreams, bbRequest, page, pcount);
-			_BuildDecalUpdates(decalUpdates, decalStreams, sceneComp, activeDecalProxiesCounter, pcount, globalScale);
+			_BuildDecalUpdates(decalStreams, pcount, globalScale);
 		}
 	}
 
-	// Remove any unused decals
-	while (m_ActiveDecalProxies.Count() > activeDecalProxiesCounter)
-	{
-		FDeferredDecalUpdateParams	&UpdateParams = decalUpdates.AddDefaulted_GetRef();
-		UpdateParams.OperationType = FDeferredDecalUpdateParams::EOperationType::RemoveFromSceneAndDelete;
-		UpdateParams.DecalProxy = m_ActiveDecalProxies.Pop();
-	}
-
-	// Send updates to RT
-	if (decalUpdates.Num() > 0)
-	 	world->Scene->BatchUpdateDecals(MoveTemp(decalUpdates));
-
 	INC_DWORD_STAT_BY(STAT_PopcornFX_DrawCallsDecalCount, totalParticleCount);
-}
-
-//----------------------------------------------------------------------------
-#include "Engine/Engine.h"
-void CBatchDrawer_Decal_CPUBB::_OnRenderMediumActiveStateChanged(PopcornFX::CParticleRenderMedium *renderMedium, bool active)
-{
-	if (active)
-		return;
-
-	// Sometimes this callback might be executed on a worker thread
-	// In that case we request the execution of the method on the game thread
-	if (!IsInGameThread())
-	{
-		CBatchDrawer_Decal_CPUBB	*self = this;
-		ExecuteOnGameThread(TEXT("CBatchDrawer_Decal_CPUBB::_ReleaseAllDecals"), [self](){ self->_ReleaseAllDecals(); });
-	}
-
-	_ReleaseAllDecals();
-}
-
-//----------------------------------------------------------------------------
-
-void CBatchDrawer_Decal_CPUBB::_OnRenderMediumDestroyed(PopcornFX::CParticleRenderMedium *renderMedium)
-{
-	renderMedium->m_OnRenderMediumActiveStateChanged	-= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*, bool)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumActiveStateChanged);
-	renderMedium->m_OnRenderMediumDestroyed				-= PopcornFX::FastDelegate<void(PopcornFX::CParticleRenderMedium*)>(this, &CBatchDrawer_Decal_CPUBB::_OnRenderMediumDestroyed);
 }
 
 //----------------------------------------------------------------------------
 
 void CBatchDrawer_Decal_CPUBB::_ReleaseAllDecals()
 {
-	const u32	activeDecalProxiesCount = m_ActiveDecalProxies.Count();
-	if (activeDecalProxiesCount > 0 && m_WeakWorld.IsValid())
-	{
-		TArray<FDeferredDecalUpdateParams>	decalUpdates;
-		decalUpdates.AddDefaulted(activeDecalProxiesCount);
-		for (u32 i = 0; i < activeDecalProxiesCount; ++i)
-		{
-			decalUpdates[i].OperationType = FDeferredDecalUpdateParams::EOperationType::RemoveFromSceneAndDelete;
-			decalUpdates[i].DecalProxy = m_ActiveDecalProxies[i];
-		}
-
-		m_WeakWorld.Get()->Scene->BatchUpdateDecals(MoveTemp(decalUpdates));
-		m_ActiveDecalProxies.Clear();
-	}
+	if (m_WeakSceneComp.IsValid())
+		m_WeakSceneComp->ParticleScene()->ClearDecals(this);
 }
 
 //----------------------------------------------------------------------------

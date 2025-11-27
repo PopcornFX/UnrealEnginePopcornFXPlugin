@@ -139,6 +139,9 @@ public:
 	CVertexBufferPool			&VBPool_VertexBB() { return *m_VertexBufferPool_VertexBB; }
 	const CVertexBufferPool		&VBPool_VertexBB() const { return *m_VertexBufferPool_VertexBB; }
 
+	CVertexBufferPool			&VBPool_DrawIndirect() { return *m_VertexBufferPool_DrawIndirect; }
+	const CVertexBufferPool		&VBPool_DrawIndirect() const { return *m_VertexBufferPool_DrawIndirect; }
+
 	CVertexBufferPool			&VBPool_GPU() { return *m_VertexBufferPool_GPU; }
 	CIndexBufferPool			&IBPool_GPU() { return *m_IndexBufferPool_GPU; }
 	const CVertexBufferPool		&VBPool_GPU() const { return *m_VertexBufferPool_GPU; }
@@ -197,6 +200,7 @@ private:
 	PopcornFX::CTimer							m_RenderTimer;
 	CVertexBufferPool							*m_VertexBufferPool;
 	CVertexBufferPool							*m_VertexBufferPool_VertexBB;
+	CVertexBufferPool							*m_VertexBufferPool_DrawIndirect;
 	CVertexBufferPool							*m_VertexBufferPool_GPU;
 	CIndexBufferPool							*m_IndexBufferPool;
 	CIndexBufferPool							*m_IndexBufferPool_GPU;

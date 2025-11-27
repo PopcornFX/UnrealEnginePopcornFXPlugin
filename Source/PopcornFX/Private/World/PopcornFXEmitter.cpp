@@ -12,9 +12,7 @@
 
 #include "PopcornFXSettingsEditor.h"
 
-#include "Components/BillboardComponent.h"
 #include "UObject/ConstructorHelpers.h"
-#include "Engine/Texture2D.h"
 
 #if WITH_EDITOR
 #	include "ScopedTransaction.h"
@@ -30,36 +28,6 @@ APopcornFXEmitter::APopcornFXEmitter(const class FObjectInitializer& PCIP)
 	RootComponent = PopcornFXEmitterComponent;
 
 	SetFlags(RF_Transactional);
-
-#if WITH_EDITORONLY_DATA
-	SpriteComponent = CreateEditorOnlyDefaultSubobject<UBillboardComponent>(TEXT("Sprite"));
-	if (!IsRunningCommandlet() && SpriteComponent != null)
-	{
-		struct FConstructorStatics
-		{
-			ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteTextureObject;
-			FName ID_Effects;
-			FText NAME_Effects;
-			FConstructorStatics()
-				: SpriteTextureObject(TEXT("/PopcornFX/SlateBrushes/icon_PopcornFX_Logo_256x"))
-				, ID_Effects(TEXT("Effects")) // do not change, recognize by the engine
-				, NAME_Effects(NSLOCTEXT("SpriteCategory", "Effects", "Effects")) // do not change, recognize by the engine
-			{
-			}
-		};
-		static FConstructorStatics ConstructorStatics;
-		SpriteComponent->Sprite = ConstructorStatics.SpriteTextureObject.Get();
-
-		SpriteComponent->SetRelativeScale3D(FVector(0.5f, 0.5f, 0.5f));
-		SpriteComponent->bHiddenInGame = true;
-		SpriteComponent->bIsScreenSizeScaled = true;
-		SpriteComponent->SpriteInfo.Category = ConstructorStatics.ID_Effects;
-		SpriteComponent->SpriteInfo.DisplayName = ConstructorStatics.NAME_Effects;
-		SpriteComponent->SetupAttachment(PopcornFXEmitterComponent);
-		SpriteComponent->bReceivesDecals = false;
-	}
-#endif // WITH_EDITOR
-
 }
 
 //----------------------------------------------------------------------------

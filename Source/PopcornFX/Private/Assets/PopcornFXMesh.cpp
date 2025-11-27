@@ -44,11 +44,7 @@ namespace
 	{
 		if (skeletalMesh == null)
 			return null;
-#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return skeletalMesh->GetAssetImportData();
-#else
-		return skeletalMesh->AssetImportData;
-#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 #endif // WITH_EDITOR
 
@@ -56,11 +52,7 @@ namespace
 	{
 		if (staticMesh == null)
 			return null;
-#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 		return staticMesh->GetRenderData();
-#else
-		return staticMesh->RenderData.Get();
-#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || ENGINE_MAJOR_VERSION == 5)
 	}
 }
 
@@ -296,10 +288,17 @@ bool	AssetImportDataDiffers(const UAssetImportData *a, const UAssetImportData* b
 
 bool	UPopcornFXMesh::SourceMeshChanged() const
 {
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+	if (StaticMesh != null && PK_VERIFY(StaticMesh->GetAssetImportData() != null))
+	{
+		return AssetImportDataDiffers(StaticMeshAssetImportData, StaticMesh->GetAssetImportData());
+	}
+#else
 	if (StaticMesh != null && PK_VERIFY(StaticMesh->AssetImportData != null))
 	{
 		return AssetImportDataDiffers(StaticMeshAssetImportData, StaticMesh->AssetImportData);
 	}
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 #if ENABLE_SKELETALMESH
 	const UAssetImportData	*skelMeshImportData = SkeletalMeshAssetImportData(SkeletalMesh);
 	if (SkeletalMesh != null && PK_VERIFY(skelMeshImportData != null))
@@ -385,7 +384,7 @@ namespace
 		const u32		sectionCount = LODRenderData.RenderSections.Num();
 		for (u32 iSection = 0; iSection < sectionCount; ++iSection)
 		{
-			PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerSkinnedMesh::FillBuffers (Build section)", POPCORNFX_UE_PROFILER_COLOR);
+			PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::FillBuffers (Build section)", POPCORNFX_UE_PROFILER_COLOR);
 
 			const FSkelMeshRenderSection	&section = LODRenderData.RenderSections[iSection];
 			PK_ONLY_IF_ASSERTS(const u32 numSectionVertices = section.GetNumVertices());
@@ -394,12 +393,8 @@ namespace
 			const u32	numVertices = section.GetNumVertices();
 			const u32	sectionInfluenceCount = section.MaxBoneInfluences;
 
-#if (ENGINE_MAJOR_VERSION == 4)
-			const float		boneWeightNormalizer = 1.0f / 255.0f;
-#else
 			// 'GetBoneWeight()' will always return 16-bit bone weights, even if 'Use16BitBoneWeight()' is false, or if 'GetBoneWeightByteSize()' returns 1
 			const float		boneWeightNormalizer = 1.0f / 65535.0f;
-#endif
 
 			for (u32 iVertex = 0; iVertex < numVertices; ++iVertex)
 			{
@@ -788,7 +783,7 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::NewResourceMesh(USkeletalMesh *skeletal
 	PopcornFX::CMeshIStream			&istream = triBatch.m_IStream;
 
 	{
-		PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerSkinnedMesh::BuildMeshIndices", POPCORNFX_UE_PROFILER_COLOR);
+		PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::BuildMeshIndices", POPCORNFX_UE_PROFILER_COLOR);
 
 		const FRawStaticIndexBuffer16or32Interface	*iBuffer = LODRenderData.MultiSizeIndexContainer.GetIndexBuffer();
 		const u32									totalIndexCount = iBuffer->Num();
@@ -834,7 +829,7 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::NewResourceMesh(USkeletalMesh *skeletal
 	PopcornFX::TArray<u8, PopcornFX::TArrayAligned16>		boneIndices;
 
 	{
-		PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerSkinnedMesh::Alloc skinning streams", POPCORNFX_UE_PROFILER_COLOR);
+		PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::Alloc skinning streams", POPCORNFX_UE_PROFILER_COLOR);
 
 		for (u32 iSection = 0; iSection < sectionCount; ++iSection)
 		{

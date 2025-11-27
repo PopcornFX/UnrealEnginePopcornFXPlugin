@@ -21,10 +21,8 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceConstant.h"
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
-#	include "Materials/MaterialRenderProxy.h"
-#	include "MaterialDomain.h"
-#endif
+#include "Materials/MaterialRenderProxy.h"
+#include "MaterialDomain.h"
 #include "MaterialShared.h"
 
 #include <pk_particles/include/Renderers/ps_renderer_sound.h>
@@ -621,11 +619,7 @@ bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &g
 				dstSegment.bEnabled = srcSegment.bEnabled;
 
 				m_RayTracingGeometries[iSection].SetInitializer(initializer);
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 				m_RayTracingGeometries[iSection].InitResource(FRHICommandListExecutor::GetImmediateCommandList());
-#else
-				m_RayTracingGeometries[iSection].InitResource();
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			}
 		}
 	}

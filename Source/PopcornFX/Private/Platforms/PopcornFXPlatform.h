@@ -18,10 +18,8 @@
 #	endif // (PK_HAS_GPU != 0)
 #endif // WITH_EDITOR
 
-#if (ENGINE_MINOR_VERSION >= 2)
-#	if (PK_COMPILE_GPU != 0)
-#		include "RHIShaderPlatform.h"
-#	endif
+#if (PK_COMPILE_GPU != 0)
+#	include "RHIShaderPlatform.h"
 #endif
 
 FWD_PK_API_BEGIN
