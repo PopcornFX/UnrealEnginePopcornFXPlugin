@@ -21,7 +21,6 @@
 #include "Render/BatchDrawer_Ribbon_CPU.h"
 #include "Render/BatchDrawer_Triangle_CPU.h"
 #include "Render/BatchDrawer_Mesh_CPU.h"
-#include "Render/BatchDrawer_Mesh_GPU.h"
 #include "Render/BatchDrawer_Decal_CPU.h"
 #include "Render/BatchDrawer_SkeletalMesh_CPU.h"
 #include "Render/BatchDrawer_Light.h"
@@ -36,7 +35,9 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceConstant.h"
-#include "MaterialDomain.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "MaterialDomain.h"
+#endif
 
 #if POPCORNFX_RENDER_DEBUG
 #	include "PopcornFXSceneComponent.h"
@@ -188,15 +189,11 @@ CRenderBatchManager::CRenderBatchManager()
 	m_VertexBufferPool_GPU = new CVertexBufferPool();
 	m_VertexBufferPool_GPU->m_BuffersUsedAsUAV = true;
 	m_VertexBufferPool_GPU->m_BuffersUsedAsSRV = true;
+	m_VertexBufferPool_GPU->m_ByteAddressBuffers = true;
 	m_IndexBufferPool_GPU = new CIndexBufferPool();
 	m_IndexBufferPool_GPU->m_BuffersUsedAsUAV = true;
 	m_IndexBufferPool_GPU->m_BuffersUsedAsSRV = true;
 	m_IndexBufferPool_GPU->m_ByteAddressBuffers = true;
-
-	m_VertexBufferPool_DrawIndirect = new CVertexBufferPool();
-	m_VertexBufferPool_DrawIndirect->m_BuffersUsedAsUAV = true;
-	m_VertexBufferPool_DrawIndirect->m_BuffersUsedAsSRV = true;
-	m_VertexBufferPool_DrawIndirect->m_DrawIndirectBuffers = true;
 
 	m_VertexBufferPool_VertexBB = new CVertexBufferPool();
 	m_VertexBufferPool_VertexBB->m_BuffersUsedAsSRV = true;
@@ -220,7 +217,6 @@ CRenderBatchManager::~CRenderBatchManager()
 			delete m_VertexBufferPool;
 			delete m_IndexBufferPool;
 			delete m_VertexBufferPool_VertexBB;
-			delete m_VertexBufferPool_DrawIndirect;
 			delete m_VertexBufferPool_GPU;
 			delete m_IndexBufferPool_GPU;
 		});
@@ -230,7 +226,6 @@ CRenderBatchManager::~CRenderBatchManager()
 	m_VertexBufferPool = null;
 	m_IndexBufferPool = null;
 	m_VertexBufferPool_VertexBB = null;
-	m_VertexBufferPool_DrawIndirect = null;
 	m_VertexBufferPool_GPU = null;
 	m_IndexBufferPool_GPU = null;
 
@@ -388,12 +383,13 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 		}
 	}
 	// GPU or CPU sim particles, batch drawers below can handle both
+#if (ENGINE_MAJOR_VERSION == 4)
+	PK_ASSERT(GSupportsResourceView);
+#endif // (ENGINOR_MAJOR_VERSION == 4)
 	switch (rendererType)
 	{
 	case	PopcornFX::Renderer_Billboard:
 		return PK_NEW(CBatchDrawer_Billboard_GPUBB);
-	case	PopcornFX::Renderer_Mesh:
-		return PK_NEW(CBatchDrawer_Mesh_GPUBB);
 	default:
 		PK_ASSERT_NOT_REACHED();
 		break;
@@ -658,7 +654,11 @@ void	CRenderBatchManager::GameThread_EndUpdate(PopcornFX::CRendererSubView &upda
 		m_UE_UpdateThreadRenderContext.m_RendererSubView = &updateView;
 		m_UE_UpdateThreadRenderContext.SetWorld(world);
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		m_CurrentFeatureLevel = world->GetFeatureLevel();
+#else
+		m_CurrentFeatureLevel = world->FeatureLevel;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 		PopcornFX::SSceneView	dummyView;
 		m_UE_UpdateThreadRenderContext.m_Views = TStridedMemoryView<PopcornFX::SSceneView>(dummyView);
@@ -755,7 +755,6 @@ void	CRenderBatchManager::GarbageBufferPools()
 		m_VertexBufferPool->FrameTick();
 		m_IndexBufferPool->FrameTick();
 		m_VertexBufferPool_VertexBB->FrameTick();
-		m_VertexBufferPool_DrawIndirect->FrameTick();
 		m_VertexBufferPool_GPU->FrameTick();
 		m_IndexBufferPool_GPU->FrameTick();
 	}
@@ -775,7 +774,6 @@ void	CRenderBatchManager::GarbageBufferPools()
 		m_VertexBufferPool->GarbageCollect();
 		m_IndexBufferPool->GarbageCollect();
 		m_VertexBufferPool_VertexBB->GarbageCollect();
-		m_VertexBufferPool_DrawIndirect->GarbageCollect();
 		m_VertexBufferPool_GPU->GarbageCollect();
 		m_IndexBufferPool_GPU->GarbageCollect();
 

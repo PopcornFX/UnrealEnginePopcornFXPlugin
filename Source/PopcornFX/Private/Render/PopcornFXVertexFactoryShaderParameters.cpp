@@ -61,8 +61,10 @@ void	FPopcornFXVertexFactoryShaderParametersPixel::GetElementShaderBindings(cons
 
 //----------------------------------------------------------------------------
 
-IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersVertex);
-IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersPixel);
+#if (ENGINE_MAJOR_VERSION == 5)
+	IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersVertex);
+	IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersPixel);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 //----------------------------------------------------------------------------
 

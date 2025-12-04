@@ -15,16 +15,21 @@
 #	error no ENGINE_MAJOR_VERSION
 #endif
 
-#if (ENGINE_MAJOR_VERSION != 5)
+#if (ENGINE_MAJOR_VERSION != 4 && ENGINE_MAJOR_VERSION != 5)
 #	error invalid ENGINE_MAJOR_VERSION
 #endif
+#if (ENGINE_MAJOR_VERSION == 4)
+#	if (ENGINE_MINOR_VERSION < 27)
+#		error PopcornFX Plugin only supported in UE4 >= 4.27
+#	endif
+#endif // (ENGINE_MAJOR_VERSION == 4)
 
 #if (ENGINE_MAJOR_VERSION == 5)
 #	ifndef PLATFORM_XBOXONE
 #		define PLATFORM_XBOXONE	0
 #	endif
-#	if (ENGINE_MINOR_VERSION < 5)
-#		error PopcornFX Plugin only supported in UE5 >= 5.5
+#	if (ENGINE_MINOR_VERSION < 1)
+#		error PopcornFX Plugin only supported in UE5 >= 5.1
 #	endif
 #endif // (ENGINE_MAJOR_VERSION == 5)
 

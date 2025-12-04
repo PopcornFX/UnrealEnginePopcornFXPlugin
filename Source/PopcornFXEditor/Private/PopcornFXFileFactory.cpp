@@ -16,7 +16,11 @@
 #include "ObjectTools.h"
 #include "PackageTools.h"
 #include "AssetToolsModule.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "AssetRegistry/AssetRegistryModule.h"
+#else
+#	include "AssetRegistryModule.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
 #include "EditorFramework/AssetImportData.h"
 #include "Editor.h"
 

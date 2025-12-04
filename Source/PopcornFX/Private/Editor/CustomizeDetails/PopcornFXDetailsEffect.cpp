@@ -47,7 +47,7 @@ void	FPopcornFXDetailsEffect::CustomizeDetails(class IDetailLayoutBuilder& Detai
 	IDetailCategoryBuilder		&catAssetDeps = DetailLayout.EditCategory("PopcornFX AssetDependencies");
 	IDetailCategoryBuilder		&catRenderMats = DetailLayout.EditCategory("PopcornFX RendererMaterials");
 
-	DetailLayout.HideCategory("PopcornFX Default Attributes");
+	DetailLayout.HideCategory("PopcornFX Attributes");
 
 	//TSharedRef<IPropertyHandle>		assetDependencies = DetailLayout.GetProperty(GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXFile, AssetDependencies)).ToSharedRef();
 

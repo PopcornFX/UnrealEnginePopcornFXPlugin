@@ -15,19 +15,11 @@
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerGrid.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerVectorField.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerActor.h"
+#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerSkinnedMesh.h"
 
 #include "Editor/PropertyCustomization/PopcornFXCustomizationAssetDep.h"
 #include "Editor/PropertyCustomization/PopcornFXCustomizationRendererMaterial.h"
 #include "Editor/PropertyCustomization/PopcornFXCustomizationSubRendererMaterial.h"
-
-#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSamplerImage.h"
-#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSamplerShape.h"
-#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSamplerCurve.h"
-#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSamplerGrid.h"
-#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSamplerText.h"
-#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSamplerAnimTrack.h"
-#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSamplerVectorField.h"
-
 
 #include "PropertyEditorModule.h"
 #include "Modules/ModuleManager.h"
@@ -55,20 +47,18 @@ void	FPopcornFXDependencyModulePropertyEditor::Load()
 	// Register the custom editor
 	propertyModule.RegisterCustomClassLayout("PopcornFXEmitterComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsEmitterComponent::MakeInstance));
 	propertyModule.RegisterCustomClassLayout("PopcornFXSceneComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsSceneComponent::MakeInstance));
-	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeList", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeListHidden::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeList", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeList::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerShape", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerShape::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerCurve", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerCurve::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerImage", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerImage::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerGrid", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerGrid::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerVectorField", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerVectorField::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerActor", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerActor::MakeInstance));
+	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeSamplerSkinnedMesh", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeSamplerSkinnedMesh::MakeInstance));
 
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAssetDep", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAssetDep::MakeInstance));
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXRendererMaterial", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationRendererMaterial::MakeInstance));
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXSubRendererMaterial", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationSubRendererMaterial::MakeInstance));
-
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerProperties", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSampler::MakeInstance));
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesImage", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerImage::MakeInstance));
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesShape", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerShape::MakeInstance));
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesGrid", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerGrid::MakeInstance));
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesCurve", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerCurve::MakeInstance));
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesText", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerText::MakeInstance));
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesVectorField", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerVectorField::MakeInstance));
-	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesAnimTrack", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerAnimTrack::MakeInstance));
 
 	m_Loaded = true;
 }
@@ -90,19 +80,18 @@ void	FPopcornFXDependencyModulePropertyEditor::Unload()
 	propertyModule.UnregisterCustomClassLayout("PopcornFXEmitterComponent");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXSceneComponent");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeList");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerShape");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerCurve");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerImage");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerGrid");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerVectorField");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerActor");
+	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeSamplerSkinnedMesh");
+	// propertyModule.UnregisterCustomClassLayout("PopcornFXAttribSamplerShape");
 
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAssetDep");
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXRendererMaterial");
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXSubRendererMaterial");
-
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerProperties");
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesImage");
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesShape");
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesGrid");
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesCurve");
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesText");
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesVectorField");
-	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesAnimTrack");
 }
 
 //----------------------------------------------------------------------------

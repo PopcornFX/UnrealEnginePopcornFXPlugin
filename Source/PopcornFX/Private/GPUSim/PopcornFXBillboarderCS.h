@@ -15,7 +15,6 @@
 #	include <pk_particles/include/Renderers/ps_renderer_enums.h>
 #	include "GlobalShader.h"
 #	include "ShaderParameterUtils.h"
-#	include "ShaderParameterStruct.h"
 #endif
 
 //----------------------------------------------------------------------------
@@ -204,6 +203,14 @@ namespace PopcornFXBillboarder
 		}
 	};
 
+	struct	FCSCopySizeBuffer_Params
+	{
+		FShaderResourceViewRHIRef	m_LiveParticleCount;
+		FUnorderedAccessViewRHIRef	m_DrawIndirectArgsBuffer;
+		uint32						m_DrawIndirectArgsOffset = 0;
+		bool						m_IsCapsule;
+	};
+
 #if (PK_GPU_D3D11 != 0) || (PK_GPU_D3D12 != 0)
 	//----------------------------------------------------------------------------
 	//
@@ -277,14 +284,6 @@ namespace PopcornFXBillboarder
 	//
 	//----------------------------------------------------------------------------
 
-	struct	FCSCopySizeBuffer_Params
-	{
-		FShaderResourceViewRHIRef	m_LiveParticleCount;
-		FUnorderedAccessViewRHIRef	m_DrawIndirectArgsBuffer;
-		uint32						m_DrawIndirectArgsOffset = 0;
-		bool						m_IsCapsule;
-	};
-
 	class	FCopySizeBufferCS : public FGlobalShader
 	{
 		DECLARE_SHADER_TYPE(FCopySizeBufferCS, Global);
@@ -303,153 +302,6 @@ namespace PopcornFXBillboarder
 		LAYOUT_FIELD(FShaderParameter, IndexCountPerInstance);
 		LAYOUT_FIELD(FShaderResourceParameter, DrawIndirectArgsBuffer);
 		LAYOUT_FIELD(FShaderResourceParameter, LiveParticleCount);
-	};
-
-	//----------------------------------------------------------------------------
-	//
-	//	GPU mesh compute shader permutations
-	//
-	//----------------------------------------------------------------------------
-	
-	namespace CSPermutations
-	{
-		class FHasMeshIDs : SHADER_PERMUTATION_BOOL("HAS_MESHIDS");
-		class FHasMeshLODs : SHADER_PERMUTATION_BOOL("HAS_LODS");
-		class FHasMeshLODsNoIDs : SHADER_PERMUTATION_BOOL("HAS_LODS_NO_MESHIDS");
-	}
-
-	//----------------------------------------------------------------------------
-	//
-	//	GPU renderer compute particle count per mesh
-	//
-	//----------------------------------------------------------------------------
-	
-	class	FParticleCountPerMeshCS : public FGlobalShader
-	{
-		DECLARE_GLOBAL_SHADER(FParticleCountPerMeshCS);
-		SHADER_USE_PARAMETER_STRUCT(FParticleCountPerMeshCS, FGlobalShader);
-		
-		BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-			SHADER_PARAMETER(uint32,						DrawRequest)
-			SHADER_PARAMETER(uint32,						MeshCount)
-			SHADER_PARAMETER(uint32,						LODCount)
-			SHADER_PARAMETER_SRV(ByteAddressBuffer,			InSimData)
-			SHADER_PARAMETER_SRV(ByteAddressBuffer,			LiveParticleCount)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	EnabledsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	MeshIDsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	LODsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	PerLODMeshCounts)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	PerLODMeshOffsets)
-			SHADER_PARAMETER_UAV(RWStructuredBuffer<uint>,	OutDrawIndirect)
-		END_SHADER_PARAMETER_STRUCT()
-
-	public:
-		typedef FGlobalShader	Super;
-		using FPermutationDomain = TShaderPermutationDomain<CSPermutations::FHasMeshIDs, CSPermutations::FHasMeshLODs>;
-		inline static const u32	kThreadGroupSize = 128;
-
-		static bool	ShouldCompilePermutation(const FGlobalShaderPermutationParameters &Parameters);
-		static void	ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters &Parameters, FShaderCompilerEnvironment &OutEnvironment);
-
-		void		Dispatch(FRHICommandList &RHICmdList, TShaderMapRef<FParticleCountPerMeshCS> shaderMapRef, const FParameters& params, const u32 particleCount);
-	};
-
-	//----------------------------------------------------------------------------
-	//
-	//	GPU mesh renderer compute indirection offsets buffer
-	//
-	//----------------------------------------------------------------------------
-
-	class	FIndirectionOffsetsBufferCS : public FGlobalShader
-	{
-		DECLARE_GLOBAL_SHADER(FIndirectionOffsetsBufferCS);
-		SHADER_USE_PARAMETER_STRUCT(FIndirectionOffsetsBufferCS, FGlobalShader);
-
-		BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-			SHADER_PARAMETER(uint32,						DrawCallCount)
-			SHADER_PARAMETER_SRV(ByteAddressBuffer,			DrawIndirect)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	PerLODMeshOffsets)
-			SHADER_PARAMETER_UAV(RWStructuredBuffer<uint>,	OutIndirectionOffsets)
-		END_SHADER_PARAMETER_STRUCT()
-
-	public:
-		typedef FGlobalShader	Super;
-		using FPermutationDomain = TShaderPermutationDomain<CSPermutations::FHasMeshLODsNoIDs>;
-		inline static const u32	kThreadGroupSize = 16;
-
-		static bool	ShouldCompilePermutation(const FGlobalShaderPermutationParameters &Parameters);
-		static void	ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters &Parameters, FShaderCompilerEnvironment &OutEnvironment);
-
-		void		Dispatch(FRHICommandList &RHICmdList, TShaderMapRef<FIndirectionOffsetsBufferCS> shaderMapRef, const FParameters& params);
-	};
-
-	//----------------------------------------------------------------------------
-	//
-	//	GPU mesh renderer compute mesh indirection buffer
-	//
-	//----------------------------------------------------------------------------
-
-	class	FMeshIndirectionBufferCS : public FGlobalShader
-	{
-		DECLARE_GLOBAL_SHADER(FMeshIndirectionBufferCS);
-		SHADER_USE_PARAMETER_STRUCT(FMeshIndirectionBufferCS, FGlobalShader);
-
-		BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-			SHADER_PARAMETER(uint32,						DrawRequest)
-			SHADER_PARAMETER(uint32,						MeshCount)
-			SHADER_PARAMETER(uint32,						LODCount)
-			SHADER_PARAMETER_SRV(ByteAddressBuffer,			InSimData)
-			SHADER_PARAMETER_SRV(ByteAddressBuffer,			LiveParticleCount)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	EnabledsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	MeshIDsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	LODsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	PerLODMeshCounts)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,	PerLODMeshOffsets)
-			SHADER_PARAMETER_UAV(RWStructuredBuffer<uint>,	OutIndirectionOffsets)
-			SHADER_PARAMETER_UAV(RWStructuredBuffer<uint>,	OutIndirection)
-		END_SHADER_PARAMETER_STRUCT()
-
-	public:
-		typedef FGlobalShader	Super;
-		using FPermutationDomain = TShaderPermutationDomain<CSPermutations::FHasMeshIDs, CSPermutations::FHasMeshLODs>;
-		inline static const u32	kThreadGroupSize = 128;
-
-		static bool	ShouldCompilePermutation(const FGlobalShaderPermutationParameters &Parameters);
-		static void	ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters &Parameters, FShaderCompilerEnvironment &OutEnvironment);
-
-		void		Dispatch(FRHICommandList &RHICmdList, TShaderMapRef<FMeshIndirectionBufferCS> shaderMapRef, const FParameters& params, const u32 particleCount);
-	};
-
-	//----------------------------------------------------------------------------
-	//
-	//	GPU mesh renderer compute mesh matrices
-	//
-	//----------------------------------------------------------------------------
-
-	class	FMeshMatricesCS : public FGlobalShader
-	{
-		DECLARE_GLOBAL_SHADER(FMeshMatricesCS);
-		SHADER_USE_PARAMETER_STRUCT(FMeshMatricesCS, FGlobalShader);
-
-		BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-			SHADER_PARAMETER(uint32,							DrawRequest)
-			SHADER_PARAMETER_SRV(ByteAddressBuffer,				InSimData)
-			SHADER_PARAMETER_SRV(ByteAddressBuffer,				LiveParticleCount)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,		PositionsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,		ScalesOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,		OrientationsOffsets)
-			SHADER_PARAMETER_SRV(StructuredBuffer<uint>,		MatricesOffsets)
-			SHADER_PARAMETER_UAV(RWStructuredBuffer<float4>,	OutMatrices)
-		END_SHADER_PARAMETER_STRUCT()
-
-	public:
-		typedef FGlobalShader	Super;
-		inline static const u32	kThreadGroupSize = 128;
-
-		static bool	ShouldCompilePermutation(const FGlobalShaderPermutationParameters &Parameters);
-		static void	ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters &Parameters, FShaderCompilerEnvironment &OutEnvironment);
-
-		void		Dispatch(FRHICommandList &RHICmdList, TShaderMapRef<FMeshMatricesCS> shaderMapRef, const FParameters& params, const u32 particleCount);
 	};
 
 	//----------------------------------------------------------------------------

@@ -21,11 +21,10 @@ public:
 	enum : uint32 { Alignment = 0x10 };
 	enum : uint32
 	{
-		Flag_UAV				= 1U << 31,
-		Flag_SRV				= 1U << (31 - 1),
-		Flag_ByteAddressBuffer	= 1U << (31 - 2),
-		Flag_DrawIndirectBuffer	= 1U << (31 - 3),
-		Flag_StrideMask			= (1U << (31 - 3)) - 1,
+		Flag_UAV				= (1U << 31),
+		Flag_SRV				= (1U << 31) - 1,
+		Flag_ByteAddressBuffer	= (1U << 31) - 2,
+		Flag_StrideMask			= (1U << 31) - 3,
 	};
 
 	FPopcornFXVertexBuffer()
@@ -40,14 +39,13 @@ public:
 	bool			UsedAsUAV() const { return (m_Flags & Flag_UAV) != 0; }
 	bool			UsedAsSRV() const { return (m_Flags & Flag_SRV) != 0; }
 	bool			UsedAsByteAddressBuffer() const { return (m_Flags & Flag_ByteAddressBuffer) != 0; }
-	bool			UsedAsDrawIndirectBuffer() const { return (m_Flags & Flag_DrawIndirectBuffer) != 0; }
-	void			SetResourceUsage(bool uav, bool srv, bool byteAddressBuffer, bool drawIndirectBuffer);
-	bool			Mappable() const { return VertexBufferRHI != null; }
+	void			SetResourceUsage(bool uav, bool srv, bool byteAddressBuffer);
+	bool			Mappable() const { return !UsedAsUAV(); }
 	bool			Mapped() const { return m_CurrentMap != null; }
 	void			*RawMap(u32 count, u32 stride);
 	void			Unmap();
 
-	void			_SetAllocated(u32 count, u32 stride);
+	void			_SetAllocated(u32 count, u32 stride) { m_AllocatedCount = count; PK_ASSERT(stride < Flag_StrideMask); m_Flags = (m_Flags & ~Flag_StrideMask) | stride; }
 	u32				AllocatedStride() const { return m_Flags & Flag_StrideMask; }
 	u32				AllocatedCount() const { return m_AllocatedCount; }
 	u32				AllocatedSize() const { return AllocatedCount() * AllocatedStride(); }
@@ -85,19 +83,15 @@ public:
 		return Map(outPreSetupedMap, outPreSetupedMap.Count(), outPreSetupedMap.Stride());
 	}
 
-	const FUnorderedAccessViewRHIRef	&UAV();
-	const FShaderResourceViewRHIRef		&SRV();
-
-	// Create an access view that maps to a portion of the buffer (start at startIdx and contains elementCount)
-	// WARNING: Ownership of this UAV isn't handled internally, it is up to the caller to release it at the end of its lifetime
-	FUnorderedAccessViewRHIRef	CreateSubUAV(u32 elementCount, u32 startIdx = 0, u32 strideInBytes = 0);
-
-	// Create a resource view that maps to a portion of the buffer (start at startIdx and contains elementCount)
-	// WARNING: Ownership of this SRV isn't handled internally, it is up to the caller to release it at the end of its lifetime
-	FShaderResourceViewRHIRef	CreateSubSRV(u32 elementCount, u32 startIdx = 0, u32 strideInBytes = 0);
+	const FUnorderedAccessViewRHIRef		&UAV();
+	const FShaderResourceViewRHIRef			&SRV();
 
 protected:
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
+	virtual void	InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	virtual void	ReleaseRHI() override;
 
 private:
@@ -129,7 +123,11 @@ public:
 		: m_Capacity(0), m_Flags(0), m_AllocatedCount(0), m_CurrentMap(null)
 	{ }
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
+	virtual void	InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	virtual void	ReleaseRHI() override;
 
 	bool			Large() const { return m_Flags & Flag_Large; }
@@ -188,8 +186,8 @@ public:
 		return true;
 	}
 
-	const FUnorderedAccessViewRHIRef	&UAV();
-	const FShaderResourceViewRHIRef		&SRV();
+	const FUnorderedAccessViewRHIRef		&UAV();
+	const FShaderResourceViewRHIRef			&SRV();
 
 private:
 	u32				m_Capacity;
@@ -236,12 +234,11 @@ public:
 	bool		m_BuffersUsedAsUAV = false;
 	bool		m_BuffersUsedAsSRV = false;
 	bool		m_ByteAddressBuffers = false;
-	bool		m_DrawIndirectBuffers = false;
 protected:
 	bool		BufferAllocate(CBuffer &buffer, u32 sizeInBytes)
 	{
 		check(IsInRenderingThread());
-		buffer.SetResourceUsage(m_BuffersUsedAsUAV, m_BuffersUsedAsSRV, m_ByteAddressBuffers, m_DrawIndirectBuffers);
+		buffer.SetResourceUsage(m_BuffersUsedAsUAV, m_BuffersUsedAsSRV, m_ByteAddressBuffers);
 		return buffer.HardResize(sizeInBytes);
 	}
 
@@ -285,9 +282,9 @@ public:
 	template <typename _Type, s32 _FootprintInBytes>
 	bool		AllocateAndMapIf(bool doIt, CPooledBuffer &outPBuffer, TStridedMemoryView<_Type, _FootprintInBytes> &outPreSetupedMap)
 	{
+		outPBuffer.Clear();
 		if (doIt)
 		{
-			outPBuffer.Clear();
 			PK_ASSERT(outPreSetupedMap.Count() > 0 && outPreSetupedMap.Stride() > 0 && outPreSetupedMap.Data() == null);
 			if (!Super::Allocate(outPBuffer, outPreSetupedMap.CoveredBytes()))
 				return false;
@@ -303,10 +300,10 @@ public:
 
 	bool		AllocateIf(bool doIt, CPooledBuffer &outPBuffer, u32 count, u32 stride, bool clear = true)
 	{
+		if (clear)
+			outPBuffer.Clear();
 		if (doIt)
 		{
-			if (clear)
-				outPBuffer.Clear();
 			PK_ASSERT(count > 0);
 			if (!Super::Allocate(outPBuffer, count * stride))
 				return false;
@@ -336,11 +333,11 @@ public:
 
 	bool		AllocateAndMapIf(bool doIt, CPooledBuffer &outPBuffer, void *&outMap, bool &outLargeIndices, u32 indexCount)
 	{
+		outPBuffer.Clear();
+		outLargeIndices = false;
+		outMap = null;
 		if (doIt)
 		{
-			outPBuffer.Clear();
-			outLargeIndices = false;
-			outMap = null;
 			if (!Super::Allocate(outPBuffer, indexCount))
 				return false;
 			outPBuffer->_SetAllocated(indexCount);
@@ -352,11 +349,11 @@ public:
 
 	bool		AllocateIf(bool doIt, CPooledBuffer &outPBuffer, bool &outLargeIndices, u32 indexCount, bool clear = true)
 	{
+		if (clear)
+			outPBuffer.Clear();
+		outLargeIndices = false;
 		if (doIt)
 		{
-			if (clear)
-				outPBuffer.Clear();
-			outLargeIndices = false;
 			if (!Super::Allocate(outPBuffer, indexCount))
 				return false;
 			outPBuffer->_SetAllocated(indexCount);

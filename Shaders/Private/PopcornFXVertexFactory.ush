@@ -40,7 +40,9 @@ struct FVertexFactoryInput
 #if FEATURE_LEVEL >= FEATURE_LEVEL_SM4 && ONEPASS_POINTLIGHT_SHADOW && USING_VERTEX_SHADER_LAYER
 	uint	InstanceId	: SV_InstanceID;
 #else
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK()
+#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 #endif
 	uint	VertexId : SV_VertexID;
 };
@@ -70,8 +72,10 @@ struct FVertexFactoryIntermediates
 	float4	DynamicParameter3;
 #endif
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 };
 
 //----------------------------------------------------------------------------
@@ -201,7 +205,11 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 /** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
 FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal, bool bIsPreviousFrame = false)
 {
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	FMaterialVertexParameters	VertexParameters = MakeInitializedMaterialVertexParameters();
+#else
+	FMaterialVertexParameters	VertexParameters = (FMaterialVertexParameters)0;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 #if NUM_MATERIAL_TEXCOORDS_VERTEX
 	#if NUM_MATERIAL_TEXCOORDS_VERTEX >= 1
@@ -224,13 +232,19 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	
 #endif // NUM_MATERIAL_TEXCOORDS_VERTEX
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	VertexParameters.SceneData = Intermediates.SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	VertexParameters.WorldPosition = WorldPosition;
 	VertexParameters.VertexColor = Intermediates.ParticleEmissiveColor;
 	VertexParameters.PreSkinnedPosition = Input.Position.xyz;
 	VertexParameters.PreSkinnedNormal = TangentToLocal[2].xyz;
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	VertexParameters.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld;
+#else
+	VertexParameters.PrevFrameLocalToWorld = Primitive.PreviousLocalToWorld;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if NEEDS_PARTICLE_COLOR
 	VertexParameters.Particle.Color = Intermediates.ParticleColor;
@@ -254,10 +268,12 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 
 	VertexParameters.TangentToWorld = mul(TangentToLocal, GetLocalToWorld3x3());
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 #if ENABLE_NEW_HLSL_GENERATOR
 	EvaluateVertexMaterialAttributes(VertexParameters);
 #endif // ENABLE_NEW_HLSL_GENERATOR
 	VertexParameters.LWCData = MakeMaterialLWCData(VertexParameters);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4)
 
 	return VertexParameters;
 }
@@ -270,7 +286,9 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
 {
 	FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
+#if (ENGINE_MAJOR_VERSION == 5)
 	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	uint		particleID = 0;
 	const int	vertexID = Input.VertexId;
@@ -313,8 +331,16 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 
 	float3	vertexPosition = Input.Position;
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	float3	worldVertexPosition = mul(float4(vertexPosition,1), DFDemote(GetPrimitiveDataFromUniformBuffer().LocalToWorld)).xyz;
 	worldVertexPosition += LWCToFloat(ResolvedView.TileOffset.PreViewTranslation);
+#elif (ENGINE_MAJOR_VERSION == 5)
+	float3	worldVertexPosition = mul(float4(vertexPosition,1), LWCToFloat(GetPrimitiveDataFromUniformBuffer().LocalToWorld)).xyz;
+	worldVertexPosition += LWCToFloat(ResolvedView.PreViewTranslation);
+#else
+	float3	worldVertexPosition = mul(float4(vertexPosition,1), Primitive.LocalToWorld).xyz;
+	worldVertexPosition += ResolvedView.PreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Intermediates.Position = worldVertexPosition;
 
@@ -324,8 +350,16 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	if (PopcornFXBillboardVSUniforms.InVelocityOffset != -1)
 		prevVertexPosition -= PKSimData_Load3f(particleID, PopcornFXBillboardVSUniforms.InVelocityOffset);
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), DFDemote(GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld)).xyz;
 	prevWorldVertexPosition += LWCToFloat(ResolvedView.TileOffset.PrevPreViewTranslation);
+#elif (ENGINE_MAJOR_VERSION == 5)
+	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), LWCToFloat(GetPrimitiveDataFromUniformBuffer().PreviousLocalToWorld)).xyz;
+	prevWorldVertexPosition += LWCToFloat(ResolvedView.PrevPreViewTranslation);
+#else
+	float3	prevWorldVertexPosition = mul(float4(prevVertexPosition,1), Primitive.PreviousLocalToWorld).xyz;
+	prevWorldVertexPosition += ResolvedView.PrevPreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	Intermediates.PrevPosition = prevWorldVertexPosition;
 
@@ -470,4 +504,6 @@ float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryInte
 	return Input.Normal;
 }
 
-#include "/Engine/Private/VertexFactoryDefaultInterface.ush"
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "/Engine/Private/VertexFactoryDefaultInterface.ush"
+#endif // (ENGINE_MAJOR_VERSION == 5)

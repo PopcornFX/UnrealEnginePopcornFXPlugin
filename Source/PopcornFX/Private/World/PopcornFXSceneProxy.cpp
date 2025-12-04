@@ -22,8 +22,13 @@ FPopcornFXSceneProxy::FPopcornFXSceneProxy(UPopcornFXSceneComponent *component)
 
 	bVerifyUsedMaterials = true;
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	bAlwaysHasVelocity = true;
+
+#if (ENGINE_MINOR_VERSION >= 4)
 	bSupportsParallelGDME = false;
+#endif // (ENGINE_MINOR_VERSION >= 4)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
@@ -61,13 +66,21 @@ void	FPopcornFXSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*
 //----------------------------------------------------------------------------
 
 #if RHI_RAYTRACING
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 void	FPopcornFXSceneProxy::GetDynamicRayTracingInstances(FRayTracingInstanceCollector &context)
+#else
+void	FPopcornFXSceneProxy::GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext &context, TArray<FRayTracingInstance> &outRayTracingInstances)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 
 {
 	CParticleScene	*particleScene = ParticleSceneToRender();
 	if (particleScene == null)
 		return;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 	particleScene->GetDynamicRayTracingInstances(this, context);
+#else
+	particleScene->GetDynamicRayTracingInstances(this, context, outRayTracingInstances);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 }
 #endif // RHI_RAYTRACING
 

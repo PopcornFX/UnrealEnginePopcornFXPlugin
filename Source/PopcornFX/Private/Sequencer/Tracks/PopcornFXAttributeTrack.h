@@ -7,7 +7,9 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 #include "MovieSceneNameableTrack.h"
-#include "Compilation/IMovieSceneTrackTemplateProducer.h"
+#if ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26) || ENGINE_MAJOR_VERSION == 5)
+#	include "Compilation/IMovieSceneTrackTemplateProducer.h"
+#endif // ((ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 26) || ENGINE_MAJOR_VERSION == 5)
 #include "PopcornFXSDK.h"
 #include "PopcornFXAttributeTrack.generated.h"
 
@@ -37,9 +39,9 @@ public:
 	virtual FText GetDefaultDisplayName() const override;
 #endif
 
-	void	AddScalarAttributeKey(const FString &attrName, FFrameNumber position, float value);
-	void	AddVectorAttributeKey(const FString &attrName, FFrameNumber position, FVector value);
-	void	AddColorAttributeKey(const FString &attrName, FFrameNumber position, FLinearColor value);
+	void	AddScalarAttributeKey(FName attrName, FFrameNumber position, float value);
+	void	AddVectorAttributeKey(FName attrName, FFrameNumber position, FVector value);
+	void	AddColorAttributeKey(FName attrName, FFrameNumber position, FLinearColor value);
 
 private:
 	UPROPERTY()

@@ -202,7 +202,7 @@ UPopcornFXAttributeFunctions::UPopcornFXAttributeFunctions(class FObjectInitiali
 
 //----------------------------------------------------------------------------
 
-int32	UPopcornFXAttributeFunctions::FindAttributeIndex(const UPopcornFXEmitterComponent *InSelf, FString InAttributeName)
+int32	UPopcornFXAttributeFunctions::FindAttributeIndex(const UPopcornFXEmitterComponent *InSelf, FName InAttributeName)
 {
 	if (!PK_VERIFY(InSelf != null) || !PK_VERIFY(InSelf->Effect != null))
 		return -1;

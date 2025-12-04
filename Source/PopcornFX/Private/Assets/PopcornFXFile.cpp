@@ -17,7 +17,11 @@
 #include "UObject/LinkerLoad.h"
 #if WITH_EDITOR
 #	include "Factories/TextureFactory.h"
+#	if (ENGINE_MAJOR_VERSION == 5)
 #		include "AssetRegistry/AssetRegistryModule.h"
+#	else
+#		include "AssetRegistryModule.h"
+#	endif // (ENGINE_MAJOR_VERSION == 5)
 #	include "EditorReimportHandler.h"
 #endif // WITH_EDITOR
 
@@ -419,6 +423,7 @@ void	UPopcornFXFile::PreReimport_Clean()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 void	UPopcornFXFile::GetAssetRegistryTags(FAssetRegistryTagsContext context) const
 {
 	if (AssetImportData != null)
@@ -426,6 +431,15 @@ void	UPopcornFXFile::GetAssetRegistryTags(FAssetRegistryTagsContext context) con
 
 	Super::GetAssetRegistryTags(context);
 }
+#else
+void	UPopcornFXFile::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const
+{
+	if (AssetImportData != null)
+		outTags.Add( FAssetRegistryTag(SourceFileTagName(), AssetImportData->GetSourceData().ToJson(), FAssetRegistryTag::TT_Hidden) );
+
+	Super::GetAssetRegistryTags(outTags);
+}
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 
 //----------------------------------------------------------------------------
 

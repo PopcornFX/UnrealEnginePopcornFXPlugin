@@ -12,9 +12,11 @@
 #include "MaterialShared.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/Material.h"
-#include "MaterialDomain.h"
-#include "DataDrivenShaderPlatformInfo.h"
-#include "GlobalRenderResources.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "MaterialDomain.h"
+#	include "DataDrivenShaderPlatformInfo.h"
+#	include "GlobalRenderResources.h"
+#endif
 
 #include "MeshMaterialShader.h"
 
@@ -50,8 +52,12 @@ void	FPopcornFXVertexFactory::_SetupStream(	u32								attributeIndex,
 //
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
 IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXVertexFactory, PKUE_SHADER_PATH("PopcornFXVertexFactory"),
 	EVertexFactoryFlags::UsedWithMaterials | EVertexFactoryFlags::SupportsDynamicLighting); // TODO
+#else
+IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXVertexFactory, PKUE_SHADER_PATH("PopcornFXVertexFactory"), true, false, true, false, false);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXVertexFactory, SF_Vertex, FPopcornFXVertexFactoryShaderParametersVertex);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXVertexFactory, SF_Pixel, FPopcornFXVertexFactoryShaderParametersPixel);
@@ -111,7 +117,11 @@ bool	FPopcornFXVertexFactory::IsCompatible(UMaterialInterface *material)
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 void	FPopcornFXVertexFactory::InitRHI(FRHICommandListBase &RHICmdList)
+#else
+void	FPopcornFXVertexFactory::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	FVertexDeclarationElementList	vDeclElements;
 	Streams.Empty();

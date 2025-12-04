@@ -21,7 +21,10 @@
 #include "Engine/TextureCube.h"
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
-#include "UnrealWidget.h"
+
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "UnrealWidget.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #include "PopcornFXSDK.h"
 
@@ -198,7 +201,11 @@ public:
 		Invalidate();
 	}
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	virtual void	SetWidgetMode(UE::Widget::EWidgetMode NewMode) override { }
+#else
+	virtual void	SetWidgetMode(FWidget::EWidgetMode newMode) override { }
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 private:
 	UStaticMeshComponent	*m_FloorComponent;
@@ -262,11 +269,10 @@ void	SPopcornFXEffectPreviewViewport::SetPreviewEffect(UPopcornFXEffect *effect)
 	PK_ASSERT(IsInGameThread());
 	if (!PK_VERIFY(effect != null))
 		return;
-	FName	name = *(*effect->GetName() + FString(" preview"));
 	if (m_EmitterComponent == null)
 	{
 		// Should automatically resolve the preview scene and mirror the real scene if possible
-		m_EmitterComponent = NewObject<UPopcornFXEmitterComponent>((UObject*)GetTransientPackage(), name, RF_Transient);
+		m_EmitterComponent = NewObject<UPopcornFXEmitterComponent>((UObject*)GetTransientPackage(), NAME_None, RF_Transient);
 		if (!PK_VERIFY(m_EmitterComponent != null))
 			return;
 		m_EmitterComponent->bAutoDestroy = false;
@@ -276,7 +282,6 @@ void	SPopcornFXEffectPreviewViewport::SetPreviewEffect(UPopcornFXEffect *effect)
 		m_ViewportClient->SetEmitterComponent(m_EmitterComponent);
 		m_ViewportClient->ResetLoopTimer();
 	}
-	effect->PreviewEmitter = m_EmitterComponent;
 	m_EmitterComponent->SetEffect(effect, true);
 	return;
 }
@@ -503,7 +508,7 @@ void	SPopcornFXEffectPreviewViewport::ResetEmitterAttributes()
 	PK_ASSERT(m_EmitterComponent->Effect != null);
 	PK_ASSERT(m_EmitterComponent->GetAttributeList() != null);
 
-	m_EmitterComponent->ResetAttributesToDefault();
+	m_EmitterComponent->GetAttributeList()->ResetToDefaultValues(m_EmitterComponent->Effect);
 }
 
 //----------------------------------------------------------------------------

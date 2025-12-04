@@ -7,7 +7,6 @@
 #include "PopcornFXEffectEditor.h"
 
 #include "Assets/PopcornFXEffect.h"
-#include "PopcornFXEmitterComponent.h"
 #include "PopcornFXAttributeList.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsEffect.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsEffectAttributes.h"
@@ -192,7 +191,11 @@ void	FPopcornFXEffectEditor::FillEffectToolbar(FToolBarBuilder &toolbarBuilder)
 					.ToolTipText(LOCTEXT("DelayTooltip", "Time before the emitter restarts"))
 					.MinValue(0.0f)
 					.MaxValue(20.0f)
+#if (ENGINE_MAJOR_VERSION == 5)
 					.Font(FAppStyle::GetFontStyle(TEXT("MenuItem.Font")))
+#else
+					.Font(FEditorStyle::GetFontStyle(TEXT("MenuItem.Font")))
+#endif // (ENGINE_MAJOR_VERSION == 5)
 					.Value(PreviewViewport.Get(), &SPopcornFXEffectPreviewViewport::OnGetLoopDelayValue)
 					.OnValueChanged(PreviewViewport.Get(), &SPopcornFXEffectPreviewViewport::OnLoopDelayValueChanged)
 				]
@@ -240,10 +243,6 @@ void	FPopcornFXEffectEditor::InitEffectEditor(const EToolkitMode::Type Mode, con
 	PK_ASSERT(!m_OnFileChangedHandle.IsValid());
 	m_OnFileChangedHandle = m_Effect->m_OnFileChanged.AddRaw(this, &FPopcornFXEffectEditor::OnFileChanged);
 
-	FPopcornFXEffectEditorCommands::Register();
-
-	PreviewViewport = SNew(SPopcornFXEffectPreviewViewport).EffectEditor(SharedThis(this));
-
 	FPropertyEditorModule& PropertyEditorModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>(TEXT("PropertyEditor"));
 
 	FDetailsViewArgs	DetailsViewArgs;
@@ -261,6 +260,10 @@ void	FPopcornFXEffectEditor::InitEffectEditor(const EToolkitMode::Type Mode, con
 	FOnGetDetailCustomizationInstance	LayoutCustomEffectAttributes = FOnGetDetailCustomizationInstance::CreateSP(this, &FPopcornFXEffectEditor::MakeEffectAttributesDetails);
 	EffectAttributesView->RegisterInstancedCustomPropertyLayout(UPopcornFXEffect::StaticClass(), LayoutCustomEffectAttributes);
 	EffectAttributesView->SetObject(m_Effect);
+
+	FPopcornFXEffectEditorCommands::Register();
+
+	PreviewViewport = SNew(SPopcornFXEffectPreviewViewport).EffectEditor(SharedThis(this));
 
 	BindCommands();
 

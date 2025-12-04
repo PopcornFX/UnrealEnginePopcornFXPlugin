@@ -9,7 +9,6 @@
 #include "Render/PopcornFXBuffer.h"
 #include "Render/RendererSubView.h"
 #include "Render/MaterialDesc.h"
-#include "Render/PopcornFXRenderUtils.h"
 
 #include <pk_particles/include/Renderers/ps_renderer_base.h>
 #include <pk_render_helpers/include/batch_jobs/rh_batch_jobs_billboard_gpu.h>
@@ -20,13 +19,50 @@ class	FPopcornFXGPUBillboardVSUniforms;
 
 //----------------------------------------------------------------------------
 //
+//	Atlas buffer (holds CRectangleList rects)
+//
+//----------------------------------------------------------------------------
+
+struct	FPopcornFXAtlasRectsVertexBuffer
+{
+	//FStructuredBufferRHIRef			m_AtlasBuffer_Structured;
+#if (ENGINE_MAJOR_VERSION == 5)
+	FBufferRHIRef					m_AtlasBuffer_Raw;
+#else
+	FVertexBufferRHIRef				m_AtlasBuffer_Raw;
+#endif // (ENGINE_MAJOR_VERSION == 5)
+	FShaderResourceViewRHIRef		m_AtlasBufferSRV;
+	u32								m_AtlasRectsCount = 0;
+	u32								m_AtlasBufferCapacity = 0;
+
+	bool		Loaded() const { return m_AtlasRectsCount > 0; }
+	void		Clear()
+	{
+		//m_AtlasBuffer_Structured = null;
+		m_AtlasBuffer_Raw = null;
+		m_AtlasBufferSRV = null;
+		m_AtlasRectsCount = 0;
+		m_AtlasBufferCapacity = 0;
+	}
+	bool		LoadRects(const PopcornFX::TMemoryView<const CFloat4> &rects);
+
+private:
+	bool		_LoadRects(const PopcornFX::TMemoryView<const CFloat4> &rects);
+};
+
+//----------------------------------------------------------------------------
+//
 //	Draw requests buffer (holds batching data, not currently supported by the GPU sim)
 //
 //----------------------------------------------------------------------------
 
 struct	FPopcornFXDrawRequestsBuffer
 {
+#if (ENGINE_MAJOR_VERSION == 5)
 	FBufferRHIRef				m_DrawRequestsBuffer;
+#else
+	FVertexBufferRHIRef			m_DrawRequestsBuffer;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	FShaderResourceViewRHIRef	m_DrawRequestsBufferSRV;
 
 	~FPopcornFXDrawRequestsBuffer()
@@ -41,6 +77,27 @@ struct	FPopcornFXDrawRequestsBuffer
 private:
 	bool	m_Mapped = false;
 };
+
+//----------------------------------------------------------------------------
+//
+//	Null Float4 buffer
+//
+//----------------------------------------------------------------------------
+
+class	FNullFloat4Buffer : public FVertexBuffer
+{
+public:
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
+	virtual void	InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	virtual void	ReleaseRHI() override;
+
+	FShaderResourceViewRHIRef	SRV;
+};
+
+extern TGlobalResource<FNullFloat4Buffer>	GPopcornFXNullFloat4Buffer;
 
 //----------------------------------------------------------------------------
 // 

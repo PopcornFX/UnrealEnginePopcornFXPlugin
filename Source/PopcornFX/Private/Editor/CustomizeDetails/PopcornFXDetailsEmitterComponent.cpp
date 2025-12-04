@@ -9,24 +9,24 @@
 #include "Assets/PopcornFXEffect.h"
 #include "PopcornFXEmitterComponent.h"
 #include "Editor/EditorHelpers.h"
-#include "Editor/PopcornFXStyle.h"
+#include "PopcornFXSDK.h"
 
 #include "DetailLayoutBuilder.h"
-#include "DetailWidgetRow.h"
-#include "IDetailGroup.h"
-
+#include "IDetailsView.h"
+#include "DetailCategoryBuilder.h"
+#include "PropertyCustomizationHelpers.h"
+#include "PropertyHandle.h"
+#include "EditorReimportHandler.h"
 #include "Widgets/Text/STextBlock.h"
-#include "Widgets/Images/SImage.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Input/SVectorInputBox.h"
 #include "Widgets/Input/SButton.h"
-#include "Widgets/Layout/SBox.h"
 
 #include "SAssetDropTarget.h"
-#include "EditorReimportHandler.h"
 
 //----------------------------------------------------------------------------
 
 #define LOCTEXT_NAMESPACE "PopcornFXDetailsEmitterComponent"
-DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXDetailsEmitterComponent, Log, All);
 
 //----------------------------------------------------------------------------
 
@@ -46,7 +46,7 @@ TSharedRef<IDetailCustomization>	FPopcornFXDetailsEmitterComponent::MakeInstance
 
 void	FPopcornFXDetailsEmitterComponent::GatherEmitters(TArray<UPopcornFXEmitterComponent*> &outComponents) const
 {
-	const TArray< TWeakObjectPtr<UObject> >		&objects = m_BeingCustomized;
+	const TArray< TWeakObjectPtr<UObject> >		&objects = m_SelectedObjectsList;
 	for (int32 obji = 0; obji < objects.Num(); ++obji)
 	{
 		if (objects[obji].IsValid())
@@ -68,7 +68,7 @@ void	FPopcornFXDetailsEmitterComponent::GatherEmitters(TArray<UPopcornFXEmitterC
 
 void	FPopcornFXDetailsEmitterComponent::GatherEffects(TArray<UPopcornFXEffect*> &outEffects)
 {
-	const TArray< TWeakObjectPtr<UObject> >		&objects = m_BeingCustomized;
+	const TArray< TWeakObjectPtr<UObject> >		&objects = m_SelectedObjectsList;
 	for (int32 obji = 0; obji < objects.Num(); ++obji)
 	{
 		if (objects[obji].IsValid())
@@ -93,10 +93,8 @@ FReply		FPopcornFXDetailsEmitterComponent::OnStartEmitter()
 	TArray<UPopcornFXEmitterComponent*> emitters;
 	GatherEmitters(emitters);
 	for (int32 i = 0; i < emitters.Num(); ++i)
-	{
 		if (emitters[i]->IsRegistered())
 			emitters[i]->StartEmitter();
-	}
 	return FReply::Handled();
 }
 
@@ -107,10 +105,8 @@ FReply		FPopcornFXDetailsEmitterComponent::OnStopEmitter()
 	TArray<UPopcornFXEmitterComponent*> emitters;
 	GatherEmitters(emitters);
 	for (int32 i = 0; i < emitters.Num(); ++i)
-	{
 		if (emitters[i]->IsRegistered())
 			emitters[i]->StopEmitter();
-	}
 	return FReply::Handled();
 }
 
@@ -121,10 +117,8 @@ FReply		FPopcornFXDetailsEmitterComponent::OnKillParticles()
 	TArray<UPopcornFXEmitterComponent*> emitters;
 	GatherEmitters(emitters);
 	for (int32 i = 0; i < emitters.Num(); ++i)
-	{
 		if (emitters[i]->IsRegistered())
 			emitters[i]->KillParticles();
-	}
 	return FReply::Handled();
 }
 
@@ -135,10 +129,8 @@ FReply		FPopcornFXDetailsEmitterComponent::OnRestartEmitter()
 	TArray<UPopcornFXEmitterComponent*> emitters;
 	GatherEmitters(emitters);
 	for (int32 i = 0; i < emitters.Num(); ++i)
-	{
 		if (emitters[i]->IsRegistered())
 			emitters[i]->RestartEmitter(true);
-	}
 	return FReply::Handled();
 }
 
@@ -149,10 +141,8 @@ bool	FPopcornFXDetailsEmitterComponent::IsStartEnabled() const
 	TArray<UPopcornFXEmitterComponent*> emitters;
 	GatherEmitters(emitters);
 	for (int32 i = 0; i < emitters.Num(); ++i)
-	{
 		if (!emitters[i]->IsEmitterStarted())
 			return true;
-	}
 	return false;
 }
 
@@ -163,10 +153,8 @@ bool	FPopcornFXDetailsEmitterComponent::IsStopEnabled() const
 	TArray<UPopcornFXEmitterComponent*> emitters;
 	GatherEmitters(emitters);
 	for (int32 i = 0; i < emitters.Num(); ++i)
-	{
 		if (emitters[i]->IsEmitterEmitting())
 			return true;
-	}
 	return false;
 }
 
@@ -174,11 +162,11 @@ bool	FPopcornFXDetailsEmitterComponent::IsStopEnabled() const
 
 FReply	FPopcornFXDetailsEmitterComponent::OnReloadEffect()
 {
-	TArray<UPopcornFXEmitterComponent*>	emitters;
-	GatherEmitters(emitters);
-	for (int32 i = 0; i < emitters.Num(); ++i)
+	TArray<UPopcornFXEffect*>		effects;
+	GatherEffects(effects);
+	for (int32 i = 0; i < effects.Num(); ++i)
 	{
-		emitters[i]->Effect->ReloadFile();
+		effects[i]->ReloadFile();
 	}
 	return FReply::Handled();
 }
@@ -187,340 +175,107 @@ FReply	FPopcornFXDetailsEmitterComponent::OnReloadEffect()
 
 FReply	FPopcornFXDetailsEmitterComponent::OnReimportEffect()
 {
-	TArray<UPopcornFXEmitterComponent *>	emitters;
-	GatherEmitters(emitters);
-	for (int32 i = 0; i < emitters.Num(); ++i)
+	TArray<UPopcornFXEffect*>		effects;
+	GatherEffects(effects);
+	for (int32 i = 0; i < effects.Num(); ++i)
 	{
-		FReimportManager::Instance()->Reimport(emitters[i]->Effect);
+		FReimportManager::Instance()->Reimport(effects[i]);
 	}
 	return FReply::Handled();
 }
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc *desc, const TSharedPtr<IPropertyHandle> samplerPty, const TSharedPtr<IPropertyHandle> samplerDescPty, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory)
-{
-	const FString		&name = desc->m_SamplerName;
-
-	FString				defNode;
-	FName				samplerIconName;
-
-	UPopcornFXEffect *effect = ResolveEffect(attrList);
-	if (effect == null)
-		return;
-
-	// TODO(Attributes refactor): This should not use 'CParticleNodeSamplerData'
-	const PopcornFX::CParticleAttributeSamplerDeclaration *particleSampler = static_cast<const PopcornFX::CParticleAttributeSamplerDeclaration *>(attrList->GetParticleSampler(effect, sampleri));
-	if (particleSampler == null)
-		return;
-
-	const char *nodeName = ResolveAttribSamplerNodeName(particleSampler, desc->m_SamplerType);
-	if (nodeName != null)
-	{
-		defNode = nodeName;
-		samplerIconName = FName(*("PopcornFX.Node." + defNode));
-	}
-	else
-	{
-		defNode = "?????";
-		samplerIconName = FName(TEXT("PopcornFX.BadIcon32"));
-	}
-
-	UPopcornFXEmitterComponent *emitter = Cast<UPopcornFXEmitterComponent>(m_BeingCustomized[0].Get());
-	if (!PK_VERIFY(emitter != null))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Could not retrieve the emitter associated with this sampler"));
-		return;
-	}
-
-	UPopcornFXAttributeSampler *sampler = desc->ResolveAttributeSampler(emitter, null);
-	if (sampler)
-		sampler->OnSamplerValidStateChanged.AddThreadSafeSP(this, &FPopcornFXDetailsEmitterComponent::RebuildIFN);
-
-	FSlateColor		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Foreground);
-	FText			tooltipText = FText::FromString(name + ": " + defNode);
-	if (!sampler ||
-		(sampler->m_IncompatibleProperties.Contains(emitter) && !sampler->m_IncompatibleProperties[emitter].m_Properties.IsEmpty()))
-	{
-		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Error);
-		tooltipText = FText::FromString("One or more properties are not supported. Default values exported from PopcornFX will be used");
-	}
-
-	IDetailGroup	&newGroup = m_IGroups[iCategory]->AddGroup(FName(desc->m_SamplerName), FText::FromString(desc->m_SamplerName));
-	newGroup.HeaderRow()
-		[
-			SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.Padding(1.f)
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				[
-					SNew(SBox)
-						.WidthOverride(16)
-						.HeightOverride(16)
-						[
-							SNew(SImage)
-								.Image(FPopcornFXStyle::GetBrush(samplerIconName))
-								.ColorAndOpacity(samplerNameColor)
-						]
-				]
-				+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Center)
-				.Padding(4.0f, 0.0f)
-				[
-					SNew(STextBlock)
-						.Text(FText::FromString(name))
-						.ToolTipText(tooltipText)
-						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-						.ColorAndOpacity(samplerNameColor)
-				]
-		];
-
-	if (!samplerPty.IsValid() || !samplerPty->IsValidHandle()
-		|| !samplerDescPty.IsValid() || !samplerDescPty->IsValidHandle())
-	{
-		return;
-	}
-
-	TSharedPtr<IPropertyHandle>	useExternalSamplerPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_UseExternalSampler));
-	PK_ASSERT(useExternalSamplerPty.IsValid() && useExternalSamplerPty->IsValidHandle());
-	if (!useExternalSamplerPty.IsValid() || !useExternalSamplerPty->IsValidHandle())
-		return;
-
-	IDetailPropertyRow &useExternalSamplerPtyRow = newGroup.AddPropertyRow(useExternalSamplerPty.ToSharedRef()).DisplayName(FText::FromString("Use external sampler?"));
-	TSharedPtr<SWidget> defaultNameWidget;
-	TSharedPtr<SWidget> defaultValueWidget;
-	useExternalSamplerPtyRow.GetDefaultWidgets(defaultNameWidget, defaultValueWidget);
-
-	// This erases the current Name, Value and ResetToDefault widgets, don't forget to set them back if you want them!
-	useExternalSamplerPtyRow.CustomWidget(true)
-	.NameContent()
-	[
-		SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock)
-					.Text(useExternalSamplerPty->GetPropertyDisplayName())
-					.ToolTipText(useExternalSamplerPty->GetToolTipText())
-					.Font(FAppStyle::GetFontStyle("PropertyWindow.BoldFont"))
-					.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Foreground))
-			]
-	]
-	.ValueContent() // Set the default Value widget back
-	[
-		defaultValueWidget.ToSharedRef()
-	];
-
-	useExternalSamplerPty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXDetailsEmitterComponent::RebuildIFN));
-
-	TSharedPtr<IPropertyHandle>	restartWhenSamplerChangesPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_RestartWhenSamplerChanges));
-	PK_ASSERT(restartWhenSamplerChangesPty.IsValid() && restartWhenSamplerChangesPty->IsValidHandle());
-	newGroup.AddPropertyRow(restartWhenSamplerChangesPty.ToSharedRef()).DisplayName(FText::FromString("Restart when sampler changes?"))
-		.EditCondition(desc->m_UseExternalSampler, FOnBooleanValueChanged()).EditConditionHides(true);
-
-	if (desc->m_UseExternalSampler)
-	{
-		// Adds properties to reference an external sampler
-
-		TSharedPtr<IPropertyHandle>		samplerActorPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerActor));
-		PK_ASSERT(samplerActorPty.IsValid() && samplerActorPty->IsValidHandle());
-		newGroup.AddPropertyRow(samplerActorPty.ToSharedRef()).DisplayName(FText::FromString("Target actor"));
-
-		TSharedPtr<IPropertyHandle>		samplerCpntPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerComponentName));
-		PK_ASSERT(samplerCpntPty.IsValid() && samplerCpntPty->IsValidHandle());
-		IDetailPropertyRow &samplerComponentPtyRow = newGroup.AddPropertyRow(samplerCpntPty.ToSharedRef()).DisplayName(FText::FromString("Sampler component name"));
-
-		TSharedPtr<IPropertyHandle>		validSamplerComponentPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_IsSamplerComponentValid));
-		bool isSamplerComponentValid;
-		validSamplerComponentPty->GetValue(isSamplerComponentValid);
-
-		// If we can't find a sampler component with this name, customize the property to set its name font to red
-		if (!isSamplerComponentValid)
-		{
-			samplerComponentPtyRow.GetDefaultWidgets(defaultNameWidget, defaultValueWidget);
-			// This erases the current Name, Value and ResetToDefault widgets, don't forget to set them back if you want them!
-			samplerComponentPtyRow.CustomWidget(true)
-			.NameContent()
-			[
-				SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-							.Text(samplerCpntPty->GetPropertyDisplayName())
-							.ToolTipText(samplerCpntPty->GetToolTipText())
-							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-							.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
-					]
-			]
-			.ValueContent() // Set the default Value widget back
-			[
-				defaultValueWidget.ToSharedRef()
-			];
-
-			// Add a new row with an error message
-			newGroup.AddWidgetRow().WholeRowContent()
-			[
-				SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-							.Text(FText::FromString("Can't find a valid sampler component with this name in the target actor"))
-							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-							.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
-					]
-			];
-		}
-		else if (sampler && sampler->m_IncompatibleProperties.Contains(emitter))
-		{
-			// Look for properties that are incompatible with this emitter's effect
-			for (const auto& elem : sampler->m_IncompatibleProperties[emitter].m_Properties)
-			{
-				newGroup.AddWidgetRow().WholeRowContent()
-				[
-					SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Fill)
-						.VAlign(VAlign_Center)
-						[
-							SNew(STextBlock)
-								.Text(FText::FromString(elem.Value))
-								.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-								.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
-						]
-				];
-			}
-		}
-	}
-	else
-	{
-
-		TSharedPtr<IPropertyHandle>	samplerStructPty = ResolveSamplerProperties(samplerPty, desc->SamplerType(), defNode);
-		if (!samplerStructPty.IsValid() || !samplerStructPty->IsValidHandle())
-			return;
-
-		// Adds a custom property row, see PropertyCustomization/PopcornFXCustomizationAttributeSamplerXXX for each sampler
-		newGroup.AddPropertyRow(samplerStructPty.ToSharedRef());
-	}
-}
-
-//----------------------------------------------------------------------------
-
 void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
-	m_PropertyUtilities = DetailLayout.GetPropertyUtilities();
-	DetailLayout.GetObjectsBeingCustomized(m_BeingCustomized);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+	m_SelectedObjectsList = DetailLayout.GetDetailsViewSharedPtr()->GetSelectedObjects();
+#else
+	m_SelectedObjectsList = DetailLayout.GetDetailsView()->GetSelectedObjects();
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 
-	// Keep this EditCategory order since it reorder categories in the editor
-	IDetailCategoryBuilder &fxEditorCategory = DetailLayout.EditCategory("PopcornFX Emitter");
-	m_AttributeListCategory = &DetailLayout.EditCategory("PopcornFX Attributes");
-
-	DetailLayout.HideProperty("Samplers");
+	IDetailCategoryBuilder	&fxEditorCategory = DetailLayout.EditCategory("PopcornFX Emitter");
 
 	// Add some buttons
 	fxEditorCategory.AddCustomRow(LOCTEXT("Emitter Actions", "Emitter Actions"), false)
-		.NameContent()
+	.NameContent()
 		[
 			SNew(STextBlock)
-				.Text(LOCTEXT("EmitterActions", "Emitter Actions"))
+			.Text(LOCTEXT("EmitterActions", "Emitter Actions"))
 		]
-		.ValueContent()
+	.ValueContent()
 		.MinDesiredWidth(125.0f * 3.0f)
 		.MaxDesiredWidth(125.0f * 4.0f)
 		[
 			SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
+			+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Start", "Start"))
 				.ToolTipText(LOCTEXT("Start_ToolTip", "Starts the emitter. Available if the emitter is not \"IsEmitterStarted\"."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnStartEmitter)
 				.IsEnabled(this, &FPopcornFXDetailsEmitterComponent::IsStartEnabled)]
-				+ SHorizontalBox::Slot()
+			+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Stop", "Stop"))
 				.ToolTipText(LOCTEXT("Stop_ToolTip", "Stops the emitter. Available if the emitter is \"IsEmitterEmitting\"."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnStopEmitter)
 				.IsEnabled(this, &FPopcornFXDetailsEmitterComponent::IsStopEnabled)
 				]
-				+ SHorizontalBox::Slot()
+			+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Restart", "Restart"))
 				.ToolTipText(LOCTEXT("Restart_ToolTip", "Terminates then starts the emitter."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnRestartEmitter)]
-				+ SHorizontalBox::Slot()
+			+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Kill Particles", "Kill Particles"))
 				.ToolTipText(LOCTEXT("kill_ToolTip", "Kill emitter's particles and stop the emitter."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnKillParticles)]
 		]
-		;
+	;
 	// Add some buttons
 	fxEditorCategory.AddCustomRow(LOCTEXT("Effect Actions", "Effect Actions"), false)
 		.NameContent()
 		[
 			SNew(STextBlock)
-				.Text(LOCTEXT("EffectActions", "Effect Actions"))
+			.Text(LOCTEXT("EffectActions", "Effect Actions"))
 		]
 		.ValueContent()
 		.MinDesiredWidth(125.0f * 3.0f)
 		.MaxDesiredWidth(125.0f * 4.0f)
 		[
 			SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				[SNew(SButton)
-				.Text(LOCTEXT("Reload", "Reload")).OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnReloadEffect)
-				.ToolTipText(LOCTEXT("Reload_ToolTip", "Reloads the PopcornFXEffect, will kill all particles related to this effect."))]
-				+ SHorizontalBox::Slot()
-				[SNew(SButton)
-				.Text(LOCTEXT("Reimport", "Reimport")).OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnReimportEffect)
-				.ToolTipText(LOCTEXT("Reimport_ToolTip", "Reimports the PopcornFXEffect."))]
-		];
+			+ SHorizontalBox::Slot()
+			[SNew(SButton)
+			.Text(LOCTEXT("Reload", "Reload")).OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnReloadEffect)
+			.ToolTipText(LOCTEXT("Reload_ToolTip", "Reloads the PopcornFXEffect, will kill all particles related to this effect."))]
+			+ SHorizontalBox::Slot()
+			[SNew(SButton)
+			.Text(LOCTEXT("Reimport", "Reimport")).OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnReimportEffect)
+			.ToolTipText(LOCTEXT("Reimport_ToolTip", "Reimports the PopcornFXEffect."))]
+		]
+	;
+}
 
-	m_AttributeListPty = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UPopcornFXEmitterComponent, AttributeList));
-	if (!PK_VERIFY(IsValidHandle(m_AttributeListPty)))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Can't retrieve attribute list property!"));
-		return;
-	}
-	m_SamplersDescPty = m_AttributeListPty->GetChildHandle(GET_MEMBER_NAME_CHECKED(UPopcornFXAttributeList, m_Samplers));
-	if (!PK_VERIFY(IsValidHandle(m_SamplersDescPty)))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Can't retrieve samplers description property!"));
-		return;
-	}
+//----------------------------------------------------------------------------
 
-	m_SamplersPty = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UPopcornFXEmitterComponent, Samplers));
-	if (!PK_VERIFY(IsValidHandle(m_SamplersPty)))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Can't retrieve samplers property!"));
-		return;
-	}
+TOptional<float>	FPopcornFXDetailsEmitterComponent::OnGetValue(float field) const
+{
+	return field;
+}
 
-	TSharedPtr<IPropertyHandle> effectPty = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UPopcornFXEmitterComponent, Effect));
-	if (!PK_VERIFY(IsValidHandle(effectPty)))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Can't retrieve effect property!"));
-		return;
-	}
-	effectPty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXDetailsEmitterComponent::RebuildIFN));
+//----------------------------------------------------------------------------
 
-	// We are in the blueprint editor, the object being edited is a temporary UI only instance, modifying attributes will have no effect on the viewport
-	if (m_BeingCustomized[0]->GetName().EndsWith("_GEN_VARIABLE"))
-	{
-		// Use this to find the actual object in the viewport 
-		//TArray<UObject*> instances;
-		//m_BeingCustomized[0]->GetArchetypeInstances(instances);
-		//TODO: try this
-		//DetailLayout.GetDetailsView()->SetObject(instances[0]);
-		//DetailLayout.GetDetailsViewSharedPtr()->SetObject(instances[0]);
-	}
+void	FPopcornFXDetailsEmitterComponent::OnSetValue(float newValue, ETextCommit::Type commitInfo, float *field)
+{
+	*field = newValue;
+}
 
-	Rebuild();
+//----------------------------------------------------------------------------
+
+int32	FPopcornFXDetailsEmitterComponent::GetVectorDimension(int32 field) const
+{
+	return field;
 }
 
 //----------------------------------------------------------------------------

@@ -36,8 +36,13 @@ class	FDeferredDecalProxy;
 struct	FDeferredDecalUpdateParams;
 class	CBatchDrawer_Decal_CPUBB;
 
+#if (ENGINE_MAJOR_VERSION == 5)
 #	define PK_WITH_PHYSX	0
 #	define PK_WITH_CHAOS	1
+#else
+#	define PK_WITH_PHYSX	PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
+#	define PK_WITH_CHAOS	!(PK_WITH_PHYSX) && WITH_CHAOS
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 // The plugin doesn't support both being active at the same time.
 #if PK_WITH_PHYSX && PK_WITH_CHAOS
@@ -95,7 +100,11 @@ public:
 	void					GatherSimpleLights(const FSceneViewFamily& ViewFamily, FSimpleLightArray& OutParticleLights) const;
 
 #if RHI_RAYTRACING
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 	void					GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingInstanceCollector &context);
+#else
+	void					GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingMaterialGatheringContext &context, TArray<FRayTracingInstance> &outRayTracingInstances);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 #endif // RHI_RAYTRACING
 
 	void					GetDynamicMeshElements(const FPopcornFXSceneProxy *sceneProxy, const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector);
@@ -112,7 +121,7 @@ public:
 private:
 	bool										InternalSetup(const UPopcornFXSceneComponent *sceneComp);
 
-	static bool									_SimDispatchFallbackOnCPU(const PopcornFX::CParticleDescriptor *descriptor);
+	static bool									_SimDispatchMask(const PopcornFX::CParticleDescriptor *descriptor, PopcornFX::SSimDispatchHint &outHint);
 	u32											_InstanceCount(const PopcornFX::CParticleEffect *effect);
 
 	//----------------------------------------------------------------------------
@@ -330,8 +339,10 @@ public:
 	struct ID3D11Device				*D3D11_Device() const { PK_ASSERT(D3D11Ready()); return m_D3D11_Device; }
 	struct ID3D11DeviceContext		*D3D11_DeferedContext() const { PK_ASSERT(D3D11Ready()); return m_D3D11_DeferedContext; }
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	class FRHIBuffer				*m_D3D11_DummyResource = null;
 	class FRHIUnorderedAccessView	*m_D3D11_DummyView = null;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 private:
 	bool			D3D11_InitIFN();

@@ -10,7 +10,7 @@
 UENUM(BlueprintType)
 namespace	EPopcornFXParticleFieldType
 {
-	enum	Type : uint8
+	enum	Type
 	{
 		Float,
 		Float2,

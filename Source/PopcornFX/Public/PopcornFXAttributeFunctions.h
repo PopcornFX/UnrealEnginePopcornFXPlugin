@@ -21,7 +21,7 @@ public:
 
 	/// Returns the index of the Attribute
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="PopcornFX|Attributes", meta=(DefaultToSelf="InSelf"))
-	static int32			FindAttributeIndex(const UPopcornFXEmitterComponent *InSelf, FString InAttributeName);
+	static int32			FindAttributeIndex(const UPopcornFXEmitterComponent *InSelf, FName InAttributeName);
 
 	/// Reset Attribute values to default
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="PopcornFX|Attributes", meta=(DefaultToSelf="InSelf"))

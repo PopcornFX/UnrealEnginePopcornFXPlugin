@@ -72,8 +72,10 @@ struct	FVertexFactoryIntermediates
 	float4	DynamicParameter3;
 #endif
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 };
 
 //----------------------------------------------------------------------------
@@ -192,7 +194,13 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 
 	const float2	cornerCoords = texCoords;
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	const float3	worldCameraOrigin = LWCToFloat(ResolvedView.TileOffset.WorldViewOrigin).xyz * 0.01f; // PKFX positions are 1unit = 1meter. UE 1unit = 1centimeter
+#elif (ENGINE_MAJOR_VERSION == 5)
+	const float3	worldCameraOrigin = LWCToFloat(ResolvedView.WorldViewOrigin).xyz * 0.01f; // PKFX positions are 1unit = 1meter. UE 1unit = 1centimeter
+#else
+	const float3	worldCameraOrigin = ResolvedView.WorldViewOrigin.xyz * 0.01f; // PKFX positions are 1unit = 1meter. UE 1unit = 1centimeter
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	switch (billboarderType)
 	{
@@ -295,18 +303,36 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	intermediates.ParticleWorldPosition = worldPos * GLOBAL_SCALE;
 
 	intermediates.VertexWorldPosition = (worldPos + bbCorner) * GLOBAL_SCALE;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	intermediates.VertexWorldPosition += LWCToFloat(ResolvedView.TileOffset.PreViewTranslation);
+#elif (ENGINE_MAJOR_VERSION == 5)
+	intermediates.VertexWorldPosition += LWCToFloat(ResolvedView.PreViewTranslation);
+#else
+	intermediates.VertexWorldPosition += ResolvedView.PreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	BRANCH
 	if (PopcornFXGPUBillboardVSUniforms.InVelocityOffset != -1)
         intermediates.VertexPrevWorldPosition = (worldPos + bbCorner - PKSimData_Load3f(particleID, PopcornFXGPUBillboardVSUniforms.InVelocityOffset)) * GLOBAL_SCALE;
 	else
 		intermediates.VertexPrevWorldPosition = (worldPos + bbCorner) * GLOBAL_SCALE; // no velocity
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	intermediates.VertexPrevWorldPosition += LWCToFloat(ResolvedView.TileOffset.PrevPreViewTranslation);
+#elif (ENGINE_MAJOR_VERSION == 5)
+	intermediates.VertexPrevWorldPosition += LWCToFloat(ResolvedView.PrevPreViewTranslation);
+#else
+	intermediates.VertexPrevWorldPosition += ResolvedView.PrevPreViewTranslation;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #if USE_PARTICLE_POSITION
 	const float		particleRadius = min(radius.x, radius.y) * GLOBAL_SCALE;
+#	if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	const float3	particleTranslatedWorldPosition = (worldPos * GLOBAL_SCALE) + LWCToFloat(ResolvedView.TileOffset.PreViewTranslation).xyz;
+#	elif (ENGINE_MAJOR_VERSION == 5)
+	const float3	particleTranslatedWorldPosition = (worldPos * GLOBAL_SCALE) + LWCToFloat(ResolvedView.PreViewTranslation).xyz;
+#	else
+	const float3	particleTranslatedWorldPosition = (worldPos * GLOBAL_SCALE) + ResolvedView.PreViewTranslation.xyz;
+#	endif // (ENGINE_MAJOR_VERSION == 5)
 	intermediates.TranslatedWorldPositionAndSize = float4(particleTranslatedWorldPosition, particleRadius);
 #endif
 #if USE_PARTICLE_SIZE

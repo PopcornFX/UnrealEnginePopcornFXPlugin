@@ -15,7 +15,9 @@
 #include "Engine/Texture2D.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/SkeletalMesh.h"
-#include "Engine/SkinnedAssetCommon.h"
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "Engine/SkinnedAssetCommon.h"
+#endif
 #include "MaterialShared.h"
 
 #include "PopcornFXSDK.h"
@@ -37,7 +39,9 @@
 #	include "Rendering/SkeletalMeshRenderData.h"
 #endif
 
+#if (ENGINE_MAJOR_VERSION == 5)
 #include "UObject/ObjectSaveContext.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #define LOCTEXT_NAMESPACE "PopcornFXRendererMaterial"
 
@@ -83,9 +87,19 @@ namespace
 
 	void	_SetStaticSwitch(FStaticParameterSet &params, FName name, bool value)
 	{
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 		for (int32 i = 0; i < params.StaticSwitchParameters.Num(); ++i)
 		{
 			FStaticSwitchParameter		&param  = params.StaticSwitchParameters[i];
+#elif (ENGINE_MAJOR_VERSION == 5)
+		for (int32 i = 0; i < params.EditorOnly.StaticSwitchParameters.Num(); ++i)
+		{
+			FStaticSwitchParameter		&param  = params.EditorOnly.StaticSwitchParameters[i];
+#else
+		for (int32 i = 0; i < params.StaticSwitchParameters.Num(); ++i)
+		{
+			FStaticSwitchParameter		&param  = params.StaticSwitchParameters[i];
+#endif
 
 			if (param.ParameterInfo.Name == name)
 			{
@@ -95,7 +109,13 @@ namespace
 				return;
 			}
 		}
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 		new (params.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 1)
+		new (params.EditorOnly.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???
+#else
+		new (params.StaticSwitchParameters) FStaticSwitchParameter(name, value, true, FGuid()); // FGuid ???
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	}
 
 	void	_SetStaticSwitches_Common(UMaterialInstanceConstant *material, FPopcornFXSubRendererMaterial &mat)
@@ -945,11 +965,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 				if (rigidVAT)
 				{
 					// The info isn't stored in the serialized mesh, force a reimport whenever the effect is reimported.
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-					UFbxStaticMeshImportData*	meshImportData = Cast<UFbxStaticMeshImportData>(mat.StaticMesh->GetAssetImportData());
-#else
-					UFbxStaticMeshImportData *meshImportData = Cast<UFbxStaticMeshImportData>(mat.StaticMesh->AssetImportData);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+					UFbxStaticMeshImportData*	meshImportData = Cast<UFbxStaticMeshImportData>(mat.StaticMesh->AssetImportData);
 					meshImportData->Modify();
 					meshImportData->VertexColorImportOption = EVertexColorImportOption::Replace;
 					UReimportFbxStaticMeshFactory*	FbxStaticMeshReimportFactory = NewObject<UReimportFbxStaticMeshFactory>(UReimportFbxStaticMeshFactory::StaticClass());
@@ -1941,37 +1957,63 @@ void	FPopcornFXSubRendererMaterial::BuildDynamicParameterMask(const PopcornFX::C
 	// In versions older than 5.3, certain binary mask checks in Unreal shaders ("DynamicParameterMask & 8" for example),
 	// Seem to not get converted to hexadecimal mask checks (we get "& 0b1000" instead of "& 0xF000").
 	// To account for that, mask values are set in binary instead of hexadecimal in UE 5.2 and below.
+#define HEX_MASK (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION > 2)
 
 	if (renderer->m_RendererType == PopcornFX::Renderer_Mesh)
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput0()))
 		{
+			#if HEX_MASK
 			DynamicParameterMask |= 0x000F;
+			#else
+			DynamicParameterMask |= 0b0001;
+			#endif
 		}
+		#if HEX_MASK
 		DynamicParameterMask |= 0x8000;
+		#else
+		DynamicParameterMask |= 0b1000;
+		#endif
 	}
 	else
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()) ||
 			SoftAnimBlending || MotionVectorsBlending) // Atlas enabled, with motion vectors blending or linear frame blending
 		{
+			#if HEX_MASK
 			DynamicParameterMask |= 0x0003;
+			#else
+			DynamicParameterMask |= 0b0001;
+			#endif
 		}
 	}
 
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput1()))
 	{
+		#if HEX_MASK
 		DynamicParameterMask |= 0x00F0;
+		#else
+		DynamicParameterMask |= 0b0010;
+		#endif
 	}
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput2()))
 	{
+		#if HEX_MASK
 		DynamicParameterMask |= 0x0F00;
+		#else
+		DynamicParameterMask |= 0b0100;
+		#endif
 	}
 	if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_ShaderInput3()))
 	{
+		#if HEX_MASK
 		DynamicParameterMask |= 0xF000;
+		#else
+		DynamicParameterMask |= 0b1000;
+		#endif
 	}
 
+#undef HEX_MASK
 }
 
 #endif // WITH_EDITOR
@@ -2072,12 +2114,20 @@ void	UPopcornFXRendererMaterial::PostLoad()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
 void	UPopcornFXRendererMaterial::PreSave(FObjectPreSaveContext SaveContext)
+#else
+void	UPopcornFXRendererMaterial::PreSave(const class ITargetPlatform* TargetPlatform)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	// Flush rendering commands to ensure the rendering thread do not touch us
 	FlushRenderingCommands();
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	Super::PreSave(SaveContext);
+#else
+	Super::PreSave(TargetPlatform);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
@@ -2317,7 +2367,6 @@ const EPopcornFXLegacyMaterialType		kOpaqueBillboard_LegacyMaterial_ToUE[] =
 {
 	EPopcornFXLegacyMaterialType::Billboard_Solid,				// Solid
 	EPopcornFXLegacyMaterialType::Billboard_Masked,				// Masked
-	EPopcornFXLegacyMaterialType::Billboard_Dithered,			// Dithered
 };
 PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueBillboard_LegacyMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
 
@@ -2327,7 +2376,6 @@ const EPopcornFXDefaultMaterialType		kOpaqueBillboard_DefaultMaterial_ToUE[] =
 {
 	EPopcornFXDefaultMaterialType::Billboard_Solid,				// Solid
 	EPopcornFXDefaultMaterialType::Billboard_Masked,			// Masked
-	EPopcornFXDefaultMaterialType::Billboard_Dithered,			// Dithered
 };
 PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueBillboard_DefaultMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
 
@@ -2340,16 +2388,14 @@ PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueBillboard_DefaultMaterial_ToUE) == Popcor
 const EPopcornFXLegacyMaterialType		kOpaqueMesh_LegacyMaterial_ToUE[] =
 {
 	EPopcornFXLegacyMaterialType::Mesh_Solid,				// Solid,
-	EPopcornFXLegacyMaterialType::Mesh_Masked,				// Masked,
-	EPopcornFXLegacyMaterialType::Mesh_Dithered,			// Dithered,
+	EPopcornFXLegacyMaterialType::Mesh_Masked,			// Masked,
 };
 PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueMesh_LegacyMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
 
 const EPopcornFXDefaultMaterialType		kOpaqueMesh_DefaultMaterial_ToUE[] =
 {
 	EPopcornFXDefaultMaterialType::Mesh_Solid,				// Solid,
-	EPopcornFXDefaultMaterialType::Mesh_Masked,				// Masked,
-	EPopcornFXDefaultMaterialType::Mesh_Dithered,			// Dithered,
+	EPopcornFXDefaultMaterialType::Mesh_Masked,			// Masked,
 };
 PK_STATIC_ASSERT(PK_ARRAY_COUNT(kOpaqueMesh_DefaultMaterial_ToUE) == PopcornFX::BasicRendererProperties::EOpaqueType::__MaxOpaqueType);
 

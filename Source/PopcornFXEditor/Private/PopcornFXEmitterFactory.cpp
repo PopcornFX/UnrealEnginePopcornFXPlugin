@@ -6,7 +6,11 @@
 #include "PopcornFXEmitterFactory.h"
 
 #include "Runtime/Launch/Resources/Version.h"
-#include "AssetRegistry/AssetData.h"
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "AssetRegistry/AssetData.h"
+#else
+#	include "AssetData.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #include "Assets/PopcornFXEffect.h"
 #include "PopcornFXEmitter.h"

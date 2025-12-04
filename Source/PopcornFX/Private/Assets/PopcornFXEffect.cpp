@@ -157,12 +157,21 @@ void	UPopcornFXEffect::PreReimport_Clean()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 void	UPopcornFXEffect::GetAssetRegistryTags(FAssetRegistryTagsContext context) const
 {
 	context.AddTag(FAssetRegistryTag("NumMaterials", LexToString(ParticleRendererMaterials.Num()), FAssetRegistryTag::TT_Numerical));
 
 	Super::GetAssetRegistryTags(context);
 }
+#else
+void	UPopcornFXEffect::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const
+{
+	outTags.Add(FAssetRegistryTag("NumMaterials", LexToString(ParticleRendererMaterials.Num()), FAssetRegistryTag::TT_Numerical));
+
+	Super::GetAssetRegistryTags(outTags);
+}
+#endif
 
 //----------------------------------------------------------------------------
 
@@ -273,50 +282,6 @@ bool	UPopcornFXEffect::LoadEffect(bool forceImport)
 	m_Loaded = true;
 
 	DefaultAttributeList->SetupDefault(this, forceImport);
-
-	int32 samplerCount = DefaultAttributeList->SamplerCount();
-	// Shrink the array if some samplers were removed and we're reimporting
-	if (samplerCount < DefaultSamplers.Num())
-	{
-		DefaultSamplers.SetNum(samplerCount);
-	}
-	else
-	{
-		DefaultSamplers.Reserve(samplerCount);
-	}
-	for (int32 samplerIdx = 0; samplerIdx < samplerCount; samplerIdx++)
-	{
-		const FPopcornFXSamplerDesc *desc = DefaultAttributeList->GetSamplerDesc(samplerIdx);
-		if (!PK_VERIFY(desc != null))
-		{
-			continue;
-		}
-
-		const UClass *samplerClass = GetSamplerClass(desc->m_SamplerType);
-		if (!PK_VERIFY(samplerClass != null))
-		{
-			continue;
-		}
-
-		if (samplerIdx >= DefaultSamplers.Num())
-		{
-			// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-			UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-			DefaultSamplers.Add(newSampler);
-		}
-		else
-		{
-			if (!DefaultSamplers[samplerIdx] || DefaultSamplers[samplerIdx]->SamplerType() != desc->m_SamplerType || DefaultAttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName)
-			{
-				// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-				UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-				DefaultSamplers[samplerIdx] = newSampler;
-			}
-		}
-#if WITH_EDITOR
-		DefaultSamplers[samplerIdx]->SetupDefaults(this, samplerIdx, true);
-#endif
-	}
 	return m_Loaded;
 }
 
@@ -784,7 +749,6 @@ bool	UPopcornFXEffect::_ImportFile(const FString &filePath)
 
 	if (!Super::_ImportFile(filePath))
 		return false;
-	OnEffectReimported.Broadcast();
 	return true;
 }
 

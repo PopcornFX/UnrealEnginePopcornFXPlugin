@@ -192,7 +192,11 @@ void	CBatchDrawer_Light::_IssueDrawCall_Light(const SUERenderContext &renderCont
 
 				PopcornFX::CGuid			ldatai = lightDatas.PushBack();
 				FSimpleLightEntry			&lightdata = lightDatas[ldatai];
+#if (ENGINE_MAJOR_VERSION == 5)
 				lightdata.Color = ToUE(colors[parti] * kColorMultiplier);
+#else
+				lightdata.Color = FVector(ToUE(colors[parti] * kColorMultiplier));
+#endif // (ENGINE_MAJOR_VERSION == 5)
 				lightdata.Radius = radius;
 
 				// Set the exponent to 0 if we want to enable inverse squared falloff

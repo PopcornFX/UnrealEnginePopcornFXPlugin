@@ -52,9 +52,15 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXSkelMeshUniforms, POPCORNFX_API)
 	SHADER_PARAMETER_SRV(Buffer<uint>, BoneIndicesReorder)
 	SHADER_PARAMETER_TEXTURE(Texture2D<half4>, SkeletalAnimationTexture)
 	SHADER_PARAMETER_SAMPLER(SamplerState, SkeletalAnimationSampler)
+#	if (ENGINE_MAJOR_VERSION == 5)
 	SHADER_PARAMETER(FVector2f, InvSkeletalAnimationTextureDimensions)
 	SHADER_PARAMETER(FVector3f, SkeletalAnimationPosBoundsMin)
 	SHADER_PARAMETER(FVector3f, SkeletalAnimationPosBoundsMax)
+#	else
+	SHADER_PARAMETER(FVector2D, InvSkeletalAnimationTextureDimensions)
+	SHADER_PARAMETER(FVector, SkeletalAnimationPosBoundsMin)
+	SHADER_PARAMETER(FVector, SkeletalAnimationPosBoundsMax)
+#	endif // (ENGINE_MAJOR_VERSION == 5)
 	SHADER_PARAMETER(float, SkeletalAnimationYOffsetPerTrack)
 	SHADER_PARAMETER(uint32, LinearInterpolateTransforms)
 	SHADER_PARAMETER(uint32, LinearInterpolateTracks)
@@ -152,7 +158,11 @@ public:
 	static bool			ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters);
 	static bool			IsCompatible(UMaterialInterface *material);
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	virtual void		InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
+	virtual void		InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	void				SetData(const FDataType& InData);
 	const FDataType		&GetData() const { return Data; }
 

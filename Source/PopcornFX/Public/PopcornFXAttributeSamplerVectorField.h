@@ -44,67 +44,6 @@ namespace	EPopcornFXVectorFieldBounds
 	};
 }
 
-
-USTRUCT(BlueprintType)
-struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesVectorField : public FPopcornFXAttributeSamplerProperties
-{
-	GENERATED_USTRUCT_BODY()
-
-	/** Vectorfield asset. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
-	class UVectorFieldStatic	*VectorField;
-
-	/** Additional intensity multiplier. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
-	float						Intensity;
-
-	/** Rotation animation (euler angles / seconds). */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
-	FVector						RotationAnimation;
-
-	/** Vectorfield wrap mode. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	TEnumAsByte<EPopcornFXVectorFieldWrapMode::Type>		WrapMode;
-
-	/** Vectorfield sampling mode. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	TEnumAsByte<EPopcornFXVectorFieldSamplingMode::Type>	SamplingMode;
-
-	/** Vectorfield bounds type. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	TEnumAsByte<EPopcornFXVectorFieldBounds::Type>			BoundsSource;
-
-	/** Vectorfield volume dimensions. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
-	FVector					VolumeDimensions;
-
-	/** Relative Transforms will be used if activated.
-	* Enable if sampled in SpawnerScript's Eval(), so vectorfield will be sampled locally to the Emitter.
-	* Disable if sampled in SpawnerScript's **Post**Eval(), in an evolver script or used by a physics evolver, so the vectorfield will be sampled world space.
-	*/
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	uint32					bUseRelativeTransform : 1;
-
-#if 0
-#if WITH_EDITORONLY_DATA
-	/** Enable to draw individual vectorfield cells. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	uint32					bDrawCells : 1;
-#endif // WITH_EDITORONLY_DATA
-#endif
-
-	FPopcornFXAttributeSamplerPropertiesVectorField()
-	:	VectorField()
-	,	Intensity(1.f)
-	,	RotationAnimation()
-	,	WrapMode(EPopcornFXVectorFieldWrapMode::Wrap)
-	,	SamplingMode(EPopcornFXVectorFieldSamplingMode::Trilinear)
-	,	BoundsSource()
-	,	VolumeDimensions(100.f, 100.f, 100.f)
-	,	bUseRelativeTransform(false)
-	{ }
-};
-
 /** Can override an Attribute Sampler **Turbulence** by a **UVectorFieldStatic**. */
 UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
 class POPCORNFX_API UPopcornFXAttributeSamplerVectorField : public UPopcornFXAttributeSampler
@@ -112,9 +51,48 @@ class POPCORNFX_API UPopcornFXAttributeSamplerVectorField : public UPopcornFXAtt
 	GENERATED_UCLASS_BODY()
 
 public:
+	/** Vectorfield asset. */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	class UVectorFieldStatic	*VectorField;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
-	FPopcornFXAttributeSamplerPropertiesVectorField	Properties;
+	/** Additional intensity multiplier. */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	float						Intensity;
+
+	/** Rotation animation (euler angles / seconds). */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	FVector						RotationAnimation;
+
+	/** Vectorfield wrap mode. */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
+	TEnumAsByte<EPopcornFXVectorFieldWrapMode::Type>		WrapMode;
+
+	/** Vectorfield sampling mode. */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
+	TEnumAsByte<EPopcornFXVectorFieldSamplingMode::Type>	SamplingMode;
+
+	/** Vectorfield bounds type. */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
+	TEnumAsByte<EPopcornFXVectorFieldBounds::Type>			BoundsSource;
+
+	/** Vectorfield volume dimensions. */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	FVector						VolumeDimensions;
+
+	/** Relative Transforms will be used if activated.
+	* Enable if sampled in SpawnerScript's Eval(), so vectorfield will be sampled locally to the Emitter.
+	* Disable if sampled in SpawnerScript's **Post**Eval(), in an evolver script or used by a physics evolver, so the vectorfield will be sampled world space.
+	*/
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
+	uint32					bUseRelativeTransform : 1;
+
+#if 0
+#if WITH_EDITORONLY_DATA
+	/** Enable to draw individual vectorfield cells. */
+	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
+	uint32					bDrawCells : 1;
+#endif // WITH_EDITORONLY_DATA
+#endif
 
 public:
 	virtual void									BeginDestroy() override;
@@ -123,13 +101,8 @@ public:
 #endif // WITH_EDITOR
 
 private:
-	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
-#if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
-#endif
-
 	// PopcornFX Internal
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
 	void											_BuildVectorFieldFlags(uint32 &flags, uint32 &interpolation) const;
 	void											_SetBounds();

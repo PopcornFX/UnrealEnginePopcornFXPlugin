@@ -25,7 +25,11 @@ struct FPopcornFXAttributePreAnimatedToken : IMovieScenePreAnimatedToken
 	FPopcornFXAttributePreAnimatedToken(FPopcornFXAttributePreAnimatedToken&&) = default;
 	FPopcornFXAttributePreAnimatedToken& operator=(FPopcornFXAttributePreAnimatedToken&&) = default;
 
+#if (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27) || (ENGINE_MAJOR_VERSION == 5)
 	virtual void	RestoreState(UObject &object, const UE::MovieScene::FRestoreStateParams &params) override
+#else
+	virtual void	RestoreState(UObject &object, IMovieScenePlayer &player) override
+#endif // (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION >= 27)
 	{
 		UPopcornFXEmitterComponent	*emitterComponent = CastChecked<UPopcornFXEmitterComponent>(&object);
 		PK_ASSERT(emitterComponent->Effect != null);
@@ -98,7 +102,7 @@ struct FPopcornFXAttributeExecutionToken : IMovieSceneExecutionToken
 			for (const FScalarParameterNameAndValue &scalarNameAndValue : Values.ScalarValues)
 			{
 				// NOT OPTIMIZED
-				int32	attrIndex = UPopcornFXAttributeFunctions::FindAttributeIndex(emitterComponent, scalarNameAndValue.ParameterName.ToString());
+				int32	attrIndex = UPopcornFXAttributeFunctions::FindAttributeIndex(emitterComponent, scalarNameAndValue.ParameterName);
 				if (attrIndex == -1)
 					continue;
 				UPopcornFXAttributeFunctions::SetAttributeAsFloat(emitterComponent, attrIndex, scalarNameAndValue.Value);
@@ -106,7 +110,7 @@ struct FPopcornFXAttributeExecutionToken : IMovieSceneExecutionToken
 			for (const FVectorParameterNameAndValue &vectorNameAndValue : Values.VectorValues)
 			{
 				// NOT OPTIMIZED
-				int32	attrIndex = UPopcornFXAttributeFunctions::FindAttributeIndex(emitterComponent, vectorNameAndValue.ParameterName.ToString());
+				int32	attrIndex = UPopcornFXAttributeFunctions::FindAttributeIndex(emitterComponent, vectorNameAndValue.ParameterName);
 				if (attrIndex == -1)
 					continue;
 				UPopcornFXAttributeFunctions::SetAttributeAsVector(emitterComponent, attrIndex, vectorNameAndValue.Value);
@@ -114,7 +118,7 @@ struct FPopcornFXAttributeExecutionToken : IMovieSceneExecutionToken
 			for (const FColorParameterNameAndValue &colorNameAndValue : Values.ColorValues)
 			{
 				// NOT OPTIMIZED
-				s32	attrIndex = UPopcornFXAttributeFunctions::FindAttributeIndex(emitterComponent, colorNameAndValue.ParameterName.ToString());
+				s32	attrIndex = UPopcornFXAttributeFunctions::FindAttributeIndex(emitterComponent, colorNameAndValue.ParameterName);
 				if (attrIndex == -1)
 					continue;
 				UPopcornFXAttributeFunctions::SetAttributeAsLinearColor(emitterComponent, attrIndex, colorNameAndValue.Value);

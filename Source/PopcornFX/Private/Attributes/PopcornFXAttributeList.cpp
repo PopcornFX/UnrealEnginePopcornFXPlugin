@@ -14,7 +14,9 @@
 #include "PopcornFXCustomVersion.h"
 #include "Assets/PopcornFXEffectPriv.h"
 
+#if (ENGINE_MAJOR_VERSION == 5)
 #include "UObject/ObjectSaveContext.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #include "PopcornFXSDK.h"
 #include <pk_particles/include/ps_descriptor.h>
@@ -58,8 +60,7 @@ uint32		ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType)
 	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder				== (u32)CShapeDescriptor::ShapeCylinder);
 	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule				== (u32)CShapeDescriptor::ShapeCapsule);
 	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone					== (u32)CShapeDescriptor::ShapeCone);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::StaticMesh			== (u32)CShapeDescriptor::ShapeMesh);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::SkeletalMesh - 1		== (u32)CShapeDescriptor::ShapeMesh);
+	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Mesh					== (u32)CShapeDescriptor::ShapeMesh);
 	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeMeshCollection);
 	return static_cast<CShapeDescriptor::EShapeType>(ueShapeType);
 }
@@ -110,7 +111,7 @@ void	ResetAttribute(FPopcornFXAttributeDesc &attrib, const PopcornFX::CParticleA
 {
 	if (decl != null)
 	{
-		attrib.m_AttributeName = *ToUE(decl->ExportedName());
+		attrib.m_AttributeFName = *FString(ToUE(decl->ExportedName()));
 		attrib.m_AttributeType = decl->ExportedType();
 		attrib.m_IsPrivate = decl->IsPrivate();
 
@@ -138,7 +139,7 @@ void	ResetAttribute(FPopcornFXAttributeDesc &attrib, const PopcornFX::CParticleA
 		}
 #endif // WITH_EDITOR
 		attrib.m_AttributeCategoryName = *ToUE(decl->CategoryName().MapDefault());
-		if (attrib.m_AttributeCategoryName.IsEmpty())
+		if (!attrib.m_AttributeCategoryName.IsValid() || attrib.m_AttributeCategoryName.IsNone())
 			attrib.m_AttributeCategoryName = "General";
 	}
 	else
@@ -152,12 +153,12 @@ void	ResetAttributeSampler(FPopcornFXSamplerDesc &attribSampler, const PopcornFX
 {
 	if (decl != null)
 	{
-		attribSampler.m_SamplerName = *ToUE(decl->ExportedName());
+		attribSampler.m_SamplerFName = *FString(ToUE(decl->ExportedName()));
 		attribSampler.m_SamplerType = ResolveAttribSamplerType(decl);
 		attribSampler.m_IsPrivate = decl->IsPrivate();
 
 		attribSampler.m_AttributeCategoryName = *ToUE(decl->CategoryName().MapDefault());
-		if (attribSampler.m_AttributeCategoryName.IsEmpty())
+		if (!attribSampler.m_AttributeCategoryName.IsValid() || attribSampler.m_AttributeCategoryName.IsNone())
 			attribSampler.m_AttributeCategoryName = "General";
 	}
 	else
@@ -186,29 +187,7 @@ inline const PopcornFX::TMemoryView<const PopcornFX::SAttributesContainer_SAttri
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveAttributeSampler(UPopcornFXEmitterComponent *emitter, const UObject *enableLogForOwner) const
-{
-	PK_ASSERT(emitter != null);
-
-	if (!m_UseExternalSampler)
-	{
-		const UPopcornFXAttributeList *attr = emitter->AttributeList;
-		int32 sampleri = attr->FindSamplerIndex(m_SamplerName);
-		PK_VERIFY(sampleri >= 0 && sampleri < emitter->Samplers.Num());
-		UPopcornFXAttributeSampler *sampler = sampleri >= 0 && sampleri < emitter->Samplers.Num() ? emitter->Samplers[sampleri] : null;
-		PK_VERIFY(sampler != null);
-		if (sampler != null)
-		{
-			return sampler;
-		}
-	}
-
-	return ResolveExternalAttributeSampler(emitter, enableLogForOwner);
-}
-
-//----------------------------------------------------------------------------
-
-UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveExternalAttributeSampler(UPopcornFXEmitterComponent *emitter, const UObject *enableLogForOwner) const
+UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveAttributeSampler(UPopcornFXEmitterComponent *emitter, UObject *enableLogForOwner) const
 {
 	PK_ASSERT(emitter != null);
 
@@ -221,18 +200,20 @@ UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveExternalAttributeSamp
 			fallbackActor = attachParent->GetOwner();
 	}
 
-	const bool		validCompProperty = !m_AttributeSamplerComponentName.IsEmpty();
+	const bool		validCompProperty = m_AttributeSamplerComponentProperty.IsValid() && !m_AttributeSamplerComponentProperty.IsNone();
 	AActor			*parentActor = m_AttributeSamplerActor == null ? fallbackActor : m_AttributeSamplerActor;
 	if (parentActor == null && !validCompProperty)
+	{
+		// nothing to do here
 		return null;
+	}
 	if (!PK_VERIFY_MESSAGE(parentActor != null, "AttributeSampler is set but no parent Actor: should not happen"))
 		return null;
 
 	UPopcornFXAttributeSampler		*attrib = null;
 	if (validCompProperty)
 	{
-		// FindFProperty will transform the FString into a FName anyway (thus case is ignored)
-		FObjectPropertyBase		*prop = FindFProperty<FObjectPropertyBase>(parentActor->GetClass(), FName(m_AttributeSamplerComponentName));
+		FObjectPropertyBase		*prop = FindFProperty<FObjectPropertyBase>(parentActor->GetClass(), m_AttributeSamplerComponentProperty);
 		if (prop != null)
 			attrib = Cast<UPopcornFXAttributeSampler>(prop->GetObjectPropertyValue_InContainer(parentActor));
 		else
@@ -242,7 +223,7 @@ UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveExternalAttributeSamp
 			parentActor->GetComponents(UPopcornFXAttributeSampler::StaticClass(), components, false);
 			for (UActorComponent	*component : components)
 			{
-				if (component->GetName() == m_AttributeSamplerComponentName)
+				if (component->GetFName() == m_AttributeSamplerComponentProperty)
 				{
 					attrib = Cast<UPopcornFXAttributeSampler>(component);
 					break;
@@ -261,28 +242,10 @@ UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveExternalAttributeSamp
 		{
 			UE_LOG(LogPopcornFXAttributeList, Warning,
 				TEXT("Could not find component 'UPopcornFXAttributeSampler %s.%s' for attribute sampler '%s' in '%s'"),
-				*parentActor->GetName(), (!m_AttributeSamplerComponentName.IsEmpty() ? *m_AttributeSamplerComponentName : TEXT("RootComponent")),
-				*m_SamplerName, *enableLogForOwner->GetFullName());
-		}
-		if (m_IsSamplerComponentValid)
-		{
-#if WITH_EDITOR
-			emitter->SetWarningSprite();
-#endif
-			// Set it before refreshing the UI
-			m_IsSamplerComponentValid = false;
-			emitter->OnRequestUIRefresh.Broadcast();
+				*parentActor->GetName(), (m_AttributeSamplerComponentProperty.IsValid() ? *m_AttributeSamplerComponentProperty.ToString() : TEXT("RootComponent")),
+				*SamplerName(), *enableLogForOwner->GetFullName());
 		}
 		return null;
-	}
-	if (!m_IsSamplerComponentValid)
-	{
-#if WITH_EDITOR
-		emitter->SetNormalSprite();
-#endif
-		// Set it before refreshing the UI
-		m_IsSamplerComponentValid = true;
-		emitter->OnRequestUIRefresh.Broadcast();
 	}
 	return attrib;
 }
@@ -293,9 +256,12 @@ UPopcornFXAttributeSampler		*FPopcornFXSamplerDesc::ResolveExternalAttributeSamp
 //
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeList::UPopcornFXAttributeList(const FObjectInitializer &PCIP)
+UPopcornFXAttributeList::UPopcornFXAttributeList(const FObjectInitializer& PCIP)
 :	Super(PCIP)
 ,	m_FileVersionId(0)
+#if WITH_EDITORONLY_DATA
+,	m_ColumnWidth(0.65f)
+#endif // WITH_EDITORONLY_DATA
 ,	m_Owner(null)
 {
 	SetFlags(RF_Transactional);
@@ -418,12 +384,12 @@ void	UPopcornFXAttributeList::Clean()
 
 //----------------------------------------------------------------------------
 
-int32	UPopcornFXAttributeList::FindAttributeIndex(const FString &name) const
+int32	UPopcornFXAttributeList::FindAttributeIndex(FName fname) const
 {
 	PK_ASSERT(CheckDataIntegrity());
 	for (int32 attri = 0; attri < m_Attributes.Num(); ++attri)
 	{
-		if (m_Attributes[attri].m_AttributeName == name)
+		if (m_Attributes[attri].m_AttributeFName == fname)
 			return attri;
 	}
 	return -1;
@@ -431,12 +397,12 @@ int32	UPopcornFXAttributeList::FindAttributeIndex(const FString &name) const
 
 //----------------------------------------------------------------------------
 
-int32	UPopcornFXAttributeList::FindSamplerIndex(const FString &name) const
+int32	UPopcornFXAttributeList::FindSamplerIndex(FName fname) const
 {
 	PK_ASSERT(CheckDataIntegrity());
 	for (int32 sampleri = 0; sampleri < m_Samplers.Num(); ++sampleri)
 	{
-		if (m_Samplers[sampleri].m_SamplerName == name)
+		if (m_Samplers[sampleri].m_SamplerFName == fname)
 			return sampleri;
 	}
 	return -1;
@@ -457,6 +423,46 @@ const UPopcornFXAttributeList		*UPopcornFXAttributeList::GetDefaultAttributeList
 	return defAttribs;
 }
 
+//----------------------------------------------------------------------------
+#if WITH_EDITOR
+bool	UPopcornFXAttributeList::IsCategoryExpanded(uint32 categoryId) const
+{
+	if (!PK_VERIFY((int32)categoryId < m_CategoriesExpanded.Num()))
+		return false;
+	return m_CategoriesExpanded[categoryId] != 0 ? true : false;
+}
+
+void	UPopcornFXAttributeList::ToggleExpandedAttributeDetails(uint32 attributeId)
+{
+	PK_ASSERT(CheckDataIntegrity());
+	if (!PK_VERIFY(int32(attributeId) < m_Attributes.Num()))
+		return;
+	m_Attributes[attributeId].m_IsExpanded = !m_Attributes[attributeId].m_IsExpanded;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeList::ToggleExpandedSamplerDetails(uint32 samplerId)
+{
+	PK_ASSERT(CheckDataIntegrity());
+	if (!PK_VERIFY(int32(samplerId) < m_Samplers.Num()))
+		return;
+	m_Samplers[samplerId].m_IsExpanded = !m_Samplers[samplerId].m_IsExpanded;
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeList::ToggleExpandedCategoryDetails(uint32 categoryId)
+{
+	PK_ASSERT(m_Effect != null);
+	PK_ASSERT(CheckDataIntegrity());
+	if (!PK_VERIFY(int32(categoryId) < m_CategoriesExpanded.Num()))
+		return;
+	PK_ASSERT(m_Categories.Num() == m_CategoriesExpanded.Num() || // Effect
+			  m_Categories.Num() == 0);							  // Emitter
+	m_CategoriesExpanded[categoryId] = m_CategoriesExpanded[categoryId] != 0 ? 0 : 1;
+}
+#endif // WITH_EDITOR
 //----------------------------------------------------------------------------
 
 const FPopcornFXAttributeDesc	*UPopcornFXAttributeList::GetAttributeDesc(uint32 attributeId) const
@@ -525,6 +531,14 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 
 	if (!force && IsUpToDate(effect))
 	{
+#if WITH_EDITOR
+		//if (m_Categories.Num() == 0)
+		//	m_Categories.Add("General"); // Effects not reimported
+		m_CategoriesExpanded.SetNum(m_Categories.Num());
+		const u32	categoryCount = m_CategoriesExpanded.Num();
+		for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
+			m_CategoriesExpanded[iCategory] = 1;
+#endif // WITH_EDITOR
 		return;
 	}
 
@@ -568,7 +582,8 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 	{
 		ResetAttribute(m_Attributes[attri], attrs[attri]);
 #if WITH_EDITOR
-		if (!m_Attributes[attri].m_AttributeCategoryName.IsEmpty() && !m_Attributes[attri].m_IsPrivate)
+		if (m_Attributes[attri].m_AttributeCategoryName.IsValid() && !m_Attributes[attri].m_AttributeCategoryName.IsNone()
+			&& !m_Attributes[attri].m_IsPrivate)
 		{
 			m_Categories.AddUnique(m_Attributes[attri].m_AttributeCategoryName);
 		}
@@ -579,9 +594,9 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 	for (int32 sampleri = 0; sampleri < samplerCount; ++sampleri)
 	{
 		ResetAttributeSampler(m_Samplers[sampleri], samplers[sampleri]);
-
 #if WITH_EDITOR
-		if (!m_Samplers[sampleri].m_AttributeCategoryName.IsEmpty() && !m_Samplers[sampleri].m_IsPrivate)
+		if (m_Samplers[sampleri].m_AttributeCategoryName.IsValid() && !m_Samplers[sampleri].m_AttributeCategoryName.IsNone()
+			&& !m_Samplers[sampleri].m_IsPrivate)
 		{
 			m_Categories.AddUnique(m_Samplers[sampleri].m_AttributeCategoryName);
 		}
@@ -597,6 +612,10 @@ void	UPopcornFXAttributeList::SetupDefault(UPopcornFXEffect *effect, bool force)
 			m_Categories.Swap(generalCategoryIndex, 0);
 	}
 
+	m_CategoriesExpanded.SetNum(m_Categories.Num());
+	const u32	categoryCount = m_CategoriesExpanded.Num();
+	for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
+		m_CategoriesExpanded[iCategory] = 1;
 #endif // WITH_EDITOR
 
 	const PopcornFX::SAttributesContainer		*defContainer = *(attrList.DefaultAttributes());
@@ -636,6 +655,20 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 
 	if (!force && IsUpToDate(effect))
 	{
+#if WITH_EDITOR
+		if (effect != null)
+		{
+			const UPopcornFXAttributeList	*refAttrList = effect->GetDefaultAttributeList();
+			if (refAttrList != null &&
+				m_CategoriesExpanded.Num() != refAttrList->m_CategoriesExpanded.Num())
+			{
+				m_CategoriesExpanded.SetNum(refAttrList->m_Categories.Num());
+				const u32	categoryCount = m_CategoriesExpanded.Num();
+				for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
+					m_CategoriesExpanded[iCategory] = 1;
+			}
+		}
+#endif // WITH_EDITOR
 		return true;
 	}
 
@@ -704,7 +737,7 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 			FPopcornFXAttributeDesc			*attr = &((*attrs)[attri]);
 
 			PK_ASSERT(refAttr.Valid());
-			if (attr->m_AttributeName != refAttr.m_AttributeName ||
+			if (attr->AttributeFName() != refAttr.AttributeFName() ||
 				attr->m_AttributeCategoryName != refAttr.m_AttributeCategoryName)
 
 			{
@@ -713,7 +746,7 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 				for (int32 findAttri = attri + 1; findAttri < attrs->Num(); ++findAttri)
 				{
 					FPopcornFXAttributeDesc		&findAttr = (*attrs)[findAttri];
-					if (findAttr.m_AttributeName == refAttr.m_AttributeName &&
+					if (findAttr.AttributeFName() == refAttr.AttributeFName() &&
 						findAttr.m_AttributeCategoryName == refAttr.m_AttributeCategoryName)
 					{
 						found = findAttri;
@@ -735,7 +768,7 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 				attrs->SwapMemory(attri, found);
 				SwapAttributeRawData(*rawData, attri, *rawData, found);
 				PK_ASSERT(attr->Valid());
-				PK_ASSERT(attr->m_AttributeName == refAttr.m_AttributeName);
+				PK_ASSERT(attr->AttributeFName() == refAttr.AttributeFName());
 				PK_ASSERT(attr->m_AttributeCategoryName == refAttr.m_AttributeCategoryName);
 			}
 
@@ -801,7 +834,7 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 
 			PK_ASSERT(refSampler.ValueIsEmpty());
 
-			if (sampler->m_SamplerName != refSampler.m_SamplerName ||
+			if (sampler->SamplerFName() != refSampler.SamplerFName() ||
 				sampler->m_AttributeCategoryName != refSampler.m_AttributeCategoryName)
 			{
 				samplersChanged = true;
@@ -809,7 +842,7 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 				for (int32 foundSampleri = sampleri + 1; foundSampleri < samplers->Num(); ++foundSampleri)
 				{
 					FPopcornFXSamplerDesc	&foundSampler = (*samplers)[foundSampleri];
-					if (foundSampler.m_SamplerName == refSampler.m_SamplerName &&
+					if (foundSampler.SamplerFName() == refSampler.SamplerFName() &&
 						foundSampler.m_AttributeCategoryName == refSampler.m_AttributeCategoryName)
 					{
 						found = foundSampleri;
@@ -824,7 +857,7 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 				}
 				samplers->SwapMemory(sampleri, found);
 				PK_ASSERT(sampler->Valid());
-				PK_ASSERT(sampler->m_SamplerName == refSampler.m_SamplerName);
+				PK_ASSERT(sampler->SamplerFName() == refSampler.SamplerFName());
 				PK_ASSERT(sampler->m_AttributeCategoryName == refSampler.m_AttributeCategoryName);
 			}
 
@@ -853,6 +886,11 @@ bool	UPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 #if WITH_EDITOR
 	if (attrsChanged || samplersChanged)
 	{
+		m_CategoriesExpanded.SetNum(refAttrList->m_Categories.Num());
+		const u32	categoryCount = m_CategoriesExpanded.Num();
+		for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
+			m_CategoriesExpanded[iCategory] = 1;
+
 		ForceSetPackageDirty(this);
 	}
 #endif
@@ -883,13 +921,22 @@ void	UPopcornFXAttributeList::CopyFrom(const UPopcornFXAttributeList *other, AAc
 	m_Attributes = other->m_Attributes;
 	m_Samplers = other->m_Samplers;
 	m_AttributesRawData = other->m_AttributesRawData;
+#if WITH_EDITOR
+	if (other != null)
+	{
+		m_CategoriesExpanded.SetNum(other->m_Categories.Num());
+		const u32	categoryCount = m_CategoriesExpanded.Num();
+		for (u32 iCategory = 0; iCategory < categoryCount; ++iCategory)
+			m_CategoriesExpanded[iCategory] = 1;
+	}
+#endif // WITH_EDITOR
 
 	if (patchParentActor != null)
 	{
 		for (int32 sampleri = 0; sampleri < m_Samplers.Num(); ++sampleri)
 		{
-			FPopcornFXSamplerDesc	&desc = m_Samplers[sampleri];
-			if (desc.m_AttributeSamplerActor == null && !desc.m_AttributeSamplerComponentName.IsEmpty())
+			FPopcornFXSamplerDesc		&desc = m_Samplers[sampleri];
+			if (desc.m_AttributeSamplerActor == null && desc.m_AttributeSamplerComponentProperty.IsValid() && !desc.m_AttributeSamplerComponentProperty.IsNone())
 			{
 				desc.m_AttributeSamplerActor = patchParentActor;
 			}
@@ -914,7 +961,7 @@ void	UPopcornFXAttributeList::RestoreAttributesFromCachedRawData(const TArray<ui
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeList::ResetToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect)
+void	UPopcornFXAttributeList::ResetToDefaultValues(UPopcornFXEffect *effect)
 {
 	DBG_HERE();
 
@@ -935,14 +982,11 @@ void	UPopcornFXAttributeList::ResetToDefaultValues(UPopcornFXEmitterComponent *e
 	PK_ASSERT(m_AttributesRawData.Num() == defRawData.Num());
 	m_AttributesRawData = defRawData;
 
-	for (int32 i = 0; i < m_Samplers.Num(); ++i)
-		m_Samplers[i].CopyValuesFrom(*defAttribs->GetSamplerDesc(i));
+	if (m_Owner != null)
+		_RefreshAttributes(m_Owner.Get());
 
-	if (emitter)
-	{
-		_RefreshAttributes(emitter);
-		_RefreshAttributeSamplers(emitter, false);
-	}
+	for (int32 i = 0; i < m_Samplers.Num(); ++i)
+		m_Samplers[i].ResetValue();
 }
 
 //----------------------------------------------------------------------------
@@ -964,19 +1008,27 @@ void	UPopcornFXAttributeList::PostInitProperties()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
 void	UPopcornFXAttributeList::PreSave(FObjectPreSaveContext SaveContext)
+#else
+void	UPopcornFXAttributeList::PreSave(const class ITargetPlatform* TargetPlatform)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	DBG_HERE();
 	PK_ASSERT(CheckDataIntegrity());
 	// make sure m_AttributesContainer up to date
 	PK_ASSERT(CheckDataIntegrity());
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	Super::PreSave(SaveContext);
+#else
+	Super::PreSave(TargetPlatform);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeList::Serialize(FArchive &Ar)
+void	UPopcornFXAttributeList::Serialize(FArchive& Ar)
 {
 	DBG_HERE();
 
@@ -998,7 +1050,6 @@ void	UPopcornFXAttributeList::Serialize(FArchive &Ar)
 	const int32 version = Ar.CustomVer(FPopcornFXCustomVersion::GUID);
 	//UE_LOG(LogPopcornFXAttributeList, Log, TEXT("--- Serialize load:%d %d --- %3d %3d %3d --- %s"), Ar.IsLoading() == 1, version, m_AttributesRawData.Num(), m_Attributes.Num(), m_Samplers.Num(), *GetFullName());
 
-	// version will be -1 if UsingCustomVersion was not called with the current GUID
 	if (version < FPopcornFXCustomVersion::BeforeCustomVersionWasAdded)
 	{
 		TArray<uint8>	attribs;
@@ -1038,7 +1089,6 @@ void	UPopcornFXAttributeList::BeginDestroy()
 
 //----------------------------------------------------------------------------
 #if WITH_EDITOR
-
 //----------------------------------------------------------------------------
 
 void	UPopcornFXAttributeList::PostEditUndo()
@@ -1091,7 +1141,7 @@ void	UPopcornFXAttributeList::AttributeSamplers_IndirectSelectedThisTick(UPopcor
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeList::SetAttributeSampler(const FString &samplerName, AActor *actor, const FString &propertyName)
+bool	UPopcornFXAttributeList::SetAttributeSampler(FName samplerName, AActor *actor, FName propertyName)
 {
 	// The actual UPopcornFXAttributeSampler will be resolved later
 	if (m_Owner.IsValid() && m_Owner->IsEmitterStarted())
@@ -1101,15 +1151,14 @@ bool	UPopcornFXAttributeList::SetAttributeSampler(const FString &samplerName, AA
 	}
 	for (int32 iSampler = 0; iSampler < m_Samplers.Num(); ++iSampler)
 	{
-		if (m_Samplers[iSampler].m_SamplerName == samplerName)
+		if (m_Samplers[iSampler].SamplerFName() == samplerName)
 		{
-			m_Samplers[iSampler].m_UseExternalSampler = true;
 			m_Samplers[iSampler].m_AttributeSamplerActor = actor;
-			m_Samplers[iSampler].m_AttributeSamplerComponentName = propertyName;
+			m_Samplers[iSampler].m_AttributeSamplerComponentProperty = propertyName;
 			return true;
 		}
 	}
-	UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("SetAttributeSampler couldn't find sampler name %s"), *samplerName);
+	UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("SetAttributeSampler couldn't find sampler name %s"), *samplerName.ToString());
 	return false;
 }
 
@@ -1134,7 +1183,7 @@ void	UPopcornFXAttributeList::GetAttribute(uint32 attributeId, FPopcornFXAttribu
 		{
 			if (PK_VERIFY(effectInstance->GetRawAttribute(attributeId, typeID, &_outAttribute, true)))
 				return;
-			UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("Couldn't get attribute %s on effect instance %p"), *m_Attributes[attributeId].m_AttributeName, effectInstance);
+			UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("Couldn't get attribute %s on effect instance %p"), *m_Attributes[attributeId].AttributeName(), effectInstance);
 		}
 	}
 	_outAttribute = AttributeRawDataAttributesConst(this)[attributeId];
@@ -1164,7 +1213,7 @@ void	UPopcornFXAttributeList::SetAttribute(uint32 attributeId, const FPopcornFXA
 		{
 			if (!PK_VERIFY(effectInstance->SetRawAttribute(attributeId, typeID, &_value, true)))
 			{
-				UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("Couldn't set attribute %s on effect instance %p"), *m_Attributes[attributeId].m_AttributeName, effectInstance);
+				UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("Couldn't set attribute %s on effect instance %p"), *m_Attributes[attributeId].AttributeName(), effectInstance);
 			}
 		}
 	}
@@ -1234,7 +1283,7 @@ void UPopcornFXAttributeList::SetAttributeQuaternionDim(uint32 attributeId, uint
 	check(attributeId < (u32)m_Attributes.Num());
 #endif
 
-	FPopcornFXAttributeDesc *attributeDesc = &m_Attributes[attributeId];
+	FPopcornFXAttributeDesc* attributeDesc = &m_Attributes[attributeId];
 
 	attributeDesc->m_AttributeEulerAngles[dim] = value;
 
@@ -1372,7 +1421,7 @@ void	UPopcornFXAttributeList::_RefreshAttributes(const UPopcornFXEmitterComponen
 		// First call to effectInstance->SetAttribute will lazy create the SAttributesContainer
 		if (!PK_VERIFY(effectInstance->SetRawAttribute(iAttr - skippedAttributes, (PopcornFX::EBaseTypeID)attrDesc.AttributeBaseTypeID(), &value, true)))
 		{
-			UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("Couldn't set attribute %s on effect instance %p"), *attrDesc.m_AttributeName, effectInstance);
+			UE_LOG(LogPopcornFXAttributeList, Warning, TEXT("Couldn't set attribute %s on effect instance %p"), *attrDesc.AttributeName(), effectInstance);
 		}
 	}
 }
@@ -1446,7 +1495,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 
 		if (desc.SamplerType() == EPopcornFXAttributeSamplerType::None)
 		{
-			effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.m_SamplerName), null);
+			effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.SamplerName()), null);
 			continue;
 		}
 
@@ -1455,31 +1504,17 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 		if (attribSampler == null ||
 			!PK_VERIFY(desc.SamplerType() == attribSampler->SamplerType()))
 		{
-			effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.m_SamplerName), null);
+			effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.SamplerName()), null);
 			continue;
 		}
-#if WITH_EDITOR
-		if (desc.m_UseExternalSampler)
-			attribSampler->m_EmittersUsingThis.AddUnique(emitter);
-		else
-		{
-			UPopcornFXAttributeSampler *oldExternalAttribSampler = desc.ResolveExternalAttributeSampler(emitter, emitter);
-			if (oldExternalAttribSampler)
-			{
-				oldExternalAttribSampler->m_EmittersUsingThis.Remove(emitter);
-				if (oldExternalAttribSampler->m_IncompatibleProperties.Contains(emitter))
-					oldExternalAttribSampler->m_IncompatibleProperties.Remove(emitter);
-			}
-		}
-#endif
 
 		PopcornFX::CParticleSamplerDescriptor	*samplerDescriptor = null;
 
 		// Dont setup samplers when cooking
 		if (!IsRunningCommandlet() && attribSampler != null)
-			samplerDescriptor = attribSampler->_AttribSampler_SetupSamplerDescriptor(emitter, desc, defaultSampler.Get());
+			samplerDescriptor = attribSampler->_AttribSampler_SetupSamplerDescriptor(desc, defaultSampler.Get());
 
-		effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.m_SamplerName), samplerDescriptor != null ? samplerDescriptor : null);
+		effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.SamplerName()), samplerDescriptor != null ? samplerDescriptor : null);
 	}
 }
 

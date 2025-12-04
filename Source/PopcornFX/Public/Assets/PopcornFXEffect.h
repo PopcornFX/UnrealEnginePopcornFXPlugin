@@ -8,13 +8,9 @@
 #include "Assets/PopcornFXFile.h"
 #include "PopcornFXEffect.generated.h"
 
-class	UPopcornFXEmitterComponent;
 class	UPopcornFXAttributeList;
-class	UPopcornFXAttributeSampler;
 class	UPopcornFXRendererMaterial;
 class	CPopcornFXEffect;
-
-DECLARE_MULTICAST_DELEGATE(FPopcornFXReimportEventSignature);
 
 /** PopcornFX Effect Asset imported from a .pkfx file. */
 UCLASS(MinimalAPI, BlueprintType)
@@ -25,13 +21,10 @@ class UPopcornFXEffect : public UPopcornFXFile
 	~UPopcornFXEffect();
 
 public:
-	UPROPERTY(Category="PopcornFX Default Attributes", Instanced, VisibleAnywhere)
+	UPROPERTY(Category="PopcornFX Attributes", Instanced, VisibleAnywhere)
 	UPopcornFXAttributeList					*DefaultAttributeList;
 
-	/** Attribute samplers used by this effect in its preview window */
-	UPROPERTY(Category = "PopcornFX Default Attributes", VisibleAnywhere)
-	TArray<UPopcornFXAttributeSampler*>		DefaultSamplers;
-
+public:
 	UPROPERTY(Category="PopcornFX RendererMaterials", Instanced, VisibleAnywhere)
 	TArray<UPopcornFXRendererMaterial*>		ParticleRendererMaterials;
 
@@ -41,10 +34,6 @@ public:
 
 	UPROPERTY(meta=(ClampMin="0.0", ClampMax="20.0"))
 	float	EditorLoopDelay;
-
-	// The emitter in the preview/asset edition window if there is one
-	UPROPERTY()
-	UPopcornFXEmitterComponent *PreviewEmitter;
 #endif // WITH_EDITORONLY_DATA
 
 	bool					LoadEffectIFN();
@@ -62,7 +51,11 @@ public:
 
 #if WITH_EDITOR
 	// overrides UObject
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	void					GetAssetRegistryTags(FAssetRegistryTagsContext context) const override;
+#else
+	void					GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const override;
+#endif
 
 	// overrides FPopcornFXFile
 	virtual void			PreReimport_Clean() override;
@@ -91,9 +84,6 @@ protected:
 
 	virtual void			OnFileUnload() override;
 	virtual void			OnFileLoad() override;
-
-public:
-	FPopcornFXReimportEventSignature	OnEffectReimported;
 
 private:
 	CPopcornFXEffect		*m_Private;

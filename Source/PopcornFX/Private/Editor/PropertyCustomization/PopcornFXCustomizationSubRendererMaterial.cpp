@@ -204,11 +204,19 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 					// too slow
 					.Visibility(this, &FPopcornFXCustomizationSubRendererMaterial::GetResetVisibility)
 					.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
+#if (ENGINE_MAJOR_VERSION == 5)
 					.ButtonStyle(FAppStyle::Get(), "NoBorder")
+#else
+					.ButtonStyle(FEditorStyle::Get(), "NoBorder")
+#endif // (ENGINE_MAJOR_VERSION == 5)
 					.Content()
 					[
 						SNew(SImage)
+#if (ENGINE_MAJOR_VERSION == 5)
 						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+#else
+						.Image(FEditorStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+#endif // (ENGINE_MAJOR_VERSION == 5)
 					]
 				]
 		]
@@ -297,7 +305,11 @@ FReply	FPopcornFXCustomizationSubRendererMaterial::OnResetClicked()
 	if (!PK_VERIFY(self != null))
 		return FReply::Handled();
 	self->_ResetDefaultMaterial_NoReload();
+#if (ENGINE_MAJOR_VERSION == 5)
 	m_MaterialPty->NotifyPostChange(EPropertyChangeType::ValueSet); // TODO: Is this correct
+#else
+	m_MaterialPty->NotifyPostChange(); // should reload
+#endif // (ENGINE_MAJOR_VERSION == 5)
 	return FReply::Handled();
 }
 

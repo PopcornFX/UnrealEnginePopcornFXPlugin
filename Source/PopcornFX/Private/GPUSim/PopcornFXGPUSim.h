@@ -16,8 +16,13 @@
 
 //----------------------------------------------------------------------------
 
-typedef FRHIBuffer*						FVBRHIParamRef;
-typedef FRHIBuffer*						FIBRHIParamRef;
+#if (ENGINE_MAJOR_VERSION == 5)
+	typedef FRHIBuffer*						FVBRHIParamRef;
+	typedef FRHIBuffer*						FIBRHIParamRef;
+#else
+	typedef FRHIVertexBuffer*				FVBRHIParamRef;
+	typedef FRHIIndexBuffer*				FIBRHIParamRef;
+#endif
 typedef FRHIComputeShader*				FCSRHIParamRef;
 typedef FRHIShaderResourceView*			FSRVRHIParamRef;
 typedef FRHIUnorderedAccessView*		FUAVRHIParamRef;

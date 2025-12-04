@@ -15,11 +15,8 @@
 #include "Assets/PopcornFXEffectPriv.h"
 
 #include "Engine/World.h"
+
 #include "Engine/CollisionProfile.h"
-#include "UObject/StrongObjectPtr.h"
-#include "Containers/Map.h"
-#include "Async/Async.h"
-#include "Async/TaskGraphInterfaces.h"
 
 #include "PopcornFXSDK.h"
 
@@ -237,13 +234,7 @@ void	UPopcornFXSceneComponent::TickComponent(float deltaTime, enum ELevelTick ti
 	}
 
 	PK_ASSERT(m_ParticleScene->SceneComponent() == this);
-	UpdateParticleScene(deltaTime);
-}
 
-//----------------------------------------------------------------------------
-
-void	UPopcornFXSceneComponent::UpdateParticleScene(float deltaTime)
-{
 	m_ParticleScene->StartUpdate(deltaTime);
 
 	FBoxSphereBounds			bounds;

@@ -91,7 +91,11 @@ namespace	PopcornFXPinDataType
 		case EPopcornFXPinDataType::Float2:
 		case EPopcornFXPinDataType::Float3:
 		case EPopcornFXPinDataType::Float4:
+#if (ENGINE_MAJOR_VERSION == 5)
 			outPinType.PinCategory = UEdGraphSchema_K2::PC_Real;
+#else
+			outPinType.PinCategory = UEdGraphSchema_K2::PC_Float;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 			return true;
 		case EPopcornFXPinDataType::Int:
 		case EPopcornFXPinDataType::Int2:
@@ -131,12 +135,13 @@ namespace	PopcornFXPinDataType
 	// Removes leading "EPopcornFXPinFieldType::" if nessecary for Pin value
 	FString		GetPinValueName(EPopcornFXPinDataType::Type value)
 	{
+#if (ENGINE_MAJOR_VERSION == 5)
 		static const TCHAR	kEnumName[] = TEXT("/Script/PopcornFX.EPopcornFXPinDataType");
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-		UEnum				*pinTypeEnum = FindObject<UEnum>(null, kEnumName, EFindObjectFlags::ExactClass);
-#else
 		UEnum				*pinTypeEnum = FindObject<UEnum>(null, kEnumName, true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#else
+		static const TCHAR	kEnumName[] = TEXT("EPopcornFXPinDataType");
+		UEnum				*pinTypeEnum = FindObject<UEnum>(ANY_PACKAGE, kEnumName, true);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		check(pinTypeEnum);
 		FString		name = pinTypeEnum->GetNameByValue(value).ToString();
 		static const TCHAR	kEnumNameDoubleColon[] = TEXT("EPopcornFXPinDataType::");
@@ -209,11 +214,11 @@ void	UPopcornFXNode_DynamicField::AllocateDefaultPins()
 	CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Boolean, UEdGraphSchema_K2::PN_ReturnValue);
 
 	{
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-		UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), EFindObjectFlags::ExactClass);
-#else
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		UEnum		*pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#else
+		UEnum		*pinTypeEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EPopcornFXPinDataType"), true);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 		UEdGraphPin		*pinTypePin = CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Byte, pinTypeEnum, PopcornFXPinDataType::GetPinTypeName());
 		PK_ASSERT(pinTypePin != null);
 
@@ -378,11 +383,11 @@ void	UPopcornFXNode_DynamicField::PinDefaultValueChanged(UEdGraphPin *pin)
 	if (!PK_VERIFY(!pin->DefaultValue.IsEmpty()))
 		return;
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-	UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), EFindObjectFlags::ExactClass);
-#else
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	UEnum		*pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#else
+	UEnum		*pinTypeEnum = FindObject<UEnum>(ANY_PACKAGE, TEXT("EPopcornFXPinDataType"), true);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 1)
 	check(pinTypeEnum);
 	int32		rawValue = pinTypeEnum->GetValueByName(FName(*pin->DefaultValue)); // GetValueByName is fine with or without "EPopcornFXPinDataType::"...
 	if (!PK_VERIFY(rawValue != INDEX_NONE))
