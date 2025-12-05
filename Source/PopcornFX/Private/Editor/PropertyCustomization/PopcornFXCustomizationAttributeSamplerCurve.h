@@ -1,5 +1,3 @@
-#pragma once
-
 //----------------------------------------------------------------------------
 // Copyright Persistant Studios, SARL. All Rights Reserved.
 // https://www.popcornfx.com/terms-and-conditions/
@@ -11,24 +9,18 @@
 
 #include "PopcornFXMinimal.h"
 
-#include "Runtime/Launch/Resources/Version.h"
 #include "PropertyEditorModule.h"
+#include "IPropertyTypeCustomization.h"
 
-#include "IDetailCustomization.h"
+#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeSampler.h"
 
-class FPopcornFXDetailsAttributeSamplerSkinnedMesh : public IDetailCustomization
+class FPopcornFXCustomizationAttributeSamplerCurve : public FPopcornFXCustomizationAttributeSampler
 {
 public:
-	FPopcornFXDetailsAttributeSamplerSkinnedMesh();
-
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
-	static TSharedRef<IDetailCustomization>	MakeInstance();
+	static TSharedRef<IPropertyTypeCustomization>	MakeInstance();
 
-	virtual void		CustomizeDetails(IDetailLayoutBuilder& detailLayout) override;
-private:
-	void	RebuildDetails();
-
-	IDetailLayoutBuilder	*m_CachedDetailLayoutBuilder;
+	virtual void CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder &ChildBuilder, IPropertyTypeCustomizationUtils &CustomizationUtils) override;
 };
 
 #endif // WITH_EDITOR

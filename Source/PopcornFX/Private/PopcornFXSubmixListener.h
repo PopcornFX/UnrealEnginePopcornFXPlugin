@@ -34,11 +34,7 @@ public:
 										const int32			SampleRate,
 										double				AudioClock) override;
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 	const FString&	GetListenerName() const override;
-#else
-	const FString& GetListenerName() const;
-#endif
 	
 private:
 	FPopcornFXSubmixListener();

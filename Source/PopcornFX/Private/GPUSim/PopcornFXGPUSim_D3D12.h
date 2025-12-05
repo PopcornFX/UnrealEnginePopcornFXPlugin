@@ -18,10 +18,6 @@ class CParticleStreamToRender_D3D12;
 FWD_PK_API_END
 
 FShaderResourceViewRHIRef		StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D12 *stream, u32 stride, u8 pixelFormat = PF_R32_FLOAT);
-#if (ENGINE_MAJOR_VERSION == 5)
 FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stream, u32 stride);
-#else
-FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stream, u32 stride);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #endif // (PK_GPU_D3D12 == 1)

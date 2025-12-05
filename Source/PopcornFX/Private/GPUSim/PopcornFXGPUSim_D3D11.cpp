@@ -52,13 +52,9 @@ DECLARE_LOG_CATEGORY_EXTERN(LogD3D11RHI, Log, All);
 
 #if WITH_EDITOR
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 FD3D11Buffer::~FD3D11Buffer()
 {
 }
-#else
-void	UpdateBufferStats(TRefCountPtr<ID3D11Buffer> Buffer, bool bAllocating) { }
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 #endif // WITH_EDITOR
 
@@ -70,34 +66,19 @@ void	UpdateBufferStats(TRefCountPtr<ID3D11Buffer> Buffer, bool bAllocating) { }
 
 FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride, u8 pixelFormat)
 {
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3)
 	FRHICommandListBase			&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
-#endif
 
-#if (ENGINE_MAJOR_VERSION == 5)
 	FD3D11Buffer				*buffer = static_cast<FD3D11Buffer*>(StreamBufferResourceToRHI(stream, stride));
-#else
-	FD3D11VertexBuffer			*buffer = static_cast<FD3D11VertexBuffer*>(StreamBufferResourceToRHI(stream, stride));
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	check(pixelFormat != PF_Unknown);
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	return RHICmdList.CreateShaderResourceView(buffer, FRHIViewDesc::CreateBufferSRV()
 		.SetTypeFromBuffer(buffer)
 		.SetFormat((EPixelFormat)pixelFormat));
-#else
-	// Create a new SRV from resource
-	return RHICreateShaderResourceView(buffer, stride, pixelFormat);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MAJOR_VERSION == 5)
 FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride)
-#else
-FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *stream, u32 stride)
-#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	D3D11_BUFFER_DESC	desc;
 	stream->m_Buffer->GetDesc(&desc);
@@ -117,13 +98,9 @@ FRHIVertexBuffer				*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *s
 	const EBufferUsageFlags		bufferUsage = BUF_ShaderResource;
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferCreateDesc(TEXT("PopcornFXBuffer"), sizeInBytes, stride, bufferUsage));
-#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
-	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferDesc(sizeInBytes, stride, bufferUsage));
-#elif (ENGINE_MAJOR_VERSION == 5)
-	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, sizeInBytes, bufferUsage, stride);
 #else
-	FD3D11VertexBuffer			*buffer = new FD3D11VertexBuffer(stream->m_Buffer, sizeInBytes, bufferUsage);
-#endif // (ENGINE_MAJOR_VERSION == 5)
+	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferDesc(sizeInBytes, stride, bufferUsage));
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 	return buffer;
 }

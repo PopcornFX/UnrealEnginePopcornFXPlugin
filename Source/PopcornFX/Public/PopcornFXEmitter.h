@@ -67,11 +67,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Rendering", meta=(CallInEditor=true))
 	void				OnInterpToggle(bool bEnable);
 
-#if WITH_EDITORONLY_DATA
-	UPROPERTY()
-	class UBillboardComponent				*SpriteComponent;
-#endif
-
 	bool				SetEffect(class UPopcornFXEffect *effect);
 	UPopcornFXEffect	*GetEffect();
 

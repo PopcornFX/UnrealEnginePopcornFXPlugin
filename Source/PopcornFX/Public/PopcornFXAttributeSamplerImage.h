@@ -47,6 +47,48 @@ namespace	EPopcornFXImageDensitySource
 	};
 }
 
+USTRUCT(BlueprintType)
+struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesImage : public FPopcornFXAttributeSamplerProperties
+{
+	GENERATED_USTRUCT_BODY()
+
+public:
+	/** Enable to allow PopcornFX to convert the texture at Runtime, if
+	* the texture is not in a format directly samplable by PopcornFX.
+	* /!\ It can take a significant amount of time to convert.
+	*/
+	UPROPERTY(EditAnywhere, Category = "PopcornFX AttributeSampler")
+	uint32											bAllowTextureConversionAtRuntime : 1;
+
+	/** The texture to be sampled (Only UTexture2D are supported for CPU simulated particles, UTexture with 2D dimension for GPU simulated particles (UTexture2D, UTextureRenderTarget2D, ..)*/
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "PopcornFX AttributeSampler")
+	class UTexture									*Texture;
+
+	/** Texture atlas */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "PopcornFX AttributeSampler")
+	class UPopcornFXTextureAtlas					*TextureAtlas;
+
+	UPROPERTY(EditAnywhere, Category = "PopcornFX AttributeSampler")
+	TEnumAsByte<EPopcornFXImageSamplingMode::Type>	SamplingMode;
+
+	UPROPERTY(EditAnywhere, Category = "PopcornFX AttributeSampler")
+	TEnumAsByte<EPopcornFXImageDensitySource::Type>	DensitySource;
+
+	UPROPERTY(EditAnywhere, meta = (ClampMin = 0.01f, ClampMax = 100.0f), Category = "PopcornFX AttributeSampler")
+	float											DensityPower;
+
+public:
+
+	FPopcornFXAttributeSamplerPropertiesImage()
+	:	bAllowTextureConversionAtRuntime(false)
+	,	Texture()
+	,	TextureAtlas()
+	,	SamplingMode(EPopcornFXImageSamplingMode::Regular)
+	,	DensitySource(EPopcornFXImageDensitySource::RGBA_Average)
+	,	DensityPower(1.0f)
+	{ }
+};
+
 /** Can override an Attribute Sampler **Image** by a **UTexture**. */
 UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
 class POPCORNFX_API UPopcornFXAttributeSamplerImage : public UPopcornFXAttributeSampler
@@ -54,32 +96,12 @@ class POPCORNFX_API UPopcornFXAttributeSamplerImage : public UPopcornFXAttribute
 	GENERATED_UCLASS_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
+	UFUNCTION(BlueprintCallable, Category = "PopcornFX AttributeSampler")
 	void	SetTexture(class UTexture *InTexture);
 
-	/** Enable to allow PopcornFX to convert the texture at Runtime, if
-	* the texture is not in a format directly samplable by PopcornFX.
-	* /!\ It can take a significant amount of time to convert.
-	*/
-	UPROPERTY(EditAnywhere, Category="PopcornFX AttributeSampler")
-	uint32	bAllowTextureConvertionAtRuntime : 1;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
+	FPopcornFXAttributeSamplerPropertiesImage		Properties;
 
-	/** The texture to be sampled (Only UTexture2D are supported for CPU simulated particles, UTexture with 2D dimension for GPU simulated particles (UTexture2D, UTextureRenderTarget2D, ..)*/
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="PopcornFX AttributeSampler")
-	class UTexture					*Texture;
-
-	/** Texture atlas */
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="PopcornFX AttributeSampler")
-	class UPopcornFXTextureAtlas	*TextureAtlas;
-
-	UPROPERTY(EditAnywhere, Category="PopcornFX AttributeSampler")
-	TEnumAsByte<EPopcornFXImageSamplingMode::Type>	SamplingMode;
-
-	UPROPERTY(EditAnywhere, Category="PopcornFX AttributeSampler")
-	TEnumAsByte<EPopcornFXImageDensitySource::Type>	DensitySource;
-
-	UPROPERTY(EditAnywhere, meta=(ClampMin=0.01f, ClampMax=100.0f), Category="PopcornFX AttributeSampler")
-	float											DensityPower;
 
 	// overrides
 	void			OnUnregister() override;
@@ -88,9 +110,14 @@ public:
 #if WITH_EDITOR
 	void			PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif // WITH_EDITOR
+		
+	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
+#if WITH_EDITOR
+	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
+#endif
 
 	// PopcornFX Internal
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
 private:
 	bool			RebuildImageSampler();

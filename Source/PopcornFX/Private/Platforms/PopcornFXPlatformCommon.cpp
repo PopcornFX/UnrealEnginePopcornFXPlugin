@@ -18,9 +18,7 @@
 #	include "ShaderCompilerCore.h"
 #	include "Misc/FileHelper.h"
 
-#	if (ENGINE_MINOR_VERSION >= 3)
-#		include "ShaderPreprocessTypes.h"
-#	endif // (ENGINE_MINOR_VERSION >= 3)
+#	include "ShaderPreprocessTypes.h"
 
 #	include <pk_engine_utils/include/eu_random.h>
 #	include <pk_maths/include/pk_maths_random.h>
@@ -205,7 +203,8 @@ const char	*kKernelStageNames[] = {
 	"KernelStage_Simulation",
 	"KernelStage_Kill",
 	"KernelStage_Bounds",
-	"KernelStage_Merge"
+	"KernelStage_Merge",
+	"KernelStage_KickEvent"
 };
 PK_STATIC_ASSERT(PK_ARRAY_COUNT(kKernelStageNames) == PopcornFX::SBackendBuildInfos::__MaxKernelStages);
 
@@ -312,11 +311,7 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				// Tell UE where the content is located, and to skip the mcpp pass
 				input.VirtualSourceFilePath = srcFilePath;
 				input.EntryPointName = "main";
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 				input.DebugInfoFlags |= EShaderDebugInfoFlags::CompileFromDebugUSF;
-#else
-				input.bSkipPreprocessedCache = true;
-#endif
 
 				for (u32 compilerFlag : compilerFlags)
 					input.Environment.CompilerFlags.Append(compilerFlag);
@@ -324,7 +319,16 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 
 			FShaderCompilerOutput		output;
 			const FString				workingDirectory;
-#if (ENGINE_MINOR_VERSION >= 3)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+			FShaderPreprocessOutput		preprocessorOutput;
+			FString						DebugUSF;
+			bool						bSuccess = FFileHelper::LoadFileToString(DebugUSF, *input.VirtualSourceFilePath);
+			TArray<ANSICHAR>			Stripped;
+
+			ShaderConvertAndStripComments(DebugUSF, Stripped);
+			preprocessorOutput.EditSource().Set({ Stripped.GetData(), Stripped.Num() });
+			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output, workingDirectory);
+#else
 			FShaderPreprocessOutput		preprocessorOutput;
 			FShaderCompilerEnvironment	mergedEnvironment;
 			if (!shaderFormat->PreprocessShader(input, mergedEnvironment, preprocessorOutput))
@@ -333,17 +337,11 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				return false;
 			}
 			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output, workingDirectory);
-#else
-			shaderFormat->CompileShader(shaderFormatName, input, output, workingDirectory);
-#endif // (ENGINE_MINOR_VERSION >= 3)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 
 			if (output.bSucceeded)
 			{
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 5)
 				const TConstArrayView<uint8>	&shaderCodeWithOptionalData = output.ShaderCode.GetReadView();
-#else
-				const TArray<uint8> &shaderCodeWithOptionalData = output.ShaderCode.GetReadAccess();
-#endif
 				const u8						*fullShaderCode = shaderCodeWithOptionalData.GetData();
 				const u8						*fullShaderCodeEnd = fullShaderCode + shaderCodeWithOptionalData.Num();
 				const u8						*shaderCodeStart = fullShaderCode;

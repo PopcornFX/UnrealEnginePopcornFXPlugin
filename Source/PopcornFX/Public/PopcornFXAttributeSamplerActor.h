@@ -51,9 +51,6 @@ protected:
 /** Can override an Attribute Sampler **Shape** by a **UStaticMesh**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerShapeActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
-/** Can override an Attribute Sampler **Shape** in a **USkeletalMesh**. */
-UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerSkinnedMeshActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
-
 /** Can override an Attribute Sampler **Image** by a **UTexture**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerImageActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 

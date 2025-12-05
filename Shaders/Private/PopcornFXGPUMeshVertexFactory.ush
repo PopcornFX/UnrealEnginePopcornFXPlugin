@@ -1,0 +1,751 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "/Engine/Public/Platform.ush"
+
+/*=============================================================================
+	PopcornFXGPUMeshVertexFactory.ush: PopcornFX Vertex factory shader code (GPU billboarded Meshes)
+=============================================================================*/
+
+#include "/Engine/Private/VertexFactoryCommon.ush"
+#include "PopcornFXCommon.ush"
+
+// These are only enabled for SM5 due to limited interpolators elsewhere
+#define USE_PARTICLE_POSITION ((NEEDS_PARTICLE_POSITION || PASS_NEEDS_PRIMITIVE_VOLUME_BOUNDS))
+#define USE_PARTICLE_TIME (NEEDS_PARTICLE_TIME)
+#define USE_PARTICLE_SIZE (NEEDS_PARTICLE_SIZE)
+#define USE_PARTICLE_SPRITE_ROTATION (NEEDS_PARTICLE_SPRITE_ROTATION)
+
+#define USE_PARTICLE_LOCAL_TO_WORLD (NEEDS_PARTICLE_LOCAL_TO_WORLD || NEEDS_INSTANCE_LOCAL_TO_WORLD_PS)
+#define USE_PARTICLE_WORLD_TO_LOCAL (NEEDS_PARTICLE_WORLD_TO_LOCAL || NEEDS_INSTANCE_WORLD_TO_LOCAL_PS)
+
+// See PopcornFXGPUBillboard.ush
+#define VELOCITY_SCALE	100.0f
+
+// Bound from FPopcornFXGPUMeshVertexFactoryShaderParameters
+uint MeshBatchElementId;
+
+struct FVertexFactoryInput
+{
+    float4 Position : ATTRIBUTE0;
+    half3 TangentX : ATTRIBUTE1;
+	// TangentZ.w contains sign of tangent basis determinant
+    half4 TangentZ : ATTRIBUTE2;
+    half4 VertexColor : ATTRIBUTE3;
+
+#if NUM_MATERIAL_TEXCOORDS_VERTEX
+	float2	TexCoords0 : ATTRIBUTE4;
+#if NUM_MATERIAL_TEXCOORDS_VERTEX > 1
+		float2	TexCoords1 : ATTRIBUTE5;
+#endif
+#if NUM_MATERIAL_TEXCOORDS_VERTEX > 2
+		float2	TexCoords2 : ATTRIBUTE6;
+#endif
+#if NUM_MATERIAL_TEXCOORDS_VERTEX > 3
+		float2	TexCoords3 : ATTRIBUTE7;
+#endif
+#endif // NUM_MATERIAL_TEXCOORDS_VERTEX
+	
+    uint InstanceId : SV_InstanceID;
+};
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+	TANGENTTOWORLD_INTERPOLATOR_BLOCK
+
+#if NUM_TEX_COORD_INTERPOLATORS
+	float4	TexCoords[(NUM_TEX_COORD_INTERPOLATORS+1)/2] : TEXCOORD0;
+#endif
+
+#if INTERPOLATE_VERTEX_COLOR
+	float4	VertexColor : COLOR0;
+#endif
+
+#if NEEDS_PARTICLE_COLOR
+	nointerpolation float4	ParticleColor : COLOR1;
+#endif
+
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	nointerpolation float4	DynamicParameter0 : COLOR2;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	nointerpolation float4	DynamicParameter1 : COLOR3;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	nointerpolation float4	DynamicParameter2 : COLOR4;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	nointerpolation float4	DynamicParameter3 : COLOR5;
+#endif
+
+#if USE_PARTICLE_POSITION
+	/** Particle position in camera-centered translated world space */
+	nointerpolation float3 ParticleTranslatedWorldPosition	: PARTICLE_POSITION;
+#endif
+
+    nointerpolation float Cursor : PARTICLE_TIME;
+
+#if NEEDS_PARTICLE_TRANSFORM
+    nointerpolation float4 LocalToWorld[4] : PARTICLE_TRANSFORM;
+#endif
+
+#if USE_PARTICLE_LOCAL_TO_WORLD
+	nointerpolation float3x4 ParticleToWorld : PARTICLE_LOCAL_TO_WORLD;
+#endif
+
+#if USE_PARTICLE_WORLD_TO_LOCAL
+	nointerpolation float3x4 WorldToParticle : PARTICLE_WORLD_TO_LOCAL;
+#endif
+
+#if INSTANCED_STEREO
+	nointerpolation uint EyeIndex : PACKED_EYE_INDEX;
+#endif
+
+#if USE_PARTICLE_SUBUVS
+	nointerpolation float4	EmissiveColor : COLOR6;
+#endif
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
+	nointerpolation float4	AtlasRect : COLOR7;
+#endif
+};
+
+struct FVertexFactoryIntermediates
+{
+	/** The actual index of the particle. */
+	uint ParticleID;
+	
+	/** The color of the vertex. */
+    float4 VertexColor;
+
+	/** The color of the particle. */
+    float4 ParticleColor;
+
+    float4 EmissiveColor;
+
+	/** VAT or AlphaRemap cursor */
+    float Cursor;
+	
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	float4	DynamicParameter0;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	float4	DynamicParameter1;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	float4	DynamicParameter2;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	float4	DynamicParameter3;
+#endif
+
+	/** The texture coordinates for the vertex. */
+#if NUM_MATERIAL_TEXCOORDS_VERTEX
+	float2	TexCoords[NUM_MATERIAL_TEXCOORDS_VERTEX];
+#endif
+
+	/** Particle position in camera-centered translated world space. */
+    float3 ParticleTranslatedWorldPosition;
+
+#if NEEDS_PARTICLE_TRANSFORM
+	float4	LocalToWorld[4];
+#endif
+
+    float4x4 ParticleToWorld;
+    float4x4 WorldToParticle;
+
+    float3 Velocity;
+	
+	/** Cached primitive and instance data */
+	FSceneDataIntermediates SceneData;
+
+    float4 AtlasRect;
+};
+
+uint GetParticleID(FVertexFactoryInput Input)
+{
+	const uint	instanceID				= GetInstanceId(Input.InstanceId); // Necessary for VR Instanced Stereo rendering (returns Input.InstanceId / 2)
+	const uint	indirectionOffsetsID	= PopcornFXGPUMeshVSUniforms.IndirectionOffsetsIndex + MeshBatchElementId; // IndirectionOffsetsIndex is a value per mesh batch, so we add MeshBatchElementId to get the mesh index
+	const uint	indirectionOffset		= PopcornFXGPUMeshVSUniforms.IndirectionOffsets[indirectionOffsetsID];
+    const uint	particleID				= PopcornFXGPUMeshVSUniforms.Indirection[indirectionOffset + instanceID];
+	return particleID;
+}
+
+float4x4 GetParticleTransformFromID(uint particleID)
+{
+	const uint		matricesOffsetID	= PopcornFXGPUMeshVSUniforms.DrawRequest;
+    const uint		matricesOffset		= PopcornFXGPUMeshVSUniforms.MatricesOffsets[matricesOffsetID];
+    const float4	m0 = PopcornFXGPUMeshVSUniforms.Matrices[matricesOffset + particleID*4 + 0]; // 4x4 matrices are stored in a Buffer<float4> so there are 4 elements per particle
+    const float4	m1 = PopcornFXGPUMeshVSUniforms.Matrices[matricesOffset + particleID*4 + 1];
+    const float4	m2 = PopcornFXGPUMeshVSUniforms.Matrices[matricesOffset + particleID*4 + 2];
+    const float4	m3 = PopcornFXGPUMeshVSUniforms.Matrices[matricesOffset + particleID*4 + 3];
+    return float4x4(m0, m1, m2, m3);
+}
+
+float4x4 GetParticleTransform(FVertexFactoryInput Input)
+{
+	return GetParticleTransformFromID(GetParticleID(Input));
+}
+
+float4x4 GetParticleTransform(FVertexFactoryIntermediates Intermediates)
+{
+	return GetParticleTransformFromID(Intermediates.ParticleID);
+}
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants, float4 PixelPosition)
+{
+	// GetMaterialPixelParameters is responsible for fully initializing the result
+    FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
+
+#if NUM_TEX_COORD_INTERPOLATORS
+	UNROLL
+	for (int CoordinateIndex = 0; CoordinateIndex * 2 + 1 < NUM_TEX_COORD_INTERPOLATORS; ++CoordinateIndex)
+	{
+		Result.TexCoords[CoordinateIndex * 2] = Interpolants.TexCoords[CoordinateIndex].xy;
+		Result.TexCoords[CoordinateIndex * 2 + 1] = Interpolants.TexCoords[CoordinateIndex].wz;
+	}
+#if NUM_TEX_COORD_INTERPOLATORS & 1
+		Result.TexCoords[NUM_TEX_COORD_INTERPOLATORS - 1] = Interpolants.TexCoords[NUM_TEX_COORD_INTERPOLATORS / 2].xy;
+#endif // #if NUM_TEX_COORD_INTERPOLATORS & 1
+#endif
+
+    half3 TangentToWorld0 = Interpolants.TangentToWorld0.xyz;
+    half4 TangentToWorld2 = Interpolants.TangentToWorld2;
+    Result.UnMirrored = TangentToWorld2.w;
+
+#if INTERPOLATE_VERTEX_COLOR
+	Result.VertexColor = Interpolants.VertexColor;
+#else
+    Result.VertexColor = 0;
+#endif
+
+#if NEEDS_PARTICLE_COLOR
+	Result.Particle.Color = Interpolants.ParticleColor;
+#endif
+#if USE_PARTICLE_SUBUVS
+	// TODO: Move this to dynamic params
+	Result.Particle.SubUVCoords[0] = Interpolants.EmissiveColor.xy;
+	Result.Particle.SubUVCoords[1] = Interpolants.EmissiveColor.zw;
+#endif
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
+	Result.Particle.SubUVLerp = Interpolants.AtlasRect.x;
+	Result.Particle.DynamicParameter3.w = Interpolants.AtlasRect.y;
+	Result.Particle.Size = Interpolants.AtlasRect.zw;
+#endif
+    Result.Particle.RelativeTime = Interpolants.Cursor;
+
+#if (DYNAMIC_PARAMETERS_MASK != 0)
+    Result.Particle.DynamicParameterValidMask = PopcornFXUniforms.DynamicParameterMask;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	Result.Particle.DynamicParameter = Interpolants.DynamicParameter0;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	Result.Particle.DynamicParameter1 = Interpolants.DynamicParameter1;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	Result.Particle.DynamicParameter2 = Interpolants.DynamicParameter2;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	Result.Particle.DynamicParameter3.xyz = Interpolants.DynamicParameter3.xyz;
+#endif
+
+#if USE_PARTICLE_POSITION
+	Result.Particle.TranslatedWorldPositionAndSize.xyz = Interpolants.ParticleTranslatedWorldPosition.xyz;
+	Result.Particle.TranslatedWorldPositionAndSize.w = 1;
+	Result.Particle.PrevTranslatedWorldPositionAndSize = Result.Particle.PrevTranslatedWorldPositionAndSize;
+#endif
+
+#if USE_PARTICLE_LOCAL_TO_WORLD
+	Result.Particle.ParticleToWorld = DFFromTileOffset(LWCPromote(transpose(float4x4(Interpolants.ParticleToWorld[0], Interpolants.ParticleToWorld[1], Interpolants.ParticleToWorld[2], float4(0.0f, 0.0f, 0.0f, 1.0f)))));
+#if NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
+	Result.InstanceLocalToWorld = Result.Particle.ParticleToWorld;
+#endif // NEEDS_INSTANCE_LOCAL_TO_WORLD_PS
+#endif // USE_PARTICLE_LOCAL_TO_WORLD
+
+#if USE_PARTICLE_WORLD_TO_LOCAL
+	Result.Particle.WorldToParticle = DFFromTileOffset(LWCPromoteInverse(transpose(float4x4(Interpolants.WorldToParticle[0], Interpolants.WorldToParticle[1], Interpolants.WorldToParticle[2], float4(0.0f, 0.0f, 0.0f, 1.0f)))));
+#if NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
+	Result.InstanceWorldToLocal = Result.Particle.WorldToParticle;
+#endif // NEEDS_INSTANCE_WORLD_TO_LOCAL_PS
+#endif // USE_PARTICLE_WORLD_TO_LOCAL
+
+    Result.Particle.MotionBlurFade = 1.0f;
+    Result.TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
+    Result.TwoSidedSign = 1;
+
+#if USE_WORLDVERTEXNORMAL_CENTER_INTERPOLATION
+	Result.WorldVertexNormal_Center = Interpolants.TangentToWorld2_Center.xyz;
+#endif
+
+    return Result;
+}
+
+float4x4 InverseTransform(float4x4 InTransform)
+{
+	// Extract and invert scale	
+    float3 invScale = 1. / float3(length(InTransform[0].xyz), length(InTransform[1].xyz), length(InTransform[2].xyz));
+
+	// Build inv. scale matrix
+    float4x4 invScale44 = float4x4(invScale.x, 0.0f, 0.0f, 0.0f,
+										0.0f, invScale.y, 0.0f, 0.0f,
+										0.0f, 0.0f, invScale.z, 0.0f,
+										0.0f, 0.0f, 0.0f, 1.0f);
+
+	// Apply inverse scale (normalize matrix axis)
+    InTransform = mul(invScale44, InTransform);
+
+	// Transpose the matrix (since it has no more scale and we ignore position, it's the inverse rotation matrix)
+    float4x4 invRot44 = transpose(InTransform);
+
+    float4x4 invTrans44 = float4x4(1.0f, 0.0f, 0.0f, 0.0f,
+										0.0f, 1.0f, 0.0f, 0.0f,
+										0.0f, 0.0f, 1.0f, 0.0f,
+										-InTransform[3].xyz, 1.0f);
+
+    return mul(invTrans44, mul(invRot44, invScale44));
+}
+
+/** Converts from vertex factory specific input to a FMaterialVertexParameters, which is used by vertex shader material inputs. */
+FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal, bool bIsPreviousFrame = false)
+{
+	FMaterialVertexParameters	Result = MakeInitializedMaterialVertexParameters();
+	
+	Result.SceneData = Intermediates.SceneData;
+    Result.WorldPosition = WorldPosition;
+    Result.VertexColor = Intermediates.VertexColor;
+    Result.PreSkinnedPosition = Input.Position.xyz;
+    Result.PreSkinnedNormal = TangentBias(Input.TangentZ.xyz);
+
+    Result.Particle.Color = Intermediates.ParticleColor;
+#if USE_PARTICLE_SUBUVS
+	// TODO: Move this to dynamic params
+	Result.Particle.SubUVCoords[0] = Intermediates.EmissiveColor.xy;
+	Result.Particle.SubUVCoords[1] = Intermediates.EmissiveColor.zw;
+#endif
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
+	Result.Particle.SubUVLerp = Intermediates.AtlasRect.x;
+	Result.Particle.DynamicParameter3.w = Intermediates.AtlasRect.y;
+	Result.Particle.Size = Intermediates.AtlasRect.zw;
+#endif
+    Result.Particle.RelativeTime = Intermediates.Cursor;
+
+#if (DYNAMIC_PARAMETERS_MASK != 0)
+    Result.Particle.DynamicParameterValidMask = PopcornFXUniforms.DynamicParameterMask;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	Result.Particle.DynamicParameter = Intermediates.DynamicParameter0;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	Result.Particle.DynamicParameter1 = Intermediates.DynamicParameter1;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	Result.Particle.DynamicParameter2 = Intermediates.DynamicParameter2;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	Result.Particle.DynamicParameter3.xyz = Intermediates.DynamicParameter3.xyz;
+
+#endif
+
+    Result.Particle.TranslatedWorldPositionAndSize.xyz = Intermediates.ParticleTranslatedWorldPosition.xyz;
+    Result.Particle.TranslatedWorldPositionAndSize.w = 1;
+	Result.Particle.PrevTranslatedWorldPositionAndSize = Result.Particle.TranslatedWorldPositionAndSize;
+	
+	float4x4	_transform = GetParticleTransform(Intermediates);
+	FDFMatrix	Transform = MakeDFMatrix((float3)0, _transform);
+
+    Result.InstanceLocalToWorld = Transform;
+	Result.InstanceWorldToLocal = MakeDFInverseMatrix((float3)0, InverseTransform(_transform));
+	
+	Result.TangentToWorld = mul(TangentToLocal, (float3x3)_transform);
+
+#if NUM_MATERIAL_TEXCOORDS_VERTEX
+	for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
+	{
+		Result.TexCoords[CoordinateIndex] = Intermediates.TexCoords[CoordinateIndex];
+	}
+#endif
+
+    Result.Particle.ParticleToWorld = Transform;
+    Result.Particle.WorldToParticle = Result.InstanceWorldToLocal;
+	
+#if ENABLE_NEW_HLSL_GENERATOR
+	EvaluateVertexMaterialAttributes(Result);
+#endif // ENABLE_NEW_HLSL_GENERATOR
+
+    return Result;
+}
+
+float4 CalcWorldPosition(FVertexFactoryInput Input)
+{
+    float4x4 Transform = GetParticleTransform(Input);
+	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.TileOffset.PreViewTranslation);
+    return float4(WorldPosition, Input.Position.w);
+}
+
+float4 CalcPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	// FIXME only offsets the particle position, properly store the previous rotation transforms as well.
+    float4x4 Transform = GetParticleTransform(Intermediates);
+    Transform[3] -= float4(Intermediates.Velocity, 0);
+	
+	float3 WorldPosition = mul(Input.Position, Transform).xyz + LWCHackToFloat(ResolvedView.TileOffset.PrevPreViewTranslation);
+    return float4(WorldPosition, Input.Position.w);
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+    FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates) 0;
+	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+	// Swizzle vertex color.
+    Intermediates.VertexColor = Input.VertexColor FCOLOR_COMPONENT_SWIZZLE;
+
+    uint particleID = GetParticleID(Input);
+	Intermediates.ParticleID = particleID;
+
+	// World position.
+    float4x4 ParticleTransform = GetParticleTransformFromID(particleID);
+	float4x4 LocalToWorldMat = float4x4(ParticleTransform[0], ParticleTransform[1], ParticleTransform[2], float4(0.0f, 0.0f, 0.0f, 1.0f));
+    float3 ParticleWorldPosition = ParticleTransform[3].xyz;
+#if NEEDS_PARTICLE_TRANSFORM
+	Intermediates.LocalToWorld[0] = LocalToWorldMat[0];
+	Intermediates.LocalToWorld[1] = LocalToWorldMat[1];
+	Intermediates.LocalToWorld[2] = LocalToWorldMat[2];
+	Intermediates.LocalToWorld[3] = LocalToWorldMat[3];
+#endif
+	
+	Intermediates.ParticleTranslatedWorldPosition = ParticleWorldPosition + LWCHackToFloat(ResolvedView.TileOffset.PreViewTranslation).xyz;
+	
+    BRANCH
+
+    if (PopcornFXMeshVSUniforms.InColorsOffset != -1)
+        Intermediates.ParticleColor = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InColorsOffset);
+    BRANCH
+
+    if (PopcornFXMeshVSUniforms.InEmissiveColorsOffset3 != -1)
+        Intermediates.EmissiveColor = float4(PKSimData_Load3f(particleID, PopcornFXMeshVSUniforms.InEmissiveColorsOffset3), 1.0f);
+    else if (PopcornFXMeshVSUniforms.InEmissiveColorsOffset4 != -1)
+        Intermediates.EmissiveColor = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InEmissiveColorsOffset4);
+    BRANCH
+
+    if (PopcornFXMeshVSUniforms.InVelocityOffset != -1)
+        Intermediates.Velocity = PKSimData_Load3f(particleID, PopcornFXMeshVSUniforms.InVelocityOffset) * VELOCITY_SCALE;
+    else
+        Intermediates.Velocity = float3(0.0f, 0.0f, 0.0f);
+
+	// Cursor sent through RelativeTime (either one)
+    BRANCH
+
+    if (PopcornFXMeshVSUniforms.InVATCursorsOffset != -1)
+        Intermediates.Cursor = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InVATCursorsOffset);
+    BRANCH
+
+    if (PopcornFXMeshVSUniforms.InAlphaCursorsOffset != -1)
+        Intermediates.Cursor = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InAlphaCursorsOffset);
+
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	BRANCH
+	if (PopcornFXMeshVSUniforms.InDynamicParameter0sOffset != -1)
+		Intermediates.DynamicParameter0 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter0sOffset);
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	BRANCH
+	if (PopcornFXMeshVSUniforms.InDynamicParameter1sOffset != -1)
+		Intermediates.DynamicParameter1 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter1sOffset);
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	BRANCH
+	if (PopcornFXMeshVSUniforms.InDynamicParameter2sOffset != -1)
+		Intermediates.DynamicParameter2 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter2sOffset);
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	BRANCH
+	if (PopcornFXMeshVSUniforms.InDynamicParameter3sOffset != -1)
+		Intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXMeshVSUniforms.InDynamicParameter3sOffset);
+#endif
+    Intermediates.AtlasRect = float4(1, 1, 0, 0); // identity
+    BRANCH
+
+    if (PopcornFXMeshVSUniforms.InTextureIDsOffset != -1)
+    {
+		// Resolve UVs from rectangle list
+        const float textureID = PKSimData_Loadf(particleID, PopcornFXMeshVSUniforms.InTextureIDsOffset);
+        const uint atlasID = min((uint) abs(textureID), PopcornFXMeshVSUniforms.AtlasRectCount - 1);
+        const float4 rect = PopcornFXMeshVSUniforms.AtlasBuffer[atlasID];
+
+        Intermediates.AtlasRect = rect;
+    }
+
+#if NUM_MATERIAL_TEXCOORDS_VERTEX
+	Intermediates.TexCoords[0] = Input.TexCoords0;
+#if NUM_MATERIAL_TEXCOORDS_VERTEX > 1
+		Intermediates.TexCoords[1] = Input.TexCoords1;
+#endif
+#if NUM_MATERIAL_TEXCOORDS_VERTEX > 2
+		Intermediates.TexCoords[2] = Input.TexCoords2;
+#endif
+#if NUM_MATERIAL_TEXCOORDS_VERTEX > 3
+		Intermediates.TexCoords[3] = Input.TexCoords3;
+#endif
+#endif
+	
+    float4x4 WorldToParticle = InverseTransform(LocalToWorldMat);
+    Intermediates.ParticleToWorld = LocalToWorldMat;
+    Intermediates.WorldToParticle = WorldToParticle;
+    return Intermediates;
+}
+
+/**
+* Get the 3x3 tangent basis vectors for this vertex factory
+* this vertex factory will calculate the binormal on-the-fly
+*
+* @param Input - vertex input stream structure
+* @return 3x3 matrix
+*/
+float3x3 VertexFactoryGetTangentToLocal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+    float3x3 Result = 0;
+    float4 TangentZ = TangentBias(Input.TangentZ);
+
+	// pass-thru the tangent
+    Result[0] = TangentBias(Input.TangentX);
+	// pass-thru the normal
+    Result[2] = TangentZ.xyz;
+
+
+	// derive the binormal by getting the cross product of the normal and tangent
+    Result[1] = cross(Result[2], Result[0]) * TangentZ.w;
+	// Recalculate TangentX off of the other two vectors
+	// This corrects quantization error since TangentX was passed in as a quantized vertex input
+	// The error shows up most in specular off of a mesh with a smoothed UV seam (normal is smooth, but tangents vary across the seam)
+    Result[0] = cross(Result[1], Result[2]) * TangentZ.w;
+
+    return Result;
+}
+
+// @return translated world position
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+    return CalcWorldPosition(Input);
+}
+
+// since 4.12
+float3 VertexFactoryGetPositionForVertexLighting(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 TranslatedWorldPosition)
+{
+    return TranslatedWorldPosition;
+}
+
+float4 VertexFactoryGetRasterizedWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float4 InWorldPosition)
+{
+    return InWorldPosition;
+}
+
+void CalcTangentToWorld(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, out float3 TangentToWorld0, out float4 TangentToWorld2)
+{
+    float3x3 TangentToLocal = VertexFactoryGetTangentToLocal(Input, Intermediates);
+
+    float4x4 Transform = GetParticleTransform(Intermediates);
+    float3x3 TangentToWorld = mul(TangentToLocal, (float3x3) Transform);
+
+	// Normalize to remove scaling. Incorrect but faster than computing the inverse-transpose.
+    TangentToWorld0 = normalize(TangentToWorld[0]);
+	TangentToWorld2 = float4(normalize(TangentToWorld[2]), TangentBias(Input.TangentZ.w) * GetPrimitive_DeterminantSign_FromFlags(Primitive.Flags));
+}
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, FMaterialVertexParameters VertexParameters)
+{
+    FVertexFactoryInterpolantsVSToPS Interpolants;
+
+#if NUM_TEX_COORD_INTERPOLATORS
+	// Ensure the unused components of the last packed texture coordinate are initialized.
+	Interpolants.TexCoords[(NUM_TEX_COORD_INTERPOLATORS + 1) / 2 - 1] = 0;
+
+	float2 CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS];
+	GetMaterialCustomizedUVs(VertexParameters, CustomizedUVs);
+	GetCustomInterpolators(VertexParameters, CustomizedUVs);
+
+	UNROLL
+	for (int CoordinateIndex = 0; CoordinateIndex * 2 + 1 < NUM_TEX_COORD_INTERPOLATORS; ++CoordinateIndex)
+	{
+		Interpolants.TexCoords[CoordinateIndex].xy = CustomizedUVs[CoordinateIndex * 2];
+		Interpolants.TexCoords[CoordinateIndex].wz = CustomizedUVs[CoordinateIndex * 2 + 1];
+	}
+#if NUM_TEX_COORD_INTERPOLATORS & 1
+		Interpolants.TexCoords[NUM_TEX_COORD_INTERPOLATORS / 2].xy = CustomizedUVs[NUM_TEX_COORD_INTERPOLATORS - 1];
+#endif // #if NUM_TEX_COORD_INTERPOLATORS & 1
+#endif
+
+    Interpolants.TangentToWorld0.w = 0;
+    CalcTangentToWorld(Input, Intermediates, Interpolants.TangentToWorld0.xyz, Interpolants.TangentToWorld2);
+#if USE_WORLDVERTEXNORMAL_CENTER_INTERPOLATION
+	Interpolants.TangentToWorld2_Center = Interpolants.TangentToWorld2;
+#endif
+
+#if INTERPOLATE_VERTEX_COLOR
+	Interpolants.VertexColor = Intermediates.VertexColor;
+#endif
+
+#if NEEDS_PARTICLE_COLOR
+	Interpolants.ParticleColor = Intermediates.ParticleColor;
+#endif
+    Interpolants.Cursor = Intermediates.Cursor;
+
+#if (DYNAMIC_PARAMETERS_MASK & 1)
+	Interpolants.DynamicParameter0 = Intermediates.DynamicParameter0;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 2)
+	Interpolants.DynamicParameter1 = Intermediates.DynamicParameter1;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 4)
+	Interpolants.DynamicParameter2 = Intermediates.DynamicParameter2;
+#endif
+#if (DYNAMIC_PARAMETERS_MASK & 8)
+	Interpolants.DynamicParameter3 = Intermediates.DynamicParameter3;
+#endif
+
+#if USE_PARTICLE_POSITION
+	Interpolants.ParticleTranslatedWorldPosition = Intermediates.ParticleTranslatedWorldPosition;
+#endif
+#if NEEDS_PARTICLE_TRANSFORM
+	Interpolants.LocalToWorld = Intermediates.LocalToWorld;
+#endif
+
+#if USE_PARTICLE_LOCAL_TO_WORLD
+	Interpolants.ParticleToWorld = (float3x4) transpose(Intermediates.ParticleToWorld);
+#endif
+
+#if USE_PARTICLE_WORLD_TO_LOCAL
+	Interpolants.WorldToParticle = (float3x4) transpose(Intermediates.WorldToParticle);
+#endif
+
+#if INSTANCED_STEREO
+	Interpolants.EyeIndex = 0;
+#endif
+
+#if USE_PARTICLE_SUBUVS
+	Interpolants.EmissiveColor = Intermediates.EmissiveColor;
+#endif
+#if USE_PARTICLE_SUBUVS && USE_PARTICLE_SIZE && (DYNAMIC_PARAMETERS_MASK & 8)
+	Interpolants.AtlasRect = Intermediates.AtlasRect;
+#endif
+
+    return Interpolants;
+}
+
+// @return previous translated world position
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+    return CalcPreviousWorldPosition(Input, Intermediates);
+}
+
+#if USING_TESSELLATION
+struct FVertexFactoryInterpolantsVSToDS
+{
+	FVertexFactoryInterpolantsVSToPS InterpolantsVSToPS;
+};
+
+float2 VertexFactoryGetTextureCoordinateDS(FVertexFactoryInterpolantsVSToDS Interpolants)
+{
+#if NUM_MATERIAL_TEXCOORDS
+	return Interpolants.InterpolantsVSToPS.TexCoords[0].xy;
+#else // #if NUM_MATERIAL_TEXCOORDS
+	return float2(0, 0);
+#endif // #if NUM_MATERIAL_TEXCOORDS
+}
+
+FVertexFactoryInterpolantsVSToPS VertexFactoryAssignInterpolants(FVertexFactoryInterpolantsVSToDS Input)
+{
+	return Input.InterpolantsVSToPS;
+}
+
+/** Converts from vertex factory specific interpolants to a FMaterialTessellationParameters, which is used by material inputs. */
+FMaterialTessellationParameters GetMaterialTessellationParameters(FVertexFactoryInterpolantsVSToDS Interpolants, float3 CameraLocalWorldPosition)
+{
+	FMaterialTessellationParameters	Result;
+#if NUM_TEX_COORD_INTERPOLATORS
+	UNROLL
+	for(int CoordinateIndex = 0;CoordinateIndex < NUM_TEX_COORD_INTERPOLATORS;CoordinateIndex += 2)
+	{
+		Result.TexCoords[CoordinateIndex] = Interpolants.InterpolantsVSToPS.TexCoords[CoordinateIndex/2].xy;
+		if(CoordinateIndex + 1 < NUM_TEX_COORD_INTERPOLATORS)
+		{
+			Result.TexCoords[CoordinateIndex + 1] = Interpolants.InterpolantsVSToPS.TexCoords[CoordinateIndex/2].wz;
+		}
+	}
+#endif
+
+	Result.VertexColor = float4(1, 1, 1, 1);
+
+	half3 TangentToWorld0 = Interpolants.InterpolantsVSToPS.TangentToWorld0.xyz;
+	half4 TangentToWorld2 = Interpolants.InterpolantsVSToPS.TangentToWorld2;
+	Result.TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
+	Result.TangentToWorldPreScale = 1;
+	Result.WorldPosition = CameraLocalWorldPosition + ResolvedView.WorldCameraOrigin.xyz;
+
+	return Result;
+}
+
+FVertexFactoryInterpolantsVSToDS VertexFactoryGetInterpolantsVSToDS(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, FMaterialVertexParameters VertexParameters)
+{
+	FVertexFactoryInterpolantsVSToDS Interpolants;
+	Interpolants.InterpolantsVSToPS = VertexFactoryGetInterpolantsVSToPS(Input, Intermediates, VertexParameters);
+	return Interpolants;
+}
+
+FVertexFactoryInterpolantsVSToDS VertexFactoryInterpolate(FVertexFactoryInterpolantsVSToDS a, float aInterp, FVertexFactoryInterpolantsVSToDS b, float bInterp)
+{
+	FVertexFactoryInterpolantsVSToDS O;
+
+	// Do we really need to interpolate TangentToWorld2 here? It should be replaced by the
+	// interpolated normal from 'whatever' interpolation scheme we're using
+
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TangentToWorld0.xyz);
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TangentToWorld2);
+#if INTERPOLATE_VERTEX_COLOR
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.VertexColor);
+#endif
+
+#if NEEDS_PARTICLE_COLOR
+	TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.ParticleColor);
+#endif
+
+#if NUM_TEX_COORD_INTERPOLATORS
+	for (int i = 0; i < (NUM_TEX_COORD_INTERPOLATORS + 1) / 2; ++i)
+	{
+		TESSELLATION_INTERPOLATE_MEMBER(InterpolantsVSToPS.TexCoords[i]);
+	}
+#endif
+
+	return O;
+}
+
+float3x3 VertexFactoryGetTangentToLocalDS(FVertexFactoryInterpolantsVSToDS Interpolants)
+{
+	// This duplicates stuff already going on in GetMaterialTessellationParameters(), so
+	// maybe the hull shader could leverage that instead?
+	half3 TangentToWorld0 = Interpolants.InterpolantsVSToPS.TangentToWorld0.xyz;
+	half4 TangentToWorld2 = Interpolants.InterpolantsVSToPS.TangentToWorld2;
+	float3x3 TangentToWorld = AssembleTangentToWorld(TangentToWorld0, TangentToWorld2);
+
+	return TangentToWorld;
+}
+#endif // #if USING_TESSELLATION
+
+float4 VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+    return 0;
+}
+
+uint VertexFactoryGetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+    return 0;
+}
+
+float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+    return TangentBias(Input.TangentZ.xyz);
+}
+
+#include "/Engine/Private/VertexFactoryDefaultInterface.ush"

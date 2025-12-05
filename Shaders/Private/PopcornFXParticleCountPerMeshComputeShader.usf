@@ -1,0 +1,77 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "/Engine/Public/Platform.ush"
+
+/*=============================================================================
+PopcornFXParticleCountPerMeshComputeShader.usf: Compute the number of particles per mesh
+=============================================================================*/
+
+#include "/Engine/Private/Common.ush"
+
+uint						DrawRequest;
+uint						MeshCount;
+uint						LODCount;
+ByteAddressBuffer			InSimData;
+ByteAddressBuffer			LiveParticleCount;
+StructuredBuffer<uint>		EnabledsOffsets;
+StructuredBuffer<uint>		MeshIDsOffsets;
+StructuredBuffer<uint>		LODsOffsets;
+StructuredBuffer<uint>		PerLODMeshCounts;
+StructuredBuffer<uint>		PerLODMeshOffsets;
+RWStructuredBuffer<uint>	OutDrawIndirect;
+
+[numthreads(PK_GPU_THREADGROUP_SIZE, 1, 1)]
+void	ParticleCountPerMesh(uint3 i : SV_DispatchThreadID)
+{
+	const uint	particleID = i.x;
+	const uint	count = LiveParticleCount.Load(0);
+	if (particleID >= count)
+		return;
+	
+	const uint	enabledsOffset = EnabledsOffsets[DrawRequest];
+	const uint	enabled = InSimData.Load(enabledsOffset + RAW_BUFFER_INDEX(particleID));
+	if (enabled == 0)
+		return;
+	
+#if HAS_LODS
+	const uint	LODsOffset = LODsOffsets[DrawRequest];
+	const uint	LOD = min(InSimData.Load(LODsOffset + RAW_BUFFER_INDEX(particleID)), LODCount - 1);
+	const uint	LODLevelToMeshID = PerLODMeshOffsets[LOD];
+	// Note: Since v2.14, meshCount is the total mesh count (submeshes + lod levels)
+#	if HAS_MESHIDS
+	const uint	submeshCount = PerLODMeshCounts.Load(LOD);
+#	endif // HAS_MESHIDS
+#else
+	const uint	submeshCount = MeshCount;
+#endif // HAS_LODS
+
+	uint	dummyOutput;
+#if HAS_MESHIDS
+
+	const uint	meshIDsOffset = MeshIDsOffsets[DrawRequest];
+	const uint	meshID = min(uint(asfloat(InSimData.Load(meshIDsOffset + RAW_BUFFER_INDEX(particleID)))), submeshCount - 1);
+
+#	if HAS_LODS
+	InterlockedAdd(OutDrawIndirect[DRAW_INDIRECT_ARGS_COUNT * (MeshCount * DrawRequest + LODLevelToMeshID + meshID) + 1], 1, dummyOutput);
+#	else
+	InterlockedAdd(OutDrawIndirect[DRAW_INDIRECT_ARGS_COUNT * (MeshCount * DrawRequest + meshID) + 1], 1, dummyOutput);
+#	endif // HAS_LODS
+
+#else // HAS_MESHIDS
+
+#	if HAS_LODS
+	// Note: LODMeshOffsets's size is LODCount + 1, for simplicity. Each index accumulates previous submesh count
+	const uint	NextLODLevelToMeshID = PerLODMeshOffsets[LOD + 1];
+	for (uint meshID = LODLevelToMeshID; meshID < NextLODLevelToMeshID; meshID++)
+#	else
+	for (uint meshID = 0; meshID < submeshCount; meshID++)
+#	endif // HAS_LODS
+	{
+		InterlockedAdd(OutDrawIndirect[DRAW_INDIRECT_ARGS_COUNT * (MeshCount * DrawRequest + meshID) + 1], 1, dummyOutput);
+	}
+
+#endif // HAS_MESHIDS
+}

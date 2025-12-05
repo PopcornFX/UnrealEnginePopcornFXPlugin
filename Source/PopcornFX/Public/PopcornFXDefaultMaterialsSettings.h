@@ -54,6 +54,14 @@ struct FPopcornFXDefaultMaterialsSettings
 	/** Lit Masked Billboard Default Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Default Materials", meta=(AllowedClasses="/Script/Engine.MaterialInterface"))
 	FSoftObjectPath			Material_Default_Billboard_Masked_Lit;
+
+	/** Dithered Billboard Default Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Default Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Default_Billboard_Dithered;
+
+	/** Lit Dithered Billboard Default Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Default Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Default_Billboard_Dithered_Lit;
 	
 	/** Distortion Billboard Default Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Default Materials", meta=(AllowedClasses="/Script/Engine.MaterialInterface"))
@@ -82,6 +90,14 @@ struct FPopcornFXDefaultMaterialsSettings
 	/** Lit Masked Mesh Default Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Default Materials", meta=(AllowedClasses="/Script/Engine.MaterialInterface"))
 	FSoftObjectPath			Material_Default_Mesh_Masked_Lit;
+
+	/** Masked Mesh Default Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Default Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Default_Mesh_Dithered;
+
+	/** Lit Dithered Mesh Default Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Default Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Default_Mesh_Dithered_Lit;
 
 	/** Decal Default Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Default Materials", meta=(AllowedClasses= "/Script/Engine.MaterialInterface"))

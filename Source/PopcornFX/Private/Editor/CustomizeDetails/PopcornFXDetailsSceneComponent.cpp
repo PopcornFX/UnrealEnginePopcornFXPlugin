@@ -86,10 +86,6 @@ void	FPopcornFXDetailsSceneComponent::CustomizeDetails(IDetailLayoutBuilder &Det
 {
 	m_DetailLayout = &DetailLayout;
 
-	//const TArray< TWeakObjectPtr<UObject> > &objects = m_DetailLayout->GetDetailsView().GetSelectedObjects();
-
-	//DetailLayout.HideProperty("AttributeList");
-
 	FTextBlockStyle			buttonTextStyle;
 	buttonTextStyle.SetFont(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"));
 	buttonTextStyle.SetColorAndOpacity(FAppStyle::GetColor("Colors.AccentGray"));

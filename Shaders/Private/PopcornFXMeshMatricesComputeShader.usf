@@ -1,0 +1,64 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
+//----------------------------------------------------------------------------
+
+#include "/Engine/Public/Platform.ush"
+
+/*=============================================================================
+PopcornFXMeshMatricesComputeShader.usf: Compute mesh matrices
+=============================================================================*/
+
+#include "/Engine/Private/Common.ush"
+
+uint						DrawRequest;
+ByteAddressBuffer			InSimData;
+ByteAddressBuffer			LiveParticleCount;
+StructuredBuffer<uint>		PositionsOffsets;
+StructuredBuffer<uint>		ScalesOffsets;
+StructuredBuffer<uint>		OrientationsOffsets;
+StructuredBuffer<uint>		MatricesOffsets;
+RWStructuredBuffer<float4>	OutMatrices;
+
+[numthreads(PK_GPU_THREADGROUP_SIZE, 1, 1)]
+void	MeshMatrices(uint3 i : SV_DispatchThreadID)
+{	
+	const uint	particleID = i.x;
+
+	const uint	count = LiveParticleCount.Load(0);
+	if (particleID >= count)
+		return;
+
+	const uint		positionsOffset = PositionsOffsets[DrawRequest];
+	const float3	pos = asfloat(InSimData.Load3(positionsOffset + RAW_BUFFER_INDEX(particleID * 3)));
+	
+	const uint		scalesOffset = ScalesOffsets[DrawRequest];
+	const float3	scale = asfloat(InSimData.Load3(scalesOffset + RAW_BUFFER_INDEX(particleID * 3)));
+
+	const uint		orientationsOffset = OrientationsOffsets[DrawRequest];
+	const float4	q = asfloat(InSimData.Load4(orientationsOffset + RAW_BUFFER_INDEX(particleID * 4)));
+	
+	// Construct from quaternion
+	const float3	r0 = float3(1 - 2 * (q.y * q.y + q.z * q.z),
+									2 * (q.y * q.x + q.z * q.w),
+									2 * (q.z * q.x - q.y * q.w));
+					
+	const float3	r1 = float3(	2 * (q.x * q.y - q.z * q.w),
+								1 - 2 * (q.z * q.z + q.x * q.x),
+									2 * (q.z * q.y + q.x * q.w));
+					
+	const float3	r2 = float3(	2 * (q.x * q.z + q.y * q.w),
+									2 * (q.y * q.z - q.x * q.w),
+								1 - 2 * (q.y * q.y + q.x * q.x));
+
+	const float4	m0 = float4(r0 * scale.x, 0.0f);
+	const float4	m1 = float4(r1 * scale.y, 0.0f);
+	const float4	m2 = float4(r2 * scale.z, 0.0f);
+	const float4	m3 = float4(pos * 100.f, 1.0f); // TODO: hardcoded scale should be passed as uniform
+
+	const uint	matricesOffset = MatricesOffsets[DrawRequest];
+	OutMatrices[matricesOffset + particleID*4 + 0] = m0;
+	OutMatrices[matricesOffset + particleID*4 + 1] = m1;
+	OutMatrices[matricesOffset + particleID*4 + 2] = m2;
+	OutMatrices[matricesOffset + particleID*4 + 3] = m3;
+}

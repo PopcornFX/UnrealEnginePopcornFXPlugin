@@ -16,11 +16,7 @@
 class	FPopcornFXVertexFactoryShaderParametersVertex : public FVertexFactoryShaderParameters
 {
 public:
-#if (ENGINE_MAJOR_VERSION == 5)
 	DECLARE_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersVertex, NonVirtual);
-#else
-	DECLARE_INLINE_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersVertex, NonVirtual);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 			void			GetElementShaderBindings(	const FSceneInterface *scene,
 														const FSceneView *view,
@@ -36,11 +32,7 @@ public:
 class	FPopcornFXVertexFactoryShaderParametersPixel : public FVertexFactoryShaderParameters
 {
 public:
-#if (ENGINE_MAJOR_VERSION == 5)
 	DECLARE_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersPixel, NonVirtual);
-#else
-	DECLARE_INLINE_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersPixel, NonVirtual);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	void					GetElementShaderBindings(	const FSceneInterface *scene,
 														const FSceneView *view,

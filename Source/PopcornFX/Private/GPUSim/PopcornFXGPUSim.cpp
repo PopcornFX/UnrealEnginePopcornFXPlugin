@@ -7,18 +7,8 @@
 
 #if (PK_HAS_GPU != 0)
 
-// Make sure we don't break with UE4 updates
-#if (ENGINE_MAJOR_VERSION == 4 && ENGINE_MINOR_VERSION > 27)
-	// Not implemented, make sure RHI feature sets didn't change, and update IFN
-	PK_STATIC_ASSERT(false);
-#endif
-
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
-#	include "DataDrivenShaderPlatformInfo.h"
-#	if (ENGINE_MINOR_VERSION >= 3)
-#		include "RHIStaticShaderPlatformNames.h"
-#	endif
-#endif
+#include "DataDrivenShaderPlatformInfo.h"
+#include "RHIStaticShaderPlatformNames.h"
 
 #include <pk_kernel/include/kr_thread_pool.h>
 #include <pk_particles/include/ps_stream_to_render.h>
@@ -74,20 +64,9 @@ bool	_IsGpuSupportedOnPlatform(const EShaderPlatform &platform)
 #endif // defined(PK_UNKNOWN2) || (PK_COMPILE_GPU_UNKNOWN2 != 0)
 				 false) && platformSupportsSM5OrEquivalent;
 	}
-#if (ENGINE_MAJOR_VERSION == 5)
 	const bool	platformSupportsSM6OrEquivalent = IsFeatureLevelSupported(realPlatform, ERHIFeatureLevel::SM6);
 	return	(realPlatform == SP_PCD3D_SM5 && platformSupportsSM5OrEquivalent) ||
 			(realPlatform == SP_PCD3D_SM6 && platformSupportsSM6OrEquivalent);
-#else
-	return (
-#	if 0
-			// GPU sim not supported on Xbox one for now
-			realPlatform == SP_XBOXONE_D3D12 ||
-#	endif
-			realPlatform == SP_PCD3D_SM5
-			) &&
-			platformSupportsSM5OrEquivalent;
-#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------

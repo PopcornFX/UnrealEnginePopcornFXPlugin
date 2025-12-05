@@ -21,10 +21,6 @@
 #include "Sequencer/Templates/PopcornFXPlaySectionTemplate.h"
 #include "EditorStyleSet.h"
 
-#if (ENGINE_MAJOR_VERSION <= 5 && ENGINE_MINOR_VERSION < 4)
-#include "CommonMovieSceneTools.h"
-#endif
-
 #include "Sections/MovieSceneParticleSection.h"
 #include "SequencerSectionPainter.h"
 

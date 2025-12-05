@@ -93,9 +93,8 @@ void	FPopcornFXStyle::Initialize()
 		m_StyleSet->Set("PopcornFX.Node." __iconName, new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon32x32))
 
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerShape", "AttributeSampler_Shape", "SlateBrushes/AttributeSampler_Shape");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerSkinnedMesh", "AttributeSampler_SkeletalMesh", "SlateBrushes/AttributeSampler_SkeletalMesh");
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerImage", "AttributeSampler_Image", "SlateBrushes/AttributeSampler_Image");
-		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerGrid", "AttributeSampler_Image", "SlateBrushes/AttributeSampler_Image"); // TODO: Grid icon
+		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerGrid", "AttributeSampler_Grid", "SlateBrushes/AttributeSampler_Grid");
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerAnimTrack", "Attributesampler_AnimTrack", "SlateBrushes/Attributesampler_AnimTrack");
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerCurve", "AttributeSampler_Curve", "SlateBrushes/AttributeSampler_Curve");
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerText", "AttributeSampler_Text", "SlateBrushes/AttributeSampler_Text");

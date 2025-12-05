@@ -59,6 +59,14 @@ struct FPopcornFXLegacyMaterialsSettings
 	UPROPERTY(Config, EditAnywhere, Category="Legacy Materials", meta=(AllowedClasses="/Script/Engine.MaterialInterface"))
 	FSoftObjectPath			Material_Legacy_Billboard_Masked_Lit;
 
+	/** Dithered Billboard Legacy Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Legacy Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Legacy_Billboard_Dithered;
+
+	/** Lit Dithered Billboard Legacy Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Legacy Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Legacy_Billboard_Dithered_Lit;
+
 	/** Volumetric Billboard Legacy Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Legacy Materials", meta=(AllowedClasses="/Script/Engine.MaterialInterface"))
 	FSoftObjectPath			Material_Legacy_Billboard_VolumetricFog;
@@ -94,6 +102,14 @@ struct FPopcornFXLegacyMaterialsSettings
 	/** Lit Masked Mesh Legacy Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Legacy Materials", meta=(AllowedClasses="/Script/Engine.MaterialInterface"))
 	FSoftObjectPath			Material_Legacy_Mesh_Masked_Lit;
+
+	/** Dithered Mesh Legacy Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Legacy Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Legacy_Mesh_Dithered;
+
+	/** Lit Dithered Mesh Legacy Material. */
+	UPROPERTY(Config, EditAnywhere, Category = "Legacy Materials", meta = (AllowedClasses = "/Script/Engine.MaterialInterface"))
+	FSoftObjectPath			Material_Legacy_Mesh_Dithered_Lit;
 
 	/** VAT Opaque Fluid Vertex Animation Texture Legacy Material. */
 	UPROPERTY(Config, EditAnywhere, Category="Legacy Materials", meta=(AllowedClasses="/Script/Engine.MaterialInterface"))

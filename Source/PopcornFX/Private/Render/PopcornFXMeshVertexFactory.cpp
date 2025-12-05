@@ -12,10 +12,8 @@
 #include "MeshBatch.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/Material.h"
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
-#	include "MaterialDomain.h"
-#	include "GlobalRenderResources.h"
-#endif
+#include "MaterialDomain.h"
+#include "GlobalRenderResources.h"
 
 #include "MeshMaterialShader.h"
 #include "MeshDrawShaderBindings.h"
@@ -60,12 +58,8 @@ public:
 //
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MAJOR_VERSION == 5)
 IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXMeshVertexFactory, PKUE_SHADER_PATH("PopcornFXMeshVertexFactory"),
 	EVertexFactoryFlags::UsedWithMaterials | EVertexFactoryFlags::SupportsDynamicLighting); // TODO
-#else
-IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXMeshVertexFactory, PKUE_SHADER_PATH("PopcornFXMeshVertexFactory"), true, false, true, false, false);
-#endif // (ENGINE_MAJOR_VERSION == 5)
 
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_Vertex, FPopcornFXMeshVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_Compute, FPopcornFXMeshVertexFactoryShaderParameters);
@@ -100,20 +94,12 @@ void	FPopcornFXMeshVertexFactory::SetData(const FDataType& InData)
 {
 	check(IsInRenderingThread());
 	Data = InData;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
-#else
-	UpdateRHI();
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 
 //----------------------------------------------------------------------------
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 void	FPopcornFXMeshVertexFactory::InitRHI(FRHICommandListBase &RHICmdList)
-#else
-void	FPopcornFXMeshVertexFactory::InitRHI()
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	FVertexDeclarationElementList Elements;
 

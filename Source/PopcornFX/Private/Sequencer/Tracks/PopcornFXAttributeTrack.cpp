@@ -40,7 +40,7 @@ FText	UPopcornFXAttributeTrack::GetDefaultDisplayName() const
 }
 #endif
 
-void	UPopcornFXAttributeTrack::AddScalarAttributeKey(FName attrName, FFrameNumber position, float value)
+void	UPopcornFXAttributeTrack::AddScalarAttributeKey(const FString &attrName, FFrameNumber position, float value)
 {
 	UMovieSceneParameterSection	*nearestSection = Cast<UMovieSceneParameterSection>(MovieSceneHelpers::FindNearestSectionAtTime(Sections, position));
 
@@ -51,10 +51,10 @@ void	UPopcornFXAttributeTrack::AddScalarAttributeKey(FName attrName, FFrameNumbe
 		Sections.Add(nearestSection);
 	}
 
-	nearestSection->AddScalarParameterKey(attrName, position, value);
+	nearestSection->AddScalarParameterKey(FName(attrName), position, value);
 }
 
-void	UPopcornFXAttributeTrack::AddVectorAttributeKey(FName attrName, FFrameNumber position, FVector value)
+void	UPopcornFXAttributeTrack::AddVectorAttributeKey(const FString &attrName, FFrameNumber position, FVector value)
 {
 	UMovieSceneParameterSection	*nearestSection = Cast<UMovieSceneParameterSection>(MovieSceneHelpers::FindNearestSectionAtTime(Sections, position));
 
@@ -65,10 +65,10 @@ void	UPopcornFXAttributeTrack::AddVectorAttributeKey(FName attrName, FFrameNumbe
 		Sections.Add(nearestSection);
 	}
 
-	nearestSection->AddVectorParameterKey(attrName, position, value);
+	nearestSection->AddVectorParameterKey(FName(attrName), position, value);
 }
 
-void	UPopcornFXAttributeTrack::AddColorAttributeKey(FName attrName, FFrameNumber position, FLinearColor value)
+void	UPopcornFXAttributeTrack::AddColorAttributeKey(const FString &attrName, FFrameNumber position, FLinearColor value)
 {
 	UMovieSceneParameterSection	*nearestSection = Cast<UMovieSceneParameterSection>(MovieSceneHelpers::FindNearestSectionAtTime(Sections, position));
 
@@ -79,7 +79,7 @@ void	UPopcornFXAttributeTrack::AddColorAttributeKey(FName attrName, FFrameNumber
 		Sections.Add(nearestSection);
 	}
 
-	nearestSection->AddColorParameterKey(attrName, position, value);
+	nearestSection->AddColorParameterKey(FName(attrName), position, value);
 }
 
 #undef LOCTEXT_NAMESPACE

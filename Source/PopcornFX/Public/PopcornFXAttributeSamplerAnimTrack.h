@@ -21,26 +21,25 @@ namespace	EPopcornFXSplineTransforms
 {
 	enum	Type
 	{
-		/** Use Spline Component's local transforms relative to it's parent actor */
+		/** Use Spline Component's local transform relative to its parent actor */
 		SplineComponentRelativeTr,
-		/** Use Spline Component's world transforms */
+		/** Use Spline Component's world transform */
 		SplineComponentWorldTr,
-		/** Use Attribute Sampler local transforms relative to it's parent actor */
+		/** Use Attribute Sampler local transform relative to its parent actor */
 		AttrSamplerRelativeTr,
-		/** Use Attribute Sampler world transforms */
+		/** Use Attribute Sampler world transform */
 		AttrSamplerWorldTr,
 	};
 }
 
-/** Can override an Attribute Sampler **AnimTrack** by a **USplineComponent**. */
-UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
-class POPCORNFX_API UPopcornFXAttributeSamplerAnimTrack : public UPopcornFXAttributeSampler
+USTRUCT(BlueprintType)
+struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesAnimTrack : public FPopcornFXAttributeSamplerProperties
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
 	/** Specifies which actors contains the target SplineComponent */
-	UPROPERTY(Category="PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
 	class AActor			*TargetActor;
 
 	/**
@@ -50,22 +49,22 @@ public:
 		- If TargetActor isn't specified, looks for a spline component that has this name in this actor
 		- If TargetActor isn't specified, but no spline component has this name, fallbacks to this actor's RootComponent
 	*/
-	UPROPERTY(Category="PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
 	FName					SplineComponentName;
 
 	/** Enable translations */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
 	uint32					bTranslate : 1;
 
 	/**
 		Enable rotations
 		Please note: If you need accurate orientations, disable "FastSampler".
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
 	uint32					bRotate : 1;
 
 	/** Enable scale */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
 	uint32					bScale : 1;
 
 	/**
@@ -75,18 +74,38 @@ public:
 		Don't hesitate to contact support for more informations.
 		Note: Restart emitters referencing this sampler when this value gets changed
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
 	uint32					bFastSampler : 1;
 
-#if WITH_EDITORONLY_DATA
 	/** EDITOR ONLY: Enable this to rebuild the curve every frame. Useful to iterate quickly when building a spline component. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
 	uint32					bEditorRebuildEachFrame : 1;
-#endif // WITH_EDITORONLY_DATA
 
 	/** Determines what transforms will be used for this attribute sampler */
-	UPROPERTY(Category="PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	TEnumAsByte<EPopcornFXSplineTransforms::Type>	Transforms;
+
+	FPopcornFXAttributeSamplerPropertiesAnimTrack()
+	:	TargetActor()
+	,	bTranslate(true)
+	,	bRotate(false)
+	,	bScale(false)
+	,	bFastSampler(true)
+	,	bEditorRebuildEachFrame(false)
+	,	Transforms(EPopcornFXSplineTransforms::AttrSamplerRelativeTr)
+	{ }
+};
+
+/** Can override an Attribute Sampler **AnimTrack** by a **USplineComponent**. */
+UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
+class POPCORNFX_API UPopcornFXAttributeSamplerAnimTrack : public UPopcornFXAttributeSampler
+{
+	GENERATED_UCLASS_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
+	FPopcornFXAttributeSamplerPropertiesAnimTrack	Properties;
 
 private:
 	void	BeginDestroy() override;
@@ -95,9 +114,13 @@ private:
 	void	PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent);
 #endif // WITH_EDITOR
 
+	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
+#if WITH_EDITOR
+	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
+#endif
 
 	// PopcornFX Internal
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 	virtual void									_AttribSampler_PreUpdate(float deltaTime);
 
 	class USplineComponent							*ResolveSplineComponent(bool logErrors);

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "PopcornFXPublic.h"
+#include "PopcornFXAttributeSampler.h"
 
 #include "Kismet/BlueprintFunctionLibrary.h"
 
@@ -24,6 +25,33 @@ public:
 	* Will resolve the attribute sampler from the input actor:
 	* Looks for a UPopcornFXAttributeSampler named ComponentName, fallbacks on the input actor's RootComponent otherwise
 	*/
-	UFUNCTION(BlueprintCallable, meta=(DisplayName="Set Attribute Sampler", DefaultToSelf="InSelf"), Category="PopcornFX|Attribute Samplers")
-	static bool								SetAttributeSampler(UPopcornFXEmitterComponent *InSelf, FName InAttributeSamplerName, AActor* InActor, FName InComponentName);
+	UFUNCTION(BlueprintCallable, meta=(DisplayName = "Set Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static bool										SetAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName, AActor* InActor, FString InComponentName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSampler				*GetAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Anim Track Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSamplerAnimTrack		*GetAnimTrackAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Curve Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSamplerCurve			*GetCurveAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Grid Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSamplerGrid			*GetGridAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Image Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSamplerImage			*GetImageAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Shape Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSamplerShape			*GetShapeAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Text Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSamplerText			*GetTextAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get VectorField Attribute Sampler", DefaultToSelf = "InSelf"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSamplerVectorField	*GetVectorFieldAttributeSampler(UPopcornFXEmitterComponent *InSelf, FString InAttributeSamplerName);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Get Attribute Sampler Casted", DefaultToSelf = "InSelf", DeterminesOutputType = "SamplerClass"), Category = "PopcornFX|Attribute Samplers")
+	static UPopcornFXAttributeSampler	*GetAttributeSamplerCasted(UPopcornFXEmitterComponent *InSelf, TSubclassOf<UPopcornFXAttributeSampler> SamplerClass, FString InAttributeSamplerName);
 };

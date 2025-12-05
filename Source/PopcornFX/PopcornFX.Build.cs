@@ -103,6 +103,7 @@ namespace UnrealBuildTool.Rules
 #endif // WITH_FORWARDED_MODULE_RULES_CTOR
 		{
 			CurrentSDK = SDK.No;
+            bUseUnity = false;
 
 			string		sdkRoot = null;
 

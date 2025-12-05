@@ -9,15 +9,22 @@
 
 #include "PopcornFXMinimal.h"
 
+#include "PopcornFXDetailsAttributeList.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "PropertyEditorModule.h"
 
 #include "IDetailCustomization.h"
 
 class UPopcornFXEmitterComponent;
+class UPopcornFXAttributeList;
 class UPopcornFXEffect;
+class IDetailGroup;
+class IPropertyHandleArray;
+class IDetailCategoryBuilder;
+struct FPopcornFXAttributeDesc;
+struct FPopcornFXSamplerDesc;
 
-class FPopcornFXDetailsEmitterComponent : public IDetailCustomization
+class FPopcornFXDetailsEmitterComponent : public FPopcornFXDetailsAttributeList
 {
 public:
 	FPopcornFXDetailsEmitterComponent();
@@ -25,27 +32,21 @@ public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
 	static TSharedRef<IDetailCustomization>	MakeInstance();
 
-	virtual void		CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
-
-	TOptional<float>	OnGetValue(float field) const;
-	void				OnSetValue(float newValue, ETextCommit::Type commitInfo, float *field);
-	int32				GetVectorDimension(int32 field) const;
+	virtual void			CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
 private:
-	void				GatherEmitters(TArray<UPopcornFXEmitterComponent*> &outComponents) const;
-	void				GatherEffects(TArray<UPopcornFXEffect*> &outEffects);
+	void					BuildSampler(const FPopcornFXSamplerDesc *desc, const TSharedPtr<IPropertyHandle> samplerPty, const TSharedPtr<IPropertyHandle> samplerDescPty, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory) override;
 
-	FReply				OnStartEmitter();
-	FReply				OnStopEmitter();
-	FReply				OnKillParticles();
-	FReply				OnRestartEmitter();
-	bool				IsStartEnabled() const;
-	bool				IsStopEnabled() const;
-
-	FReply				OnReloadEffect();
-	FReply				OnReimportEffect();
-
-	TArray< TWeakObjectPtr<UObject> >	m_SelectedObjectsList;
+	void					GatherEmitters(TArray<UPopcornFXEmitterComponent *> &outComponents) const;
+	void					GatherEffects(TArray<UPopcornFXEffect *> &outEffects);
+	FReply					OnStartEmitter();
+	FReply					OnStopEmitter();
+	FReply					OnKillParticles();
+	FReply					OnRestartEmitter();
+	FReply					OnReloadEffect();
+	FReply					OnReimportEffect();
+	bool					IsStartEnabled() const;
+	bool					IsStopEnabled() const;
 };
 
 #endif // WITH_EDITOR

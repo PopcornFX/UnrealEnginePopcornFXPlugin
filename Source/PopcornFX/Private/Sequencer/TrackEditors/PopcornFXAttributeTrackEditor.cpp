@@ -125,7 +125,7 @@ TSharedRef<SWidget>	FPopcornFXAttributeTrackEditor::OnGetAddParameterMenuContent
 
 		if (!PK_VERIFY(desc != null))
 			continue;
-		const FName		attrName = desc->m_AttributeFName;
+		FString			attrName = desc->m_AttributeName;
 		const u32		attrType = desc->m_AttributeType;
 		FUIAction		attrAction;
 		bool			supportedType = true;
@@ -145,7 +145,7 @@ TSharedRef<SWidget>	FPopcornFXAttributeTrackEditor::OnGetAddParameterMenuContent
 				break;
 		}
 		if (supportedType)
-			addParameterMenuBuilder.AddMenuEntry(FText::FromName(attrName), FText(), FSlateIcon(), attrAction);
+			addParameterMenuBuilder.AddMenuEntry(FText::FromString(attrName), FText(), FSlateIcon(), attrAction);
 	}
 	return addParameterMenuBuilder.MakeWidget();
 }
@@ -170,7 +170,7 @@ void	FPopcornFXAttributeTrackEditor::AddAttributeTrack(TArray<FGuid> objectBindi
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXAttributeTrackEditor::AddScalarAttribute(FGuid objectBinding, UPopcornFXAttributeTrack *attributeTrack, FName attrName, u32 attrIndex)
+void	FPopcornFXAttributeTrackEditor::AddScalarAttribute(FGuid objectBinding, UPopcornFXAttributeTrack *attributeTrack, FString attrName, u32 attrIndex)
 {
 	const FScopedTransaction	tr(LOCTEXT("AddFloatAttribute", "Add float attribute"));
 
@@ -195,7 +195,7 @@ void	FPopcornFXAttributeTrackEditor::AddScalarAttribute(FGuid objectBinding, UPo
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXAttributeTrackEditor::AddVectorAttribute(FGuid objectBinding, UPopcornFXAttributeTrack *attributeTrack, FName attrName, u32 attrIndex)
+void	FPopcornFXAttributeTrackEditor::AddVectorAttribute(FGuid objectBinding, UPopcornFXAttributeTrack *attributeTrack, FString attrName, u32 attrIndex)
 {
 	const FScopedTransaction	tr(LOCTEXT("AddVectorAttribute", "Add vector attribute"));
 
@@ -220,7 +220,7 @@ void	FPopcornFXAttributeTrackEditor::AddVectorAttribute(FGuid objectBinding, UPo
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXAttributeTrackEditor::AddColorAttribute(FGuid objectBinding, UPopcornFXAttributeTrack *attributeTrack, FName attrName, u32 attrIndex)
+void	FPopcornFXAttributeTrackEditor::AddColorAttribute(FGuid objectBinding, UPopcornFXAttributeTrack *attributeTrack, FString attrName, u32 attrIndex)
 {
 	const FScopedTransaction	tr(LOCTEXT("AddColorAttribute", "Add color attribute"));
 

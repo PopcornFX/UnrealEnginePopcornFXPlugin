@@ -315,8 +315,9 @@ static FString	FixAndAppendPopcornFXProjectFileName(const FString &path)
 	// fix old path
 	if (path.EndsWith(kOldPopcornFXProjectFileName))
 	{
-		FString	newPath = path;
-		newPath.RemoveAt(newPath.Len() - kOldPopcornFXProjectFileName.Len(), kOldPopcornFXProjectFileName.Len(), EAllowShrinking::No);
+		FString		newPath = path;
+		const s32	oldFileNameLen = kOldPopcornFXProjectFileName.Len();
+		newPath.RemoveAt(newPath.Len() - oldFileNameLen, oldFileNameLen, EAllowShrinking::No);
 		newPath /= kPopcornFXProjectFileName;
 		return newPath;
 	}
