@@ -27,6 +27,10 @@ struct	FPopcornFXSamplerDesc;
 
 DECLARE_MULTICAST_DELEGATE(FPopcornFXSamplerEventSignature);
 
+static const FColor		kSamplerShapesDebugColor = FLinearColor(0.1f, 0.3f, 0.15f, 1.f).ToFColor(false);
+static const FColor		kSamplerShapesDebugColorSelected = FLinearColor(0.2f, 0.5f, 0.75f, 1.f).ToFColor(false);
+static const int32		kSamplerShapesDebugSegmentCount = 32;
+
 UENUM()
 namespace EPopcornFXAttributeSamplerComponentType
 {
@@ -195,15 +199,15 @@ public:
 #if WITH_EDITORONLY_DATA
 
 	/** Emitter components that are using this sampler as an external one */
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY()
 	TArray<UPopcornFXEmitterComponent*>					m_EmittersUsingThis;
 
 	/** Properties of this sampler that are unsupported, i.e. we can't build a proper sampler descriptor with them in UE. Key = property name, value = error message */
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY()
 	TMap<FString, FString>								m_UnsupportedProperties;
 
 	/** Properties than are incompatible with an emitter's effect. One list for each emitter using this sampler. Key = emitter, value = properties */
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY()
 	TMap<UPopcornFXEmitterComponent*, FIncompatibleProperties>	m_IncompatibleProperties;
 
 	/** Event broadcasted when a sampler setup becomes valid or invalid */

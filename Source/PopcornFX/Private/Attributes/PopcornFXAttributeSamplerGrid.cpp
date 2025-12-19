@@ -332,8 +332,18 @@ void	UPopcornFXAttributeSamplerGrid::SetupDefaults(UPopcornFXEffect *effect, con
 		return;
 	}
 
-	PK_ASSERT(attrListPtr->UniqueSamplerList()[samplerIdx] != null);
-	const PopcornFX::PResourceDescriptor		defaultSampler = attrListPtr->UniqueSamplerList()[samplerIdx]->AttribSamplerDefaultValue();
+	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
+	if (samplerList.Count() == 0)
+	{
+		return;
+	}
+	const PopcornFX::CParticleAttributeSamplerDeclaration * const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
+	PK_ASSERT(samplerDesc != null);
+	if (samplerDesc == null)
+	{
+		return;
+	}
+	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_Grid	*grid = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Grid>(defaultSampler.Get());
 	if (grid != null)

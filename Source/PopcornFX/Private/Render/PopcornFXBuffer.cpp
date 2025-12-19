@@ -203,10 +203,11 @@ FUnorderedAccessViewRHIRef	FPopcornFXVertexBuffer::CreateSubUAV(u32 elementCount
 	);
 
 	PK_ASSERT(IsValidRef(uav));
+	return uav;
 #else
 	PK_ASSERT_NOT_REACHED();
-#endif
-	return uav;
+	return null;
+#endif // (PK_HAS_GPU != 0)
 }
 
 //----------------------------------------------------------------------------

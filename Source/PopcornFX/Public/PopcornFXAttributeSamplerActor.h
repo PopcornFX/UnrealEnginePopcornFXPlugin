@@ -13,7 +13,7 @@
 
 #include "PopcornFXAttributeSamplerActor.generated.h"
 
-/// Abstract Actor containing a PopcornFXAttributeSampler Component
+/// Simple Actor containing a PopcornFXAttributeSampler Component
 UCLASS(Abstract)
 class POPCORNFX_API APopcornFXAttributeSamplerActor : public AActor
 {
@@ -48,23 +48,16 @@ protected:
 	bool											m_IsValidSpecializedActor = false;
 };
 
-/** Can override an Attribute Sampler **Shape** by a **UStaticMesh**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerShapeActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
-/** Can override an Attribute Sampler **Image** by a **UTexture**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerImageActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
-/** Can override an Attribute Sampler **Grid** by a **UTexture**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerGridActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
-/** Can override an Attribute Sampler **Curve** by a **UCurve...**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerCurveActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
-/** Can override an Attribute Sampler **AnimTrack** by a **USplineComponent...**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerAnimTrackActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
-/** Can override an Attribute Sampler **Text** by a **FString**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerTextActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };
 
-/** Can override an Attribute Sampler **Turbulence** by a **UVectorFieldStatic**. */
 UCLASS() class POPCORNFX_API APopcornFXAttributeSamplerVectorFieldActor : public APopcornFXAttributeSamplerActor { GENERATED_UCLASS_BODY() };

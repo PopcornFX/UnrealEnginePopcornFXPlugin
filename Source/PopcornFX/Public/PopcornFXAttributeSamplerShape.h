@@ -40,13 +40,13 @@ namespace	EPopcornFXSkinnedTransforms
 {
 	enum	Type
 	{
-		/** Use Skinned Mesh Actor local transform relative to its parent actor */
+		/** Use Skinned Mesh Actor local transforms relative to it's parent actor */
 		SkinnedComponentRelativeTr,
-		/** Use Skinned Mesh Actor world transform */
+		/** Use Skinned Mesh Actor world transforms */
 		SkinnedComponentWorldTr,
-		/** Use Attribute Sampler Actor local transform relative to its parent actor */
+		/** Use Attribute Sampler Actor local transforms relative to it's parent actor */
 		AttrSamplerRelativeTr,
-		/** Use Attribute Sampler Actor world transform */
+		/** Use Attribute Sampler Actor world transforms */
 		AttrSamplerWorldTr,
 	};
 }
@@ -196,8 +196,14 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesShape : public FPopcorn
 	,	TargetActor()
 	,	SkinnedMeshComponentName()
 	,	bPauseSkinning(false)
-	,	bSkinPositions(false)
+	,	bSkinPositions(true)
 	,	bSkinNormals(false)
+	,	bSkinTangents(false)
+	,	bBuildColors(false)
+	,	bBuildUVs(false)
+	,	bComputeVelocities(false)
+	,	bBuildClothData(false)
+	,	bApplyScale(false)
 #if WITH_EDITORONLY_DATA
 	,	bEditorBuildInitialPose(false)
 #endif // WITH_EDITORONLY_DATA
@@ -218,7 +224,7 @@ public:
 	void					SetRadius(float radius);
 
 	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
-	void					SetWeight(float weight);
+	void					SetWeight(float height);
 
 	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetBoxDimension(FVector boxDimensions);
@@ -241,9 +247,9 @@ public:
 
 	// overrides
 	virtual void			BeginDestroy() override;
+	void					TickComponent(float deltaTime, ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
 #if WITH_EDITOR
 	void					PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
-	void					TickComponent(float deltaTime, ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
 #endif // WITH_EDITOR
 
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
@@ -265,7 +271,7 @@ public:
 #endif
 
 private:
-	bool											CanUpdateShapeProperties();
+	bool											CanUpdateShapeProperties(EPopcornFXAttribSamplerShapeType::Type newType);
 	void											UpdateShapeProperties();
 
 	USkinnedMeshComponent							*ResolveSkinnedMeshComponent();

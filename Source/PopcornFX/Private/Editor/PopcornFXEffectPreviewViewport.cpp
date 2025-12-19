@@ -215,9 +215,9 @@ private:
 void	SPopcornFXEffectPreviewViewport::Construct(const FArguments &args)
 {
 	m_EffectEditor = args._EffectEditor;
-	m_DisplayFloor = true;
+	m_DisplayFloor = false;
 	m_DisplayCubemap = true;
-	m_DisplayGrid = false;
+	m_DisplayGrid = true;
 
 	// Rotate the light in the preview scene so that it faces the preview object
 	m_PreviewScene.SetLightDirection(FRotator(-40.0f, 27.5f, 0.0f));

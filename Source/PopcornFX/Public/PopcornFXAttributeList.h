@@ -106,7 +106,10 @@ struct FPopcornFXAttributeDesc
 
 	bool		ExactMatch(const FPopcornFXAttributeDesc &other) const
 	{
-		return Valid() && m_AttributeName == other.m_AttributeName && m_AttributeType == other.m_AttributeType && m_AttributeCategoryName == other.m_AttributeCategoryName;
+		return Valid() && m_AttributeName == other.m_AttributeName &&
+			m_AttributeType == other.m_AttributeType &&
+			m_AttributeCategoryName == other.m_AttributeCategoryName &&
+			m_IsPrivate == other.m_IsPrivate;
 	}
 };
 
@@ -194,7 +197,10 @@ struct FPopcornFXSamplerDesc
 
 	bool		ExactMatch(const FPopcornFXSamplerDesc &other) const
 	{
-		return Valid() && m_SamplerName == other.m_SamplerName && m_SamplerType == other.m_SamplerType && m_AttributeCategoryName == other.m_AttributeCategoryName;
+		return Valid() && m_SamplerName == other.m_SamplerName &&
+			m_SamplerType == other.m_SamplerType &&
+			m_AttributeCategoryName == other.m_AttributeCategoryName &&
+			m_IsPrivate == other.m_IsPrivate;
 	}
 };
 
@@ -221,6 +227,8 @@ public:
 
 	void			SetupDefault(UPopcornFXEffect *sourceEffect, bool force = false);
 	bool			Prepare(UPopcornFXEffect *effect, bool force = false);
+	bool			PrepareAttributes(TArray<FPopcornFXAttributeDesc> *attrs, const TArray<FPopcornFXAttributeDesc> *refAttrs, TArray<uint8> *rawData, const TArray<uint8> *refRawData);
+	bool			PrepareSamplers(TArray<FPopcornFXSamplerDesc> *samplers, const TArray<FPopcornFXSamplerDesc> *refSamplers);
 	void			CopyFrom(const UPopcornFXAttributeList *other, AActor *patchParentActor = nullptr);
 
 	const UPopcornFXAttributeList		*GetDefaultAttributeList(UPopcornFXEffect *effect) const; // can be self

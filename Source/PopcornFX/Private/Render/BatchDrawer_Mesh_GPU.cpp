@@ -246,6 +246,7 @@ bool	CBatchDrawer_Mesh_GPUBB::CanRender(PopcornFX::SRenderContext &ctx) const
 {
 	PK_ASSERT(DrawPass().m_RendererCaches.First() != null);
 
+#if (PK_HAS_GPU == 1)
 	const SUERenderContext				&renderContext = static_cast<SUERenderContext&>(ctx);
 	const CMaterialDesc_RenderThread	&matDesc = static_cast<CRendererCache*>(DrawPass().m_RendererCaches.First().Get())->RenderThread_Desc();
 
@@ -259,6 +260,9 @@ bool	CBatchDrawer_Mesh_GPUBB::CanRender(PopcornFX::SRenderContext &ctx) const
 #endif // RHI_RAYTRACING
 
 	return validRenderAPI && validRenderPass;
+#else
+	return false;
+#endif // (PK_HAS_GPU == 1)
 }
 
 //----------------------------------------------------------------------------
@@ -783,6 +787,7 @@ void	CBatchDrawer_Mesh_GPUBB::_IssueDrawCall_Mesh_Sections(	const FPopcornFXScen
 
 bool	CBatchDrawer_Mesh_GPUBB::_IssueDrawCall_Mesh(const SUERenderContext & renderContext, const PopcornFX::SDrawCallDesc & desc)
 {
+#if (PK_HAS_GPU == 1)
 	PK_NAMEDSCOPEDPROFILE("CBatchDrawer_Mesh_GPUBB::_IssueDrawCall_Mesh");
 	using namespace	PopcornFXBillboarder;
 
@@ -887,12 +892,16 @@ bool	CBatchDrawer_Mesh_GPUBB::_IssueDrawCall_Mesh(const SUERenderContext & rende
 	}
 
 	return _DispatchComputeShaders(computeData);
+#else
+	return false;
+#endif // (PK_HAS_GPU == 1)
 }
 
 //----------------------------------------------------------------------------
 
 bool	CBatchDrawer_Mesh_GPUBB::_DispatchComputeShaders(const STransientComputeData &computeData)
 {
+#if (PK_HAS_GPU == 1)
 	using namespace PopcornFXBillboarder;
 
 	// Make sure necessary data has been set by IssueDrawCall
@@ -1009,6 +1018,9 @@ bool	CBatchDrawer_Mesh_GPUBB::_DispatchComputeShaders(const STransientComputeDat
 
 	RHICmdList.Transition(FRHITransitionInfo(m_MatricesBuffer->UAV(), ERHIAccess::UAVMask, ERHIAccess::UAVMask));
 	return true;
+#else
+	return false;
+#endif // (PK_HAS_GPU == 1)
 }
 
 //----------------------------------------------------------------------------

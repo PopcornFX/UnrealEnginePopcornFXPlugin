@@ -841,7 +841,8 @@ void	UPopcornFXEmitterComponent::UpdateSamplerObjects(UPopcornFXEffect *effect)
 		}
 		else
 		{
-			if (!Samplers[samplerIdx] || Samplers[samplerIdx]->SamplerType() != desc->m_SamplerType || AttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName)
+			if (!Samplers[samplerIdx] || Samplers[samplerIdx]->SamplerType() != desc->m_SamplerType
+				|| (samplerIdx < AttributeList->m_Samplers.Num() && AttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName))
 			{
 				// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
 				UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);

@@ -161,42 +161,42 @@ TGlobalResource<FNullFloat4Buffer>	GPopcornFXNullFloat4Buffer;
 //
 //----------------------------------------------------------------------------
 
-void ExecuteOnRenderThread_DoNotWait(const TFunction<void()>& Function)
+void PKExecuteOnRenderThread_DoNotWait(const TFunction<void()>& Function)
 {
 	check(IsInGameThread());
 
-	ENQUEUE_RENDER_COMMAND(ExecuteOnRenderThread)([Function](FRHICommandListImmediate& /*RHICmdList*/)
+	ENQUEUE_RENDER_COMMAND(PKExecuteOnRenderThread)([Function](FRHICommandListImmediate& /*RHICmdList*/)
 		{
 			Function();
 		});
 }
 
-void ExecuteOnRenderThread_DoNotWait(const TFunction<void(FRHICommandListImmediate&)>& Function)
+void PKExecuteOnRenderThread_DoNotWait(const TFunction<void(FRHICommandListImmediate&)>& Function)
 {
 	check(IsInGameThread());
 
-	ENQUEUE_RENDER_COMMAND(ExecuteOnRenderThread)([Function](FRHICommandListImmediate& RHICmdList)
+	ENQUEUE_RENDER_COMMAND(PKExecuteOnRenderThread)([Function](FRHICommandListImmediate& RHICmdList)
 		{
 			Function(RHICmdList);
 		});
 }
 
-void ExecuteOnRenderThread(const TFunctionRef<void()>& Function)
+void PKExecuteOnRenderThread(const TFunctionRef<void()>& Function)
 {
 	check(IsInGameThread());
 
-	ENQUEUE_RENDER_COMMAND(ExecuteOnRenderThread)([Function](FRHICommandListImmediate& /*RHICmdList*/)
+	ENQUEUE_RENDER_COMMAND(PKExecuteOnRenderThread)([Function](FRHICommandListImmediate& /*RHICmdList*/)
 		{
 			Function();
 		});
 	FlushRenderingCommands();
 }
 
-void ExecuteOnRenderThread(const TFunctionRef<void(FRHICommandListImmediate&)>& Function)
+void PKExecuteOnRenderThread(const TFunctionRef<void(FRHICommandListImmediate&)>& Function)
 {
 	check(IsInGameThread());
 
-	ENQUEUE_RENDER_COMMAND(ExecuteOnRenderThread)([Function](FRHICommandListImmediate& RHICmdList)
+	ENQUEUE_RENDER_COMMAND(PKExecuteOnRenderThread)([Function](FRHICommandListImmediate& RHICmdList)
 		{
 			Function(RHICmdList);
 		});
@@ -260,22 +260,22 @@ namespace
 	}
 }
 
-bool ExecuteOnRHIThread_DoNotWait(const TFunction<void()>& Function)
+bool PKExecuteOnRHIThread_DoNotWait(const TFunction<void()>& Function)
 {
 	return ExecuteOnRHIThread_Impl(Function, false);
 }
 
-bool ExecuteOnRHIThread_DoNotWait(const TFunction<void(FRHICommandListImmediate&)>& Function)
+bool PKExecuteOnRHIThread_DoNotWait(const TFunction<void(FRHICommandListImmediate&)>& Function)
 {
 	return ExecuteOnRHIThread_Impl(Function, false);
 }
 
-void ExecuteOnRHIThread(const TFunctionRef<void()>& Function)
+void PKExecuteOnRHIThread(const TFunctionRef<void()>& Function)
 {
 	ExecuteOnRHIThread_Impl(Function, true);
 }
 
-void ExecuteOnRHIThread(const TFunctionRef<void(FRHICommandListImmediate&)>& Function)
+void PKExecuteOnRHIThread(const TFunctionRef<void(FRHICommandListImmediate&)>& Function)
 {
 	ExecuteOnRHIThread_Impl(Function, true);
 }

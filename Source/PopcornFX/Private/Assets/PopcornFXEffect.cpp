@@ -306,7 +306,8 @@ bool	UPopcornFXEffect::LoadEffect(bool forceImport)
 		}
 		else
 		{
-			if (!DefaultSamplers[samplerIdx] || DefaultSamplers[samplerIdx]->SamplerType() != desc->m_SamplerType || DefaultAttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName)
+			if (!DefaultSamplers[samplerIdx] || DefaultSamplers[samplerIdx]->SamplerType() != desc->m_SamplerType
+				|| (samplerIdx < DefaultAttributeList->m_Samplers.Num() && DefaultAttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName))
 			{
 				// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
 				UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
