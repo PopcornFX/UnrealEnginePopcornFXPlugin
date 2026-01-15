@@ -5,21 +5,27 @@
 
 #include "PopcornFXAttributeSamplerShape.h"
 
+#include "PopcornFXSDK.h"
+#include <pk_particles/include/ps_samplers_classes.h>
+#include <pk_render_helpers/include/frame_collector/rh_frame_data.h>
+#include <pk_geometrics/include/ge_mesh_sampler.h>
+#include <pk_geometrics/include/ge_mesh_sampler_accel.h>
+#include <pk_particles_toolbox/include/pt_mesh_deformers_skin.h>
+
 #include "PopcornFXPlugin.h"
 #include "PopcornFXStats.h"
 #include "PopcornFXAttributeList.h"
 #include "Assets/PopcornFXMesh.h"
-
-#include "PopcornFXSDK.h"
-#include <pk_particles/include/ps_samplers_classes.h>
-#include <pk_geometrics/include/ge_mesh_sampler_accel.h>
-#include <pk_particles_toolbox/include/pt_mesh_deformers_skin.h>
+#include "Assets/PopcornFXEffect.h"
+#include "Assets/PopcornFXEffectPriv.h"
 
 #include "Components/SkinnedMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "ClothingAsset.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 #include "Rendering/SkeletalMeshLODRenderData.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/AssetData.h"
 // Don't include the DestructibleComponent implementation header,
 // relies on ApexDestruction plugin which isn't loaded when PopcornFX runtime
 // module is loaded. Include the interface instead.
@@ -61,6 +67,44 @@ namespace
 
 	typedef CShapeDescriptor*(*CbNewDescriptor)(const SNewShapeParams &params);
 	typedef void(*CbUpdateShapeDescriptor)(const SUpdateShapeParams &params);
+
+	uint32		ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType)
+	{
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box				== (u32)CShapeDescriptor::ShapeBox);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere			== (u32)CShapeDescriptor::ShapeSphere);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Ellipsoid		== (u32)CShapeDescriptor::ShapeEllipsoid);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder			== (u32)CShapeDescriptor::ShapeCylinder);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule			== (u32)CShapeDescriptor::ShapeCapsule);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone				== (u32)CShapeDescriptor::ShapeCone);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::StaticMesh		== (u32)CShapeDescriptor::ShapeMesh);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::SkeletalMesh - 1	== (u32)CShapeDescriptor::ShapeMesh);
+		//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeMeshCollection);
+		if (ueShapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh)
+			return CShapeDescriptor::ShapeMesh;
+		return static_cast<CShapeDescriptor::EShapeType>(ueShapeType);
+	}
+
+	EPopcornFXAttribSamplerShapeType::Type		ToUEShapeType(uint32 pkShapeType)
+	{
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box				== (u32)CShapeDescriptor::ShapeBox);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere			== (u32)CShapeDescriptor::ShapeSphere);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Ellipsoid		== (u32)CShapeDescriptor::ShapeEllipsoid);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder			== (u32)CShapeDescriptor::ShapeCylinder);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule			== (u32)CShapeDescriptor::ShapeCapsule);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone				== (u32)CShapeDescriptor::ShapeCone);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::StaticMesh		== (u32)CShapeDescriptor::ShapeMesh);
+		PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::SkeletalMesh - 1	== (u32)CShapeDescriptor::ShapeMesh);
+		//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeMeshCollection);
+		return static_cast<EPopcornFXAttribSamplerShapeType::Type>(pkShapeType);
+	}
+
+	EPopcornFXMeshSamplingMode::Type			ToUEMeshSamplingMode(uint32 pkMeshSamplingMode)
+	{
+		PK_STATIC_ASSERT(EPopcornFXMeshSamplingMode::Fast		== (u32)PopcornFX::MeshSampler::EMeshSamplingDistribution::SamplingDistrib_NaiveRandom);
+		PK_STATIC_ASSERT(EPopcornFXMeshSamplingMode::Uniform	== (u32)PopcornFX::MeshSampler::EMeshSamplingDistribution::SamplingDistrib_Uniform);
+		PK_STATIC_ASSERT(EPopcornFXMeshSamplingMode::Weighted	== (u32)PopcornFX::MeshSampler::EMeshSamplingDistribution::SamplingDistrib_Weighted);
+		return static_cast<EPopcornFXMeshSamplingMode::Type>(pkMeshSamplingMode);
+	}
 
 	void				_RebuildSamplingStructs(const UPopcornFXAttributeSamplerShape *self, PopcornFX::CShapeDescriptor_Mesh *shapeDesc)
 	{
@@ -873,8 +917,15 @@ USkinnedMeshComponent	*UPopcornFXAttributeSamplerShape::ResolveSkinnedMeshCompon
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::ResolveSkinnedMeshComponent", POPCORNFX_UE_PROFILER_FAST_COLOR);
 
 	AActor	*fallbackActor = GetOwner();
-	if (!PK_VERIFY(fallbackActor != null))
+	if (fallbackActor == null)
+	{
+		FString errorMsg = TEXT("Null fallback actor");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("TargetActor"), *errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, this, errorMsg);
 		return null;
+	}
 	const AActor			*parent = Properties.TargetActor == null ? fallbackActor : Properties.TargetActor;
 	USkinnedMeshComponent	*skinnedMesh = null;
 	if (Properties.SkinnedMeshComponentName != NAME_None)
@@ -891,13 +942,14 @@ USkinnedMeshComponent	*UPopcornFXAttributeSamplerShape::ResolveSkinnedMeshCompon
 	if (skinnedMesh == null)
 	{
 		const bool	enableLogOnError = true;
+		FString errorMsg = TEXT("Could not find a skinned mesh component");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("SkinnedMeshComponentName"), *errorMsg);
+#endif
 		if (enableLogOnError)
 		{
 			// always log, must have a USkinnedMeshComponent or useless
-			UE_LOG(LogPopcornFXAttributeSamplerShape, Warning,
-				TEXT("Could not find component 'USkinnedMeshComponent %s.%s' for UPopcornFXAttributeSamplerShape '%s'"),
-				*parent->GetName(), (Properties.SkinnedMeshComponentName != NAME_None ? *Properties.SkinnedMeshComponentName.ToString() : TEXT("RootComponent")),
-				*GetFullName());
+			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, this, errorMsg);
 		}
 		return null;
 	}
@@ -1089,7 +1141,95 @@ void	UPopcornFXAttributeSamplerShape::CopyPropertiesFrom(const UPopcornFXAttribu
 
 }
 
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerShape::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+
+	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+
+	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	{
+		return;
+	}
+
+	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
+	if (samplerList.Count() == 0)
+	{
+		return;
+	}
+	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
+	PK_ASSERT(samplerDesc != null);
+	if (samplerDesc == null)
+	{
+		return;
+	}
+	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+
+	const PopcornFX::CResourceDescriptor_Shape *shape = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Shape>(defaultSampler.Get());
+	if (shape != null)
+	{
+		if (updateUnlockedValues)
+		{
+			Properties.ShapeType = ToUEShapeType(shape->ShapeType());
+			//TODO: detect if static or skeletal
+
+			Properties.BoxDimension.X = shape->BoxDimensions().x();
+			Properties.BoxDimension.Y = shape->BoxDimensions().y();
+			Properties.BoxDimension.Z = shape->BoxDimensions().z();
+			Properties.Radius = shape->Radius();
+			Properties.InnerRadius = shape->InnerRadius();
+			Properties.Height = shape->Height();
+			Properties.Scale.X = shape->MeshScale().x();
+			Properties.Scale.Y = shape->MeshScale().y();
+			Properties.Scale.Z = shape->MeshScale().z();
+
+			Properties.ShapeSamplingMode = ToUEMeshSamplingMode(shape->MeshSamplingMode());
+			Properties.DensityColorChannel = static_cast<EPopcornFXColorChannel::Type>(shape->DensityChannel());
+
+			FAssetRegistryModule &AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+			// Try to fetch the static mesh
+			FString	uePath = TEXT("/Game/");
+			uePath.Append(ToUE(shape->MeshResource()));
+			FAssetData AssetData = AssetRegistryModule.Get().GetAssetByObjectPath(uePath);
+			UStaticMesh *staticMesh = Cast<UStaticMesh>(AssetData.GetAsset());
+			if (staticMesh && updateUnlockedValues)
+			{
+				Properties.StaticMesh = staticMesh;
+			}
+
+			Properties.StaticMeshSubIndex = shape->SubMeshIndex();
+		}
+	}
+}
+
 #endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerShape::ArePropertiesSupported()
+{
+	if (Properties.ShapeType == EPopcornFXAttribSamplerShapeType::StaticMesh
+		&& Properties.StaticMesh == null)
+	{
+		FString errorMsg = TEXT("Null static mesh");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("StaticMesh"), *errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, this, errorMsg);
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerShape::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
 
 //----------------------------------------------------------------------------
 

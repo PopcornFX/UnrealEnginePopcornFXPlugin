@@ -24,6 +24,29 @@ FWD_PK_API_END
 class	FPopcornFXPlugin;
 
 UENUM()
+namespace EPopcornFXAttribSamplerShapeType
+{
+	enum	Type
+	{
+		Box = 0,
+		Sphere,
+		Ellipsoid,
+		Cylinder,
+		Capsule,
+		Cone,
+		StaticMesh,
+		SkeletalMesh,
+#if 0 // To re-enable when shape collections are supported by PopcornFX v2
+		Collection,
+#endif
+	};
+}
+enum { EPopcornFXAttribSamplerShapeType_Max = EPopcornFXAttribSamplerShapeType::SkeletalMesh + 1 };
+#if 0 // To re-enable when shape collections are supported by PopcornFX v2
+enum { EPopcornFXAttribSamplerShapeType_Max = EPopcornFXAttribSamplerShapeType::Collection + 1 };
+#endif
+
+UENUM()
 namespace EPopcornFXShapeCollectionSamplingHeuristic
 {
 	// pk_geometrics/include/ge_shapes.h
@@ -48,6 +71,29 @@ namespace	EPopcornFXSkinnedTransforms
 		AttrSamplerRelativeTr,
 		/** Use Attribute Sampler Actor world transforms */
 		AttrSamplerWorldTr,
+	};
+}
+
+UENUM()
+namespace EPopcornFXMeshSamplingMode
+{
+	enum	Type
+	{
+		Fast = 0,
+		Uniform,
+		Weighted
+	};
+}
+
+UENUM()
+namespace EPopcornFXColorChannel
+{
+	enum	Type
+	{
+		Red = 0,
+		Green,
+		Blue,
+		Alpha
 	};
 }
 
@@ -107,9 +153,11 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesShape : public FPopcorn
 	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	int32					StaticMeshSubIndex;
 
+#if 0
 	/** Collection sub-Shapes */
 	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	TArray<class APopcornFXAttributeSamplerActor *>	Shapes;
+#endif
 
 	/** Specifies which actors contains the target SkinnedMeshComponent */
 	UPROPERTY(Category="PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
@@ -265,11 +313,21 @@ public:
 
 	PopcornFX::CMeshSurfaceSamplerStructuresRandom	*SamplerSurface() const;
 
+	// UPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
 #if WITH_EDITOR
 	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
+	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
 #endif
+	virtual bool									ArePropertiesSupported() override;
+	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
+
+#if WITH_EDITOR
+	virtual void									_AttribSampler_IndirectSelectedThisTick() override { m_IndirectSelectedThisTick = true; }
+#endif
 private:
 	bool											CanUpdateShapeProperties(EPopcornFXAttribSamplerShapeType::Type newType);
 	void											UpdateShapeProperties();
@@ -287,14 +345,6 @@ private:
 	void											Skin_PreProcess(uint32 vertexStart, uint32 vertexCount, const PopcornFX::SSkinContext &ctx);
 	void											Skin_PostProcess(uint32 vertexStart, uint32 vertexCount, const PopcornFX::SSkinContext &ctx);
 	void											Skin_Finish(const PopcornFX::SSkinContext &ctx);
-
-	// PopcornFX Internal
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
-
-#if WITH_EDITOR
-	virtual void									_AttribSampler_IndirectSelectedThisTick() override { m_IndirectSelectedThisTick = true; }
-#endif
 
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")

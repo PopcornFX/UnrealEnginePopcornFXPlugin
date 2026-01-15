@@ -46,24 +46,6 @@ enum {
 	kAttributeSize = sizeof(PopcornFX::SAttributesContainer_SAttrib)
 };
 
-using PopcornFX::CShapeDescriptor;
-using PopcornFX::PShapeDescriptor;
-using PopcornFX::PCShapeDescriptor;
-
-uint32		ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType)
-{
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box					== (u32)CShapeDescriptor::ShapeBox);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere				== (u32)CShapeDescriptor::ShapeSphere);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Ellipsoid	== (u32)CShapeDescriptor::ShapeEllipsoid);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder				== (u32)CShapeDescriptor::ShapeCylinder);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule				== (u32)CShapeDescriptor::ShapeCapsule);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone					== (u32)CShapeDescriptor::ShapeCone);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::StaticMesh			== (u32)CShapeDescriptor::ShapeMesh);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::SkeletalMesh - 1		== (u32)CShapeDescriptor::ShapeMesh);
-	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)CShapeDescriptor::ShapeMeshCollection);
-	return static_cast<CShapeDescriptor::EShapeType>(ueShapeType);
-}
-
 //----------------------------------------------------------------------------
 //
 //
@@ -1462,6 +1444,7 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 	if (!PK_VERIFY(defCont != null && defCont->Samplers().Count() == m_Samplers.Num()))
 		return;
 
+	bool atLeastOneInvalidSampler = false;
 	for (int32 sampleri = 0; sampleri < m_Samplers.Num(); ++sampleri)
 	{
 		PK_ASSERT(attrListPtr->UniqueSamplerList()[sampleri] != null);
@@ -1505,10 +1488,25 @@ void	UPopcornFXAttributeList::_RefreshAttributeSamplers(UPopcornFXEmitterCompone
 
 		// Dont setup samplers when cooking
 		if (!IsRunningCommandlet() && attribSampler != null)
-			samplerDescriptor = attribSampler->_AttribSampler_SetupSamplerDescriptor(emitter, desc, defaultSampler.Get());
+			samplerDescriptor = attribSampler->_AttribSampler_SetupSampler(emitter, desc, defaultSampler.Get());
 
+		if (samplerDescriptor == null)
+		{
+			atLeastOneInvalidSampler = true;
+		}
 		effectInstance->SetAttributeSampler(TCHAR_TO_UTF8(*desc.m_SamplerName), samplerDescriptor != null ? samplerDescriptor : null);
 	}
+
+#if WITH_EDITOR
+	if (atLeastOneInvalidSampler)
+	{
+		emitter->SetWarningSprite();
+	}
+	else
+	{
+		emitter->SetNormalSprite();
+	}
+#endif
 }
 
 //----------------------------------------------------------------------------

@@ -5,12 +5,16 @@
 
 #include "PopcornFXAttributeSamplerAnimTrack.h"
 
+#include "PopcornFXSDK.h"
+#include <pk_particles/include/ps_samplers_classes.h>
+#include <pk_render_helpers/include/frame_collector/rh_frame_data.h>
+
 #include "PopcornFXPlugin.h"
 #include "PopcornFXStats.h"
 #include "PopcornFXAttributeList.h"
+#include "Assets/PopcornFXEffect.h"
+#include "Assets/PopcornFXEffectPriv.h"
 
-#include "PopcornFXSDK.h"
-#include <pk_particles/include/ps_samplers_classes.h>
 
 #if (PK_GPU_D3D12 != 0)
 #	include <pk_particles/include/Samplers/D3D12/image_gpu_d3d12.h>
@@ -349,8 +353,15 @@ USplineComponent	*UPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent(bo
 	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent", POPCORNFX_UE_PROFILER_COLOR);
 
 	AActor	*fallbackActor = GetOwner();
-	if (!PK_VERIFY(fallbackActor != null))
+	if (fallbackActor == null)
+	{
+		FString errorMsg(TEXT("Could not find fallback actor"));
+#if WITH_EDITOR
+		m_UnsupportedProperties.Add(TEXT("TargetActor"), errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerAnimTrack, Error, animtrack, this, errorMsg);
 		return null;
+	}
 	const AActor		*parent = Properties.TargetActor == null ? fallbackActor : Properties.TargetActor;
 	USplineComponent	*spline = null;
 	if (Properties.SplineComponentName != NAME_None)
@@ -366,12 +377,13 @@ USplineComponent	*UPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent(bo
 	}
 	if (spline == null)
 	{
+		FString errorMsg(TEXT("Could not find USPlineComponent in target actor"));
+#if WITH_EDITOR
+		m_UnsupportedProperties.Add(TEXT("SplineComponentName"), errorMsg);
+#endif
 		if (logErrors)
 		{
-			UE_LOG(LogPopcornFXAttributeSamplerAnimTrack, Warning,
-				TEXT("Could not find component 'USplineComponent %s.%s' for UPopcornFXAttributeSamplerAnimTrack '%s'"),
-				*parent->GetName(), (Properties.SplineComponentName != NAME_None ? *Properties.SplineComponentName.ToString() : TEXT("RootComponent")),
-				*GetFullName());
+			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerAnimTrack, Error, animtrack, this, errorMsg);
 		}
 		return null;
 	}
@@ -422,7 +434,59 @@ void	UPopcornFXAttributeSamplerAnimTrack::CopyPropertiesFrom(const UPopcornFXAtt
 	Properties = *newAnimTrackProperties;
 }
 
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerAnimTrack::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+
+	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+
+	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	{
+		return;
+	}
+
+	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
+	if (samplerList.Count() == 0)
+	{
+		return;
+	}
+	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
+	PK_ASSERT(samplerDesc != null);
+	if (samplerDesc == null)
+	{
+		return;
+	}
+	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+
+	const PopcornFX::CResourceDescriptor_AnimTrack *animTrack = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_AnimTrack>(defaultSampler.Get());
+	if (animTrack != null)
+	{
+		if (updateUnlockedValues)
+		{
+			Properties.bTranslate = animTrack->TransformTranslate();
+			Properties.bRotate = animTrack->TransformRotate();
+			Properties.bScale = animTrack->TransformScale();
+		}
+	}
+}
+
 #endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerAnimTrack::ArePropertiesSupported()
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerAnimTrack::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
 
 //----------------------------------------------------------------------------
 

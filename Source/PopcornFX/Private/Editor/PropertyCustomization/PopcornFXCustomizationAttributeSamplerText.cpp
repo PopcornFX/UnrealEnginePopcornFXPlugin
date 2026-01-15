@@ -36,9 +36,7 @@ void FPopcornFXCustomizationAttributeSamplerText::CustomizeChildren(TSharedRef<I
 
 	FPopcornFXCustomizationAttributeSampler::CustomizeChildren(PropertyHandle, ChildBuilder, CustomizationUtils);
 
-	TSharedPtr<IPropertyHandle>	textPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesText, Text));
-	ChildBuilder.AddProperty(textPty.ToSharedRef());
-
+	AddErrorableProperty(PropertyHandle, "Text", ChildBuilder, true, false);
 }
 
 //----------------------------------------------------------------------------

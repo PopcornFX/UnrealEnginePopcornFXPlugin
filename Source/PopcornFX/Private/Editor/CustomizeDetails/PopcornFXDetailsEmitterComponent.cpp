@@ -240,7 +240,8 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 	FSlateColor		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Foreground);
 	FText			tooltipText = FText::FromString(name + ": " + defNode);
 	if (!sampler ||
-		(sampler->m_IncompatibleProperties.Contains(emitter) && !sampler->m_IncompatibleProperties[emitter].m_Properties.IsEmpty()))
+		(sampler->m_IncompatibleProperties.Contains(emitter) && !sampler->m_IncompatibleProperties[emitter].m_Properties.IsEmpty())
+		|| sampler->m_UnsupportedProperties.Num() > 0)
 	{
 		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Error);
 		tooltipText = FText::FromString("One or more properties are not supported. Default values exported from PopcornFX will be used");

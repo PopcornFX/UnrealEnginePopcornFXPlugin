@@ -57,22 +57,6 @@ UPopcornFXEffect	*ResolveEffect(const UPopcornFXAttributeList *attrList)
 
 //----------------------------------------------------------------------------
 
-EPopcornFXAttribSamplerShapeType::Type	ToUEShapeType(PopcornFX::CShapeDescriptor::EShapeType pkShapeType)
-{
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Box				== (u32)PopcornFX::CShapeDescriptor::ShapeBox);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Sphere			== (u32)PopcornFX::CShapeDescriptor::ShapeSphere);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Ellipsoid		== (u32)PopcornFX::CShapeDescriptor::ShapeEllipsoid);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cylinder			== (u32)PopcornFX::CShapeDescriptor::ShapeCylinder);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Capsule			== (u32)PopcornFX::CShapeDescriptor::ShapeCapsule);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Cone				== (u32)PopcornFX::CShapeDescriptor::ShapeCone);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::StaticMesh		== (u32)PopcornFX::CShapeDescriptor::ShapeMesh);
-	PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::SkeletalMesh - 1	== (u32)PopcornFX::CShapeDescriptor::ShapeMesh);
-	//PK_STATIC_ASSERT(EPopcornFXAttribSamplerShapeType::Collection	== (u32)PopcornFX::CShapeDescriptor::ShapeMeshCollection);
-	return static_cast<EPopcornFXAttribSamplerShapeType::Type>(pkShapeType);
-}
-
-//----------------------------------------------------------------------------
-
 const char			*ResolveAttribSamplerNodeName(const PopcornFX::CParticleAttributeSamplerDeclaration *sampler, EPopcornFXAttributeSamplerType::Type samplerType)
 {
 	if (!PK_VERIFY(sampler != null))

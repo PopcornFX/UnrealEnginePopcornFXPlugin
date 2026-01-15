@@ -5,6 +5,10 @@
 
 #include "PopcornFXAttributeSamplerGrid.h"
 
+#include "PopcornFXSDK.h"
+#include <pk_particles/include/ps_samplers_classes.h>
+#include <pk_render_helpers/include/frame_collector/rh_frame_data.h>
+
 #include "PopcornFXStats.h"
 #include "GPUSim/PopcornFXGPUSim.h"
 #include "Assets/PopcornFXEffect.h"
@@ -18,11 +22,6 @@
 
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/Package.h"
-
-#include "PopcornFXSDK.h"
-#include <pk_particles/include/ps_descriptor.h>
-#include <pk_particles/include/ps_samplers_classes.h>
-#include <pk_kernel/include/kr_base_types.h>
 
 #if (PK_GPU_D3D12 != 0)
 #	include <pk_particles/include/Samplers/D3D12/image_gpu_d3d12.h>
@@ -372,8 +371,6 @@ void	UPopcornFXAttributeSamplerGrid::SetupDefaults(UPopcornFXEffect *effect, con
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Float3:
 			// Unsupported
-			//m_UnsupportedProperties.FindOrAdd(TEXT("DataType"), TEXT("Float 3 is not supported"));
-			//m_IncompatibleProperties.FindOrAdd(emitter).Add(TEXT("DataType"), TEXT("Float 3 is not supported"));
 			Properties.DataType = EPopcornFXGridDataType::Float3;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Float4:
@@ -387,8 +384,6 @@ void	UPopcornFXAttributeSamplerGrid::SetupDefaults(UPopcornFXEffect *effect, con
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Int3:
 			// Unsupported
-			//m_UnsupportedProperties.FindOrAdd(TEXT("DataType"), TEXT("Int 3 is not supported"));
-			//m_IncompatibleProperties.FindOrAdd(emitter).Add(TEXT("DataType"), TEXT("Float 3 is not supported"));
 			Properties.DataType = EPopcornFXGridDataType::Int3;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Int4:
@@ -656,32 +651,6 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerGrid::_AttribSa
 	if (!PK_VERIFY(defaultGridSampler != null))
 		return null;
 
-#if WITH_EDITOR
-	m_UnsupportedProperties.Empty();
-	// Cleanup old/broken references
-	if (m_IncompatibleProperties.Contains(nullptr))
-		m_IncompatibleProperties.Remove(nullptr);
-	m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Empty();
-#endif
-
-	if (!ArePropertiesSupported())
-	{
-#if WITH_EDITOR
-		m_IncompatibleProperties.FindOrAdd(emitter).m_Properties = m_UnsupportedProperties;
-		OnSamplerValidStateChanged.Broadcast();
-		emitter->SetWarningSprite();
-#endif
-		return null;
-	}
-	if (!ArePropertiesCompatible(emitter, defaultSampler))
-	{
-#if WITH_EDITOR
-		OnSamplerValidStateChanged.Broadcast();
-		emitter->SetWarningSprite();
-#endif
-		return null;
-	}
-	
 	if (Properties.bAssetGrid && Properties.RenderTarget && m_Data->m_Desc != null
 		&& HasRenderTargetChanged())
 	{
@@ -700,13 +669,6 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerGrid::_AttribSa
 		}
 		m_Data->m_ReloadGrid = false;
 	}
-
-#if WITH_EDITOR
-	emitter->SetNormalSprite();
-	m_UnsupportedProperties.Empty();
-	m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Empty();
-	OnSamplerValidStateChanged.Broadcast();
-#endif
 
 	return m_Data->m_Desc.Get();
 }

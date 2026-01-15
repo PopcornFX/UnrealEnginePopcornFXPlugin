@@ -43,24 +43,17 @@ void FPopcornFXCustomizationAttributeSamplerImage::CustomizeChildren(TSharedRef<
 	currentProperty->GetValue(samplingMode);
 	// Modifying sampling mode implies hiding/showing DensitySource and DensityPower so refresh the panel
 	currentProperty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationAttributeSamplerImage::RebuildProperties));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "SamplingMode", ChildBuilder, true, false);
 
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesImage, bAllowTextureConversionAtRuntime));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "bAllowTextureConversionAtRuntime", ChildBuilder, true, false);
 
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesImage, Texture));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "Texture", ChildBuilder, true, false);
 
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesImage, TextureAtlas));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "TextureAtlas", ChildBuilder, true, false);
 
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesImage, DensitySource));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef()).
-		EditCondition(samplingMode != EPopcornFXImageSamplingMode::Type::Regular, FOnBooleanValueChanged()).EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "DensitySource", ChildBuilder, samplingMode != EPopcornFXImageSamplingMode::Type::Regular, true);
 
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesImage, DensityPower));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef()).
-		EditCondition(samplingMode != EPopcornFXImageSamplingMode::Type::Regular, FOnBooleanValueChanged()).EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "DensityPower", ChildBuilder, samplingMode != EPopcornFXImageSamplingMode::Type::Regular, true);
 }
 
 //----------------------------------------------------------------------------

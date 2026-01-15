@@ -38,40 +38,30 @@ void FPopcornFXCustomizationAttributeSamplerVectorField::CustomizeChildren(TShar
 
 	TSharedPtr<IPropertyHandle>	currentPty;
 
-	currentPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, VectorField));
-	ChildBuilder.AddProperty(currentPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "VectorField", ChildBuilder, true, false);
 
 	TSharedPtr<IPropertyHandle>	boundsSourcePty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, BoundsSource));
 	uint8	boundsSourceValue;
 	boundsSourcePty->GetValue(boundsSourceValue);
 	boundsSourcePty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationAttributeSamplerVectorField::RebuildProperties));
 	
-	currentPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, Intensity));
-	ChildBuilder.AddProperty(currentPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "Intensity", ChildBuilder, true, false);
 
-	currentPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, RotationAnimation));
-	ChildBuilder.AddProperty(currentPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "RotationAnimation", ChildBuilder, true, false);
 
-	currentPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, WrapMode));
-	ChildBuilder.AddProperty(currentPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "WrapMode", ChildBuilder, true, false);
 
-	currentPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, SamplingMode));
-	ChildBuilder.AddProperty(currentPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "SamplingMode", ChildBuilder, true, false);
 
-	ChildBuilder.AddProperty(boundsSourcePty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "BoundsSource", ChildBuilder, true, false);
 
-	TSharedPtr<IPropertyHandle>	volumeDimensionPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, VolumeDimensions));
-	ChildBuilder.AddProperty(volumeDimensionPty.ToSharedRef()).
-		EditCondition(boundsSourceValue != EPopcornFXVectorFieldBounds::Source, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "VolumeDimensions", ChildBuilder, boundsSourceValue != EPopcornFXVectorFieldBounds::Source, true);
 
-	currentPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, bUseRelativeTransform));
-	ChildBuilder.AddProperty(currentPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "bUseRelativeTransform", ChildBuilder, true, false);
 
 #if 0
 	/** Enable to draw individual vectorfield cells. */
-	currentPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesVectorField, bDrawCells));
-	ChildBuilder.AddProperty(currentPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "bDrawCells", ChildBuilder, true, false);
 #endif
 }
 

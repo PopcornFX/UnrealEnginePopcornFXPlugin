@@ -8,6 +8,7 @@
 #include "PopcornFXPublic.h"
 
 #include "Components/SceneComponent.h"
+#include "GameFramework/Actor.h"
 
 #include "PopcornFXAttributeSampler.generated.h"
 
@@ -63,52 +64,6 @@ namespace EPopcornFXAttributeSamplerType
 	};
 }
 enum { EPopcornFXAttributeSamplerType_Max = EPopcornFXAttributeSamplerType::Text + 1 };
-
-UENUM()
-namespace EPopcornFXAttribSamplerShapeType
-{
-	enum	Type
-	{
-		Box = 0,
-		Sphere,
-		Ellipsoid,
-		Cylinder,
-		Capsule,
-		Cone,
-		StaticMesh,
-		SkeletalMesh,
-#if 0 // To re-enable when shape collections are supported by PopcornFX v2
-		Collection,
-#endif
-	};
-}
-enum { EPopcornFXAttribSamplerShapeType_Max = EPopcornFXAttribSamplerShapeType::SkeletalMesh + 1 };
-#if 0 // To re-enable when shape collections are supported by PopcornFX v2
-enum { EPopcornFXAttribSamplerShapeType_Max = EPopcornFXAttribSamplerShapeType::Collection + 1 };
-#endif
-
-UENUM()
-namespace EPopcornFXMeshSamplingMode
-{
-	enum	Type
-	{
-		Uniform = 0,
-		Fast,
-		Weighted
-	};
-}
-
-UENUM()
-namespace EPopcornFXColorChannel
-{
-	enum	Type
-	{
-		Red = 0,
-		Green,
-		Blue,
-		Alpha
-	};
-}
 
 /** Wrapper of a map of properties names and their error message so we can create an array of it */
 USTRUCT()
@@ -168,6 +123,7 @@ public:
 	EPopcornFXAttributeSamplerType::Type				SamplerType() const { return m_SamplerType; }
 
 	// PopcornFX Internal
+	PopcornFX::CParticleSamplerDescriptor				*_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler);
 	virtual PopcornFX::CParticleSamplerDescriptor		*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) { return nullptr; }
 	virtual void										_AttribSampler_PreUpdate(float deltaTime) { return; }
 
@@ -175,6 +131,7 @@ public:
 	virtual void										CopyPropertiesFrom(const UPopcornFXAttributeSampler *other);
 	/** Checks if properties and their combinations are supported */
 	virtual bool										ArePropertiesSupported() { return true; }
+	virtual bool										ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) { return true; }
 
 #if WITH_EDITOR
 	virtual void										_AttribSampler_IndirectSelectedThisTick() {}

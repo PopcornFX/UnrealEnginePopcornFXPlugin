@@ -5,13 +5,16 @@
 
 #include "PopcornFXAttributeSamplerVectorField.h"
 
-#include "PopcornFXPlugin.h"
-#include "PopcornFXStats.h"
-#include "PopcornFXAttributeList.h"
-
 #include "PopcornFXSDK.h"
 #include <pk_particles/include/ps_samplers_classes.h>
 #include <pk_kernel/include/kr_refcounted_buffer.h>
+#include <pk_render_helpers/include/frame_collector/rh_frame_data.h>
+
+#include "PopcornFXPlugin.h"
+#include "PopcornFXStats.h"
+#include "PopcornFXAttributeList.h"
+#include "Assets/PopcornFXEffect.h"
+#include "Assets/PopcornFXEffectPriv.h"
 
 #include "VectorField/VectorFieldStatic.h"
 #include "DrawDebugHelpers.h"
@@ -134,6 +137,68 @@ void	UPopcornFXAttributeSamplerVectorField::_BuildVectorFieldFlags(uint32 &flags
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
+
+void	UPopcornFXAttributeSamplerVectorField::RenderVectorFieldShape(const FMatrix &transforms, const FQuat &rotation, bool isSelected)
+{
+	if (m_Data->m_RealExtentUnscaled == FVector3f::ZeroVector)
+		return;
+	const UWorld	*world = GetWorld();
+	const FColor	debugColor = isSelected ? kSamplerShapesDebugColorSelected : kSamplerShapesDebugColor;
+
+	const FVector	boxDims = FVector(m_Data->m_RealExtentUnscaled) * GetComponentTransform().GetScale3D() * 0.5f;
+	DrawDebugBox(world, transforms.GetOrigin(), boxDims, rotation, debugColor);
+#if 0
+	if (!bDrawCells)
+		return;
+
+	const CFloat3	boxMin = ToPk(VectorField->Bounds.Min * VolumeDimensions);
+	const CFloat3	boxMax = ToPk(VectorField->Bounds.Max * VolumeDimensions);
+	const CFloat4	vectorFieldSize = CFloat4(VectorField->SizeX, VectorField->SizeY, VectorField->SizeZ, 1);
+
+	const CFloat3	boxCellDim = (boxMax - boxMin) / vectorFieldSize.xyz();
+
+	for (int32 zS = 0; zS <= vectorFieldSize.z(); ++zS)
+	{
+		for (int32 yS = 0; yS <= vectorFieldSize.y(); ++yS)
+		{
+			FVector	lineStart = FVector(boxMin.x(), boxMin.y() + boxCellDim.y() * yS, boxMin.z() + boxCellDim.z() * zS);
+			FVector	lineEnd = FVector(boxMax.x(), boxMin.y() + boxCellDim.y() * yS, boxMin.z() + boxCellDim.z() * zS);
+
+			lineStart = transforms.TransformFVector4(lineStart);
+			lineEnd = transforms.TransformFVector4(lineEnd);
+
+			DrawDebugLine(world, lineStart, lineEnd, debugColor);
+		}
+		for (int32 xS = 0; xS <= vectorFieldSize.x(); ++xS)
+		{
+			FVector	lineStart = FVector(boxMin.x() + boxCellDim.x() * xS, boxMin.y(), boxMin.z() + boxCellDim.z() * zS);
+			FVector	lineEnd = FVector(boxMin.x() + boxCellDim.x() * xS, boxMax.y(), boxMin.z() + boxCellDim.z() * zS);
+
+			lineStart = transforms.TransformFVector4(lineStart);
+			lineEnd = transforms.TransformFVector4(lineEnd);
+
+			DrawDebugLine(world, lineStart, lineEnd, debugColor);
+		}
+	}
+
+	for (int32 yS = 0; yS <= vectorFieldSize.y(); ++yS)
+	{
+		for (int32 xS = 0; xS <= vectorFieldSize.x(); ++xS)
+		{
+			FVector	lineStart = FVector(boxMin.x() + boxCellDim.x() * xS, boxMin.y() + boxCellDim.y() * yS, boxMin.z());
+			FVector	lineEnd = FVector(boxMin.x() + boxCellDim.x() * xS, boxMin.y() + boxCellDim.y() * yS, boxMax.z());
+
+			lineStart = transforms.TransformFVector4(lineStart);
+			lineEnd = transforms.TransformFVector4(lineEnd);
+
+			DrawDebugLine(world, lineStart, lineEnd, debugColor);
+		}
+	}
+#endif // 0
+}
+
+//----------------------------------------------------------------------------
+
 void	UPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.MemberProperty != null && m_Data->m_Desc != null)
@@ -228,65 +293,69 @@ void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXA
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::RenderVectorFieldShape(const FMatrix &transforms, const FQuat &rotation, bool isSelected)
+void	UPopcornFXAttributeSamplerVectorField::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
 {
-	if (m_Data->m_RealExtentUnscaled == FVector3f::ZeroVector)
-		return;
-	const UWorld *world = GetWorld();
-	const FColor	debugColor = isSelected ? kSamplerShapesDebugColorSelected : kSamplerShapesDebugColor;
+	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
 
-	const FVector	boxDims = FVector(m_Data->m_RealExtentUnscaled) * GetComponentTransform().GetScale3D() * 0.5f;
-	DrawDebugBox(world, transforms.GetOrigin(), boxDims, rotation, debugColor);
-#if 0
-	if (!bDrawCells)
-		return;
+	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
 
-	const CFloat3	boxMin = ToPk(VectorField->Bounds.Min * VolumeDimensions);
-	const CFloat3	boxMax = ToPk(VectorField->Bounds.Max * VolumeDimensions);
-	const CFloat4	vectorFieldSize = CFloat4(VectorField->SizeX, VectorField->SizeY, VectorField->SizeZ, 1);
-
-	const CFloat3	boxCellDim = (boxMax - boxMin) / vectorFieldSize.xyz();
-
-	for (int32 zS = 0; zS <= vectorFieldSize.z(); ++zS)
+	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
 	{
-		for (int32 yS = 0; yS <= vectorFieldSize.y(); ++yS)
-		{
-			FVector	lineStart = FVector(boxMin.x(), boxMin.y() + boxCellDim.y() * yS, boxMin.z() + boxCellDim.z() * zS);
-			FVector	lineEnd = FVector(boxMax.x(), boxMin.y() + boxCellDim.y() * yS, boxMin.z() + boxCellDim.z() * zS);
-
-			lineStart = transforms.TransformFVector4(lineStart);
-			lineEnd = transforms.TransformFVector4(lineEnd);
-
-			DrawDebugLine(world, lineStart, lineEnd, debugColor);
-		}
-		for (int32 xS = 0; xS <= vectorFieldSize.x(); ++xS)
-		{
-			FVector	lineStart = FVector(boxMin.x() + boxCellDim.x() * xS, boxMin.y(), boxMin.z() + boxCellDim.z() * zS);
-			FVector	lineEnd = FVector(boxMin.x() + boxCellDim.x() * xS, boxMax.y(), boxMin.z() + boxCellDim.z() * zS);
-
-			lineStart = transforms.TransformFVector4(lineStart);
-			lineEnd = transforms.TransformFVector4(lineEnd);
-
-			DrawDebugLine(world, lineStart, lineEnd, debugColor);
-		}
+		return;
 	}
 
-	for (int32 yS = 0; yS <= vectorFieldSize.y(); ++yS)
+	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
+	if (samplerList.Count() == 0)
 	{
-		for (int32 xS = 0; xS <= vectorFieldSize.x(); ++xS)
+		return;
+	}
+	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
+	PK_ASSERT(samplerDesc != null);
+	if (samplerDesc == null)
+	{
+		return;
+	}
+	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+
+	const PopcornFX::CResourceDescriptor_VectorField *vectorField = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_VectorField>(defaultSampler.Get());
+	if (vectorField != null)
+	{
+		if (updateUnlockedValues)
 		{
-			FVector	lineStart = FVector(boxMin.x() + boxCellDim.x() * xS, boxMin.y() + boxCellDim.y() * yS, boxMin.z());
-			FVector	lineEnd = FVector(boxMin.x() + boxCellDim.x() * xS, boxMin.y() + boxCellDim.y() * yS, boxMax.z());
-
-			lineStart = transforms.TransformFVector4(lineStart);
-			lineEnd = transforms.TransformFVector4(lineEnd);
-
-			DrawDebugLine(world, lineStart, lineEnd, debugColor);
+			switch (vectorField->Filtering())
+			{
+			case PopcornFX::EGridInterpolator::GridInterpolator_Point:
+				Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
+				break;
+			case PopcornFX::EGridInterpolator::GridInterpolator_Trilinear:
+			default:
+				Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
+				break;
+			}
+			Properties.Intensity = vectorField->Strength();
+			if (vectorField->WrapVertical() && vectorField->WrapSide() && vectorField->WrapDepth())
+			{
+				Properties.WrapMode = EPopcornFXVectorFieldWrapMode::Wrap;
+			}
 		}
 	}
-#endif // 0
 }
-#endif //WITH_EDITOR
+
+#endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerVectorField::ArePropertiesSupported()
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerVectorField::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
 
 //----------------------------------------------------------------------------
 
@@ -300,7 +369,14 @@ PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerVectorField::_A
 	if (!PK_VERIFY(defaultTurbulenceSampler != null))
 		return null;
 	if (Properties.VectorField == null)
+	{
+		FString	errorMsg = TEXT("Null vector field");
+#if WITH_EDITOR
+		m_UnsupportedProperties.Add(TEXT("VectorField"), errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerVectorField, Error, vectorfield, this, errorMsg);
 		return null;
+	}
 
 	if (m_Data->m_Desc == null)
 	{

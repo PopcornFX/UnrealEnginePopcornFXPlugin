@@ -38,22 +38,14 @@ void FPopcornFXCustomizationAttributeSamplerAnimTrack::CustomizeChildren(TShared
 
 	TSharedPtr<IPropertyHandle>	currentProperty;
 
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, TargetActor));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, SplineComponentName));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, bTranslate));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, bRotate));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, bScale));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, bFastSampler));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, bEditorRebuildEachFrame));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
-	currentProperty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesAnimTrack, Transforms));
-	ChildBuilder.AddProperty(currentProperty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "TargetActor", ChildBuilder, true, false);
+	AddErrorableProperty(PropertyHandle, "SplineComponentName", ChildBuilder, true, false);
+	AddErrorableProperty(PropertyHandle, "bTranslate", ChildBuilder, true, false);
+	AddErrorableProperty(PropertyHandle, "bRotate", ChildBuilder, true, false);
+	AddErrorableProperty(PropertyHandle, "bScale", ChildBuilder, true, false);
+	AddErrorableProperty(PropertyHandle, "bFastSampler", ChildBuilder, true, false);
+	AddErrorableProperty(PropertyHandle, "bEditorRebuildEachFrame", ChildBuilder, true, false);
+	AddErrorableProperty(PropertyHandle, "Transforms", ChildBuilder, true, false);
 }
 
 //----------------------------------------------------------------------------

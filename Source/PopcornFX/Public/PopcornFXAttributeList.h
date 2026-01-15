@@ -15,8 +15,6 @@ class	UPopcornFXEffect;
 class	UPopcornFXAttribSamplerInterface;
 class	UPopcornFXEmitterComponent;
 
-uint32				ToPkShapeType(EPopcornFXAttribSamplerShapeType::Type ueShapeType);
-
 #if WITH_EDITORONLY_DATA
 UENUM()
 namespace EPopcornFXAttributeSemantic

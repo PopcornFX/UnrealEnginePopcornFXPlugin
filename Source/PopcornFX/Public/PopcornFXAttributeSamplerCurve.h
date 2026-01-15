@@ -29,7 +29,7 @@ namespace	EAttributeSamplerCurveDimension
 	enum	Type
 	{
 		Float1 = 1,
-		Float2,
+		Float2 UMETA(Hidden, DisplayName = "Float2 - Unsupported"),
 		Float3,
 		Float4
 	};
@@ -112,12 +112,14 @@ public:
 #endif // WITH_EDITOR
 	void			BeginDestroy() override;
 
+	// UPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
+	virtual bool									ArePropertiesSupported() override;
+	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 #if WITH_EDITOR
 	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
+	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
 #endif
-
-	// PopcornFX Internal
 	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
 private:

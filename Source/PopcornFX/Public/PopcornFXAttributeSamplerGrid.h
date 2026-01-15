@@ -195,22 +195,20 @@ public:
 	void						PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif // WITH_EDITOR
 
+	// UPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
 #if WITH_EDITOR
-	// UPopcornFXAttributeSampler overrides
 	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
 	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
 #endif
-
-	// PopcornFX Internal
+	virtual bool									ArePropertiesSupported() override;
+	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
 private:
 	bool						RebuildGridSampler(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler);
 	bool						_RebuildGridSampler(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler);
-	bool						ArePropertiesSupported() override;
 	/** Checks if properties are compatible with the given emitter */
-	bool						ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler);
 	bool						IsRenderTargetCompatible(const UTextureRenderTarget *texture, UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler);
 	bool						HasRenderTargetChanged() const;
 	static bool					CanReadFromGrid(UPopcornFXAttributeSamplerGrid *Grid, EPopcornFXGridDataType::Type WantedType);

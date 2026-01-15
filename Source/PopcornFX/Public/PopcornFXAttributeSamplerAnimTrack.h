@@ -114,18 +114,19 @@ private:
 	void	PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent);
 #endif // WITH_EDITOR
 
+	// UPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
 #if WITH_EDITOR
 	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
+	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
 #endif
-
-	// PopcornFX Internal
+	virtual bool									ArePropertiesSupported() override;
+	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 	virtual void									_AttribSampler_PreUpdate(float deltaTime);
 
 	class USplineComponent							*ResolveSplineComponent(bool logErrors);
 	bool											RebuildCurvesIFN();
-	bool											RebuildCurve(PopcornFX::CCurveDescriptor *&curve, const FInterpCurvePoint<FVector> *srcPoints, const float *srcTimes, uint32 keyCount);
 
 private:
 	FAttributeSamplerAnimTrackData	*m_Data;

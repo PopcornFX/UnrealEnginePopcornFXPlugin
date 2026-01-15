@@ -41,8 +41,6 @@
 #if PK_WITH_CHAOS
 #	include "SQAccelerator.h"
 
-#	include "PhysTestSerializer.h"
-
 #	include "PBDRigidsSolver.h"
 #	include "Chaos/ChaosScene.h"
 #	include "Chaos/PBDRigidsEvolutionGBF.h"
@@ -2434,13 +2432,15 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		{
 			check(self->m_D3D11_DummyView == null);
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 7)
-			self->m_D3D11_DummyResource = new FD3D11Buffer(nullptr, FRHIBufferCreateDesc());
+			FRHIBufferCreateDesc	desc;
+			desc.SetInitialState(ERHIAccess::UAVGraphics);
+			self->m_D3D11_DummyResource = new FD3D11Buffer(nullptr, desc);
 #elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferCreateDesc());
 #else
 			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferDesc());
 #endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-		self->m_D3D11_DummyResource->AddRef();
+			self->m_D3D11_DummyResource->AddRef();
 
 			FRHIViewDesc	viewDesc;
 			viewDesc.Common.ViewType = FRHIViewDesc::EViewType::BufferUAV;

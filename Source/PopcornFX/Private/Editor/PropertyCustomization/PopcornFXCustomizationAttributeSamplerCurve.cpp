@@ -47,37 +47,19 @@ void FPopcornFXCustomizationAttributeSamplerCurve::CustomizeChildren(TSharedRef<
 	uint8	curveDimensionValue = 0;
 	curveDimensionPty->GetValue(curveDimensionValue);
 	curveDimensionPty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationAttributeSamplerCurve::RebuildProperties));
-	ChildBuilder.AddProperty(curveDimensionPty.ToSharedRef());
+	AddErrorableProperty(PropertyHandle, "CurveDimension", ChildBuilder, m_Sampler && !m_Sampler->bIsInline, false);
 
-	TSharedPtr<IPropertyHandle>	curve1DPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesCurve, Curve1D));
-	ChildBuilder.AddProperty(curve1DPty.ToSharedRef()).
-		EditCondition(curveDimensionValue == EAttributeSamplerCurveDimension::Float1, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Curve1D", ChildBuilder, curveDimensionValue == EAttributeSamplerCurveDimension::Float1, true);
 
-	TSharedPtr<IPropertyHandle>	secondCurve1DPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesCurve, SecondCurve1D));
-	ChildBuilder.AddProperty(secondCurve1DPty.ToSharedRef()).
-		EditCondition(curveDimensionValue == EAttributeSamplerCurveDimension::Float1 && isDoubleCurveValue, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "SecondCurve1D", ChildBuilder, curveDimensionValue == EAttributeSamplerCurveDimension::Float1 && isDoubleCurveValue, true);
 
-	TSharedPtr<IPropertyHandle>	curve3DPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesCurve, Curve3D));
-	ChildBuilder.AddProperty(curve3DPty.ToSharedRef()).
-		EditCondition(curveDimensionValue == EAttributeSamplerCurveDimension::Float3, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Curve3D", ChildBuilder, curveDimensionValue == EAttributeSamplerCurveDimension::Float3, true);
 
-	TSharedPtr<IPropertyHandle>	secondCurve3DPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesCurve, SecondCurve3D));
-	ChildBuilder.AddProperty(secondCurve3DPty.ToSharedRef()).
-		EditCondition(curveDimensionValue == EAttributeSamplerCurveDimension::Float3 && isDoubleCurveValue, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "SecondCurve3D", ChildBuilder, curveDimensionValue == EAttributeSamplerCurveDimension::Float3 && isDoubleCurveValue, true);
 
-	TSharedPtr<IPropertyHandle>	curve4DPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesCurve, Curve4D));
-	ChildBuilder.AddProperty(curve4DPty.ToSharedRef()).
-		EditCondition(curveDimensionValue == EAttributeSamplerCurveDimension::Float4, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Curve4D", ChildBuilder, curveDimensionValue == EAttributeSamplerCurveDimension::Float4, true);
 
-	TSharedPtr<IPropertyHandle>	secondCurve4DPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesCurve, SecondCurve4D));
-	ChildBuilder.AddProperty(secondCurve4DPty.ToSharedRef()).
-		EditCondition(curveDimensionValue == EAttributeSamplerCurveDimension::Float4 && isDoubleCurveValue, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "SecondCurve4D", ChildBuilder, curveDimensionValue == EAttributeSamplerCurveDimension::Float4 && isDoubleCurveValue, true);
 }
 
 //----------------------------------------------------------------------------

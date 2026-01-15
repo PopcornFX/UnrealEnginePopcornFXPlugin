@@ -357,4 +357,48 @@ void	UPopcornFXAttributeSampler::PostEditChangeProperty(FPropertyChangedEvent &p
 
 //----------------------------------------------------------------------------
 
+PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSampler::_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+
+#if WITH_EDITOR
+	m_UnsupportedProperties.Empty();
+	// Cleanup old/broken references
+	if (m_IncompatibleProperties.Contains(nullptr))
+		m_IncompatibleProperties.Remove(nullptr);
+	m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Empty();
+#endif
+
+	if (!ArePropertiesSupported())
+	{
+#if WITH_EDITOR
+		m_IncompatibleProperties.FindOrAdd(emitter).m_Properties = m_UnsupportedProperties;
+		OnSamplerValidStateChanged.Broadcast();
+#endif
+		return null;
+	}
+	if (!ArePropertiesCompatible(emitter, defaultSampler))
+	{
+#if WITH_EDITOR
+		OnSamplerValidStateChanged.Broadcast();
+#endif
+		return null;
+	}
+
+	PopcornFX::CParticleSamplerDescriptor *samplerDesc = _AttribSampler_SetupSamplerDescriptor(emitter, desc, defaultSampler);
+	if (samplerDesc == null)
+	{
+		return null;
+	}
+
+#if WITH_EDITOR
+	m_UnsupportedProperties.Empty();
+	m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Empty();
+	OnSamplerValidStateChanged.Broadcast();
+#endif
+	return samplerDesc;
+}
+
+
+//----------------------------------------------------------------------------
+
 #undef LOCTEXT_NAMESPACE

@@ -68,6 +68,7 @@ UPopcornFXEmitterComponent	*UPopcornFXEmitterComponent::CreateStandaloneEmitterC
 			psc->Scene = scene;
 		}
 		psc->Effect = effect;
+		psc->UpdateSamplerObjects(effect);
 		//psc->bOverrideLODMethod = false;
 
 		psc->RegisterComponentWithWorld(world);
@@ -782,7 +783,7 @@ UPopcornFXAttributeSampler	*UPopcornFXEmitterComponent::GetAttributeSampler(cons
 		return null;
 
 	int32 sampleri = attrList->FindSamplerIndex(InAttributeSamplerName);
-	if (!(sampleri >= 0 && sampleri < (int32)attrList->SamplerCount()))
+	if (sampleri < 0 || sampleri >= (int32)attrList->SamplerCount() || sampleri >= (int32)Samplers.Num())
 		return null;
 	const FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(sampleri);
 	if (!desc)

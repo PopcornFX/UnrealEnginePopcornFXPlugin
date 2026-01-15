@@ -5,11 +5,15 @@
 
 #include "PopcornFXAttributeSamplerText.h"
 
-#include "PopcornFXPlugin.h"
-#include "PopcornFXAttributeList.h"
-
 #include "PopcornFXSDK.h"
 #include <pk_particles/include/ps_samplers_classes.h>
+#include <pk_render_helpers/include/frame_collector/rh_frame_data.h>
+
+#include "PopcornFXPlugin.h"
+#include "PopcornFXAttributeList.h"
+#include "Assets/PopcornFXEffect.h"
+#include "Assets/PopcornFXEffectPriv.h"
+
 
 //----------------------------------------------------------------------------
 
@@ -99,7 +103,57 @@ void	UPopcornFXAttributeSamplerText::CopyPropertiesFrom(const UPopcornFXAttribut
 	Properties = *newTextProperties;
 }
 
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerText::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+
+	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+
+	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	{
+		return;
+	}
+
+	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
+	if (samplerList.Count() == 0)
+	{
+		return;
+	}
+	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
+	PK_ASSERT(samplerDesc != null);
+	if (samplerDesc == null)
+	{
+		return;
+	}
+	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+
+	const PopcornFX::CResourceDescriptor_Text *text = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Text>(defaultSampler.Get());
+	if (text != null)
+	{
+		if (updateUnlockedValues)
+		{
+			Properties.Text = ToUE(text->TextData());
+		}
+	}
+}
+
 #endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerText::ArePropertiesSupported()
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerText::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
 
 //----------------------------------------------------------------------------
 

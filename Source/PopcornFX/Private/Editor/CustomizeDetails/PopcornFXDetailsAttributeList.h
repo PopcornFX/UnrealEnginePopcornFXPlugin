@@ -28,7 +28,6 @@ class	IDetailGroup;
 namespace { class	SPopcornFXAttributeCategory; }
 
 UPopcornFXEffect						*ResolveEffect(const UPopcornFXAttributeList *attrList);
-EPopcornFXAttribSamplerShapeType::Type	ToUEShapeType(PopcornFX::CShapeDescriptor::EShapeType pkShapeType);
 FString									GenerateTypeName(PopcornFX::EBaseTypeID typeId);
 const char								*ResolveAttribSamplerNodeName(const PopcornFX::CParticleAttributeSamplerDeclaration *sampler, EPopcornFXAttributeSamplerType::Type samplerType);
 TSharedPtr<IPropertyHandle>				ResolveSamplerProperties(const TSharedPtr<IPropertyHandle> samplerPty, EPopcornFXAttributeSamplerType::Type type, const FString &samplerTypeName);

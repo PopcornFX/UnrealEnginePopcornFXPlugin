@@ -5,12 +5,13 @@
 
 #include "PopcornFXAttributeSamplerCurve.h"
 
-#include "PopcornFXPlugin.h"
-#include "PopcornFXStats.h"
-#include "PopcornFXAttributeList.h"
-
 #include "PopcornFXSDK.h"
 #include <pk_particles/include/ps_samplers_classes.h>
+#include <pk_render_helpers/include/frame_collector/rh_frame_data.h>
+
+#include "PopcornFXStats.h"
+#include "Assets/PopcornFXEffect.h"
+#include "Assets/PopcornFXEffectPriv.h"
 
 #include "Curves/CurveFloat.h"
 #include "Curves/CurveVector.h"
@@ -189,6 +190,39 @@ void	UPopcornFXAttributeSamplerCurve::CopyPropertiesFrom(const UPopcornFXAttribu
 	Properties = *newCurveProperties;
 }
 
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerCurve::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+
+	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+
+	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	{
+		return;
+	}
+
+	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
+	if (samplerList.Count() == 0)
+	{
+		return;
+	}
+	const PopcornFX::CParticleAttributeSamplerDeclaration * const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
+	PK_ASSERT(samplerDesc != null);
+	if (samplerDesc == null)
+	{
+		return;
+	}
+	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+
+	const PopcornFX::CResourceDescriptor_Curve	*curve = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Curve>(defaultSampler.Get());
+	if (curve != null)
+	{
+		Properties.CurveDimension = static_cast<EAttributeSamplerCurveDimension::Type>(curve->ValueType());
+	}
+}
+
 #endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
@@ -284,7 +318,6 @@ void	UPopcornFXAttributeSamplerCurve::GetAssociatedCurves(UCurveBase *&curve0, U
 	}
 	case	EAttributeSamplerCurveDimension::Float2:
 	{
-		PK_ASSERT_NOT_REACHED();
 		break;
 	}
 	case	EAttributeSamplerCurveDimension::Float3:
@@ -380,6 +413,39 @@ bool	UPopcornFXAttributeSamplerCurve::RebuildCurvesData()
 	success &= SetupCurve(m_Data->m_Curve0, curve0);
 	success &= !Properties.bIsDoubleCurve || SetupCurve(m_Data->m_Curve1, curve1);
 	return success;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerCurve::ArePropertiesSupported()
+{
+	if (Properties.CurveDimension == EAttributeSamplerCurveDimension::Float2)
+	{
+		FString errorMsg = TEXT("2D Curves are not supported");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("CurveDimension"), *errorMsg);
+#endif
+		//PK_ASSERT_NOT_REACHED();
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerCurve::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	// Make sure the sampler matches what the effect expects
+	// Mismatchs should only happen when using an external sampler
+	const PopcornFX::CResourceDescriptor_Curve	*defaultCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Curve>(defaultSampler);
+	if (!PK_VERIFY(defaultCurveSampler != null))
+		return false;
+
+	if (Properties.CurveDimension != static_cast<EAttributeSamplerCurveDimension::Type>(defaultCurveSampler->ValueType()))
+	{
+		return false;
+	}
+	return true;
 }
 
 //----------------------------------------------------------------------------

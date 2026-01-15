@@ -7,9 +7,12 @@
 
 #include "PopcornFXPlugin.h"
 #include "PopcornFXStats.h"
+#include "PopcornFXHelper.h"
 #include "PopcornFXAttributeList.h"
-#include "Assets/PopcornFXTextureAtlas.h"
 #include "GPUSim/PopcornFXGPUSim.h"
+#include "Assets/PopcornFXEffect.h"
+#include "Assets/PopcornFXEffectPriv.h"
+#include "Assets/PopcornFXTextureAtlas.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_particles/include/ps_samplers_classes.h>
@@ -24,6 +27,8 @@
 #endif // (PK_GPU_D3D12 != 0)
 
 #include "Engine/Texture.h"
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistry/AssetData.h"
 
 //----------------------------------------------------------------------------
 
@@ -203,7 +208,96 @@ void	UPopcornFXAttributeSamplerImage::CopyPropertiesFrom(const UPopcornFXAttribu
 	Properties = *newImageProperties;
 }
 
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeSamplerImage::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+
+	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+
+	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	{
+		return;
+	}
+
+	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
+	if (samplerList.Count() == 0)
+	{
+		return;
+	}
+	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
+	PK_ASSERT(samplerDesc != null);
+	if (samplerDesc == null)
+	{
+		return;
+	}
+	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+
+	const PopcornFX::CResourceDescriptor_Image *image = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Image>(defaultSampler.Get());
+	if (image != null)
+	{
+		if (updateUnlockedValues)
+		{
+			FAssetRegistryModule &AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+			// Try to fetch the texture
+			FString	uePath = TEXT("/Game/");
+			uePath.Append(ToUE(image->TextureResource()));
+			FAssetData AssetData = AssetRegistryModule.Get().GetAssetByObjectPath(uePath);
+			UTexture *texture = Cast<UTexture>(AssetData.GetAsset());
+			if (texture)
+			{
+				Properties.Texture = texture;
+			}
+
+			// Try to fetch the atlas
+			uePath = TEXT("/Game/");
+			uePath.Append(ToUE(image->AtlasDefinition()));
+			AssetData = AssetRegistryModule.Get().GetAssetByObjectPath(uePath);
+			UPopcornFXTextureAtlas *atlas = Cast<UPopcornFXTextureAtlas>(AssetData.GetAsset());
+			if (atlas)
+			{
+				Properties.TextureAtlas = atlas;
+			}
+
+			if (image->SampleRawValues())
+			{
+				Properties.SamplingMode = EPopcornFXImageSamplingMode::Regular;
+			}
+			else
+			{
+				Properties.DensityPower = image->DensityPower();
+				Properties.DensitySource = static_cast<EPopcornFXImageDensitySource::Type>(image->DensitySrc());
+			}
+		}
+	}
+}
+
 #endif // WITH_EDITOR
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerImage::ArePropertiesSupported()
+{
+	if (!Properties.Texture)
+	{
+		FString errorMsg = TEXT("Null texture");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("Texture"), *errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerImage, Error, grid, this, errorMsg);
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXAttributeSamplerImage::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
 
 //----------------------------------------------------------------------------
 

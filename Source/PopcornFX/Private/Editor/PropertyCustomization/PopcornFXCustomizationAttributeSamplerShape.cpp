@@ -37,169 +37,100 @@ void FPopcornFXCustomizationAttributeSamplerShape::CustomizeChildren(TSharedRef<
 	FPopcornFXCustomizationAttributeSampler::CustomizeChildren(PropertyHandle, ChildBuilder, CustomizationUtils);
 
 	TSharedPtr<IPropertyHandle>	shapeTypePty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, ShapeType));
-	ChildBuilder.AddProperty(shapeTypePty.ToSharedRef());
 	shapeTypePty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationAttributeSamplerShape::RebuildProperties));
 	uint8	shapeType;
 	shapeTypePty->GetValue(shapeType);
+	AddErrorableProperty(PropertyHandle, "ShapeType", ChildBuilder, true, false);
 
 	TSharedPtr<IPropertyHandle>	shapeSamplingModePty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, ShapeSamplingMode));
-	ChildBuilder.AddProperty(shapeSamplingModePty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh || shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-		FOnBooleanValueChanged()).
-		EditConditionHides(true);
 	shapeSamplingModePty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationAttributeSamplerShape::RebuildProperties));
 	uint8	shapeSamplingMode;
 	shapeSamplingModePty->GetValue(shapeSamplingMode);
+	AddErrorableProperty(PropertyHandle, "ShapeSamplingMode", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh || shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	densityColorChannelPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, DensityColorChannel));
-	ChildBuilder.AddProperty(densityColorChannelPty.ToSharedRef()).
-		EditCondition((shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh || shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh)
-			&& shapeSamplingMode == EPopcornFXMeshSamplingMode::Weighted,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "DensityColorChannel", ChildBuilder,
+		(shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh || shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh)
+		&& shapeSamplingMode == EPopcornFXMeshSamplingMode::Weighted, true);
 
-	TSharedPtr<IPropertyHandle>	weightPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, Weight));
-	ChildBuilder.AddProperty(weightPty.ToSharedRef()).
-		EditCondition(shapeType != EPopcornFXAttribSamplerShapeType::SkeletalMesh, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Weight", ChildBuilder,
+		shapeType != EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	boxDimensionPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, BoxDimension));
-	ChildBuilder.AddProperty(boxDimensionPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::Box, FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "BoxDimension", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::Box, true);
 
-	TSharedPtr<IPropertyHandle>	radiusPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, Radius));
-	ChildBuilder.AddProperty(radiusPty.ToSharedRef()).
-		EditCondition(shapeType != EPopcornFXAttribSamplerShapeType::Box
-			&& shapeType != EPopcornFXAttribSamplerShapeType::StaticMesh
-			&& shapeType != EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Radius", ChildBuilder,
+		shapeType != EPopcornFXAttribSamplerShapeType::Box
+		&& shapeType != EPopcornFXAttribSamplerShapeType::StaticMesh
+		&& shapeType != EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	innerRadiusPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, InnerRadius));
-	ChildBuilder.AddProperty(innerRadiusPty.ToSharedRef()).
-		EditCondition((shapeType == EPopcornFXAttribSamplerShapeType::Cylinder
+	AddErrorableProperty(PropertyHandle, "InnerRadius", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::Cylinder
 			|| shapeType == EPopcornFXAttribSamplerShapeType::Capsule
 			|| shapeType == EPopcornFXAttribSamplerShapeType::Ellipsoid
-			|| shapeType == EPopcornFXAttribSamplerShapeType::Sphere),
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+			|| shapeType == EPopcornFXAttribSamplerShapeType::Sphere, true);
 
-	TSharedPtr<IPropertyHandle>	heightPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, Height));
-	ChildBuilder.AddProperty(heightPty.ToSharedRef()).
-		EditCondition((shapeType == EPopcornFXAttribSamplerShapeType::Cylinder || shapeType == EPopcornFXAttribSamplerShapeType::Capsule
-			|| shapeType == EPopcornFXAttribSamplerShapeType::Cone),
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Height", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::Cylinder || shapeType == EPopcornFXAttribSamplerShapeType::Capsule
+			|| shapeType == EPopcornFXAttribSamplerShapeType::Cone, true);
 
-	TSharedPtr<IPropertyHandle>	scalePty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, Scale));
-	ChildBuilder.AddProperty(scalePty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Scale", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh, true);
 
-	TSharedPtr<IPropertyHandle>	staticMeshPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, StaticMesh));
-	ChildBuilder.AddProperty(staticMeshPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "StaticMesh", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh, true);
 
-	TSharedPtr<IPropertyHandle>	staticMeshSubIndexPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, StaticMeshSubIndex));
-	ChildBuilder.AddProperty(staticMeshSubIndexPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "StaticMeshSubIndex", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::StaticMesh, true);
 
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 	TSharedPtr<IPropertyHandle>	shapesPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, Shapes));
 	ChildBuilder.AddProperty(shapesPty.ToSharedRef());
 #endif
 
-	TSharedPtr<IPropertyHandle>	useRelativeTransformPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bUseRelativeTransform));
-	ChildBuilder.AddProperty(useRelativeTransformPty.ToSharedRef()).
-		EditCondition(shapeType != EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bUseRelativeTransform", ChildBuilder,
+		shapeType != EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
 	// Skeletal mesh
 
-	TSharedPtr<IPropertyHandle>	skeletalMeshActorPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, TargetActor));
-	ChildBuilder.AddProperty(skeletalMeshActorPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "TargetActor", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	skinnedMeshComponentNamePty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, SkinnedMeshComponentName));
-	ChildBuilder.AddProperty(skinnedMeshComponentNamePty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "SkinnedMeshComponentName", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	pauseSkinningPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bPauseSkinning));
-	ChildBuilder.AddProperty(pauseSkinningPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bPauseSkinning", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	skinPositionsPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bSkinPositions));
-	ChildBuilder.AddProperty(skinPositionsPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bSkinPositions", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	skinNormalsPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bSkinNormals));
-	ChildBuilder.AddProperty(skinNormalsPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bSkinNormals", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	skinTangentsPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bSkinTangents));
-	ChildBuilder.AddProperty(skinTangentsPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bSkinTangents", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	buildColorsPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bBuildColors));
-	ChildBuilder.AddProperty(buildColorsPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bBuildColors", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	bBuildUVsPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bBuildUVs));
-	ChildBuilder.AddProperty(bBuildUVsPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bBuildUVs", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	bComputeVelocitiesPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bComputeVelocities));
-	ChildBuilder.AddProperty(bComputeVelocitiesPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bComputeVelocities", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	bBuildClothDataPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bBuildClothData));
-	ChildBuilder.AddProperty(bBuildClothDataPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bBuildClothData", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	bApplyScalePty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bApplyScale));
-	ChildBuilder.AddProperty(bApplyScalePty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bApplyScale", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	bEditorBuildInitialPosePty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bEditorBuildInitialPose));
-	ChildBuilder.AddProperty(bEditorBuildInitialPosePty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "bEditorBuildInitialPose", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	TSharedPtr<IPropertyHandle>	transformsPty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, Transforms));
-	ChildBuilder.AddProperty(transformsPty.ToSharedRef()).
-		EditCondition(shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh,
-			FOnBooleanValueChanged()).
-		EditConditionHides(true);
+	AddErrorableProperty(PropertyHandle, "Transforms", ChildBuilder,
+		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 }
 
 //----------------------------------------------------------------------------
