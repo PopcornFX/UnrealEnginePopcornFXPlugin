@@ -44,8 +44,7 @@ bool	FPopcornFXDrawRequestsBuffer::LoadIFN()
 
 #if (ENGINE_MINOR_VERSION >= 7)
 		FRHIBufferCreateDesc	bufferDesc =
-			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Draw requests buffer"), totalByteCount, 0, usage)
-			.DetermineInitialState();
+			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Draw requests buffer"), totalByteCount, 0, usage).DetermineInitialState();
 #elif (ENGINE_MINOR_VERSION >= 6)
 		FRHIBufferCreateDesc	bufferDesc(TEXT("PopcornFX Draw requests buffer"), totalByteCount, 0, usage);
 #else

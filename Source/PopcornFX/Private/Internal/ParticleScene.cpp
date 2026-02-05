@@ -84,6 +84,7 @@
 
 #include <pk_particles/include/Updaters/CPU/updater_cpu.h>
 #include <pk_particles/include/Updaters/Auto/updater_auto.h>
+#include <pk_particles/include/Storage/Auto/storage_spatial_auto.h>
 #include <pk_particles_toolbox/include/pt_transforms.h>
 
 #if (PK_GPU_D3D11 == 1)
@@ -262,7 +263,8 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	PK_ASSERT(sceneComp != null);
 	m_SceneComponent = sceneComp;
 
-	PopcornFX::CParticleUpdateManager_Auto	*updateManager = null;
+	PopcornFX::CParticleUpdateManager_Auto			*updateManager = null;
+	PopcornFX::CParticleSpatialStorageManager_Auto	*spatialManagerAuto = PopcornFX::CParticleSpatialStorageManager_Auto::New();
 
 #if (PK_HAS_GPU != 0)
 	const FString				hardwareDetails = FHardwareInfo::GetHardwareDetailsString();
@@ -290,7 +292,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 		SetupPopcornFXRHIAPI(API);
 #endif
 
-	m_ParticleMediumCollection = PK_NEW(PopcornFX::CParticleMediumCollection(this, updateManager));
+	m_ParticleMediumCollection = PK_NEW(PopcornFX::CParticleMediumCollection(this, updateManager, spatialManagerAuto));
 	if (!PK_VERIFY(m_ParticleMediumCollection != null))
 		return false;
 
@@ -315,7 +317,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 	if (updateManager != null)
 	{
 #if (PK_HAS_GPU != 0)
-		GPU_InitIFN();
+		GPU_InitIFN(updateManager, spatialManagerAuto);
 #endif // (PK_HAS_GPU != 0)
 	}
 
@@ -2190,16 +2192,16 @@ DEFINE_STAT(STAT_PopcornFX_GPU_PreRender_Exec);
 
 //----------------------------------------------------------------------------
 
-bool	CParticleScene::GPU_InitIFN()
+bool	CParticleScene::GPU_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto)
 {
 	bool	ok = false;
 #if (PK_GPU_D3D11 == 1)
 	if (m_EnableD3D11)
-		ok = D3D11_InitIFN();
+		ok = D3D11_InitIFN(updateManagerAuto, spatialManagerAuto);
 #endif
 #if (PK_GPU_D3D12 == 1)
 	if (!ok && m_EnableD3D12)
-		ok = D3D12_InitIFN();
+		ok = D3D12_InitIFN(updateManagerAuto, spatialManagerAuto);
 #endif
 	return ok;
 }
@@ -2341,7 +2343,7 @@ namespace
 
 //----------------------------------------------------------------------------
 
-bool	CParticleScene::D3D11_InitIFN()
+bool	CParticleScene::D3D11_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto)
 {
 	PK_ASSERT(m_EnableD3D11);
 
@@ -2357,6 +2359,14 @@ bool	CParticleScene::D3D11_InitIFN()
 		return false;
 	}
 	PK_ASSERT(updateManager_D3D11->GPU_InternalDeferredContext() == null);
+
+	PopcornFX::CParticleUpdateManager_D3D11 *internalUpdateManager = updateManagerAuto->GetUpdateManager_GPU<PopcornFX::CParticleUpdateManager_D3D11>();
+
+	if (!PK_VERIFY(spatialManagerAuto != null && internalUpdateManager != null &&
+		spatialManagerAuto->GetSpatialStorageManager_D3D11() != null &&
+		spatialManagerAuto->GetSpatialStorageManager_D3D11()->BindUpdaterD3D11(internalUpdateManager)))
+		return false;
+
 
 	SFetchD3D11Context		*fetch = new SFetchD3D11Context;
 
@@ -2432,9 +2442,7 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		{
 			check(self->m_D3D11_DummyView == null);
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 7)
-			FRHIBufferCreateDesc	desc;
-			desc.SetInitialState(ERHIAccess::UAVGraphics);
-			self->m_D3D11_DummyResource = new FD3D11Buffer(nullptr, desc);
+			self->m_D3D11_DummyResource = new FD3D11Buffer(nullptr, FRHIBufferCreateDesc().SetInitialState(ERHIAccess::UAVGraphics));
 #elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferCreateDesc());
 #else
@@ -2723,7 +2731,7 @@ void	CParticleScene::D3D12_EnqueueTask(const PopcornFX::PParticleUpdaterTaskD3D1
 
 //----------------------------------------------------------------------------
 
-bool	CParticleScene::D3D12_InitIFN()
+bool	CParticleScene::D3D12_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto)
 {
 	PK_ASSERT(m_EnableD3D12);
 
@@ -2759,6 +2767,13 @@ bool	CParticleScene::D3D12_InitIFN()
 		delete fetch;
 		return false;
 	}
+
+	PopcornFX::CParticleUpdateManager_D3D12 *internalUpdateManager = updateManagerAuto->GetUpdateManager_GPU<PopcornFX::CParticleUpdateManager_D3D12>();
+
+	if (!PK_VERIFY(spatialManagerAuto != null && internalUpdateManager != null &&
+		spatialManagerAuto->GetSpatialStorageManager_D3D12() != null &&
+		spatialManagerAuto->GetSpatialStorageManager_D3D12()->BindUpdaterD3D12(internalUpdateManager)))
+		return false;
 
 	// Get info from command queue
 	const D3D12_COMMAND_LIST_TYPE	queueType = D3D12_COMMAND_LIST_TYPE_DIRECT; // We're currently submitting in the gfx queue (_D3D12_ExecuteTasksArray)

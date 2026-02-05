@@ -57,6 +57,8 @@ namespace	physx
 FWD_PK_API_BEGIN
 class	CParticleMediumCollection;
 class	CParticleDescriptor;
+class	CParticleUpdateManager_Auto;
+class	CParticleSpatialStorageManager_Auto;
 struct	SSimDispatchHint;
 namespace Drawers
 {
@@ -313,7 +315,7 @@ private:
 	//----------------------------------------------------------------------------
 
 private:
-	bool			GPU_InitIFN();
+	bool			GPU_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto);
 	void			GPU_Destroy();
 	void			GPU_PreRender();
 	void			GPU_PreUpdate();
@@ -334,7 +336,7 @@ public:
 	class FRHIUnorderedAccessView	*m_D3D11_DummyView = null;
 
 private:
-	bool			D3D11_InitIFN();
+	bool			D3D11_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto);
 	void			D3D11_Destroy();
 	void			D3D11_PreRender();
 	void			D3D11_PreUpdate();
@@ -364,7 +366,7 @@ public:
 	struct ID3D12Device				*D3D12_Device() const { PK_ASSERT(D3D12Ready()); return m_D3D12_Device; }
 
 private:
-	bool			D3D12_InitIFN();
+	bool			D3D12_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto);
 	void			D3D12_Destroy();
 	void			D3D12_PreRender();
 	void			D3D12_PreUpdate();

@@ -275,7 +275,6 @@ namespace
 			break;
 		case	EPopcornFXLegacyMaterialType::Billboard_VolumetricFog:
 		case	EPopcornFXLegacyMaterialType::Billboard_SixWayLightmap:
-			finalMatType = mat.LegacyMaterialType;
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();
@@ -440,6 +439,8 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		// Default values:
 		mat.IsLegacy = decl.FindAdditionalFieldDefinition(PopcornFX::CStringId("Diffuse.Color")) != null
+						|| decl.m_MaterialPath.Contains("SixWayLightmap")
+						|| decl.m_MaterialPath.Contains("VolumetricFog")
 						|| (decl.m_MaterialPath.Contains("Legacy", PopcornFX::CaseInsensitive)
 							&& decl.m_MaterialPath.Contains("PopcornFXCore", PopcornFX::CaseInsensitive));
 		mat.LegacyMaterialType = EPopcornFXLegacyMaterialType::Billboard_Additive;

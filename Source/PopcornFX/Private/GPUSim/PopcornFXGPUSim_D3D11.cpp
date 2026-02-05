@@ -97,7 +97,8 @@ FRHIBuffer						*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D11 *strea
 	// The BUF_UnorderedAccess could technically be left active, but none of the UE plugin shaders are binding any of the PK sim streams as UAV anyways.
 	const EBufferUsageFlags		bufferUsage = BUF_ShaderResource;
 #if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
-	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferCreateDesc(TEXT("PopcornFXBuffer"), sizeInBytes, stride, bufferUsage));
+	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer,
+	FRHIBufferCreateDesc(TEXT("PopcornFXBuffer"), sizeInBytes, stride, bufferUsage).DetermineInitialState());
 #else
 	FD3D11Buffer				*buffer = new FD3D11Buffer(stream->m_Buffer, FRHIBufferDesc(sizeInBytes, stride, bufferUsage));
 #endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
