@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -167,180 +167,306 @@ enum class	EPopcornFXDefaultMaterialType
 	__Max UMETA(Hidden)
 };
 
+USTRUCT()
+struct FPopcornFXRendererDesc
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY()
+	FString	Name;
+	UPROPERTY()
+	FString	ParentLayerName;
+	UPROPERTY()
+	uint32	ParentLayerID;
+	UPROPERTY()
+	int		Type;
+
+	FPopcornFXRendererDesc()
+		: Name(), ParentLayerName(), ParentLayerID(), Type()
+	{
+	}
+
+	FPopcornFXRendererDesc(const FString &Name, const FString &ParentLayerName, const uint32 ParentLayerID, const int &Type)
+		: Name(Name), ParentLayerName(ParentLayerName), ParentLayerID(ParentLayerID), Type(Type)
+	{
+	}
+
+	bool operator == (const FPopcornFXRendererDesc &other) const
+	{
+		return Name == other.Name && ParentLayerName == other.ParentLayerName && ParentLayerID == other.ParentLayerID && Type == other.Type;
+	}
+
+	bool operator != (const FPopcornFXRendererDesc &other) const
+	{
+		return Name != other.Name || ParentLayerName != other.ParentLayerName || ParentLayerID != other.ParentLayerID || Type != other.Type;
+	}
+
+	FPopcornFXRendererDesc &operator = (const FPopcornFXRendererDesc &other)
+	{
+		Name = other.Name;
+		ParentLayerName = other.ParentLayerName;
+		ParentLayerID = other.ParentLayerID;
+		Type = other.Type;
+		return *this;
+	}
+};
+
 extern const EPopcornFXLegacyMaterialType		kLegacyTransparentBillboard_Material_ToUE[4];
 extern const EPopcornFXLegacyMaterialType		kOpaqueBillboard_LegacyMaterial_ToUE[3];
 extern const EPopcornFXDefaultMaterialType		kOpaqueBillboard_DefaultMaterial_ToUE[3];
 extern const EPopcornFXLegacyMaterialType		kOpaqueMesh_LegacyMaterial_ToUE[3];
 extern const EPopcornFXDefaultMaterialType		kOpaqueMesh_DefaultMaterial_ToUE[3];
 
+// Every UE asset used by a PopcornFX material, I.E. parameters that the user can edit in the effect window
+USTRUCT()
+struct FPopcornFXEditableMaterialProperties
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere, meta=(DisplayThumbnail="true"))
+	UMaterialInterface*				Material;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureDiffuse;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureDiffuseRamp;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureEmissive;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureEmissiveRamp;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureNormal;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureRoughMetal;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureSpecular;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureAlphaRemapper;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureMotionVectors;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureSixWay_RLTS;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureSixWay_BBF;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*VATTexturePosition;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*VATTextureNormal;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*VATTextureColor;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*VATTextureRotation;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UTexture2D						*TextureSkeletalAnimation;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UPopcornFXTextureAtlas			*TextureAtlas;
+
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	USkeletalMesh					*SkeletalMesh;
+	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere)
+	UStaticMesh						*StaticMesh;
+
+	FPopcornFXEditableMaterialProperties()
+:	Material()
+,	TextureDiffuse(nullptr)
+,	TextureDiffuseRamp(nullptr)
+,	TextureEmissive(nullptr)
+,	TextureEmissiveRamp(nullptr)
+,	TextureNormal(nullptr)
+,	TextureRoughMetal(nullptr)
+,	TextureSpecular(nullptr)
+,	TextureAlphaRemapper(nullptr)
+,	TextureMotionVectors(nullptr)
+,	TextureSixWay_RLTS(nullptr)
+,	TextureSixWay_BBF(nullptr)
+,	VATTexturePosition(nullptr)
+,	VATTextureNormal(nullptr)
+,	VATTextureColor(nullptr)
+,	VATTextureRotation(nullptr)
+,	TextureSkeletalAnimation(nullptr)
+,	TextureAtlas(nullptr)
+,	SkeletalMesh(nullptr)
+,	StaticMesh(nullptr)
+	{
+	}
+};
+
+// Set of features that the effect using this will have
 USTRUCT(BlueprintType)
 struct FPopcornFXSubRendererMaterial
 {
 public:
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere, BlueprintReadOnly, meta=(DisplayThumbnail="true"))
-	UMaterialInterface*			Material;
+	// Actual properties used by the effect
+	UPROPERTY(Category = "PopcornFX RendererMaterial", EditAnywhere)
+	FPopcornFXEditableMaterialProperties	EditableProperties;
 
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	EPopcornFXLegacyMaterialType		LegacyMaterialType;
-
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	EPopcornFXDefaultMaterialType		DefaultMaterialType;
-
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureDiffuse;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureDiffuseRamp;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureEmissive;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureEmissiveRamp;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureNormal;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureRoughMetal;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureSpecular;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureAlphaRemapper;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureMotionVectors;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureSixWay_RLTS;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureSixWay_BBF;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*VATTexturePosition;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*VATTextureNormal;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*VATTextureColor;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*VATTextureRotation;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UTexture2D					*TextureSkeletalAnimation;
-
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UPopcornFXTextureAtlas		*TextureAtlas;
-
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						NoAlpha : 1;
+	// Default properties used by the effect, I.E. what was exported from Popcorn
+	UPROPERTY()
+	FPopcornFXEditableMaterialProperties	EditablePropertiesDefault;
 
 	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						MeshAtlas : 1;
+	EPopcornFXLegacyMaterialType	LegacyMaterialType;
 
 	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						Raytraced : 1;
+	EPopcornFXDefaultMaterialType	DefaultMaterialType;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						SoftAnimBlending : 1;
+	uint32							NoAlpha : 1;
+
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32							MeshAtlas : 1;
+
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32							Raytraced : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						MotionVectorsBlending : 1;
+	uint32							SoftAnimBlending : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						CastShadow : 1;
+	uint32							MotionVectorsBlending : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						Lit : 1;
+	uint32							CastShadow : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						SortIndices : 1;
+	uint32							Lit : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						CorrectDeformation : 1;
+	uint32							SortIndices : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						Roughness;
+	uint32							CorrectDeformation : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						Metalness;
+	float							Roughness;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						SoftnessDistance;
+	float							Metalness;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						SphereMaskHardness;
+	float							SoftnessDistance;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						AtlasSubDivX;
+	float							SphereMaskHardness;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						AtlasSubDivY;
+	float							AtlasSubDivX;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						MVDistortionStrengthColumns;
+	float							AtlasSubDivY;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						MVDistortionStrengthRows;
+	float							MVDistortionStrengthColumns;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						VATNumFrames;
+	float							MVDistortionStrengthRows;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						VATPackedData : 1;
+	uint32							VATNumFrames;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						VATPivotBoundsMin;
+	uint32							VATPackedData : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						VATPivotBoundsMax;
+	float							VATPivotBoundsMin;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						VATNormalizedData : 1;
+	float							VATPivotBoundsMax;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						VATPositionBoundsMin;
+	uint32							VATNormalizedData : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						VATPositionBoundsMax;
+	float							VATPositionBoundsMin;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						SkeletalAnimationCount;
+	float							VATPositionBoundsMax;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	FVector						SkeletalAnimationPosBoundsMin;
+	uint32							SkeletalAnimationCount;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	FVector						SkeletalAnimationPosBoundsMax;
+	FVector							SkeletalAnimationPosBoundsMin;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						SkeletalAnimationLinearInterpolate : 1;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						SkeletalAnimationLinearInterpolateTracks : 1;
+	FVector							SkeletalAnimationPosBoundsMax;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	float						MaskThreshold;
+	uint32							SkeletalAnimationLinearInterpolate : 1;
+	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
+	uint32							SkeletalAnimationLinearInterpolateTracks : 1;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	int32						DrawOrder;
-	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						DynamicParameterMask;
+	float							MaskThreshold;
 
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	USkeletalMesh				*SkeletalMesh;
+	int32							DrawOrder;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	UStaticMesh					*StaticMesh;
+	uint32							DynamicParameterMask;
+
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						StaticMeshLOD;
+	uint32							StaticMeshLOD;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						PerParticleLOD : 1;
+	uint32							PerParticleLOD : 1;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						MotionBlur : 1;
+	uint32							MotionBlur : 1;
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
-	uint32						IsLegacy : 1;
+	uint32							IsLegacy : 1;
+
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureDiffuse = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureDiffuseRamp = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureEmissive = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureEmissiveRamp = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureNormal = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureRoughMetal = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureSpecular = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureAlphaRemapper = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureMotionVectors = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureSixWay_RLTS = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureSixWay_BBF = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasVATTexturePosition = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasVATTextureNormal = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasVATTextureColor = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasVATTextureRotation = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureSkeletalAnimation = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasStaticMesh = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasSkeletalMesh = false;
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
+	bool							bHasTextureAtlas = false;
 	
+	UPROPERTY()
+	TArray<uint32>					m_SkeletalMeshBoneIndicesReorder;
 
 	UPROPERTY()
-	TArray<uint32>				m_SkeletalMeshBoneIndicesReorder;
+	int32							m_RMId;
 
-	UPROPERTY()
-	int32						m_RMId;
-
+	/* Renderer that uses this material */
+	UPROPERTY(VisibleAnywhere)
+	FPopcornFXRendererDesc			Renderer;
 
 	UPROPERTY(Instanced)
-	UMaterialInstanceConstant	*MaterialInstance;
+	UMaterialInstanceConstant		*MaterialInstance; // what is this
 
 	FPopcornFXSubRendererMaterial();
 	~FPopcornFXSubRendererMaterial();
@@ -359,17 +485,17 @@ public:
 	inline bool			RenderThread_SameMaterial_Billboard(const FPopcornFXSubRendererMaterial &other) const
 	{
 		return
-			Material == other.Material &&
-			TextureDiffuse == other.TextureDiffuse &&
-			TextureDiffuseRamp == other.TextureDiffuseRamp &&
-			TextureEmissive == other.TextureEmissive &&
-			TextureNormal == other.TextureNormal &&
-			TextureSpecular == other.TextureSpecular &&
-			TextureAlphaRemapper == other.TextureAlphaRemapper &&
-			TextureAtlas == other.TextureAtlas &&
-			TextureMotionVectors == other.TextureMotionVectors &&
-			TextureSixWay_RLTS == other.TextureSixWay_RLTS &&
-			TextureSixWay_BBF == other.TextureSixWay_BBF &&
+			EditableProperties.Material == other.EditableProperties.Material &&
+			EditableProperties.TextureDiffuse == other.EditableProperties.TextureDiffuse &&
+			EditableProperties.TextureDiffuseRamp == other.EditableProperties.TextureDiffuseRamp &&
+			EditableProperties.TextureEmissive == other.EditableProperties.TextureEmissive &&
+			EditableProperties.TextureNormal == other.EditableProperties.TextureNormal &&
+			EditableProperties.TextureSpecular == other.EditableProperties.TextureSpecular &&
+			EditableProperties.TextureAlphaRemapper == other.EditableProperties.TextureAlphaRemapper &&
+			EditableProperties.TextureAtlas == other.EditableProperties.TextureAtlas &&
+			EditableProperties.TextureMotionVectors == other.EditableProperties.TextureMotionVectors &&
+			EditableProperties.TextureSixWay_RLTS == other.EditableProperties.TextureSixWay_RLTS &&
+			EditableProperties.TextureSixWay_BBF == other.EditableProperties.TextureSixWay_BBF &&
 			NoAlpha == other.NoAlpha &&
 			MeshAtlas == other.MeshAtlas &&
 			Raytraced == other.Raytraced &&
@@ -389,26 +515,26 @@ public:
 	inline bool			RenderThread_SameMaterial_Mesh(const FPopcornFXSubRendererMaterial &other) const
 	{
 		// caller should have check that beforehand
-		ensure(StaticMesh == other.StaticMesh);
-		ensure(SkeletalMesh == other.SkeletalMesh);
+		ensure(EditableProperties.StaticMesh == other.EditableProperties.StaticMesh);
+		ensure(EditableProperties.SkeletalMesh == other.EditableProperties.SkeletalMesh);
 		ensure(StaticMeshLOD == other.StaticMeshLOD);
 		ensure(PerParticleLOD == other.PerParticleLOD);
 		ensure(MotionBlur == other.MotionBlur);
 		ensure(m_SkeletalMeshBoneIndicesReorder.Num() == other.m_SkeletalMeshBoneIndicesReorder.Num());
 		return
-			Material == other.Material && // Mandatory
-			TextureDiffuse == other.TextureDiffuse &&
-			TextureDiffuseRamp == other.TextureDiffuseRamp &&
-			TextureEmissive == other.TextureEmissive &&
-			TextureNormal == other.TextureNormal &&
-			TextureSpecular == other.TextureSpecular &&
-			TextureAlphaRemapper == other.TextureAlphaRemapper &&
-			TextureAtlas == other.TextureAtlas && // not a parameter, yet ?
-			TextureMotionVectors == other.TextureMotionVectors &&
-			VATTexturePosition == other.VATTexturePosition &&
-			VATTextureNormal == other.VATTextureNormal &&
-			VATTextureColor == other.VATTextureColor &&
-			VATTextureRotation == other.VATTextureRotation &&
+			EditableProperties.Material == other.EditableProperties.Material && // Mandatory
+			EditableProperties.TextureDiffuse == other.EditableProperties.TextureDiffuse &&
+			EditableProperties.TextureDiffuseRamp == other.EditableProperties.TextureDiffuseRamp &&
+			EditableProperties.TextureEmissive == other.EditableProperties.TextureEmissive &&
+			EditableProperties.TextureNormal == other.EditableProperties.TextureNormal &&
+			EditableProperties.TextureSpecular == other.EditableProperties.TextureSpecular &&
+			EditableProperties.TextureAlphaRemapper == other.EditableProperties.TextureAlphaRemapper &&
+			EditableProperties.TextureAtlas == other.EditableProperties.TextureAtlas && // not a parameter, yet ?
+			EditableProperties.TextureMotionVectors == other.EditableProperties.TextureMotionVectors &&
+			EditableProperties.VATTexturePosition == other.EditableProperties.VATTexturePosition &&
+			EditableProperties.VATTextureNormal == other.EditableProperties.VATTextureNormal &&
+			EditableProperties.VATTextureColor == other.EditableProperties.VATTextureColor &&
+			EditableProperties.VATTextureRotation == other.EditableProperties.VATTextureRotation &&
 			VATNumFrames == other.VATNumFrames &&
 			VATPackedData == other.VATPackedData &&
 			VATPivotBoundsMin == other.VATPivotBoundsMin &&
@@ -416,7 +542,7 @@ public:
 			VATNormalizedData == other.VATNormalizedData &&
 			VATPositionBoundsMin == other.VATPositionBoundsMin &&
 			VATPositionBoundsMax == other.VATPositionBoundsMax &&
-			TextureSkeletalAnimation == other.TextureSkeletalAnimation &&
+			EditableProperties.TextureSkeletalAnimation == other.EditableProperties.TextureSkeletalAnimation &&
 			SkeletalAnimationCount == other.SkeletalAnimationCount &&
 			SkeletalAnimationPosBoundsMin == other.SkeletalAnimationPosBoundsMin &&
 			SkeletalAnimationPosBoundsMax == other.SkeletalAnimationPosBoundsMax &&
@@ -441,14 +567,14 @@ public:
 	inline bool			RenderThread_SameMaterial_Decal(const FPopcornFXSubRendererMaterial &other) const
 	{
 		return
-			Material == other.Material &&
-			TextureDiffuse == other.TextureDiffuse &&
-			TextureDiffuseRamp == other.TextureDiffuseRamp &&
-			TextureEmissive == other.TextureEmissive &&
-			TextureEmissiveRamp == other.TextureEmissiveRamp &&
-			TextureAlphaRemapper == other.TextureAlphaRemapper &&
-			TextureAtlas == other.TextureAtlas &&
-			TextureMotionVectors == other.TextureMotionVectors &&
+			EditableProperties.Material == other.EditableProperties.Material &&
+			EditableProperties.TextureDiffuse == other.EditableProperties.TextureDiffuse &&
+			EditableProperties.TextureDiffuseRamp == other.EditableProperties.TextureDiffuseRamp &&
+			EditableProperties.TextureEmissive == other.EditableProperties.TextureEmissive &&
+			EditableProperties.TextureEmissiveRamp == other.EditableProperties.TextureEmissiveRamp &&
+			EditableProperties.TextureAlphaRemapper == other.EditableProperties.TextureAlphaRemapper &&
+			EditableProperties.TextureAtlas == other.EditableProperties.TextureAtlas &&
+			EditableProperties.TextureMotionVectors == other.EditableProperties.TextureMotionVectors &&
 			AtlasSubDivX == other.AtlasSubDivX &&
 			AtlasSubDivY == other.AtlasSubDivY &&
 			MVDistortionStrengthColumns == other.MVDistortionStrengthColumns &&
@@ -475,6 +601,47 @@ public:
 		return false;
 	}
 
+	bool operator == (const FPopcornFXSubRendererMaterial& other) const
+	{
+		if (IsLegacy)
+		{
+			if (LegacyMaterialType != other.LegacyMaterialType)
+			{
+				return false;
+			}
+			if (LegacyMaterialType == EPopcornFXLegacyMaterialType::Decal)
+			{
+				return RenderThread_SameMaterial_Decal(other);
+			}
+			else if (LegacyMaterialType >= EPopcornFXLegacyMaterialType::Mesh_Additive && LegacyMaterialType <= EPopcornFXLegacyMaterialType::Mesh_VAT_Masked_Rigid_Lit)
+			{
+				return RenderThread_SameMaterial_Mesh(other);
+			}
+			else
+			{
+				return RenderThread_SameMaterial_Billboard(other);
+			}
+		}
+		else
+		{
+			if (DefaultMaterialType != other.DefaultMaterialType)
+			{
+				return false;
+			}
+			if (DefaultMaterialType == EPopcornFXDefaultMaterialType::Decal)
+			{
+				return RenderThread_SameMaterial_Decal(other);
+			}
+			else if (DefaultMaterialType >= EPopcornFXDefaultMaterialType::Mesh_Additive && DefaultMaterialType <= EPopcornFXDefaultMaterialType::Mesh_Dithered_Lit)
+			{
+				return RenderThread_SameMaterial_Mesh(other);
+			}
+			else
+			{
+				return RenderThread_SameMaterial_Billboard(other);
+			}
+		}
+	}
 };
 
 /** Save the Materials needed to Render the PopcornFX Particles of a PopcornFXEffect.
@@ -493,8 +660,13 @@ public:
 	UPROPERTY(Category="PopcornFX RendererMaterial", VisibleAnywhere)
 	TArray<uint32>								RendererIndices;
 
+	// Actual material and feature setup. There can be multiple ones for distortion effects etc
 	UPROPERTY(Category="PopcornFX RendererMaterial", EditAnywhere, EditFixedSize, NoClear)
 	TArray<FPopcornFXSubRendererMaterial>		SubMaterials;
+
+	// SRendererDeclaration::m_RendererUID cache
+	UPROPERTY()
+	uint32										UID;
 
 	virtual void		BeginDestroy() override;
 	virtual bool		IsReadyForFinishDestroy() override;
@@ -514,7 +686,8 @@ public:
 
 #if WITH_EDITOR
 	void				TriggerParticleRenderersModification();
-	bool				Setup(UPopcornFXEffect *parentEffect, const void *renderer, uint32 rIndex);
+	bool				Setup(UPopcornFXEffect *parentEffect, const void *renderer, uint32 rIndex, const FPopcornFXRendererDesc &rendererData);
+	void				SetupIndex(uint32 rIndex);
 	bool				Add(UPopcornFXEffect *parentEffect, uint32 rIndex);
 	void				ReloadInstances();
 	void				RenameDependenciesIFN(UObject *oldAsset, UObject *newAsset);
@@ -533,7 +706,7 @@ public:
 private:
 #if WITH_EDITOR
 	bool				_ReloadInstance(uint32 subMatId);
-	bool				_Setup(UPopcornFXEffect *parentEffect, const void *rendererBase, uint32 rIndex);
+	bool				_Setup(UPopcornFXEffect *parentEffect, const void *rendererBase, uint32 rIndex, const FPopcornFXRendererDesc &rendererData);
 	void				_AddRendererIndex(uint32 rIndex);
 #endif
 

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 #pragma once
 
@@ -147,10 +147,14 @@ private:
 	bool							m_ProcessViewIndependentData = false;
 	ERHIFeatureLevel::Type			m_FeatureLevel = ERHIFeatureLevel::Num;
 
+	// Random value between 0 and 1 used as a seed to generate random values per particle in the shader
+	float							m_Random;
+
 	FShaderResourceViewRHIRef		m_SimDataSRVRef;
 
 	// View independent buffers
 	CPooledVertexBuffer				m_Indices;
+	// CPU Sim data
 	CPooledVertexBuffer				m_SimData;
 
 	// Additional input fields

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "Nodes/PopcornFXNode_GetAttribute.h"
@@ -20,28 +20,87 @@ UPopcornFXNode_GetAttribute::UPopcornFXNode_GetAttribute(const FObjectInitialize
 {
 	m_NodeTitle = LOCTEXT("GetAttribute", "Get Attribute");
 	m_NodeTooltip = LOCTEXT("GetAttributeNodeTooltip", "Gets a specific attribute value");
-	m_MenuCategory = LOCTEXT("MenuCategory", "PopcornFX|Attributes");
+	m_ValueDirection = EGPD_Output;
 
 	SetValuesPrefix("Out");
 
-	m_CustomParameters.Add(TPair<FName, FName>(TPairInitializer<FName, FName>("InAttributeIndex", UEdGraphSchema_K2::PC_Int)));
 	m_CustomParameters.Add(TPair<FName, FName>(TPairInitializer<FName, FName>("InApplyGlobalScale", UEdGraphSchema_K2::PC_Boolean)));
 
-	m_CustomParametersTooltip.Add("Attribute Index\nint\n\nIndex of the attribute");
 	m_CustomParametersTooltip.Add("Apply Global Scale\nbool\n\nWhether or not to apply global scale to the Out Value");
-	m_PinFieldTypeTooltip = "Attribute Type\nPinFieldType\n\nType of the attribute";
-}
-
-//---------------------------------------------------------------------------
-
-UClass	*UPopcornFXNode_GetAttribute::GetSelfPinClass() const
-{
-	return UPopcornFXEmitterComponent::StaticClass();
 }
 
 //----------------------------------------------------------------------------
 
-bool		UPopcornFXNode_GetAttribute::SetupNativeFunctionCall(UK2Node_CallFunction *functionCall)
+bool		UPopcornFXNode_GetAttribute::SetupNativeFunctionCallByName(UK2Node_CallFunction *functionCall)
+{
+	FName			functionName;
+	switch (DataType())
+	{
+	case	EPopcornFXPinDataType::Float:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsFloatByName);
+		break;
+	case	EPopcornFXPinDataType::Float2:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsFloat2ByName);
+		break;
+	case	EPopcornFXPinDataType::Float3:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsFloat3ByName);
+		break;
+	case	EPopcornFXPinDataType::Float4:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsFloat4ByName);
+		break;
+
+	case	EPopcornFXPinDataType::Int:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsIntByName);
+		break;
+	case	EPopcornFXPinDataType::Int2:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsInt2ByName);
+		break;
+	case	EPopcornFXPinDataType::Int3:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsInt3ByName);
+		break;
+	case	EPopcornFXPinDataType::Int4:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsInt4ByName);
+		break;
+
+	case	EPopcornFXPinDataType::Bool:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsBoolByName);
+		break;
+	case	EPopcornFXPinDataType::Bool2:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsBool2ByName);
+		break;
+	case	EPopcornFXPinDataType::Bool3:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsBool3ByName);
+		break;
+	case	EPopcornFXPinDataType::Bool4:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsBool4ByName);
+		break;
+
+	case	EPopcornFXPinDataType::Vector2D:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsVector2DByName);
+		break;
+	case	EPopcornFXPinDataType::Vector:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsVectorByName);
+		break;
+	case	EPopcornFXPinDataType::LinearColor:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsLinearColorByName);
+		break;
+	case	EPopcornFXPinDataType::Rotator:
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeFunctions, GetAttributeAsRotatorByName);
+		break;
+	}
+	if (!functionName.IsValid() || functionName.IsNone())
+		return false;
+	UFunction	*function = UPopcornFXAttributeFunctions::StaticClass()->FindFunctionByName(functionName);
+	if (!PK_VERIFY(function != null))
+		return false;
+	functionCall->SetFromFunction(function);
+	functionCall->AllocateDefaultPins();
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool		UPopcornFXNode_GetAttribute::SetupNativeFunctionCallByIndex(UK2Node_CallFunction *functionCall)
 {
 	FName			functionName;
 	switch (DataType())
@@ -100,11 +159,10 @@ bool		UPopcornFXNode_GetAttribute::SetupNativeFunctionCall(UK2Node_CallFunction 
 	}
 	if (!functionName.IsValid() || functionName.IsNone())
 		return false;
-	UFunction	*function = UPopcornFXAttributeFunctions::StaticClass()->FindFunctionByName(functionName);
+	UFunction *function = UPopcornFXAttributeFunctions::StaticClass()->FindFunctionByName(functionName);
 	if (!PK_VERIFY(function != null))
 		return false;
 	functionCall->SetFromFunction(function);
-	//functionCall->FunctionReference.SetExternalMember(functionName, UPopcornFXAttributeFunctions::StaticClass());
 	functionCall->AllocateDefaultPins();
 	return true;
 }

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXFunctions.h"
@@ -299,31 +299,31 @@ bool		UPopcornFXFunctions::UnregisterVirtualTextureOverride_GPU(const FString &v
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsFloat(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValue, bool InApplyGlobalScale)
+bool	UPopcornFXFunctions::GetEventPayloadAsFloat(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValue, bool InApplyGlobalScale)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 
 	if (InApplyGlobalScale)
 		OutValue *= FPopcornFXPlugin::GlobalScale();
 
-	return InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float, &OutValue);
+	return Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float, &OutValue);
 }
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsFloat2(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValueX, float &OutValueY, bool InApplyGlobalScale)
+bool	UPopcornFXFunctions::GetEventPayloadAsFloat2(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValueX, float &OutValueY, bool InApplyGlobalScale)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) float	outValue[2];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float2, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float2, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -341,10 +341,10 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat2(const UPopcornFXEmitterCompone
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsVector2D(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FVector2D &OutValue, bool InApplyGlobalScale)
+bool	UPopcornFXFunctions::GetEventPayloadAsVector2D(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FVector2D &OutValue, bool InApplyGlobalScale)
 {
 	float	outValues[2];
-	if (!GetEventPayloadAsFloat2(InSelf, PayloadName, outValues[0], outValues[1], InApplyGlobalScale))
+	if (!GetEventPayloadAsFloat2(Emitter, PayloadName, outValues[0], outValues[1], InApplyGlobalScale))
 		return false;
 	OutValue.X = outValues[0];
 	OutValue.Y = outValues[1];
@@ -353,15 +353,15 @@ bool	UPopcornFXFunctions::GetEventPayloadAsVector2D(const UPopcornFXEmitterCompo
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsFloat3(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, bool InApplyGlobalScale)
+bool	UPopcornFXFunctions::GetEventPayloadAsFloat3(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, bool InApplyGlobalScale)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) float	outValue[3];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float3, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float3, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -381,10 +381,10 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat3(const UPopcornFXEmitterCompone
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsVector(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FVector &OutValue, bool InApplyGlobalScale)
+bool	UPopcornFXFunctions::GetEventPayloadAsVector(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FVector &OutValue, bool InApplyGlobalScale)
 {
 	float	outValues[3];
-	if (!GetEventPayloadAsFloat3(InSelf, PayloadName, outValues[0], outValues[1], outValues[2], InApplyGlobalScale))
+	if (!GetEventPayloadAsFloat3(Emitter, PayloadName, outValues[0], outValues[1], outValues[2], InApplyGlobalScale))
 		return false;
 	OutValue.X = outValues[0];
 	OutValue.Y = outValues[1];
@@ -394,15 +394,15 @@ bool	UPopcornFXFunctions::GetEventPayloadAsVector(const UPopcornFXEmitterCompone
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsFloat4(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, float &OutValueW, bool InApplyGlobalScale)
+bool	UPopcornFXFunctions::GetEventPayloadAsFloat4(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, float &OutValueW, bool InApplyGlobalScale)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) float	outValue[4];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float4, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Float4, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -424,34 +424,34 @@ bool	UPopcornFXFunctions::GetEventPayloadAsFloat4(const UPopcornFXEmitterCompone
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsLinearColor(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FLinearColor &OutValue)
+bool	UPopcornFXFunctions::GetEventPayloadAsLinearColor(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FLinearColor &OutValue)
 {
-	return GetEventPayloadAsFloat4(InSelf, PayloadName, OutValue.R, OutValue.G, OutValue.B, OutValue.A, false);
+	return GetEventPayloadAsFloat4(Emitter, PayloadName, OutValue.R, OutValue.G, OutValue.B, OutValue.A, false);
 }
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsInt(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValue)
+bool	UPopcornFXFunctions::GetEventPayloadAsInt(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValue)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
-	return InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int, &OutValue);
+	return Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int, &OutValue);
 }
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsInt2(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValueX, int32 &OutValueY)
+bool	UPopcornFXFunctions::GetEventPayloadAsInt2(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValueX, int32 &OutValueY)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) int32	outValue[2];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int2, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int2, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -461,15 +461,15 @@ bool	UPopcornFXFunctions::GetEventPayloadAsInt2(const UPopcornFXEmitterComponent
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsInt3(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ)
+bool	UPopcornFXFunctions::GetEventPayloadAsInt3(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) int32	outValue[3];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int3, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int3, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -479,15 +479,15 @@ bool	UPopcornFXFunctions::GetEventPayloadAsInt3(const UPopcornFXEmitterComponent
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsInt4(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ, int32 &OutValueW)
+bool	UPopcornFXFunctions::GetEventPayloadAsInt4(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ, int32 &OutValueW)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) int32	outValue[4];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int4, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Int4, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -498,27 +498,27 @@ bool	UPopcornFXFunctions::GetEventPayloadAsInt4(const UPopcornFXEmitterComponent
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsBool(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValue)
+bool	UPopcornFXFunctions::GetEventPayloadAsBool(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValue)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
-	return InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool, &OutValue);
+	return Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool, &OutValue);
 }
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsBool2(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValueX, bool &OutValueY)
+bool	UPopcornFXFunctions::GetEventPayloadAsBool2(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValueX, bool &OutValueY)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) bool	outValue[2];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool2, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool2, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -527,15 +527,15 @@ bool	UPopcornFXFunctions::GetEventPayloadAsBool2(const UPopcornFXEmitterComponen
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsBool3(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ)
+bool	UPopcornFXFunctions::GetEventPayloadAsBool3(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) bool	outValue[3];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool3, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool3, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -545,15 +545,15 @@ bool	UPopcornFXFunctions::GetEventPayloadAsBool3(const UPopcornFXEmitterComponen
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsBool4(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ, bool &OutValueW)
+bool	UPopcornFXFunctions::GetEventPayloadAsBool4(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ, bool &OutValueW)
 {
-	if (!PK_VERIFY(InSelf != null))
+	if (!PK_VERIFY(Emitter != null))
 	{
-		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid InSelf"));
+		UE_LOG(LogPopcornFXFunctions, Warning, TEXT("Get Event Payload: Invalid Emitter"));
 		return false;
 	}
 	PK_ALIGN(0x10) bool	outValue[4];
-	if (!InSelf->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool4, outValue))
+	if (!Emitter->GetPayloadValue(PayloadName, EPopcornFXPayloadType::Bool4, outValue))
 		return false;
 	OutValueX = outValue[0];
 	OutValueY = outValue[1];
@@ -564,10 +564,10 @@ bool	UPopcornFXFunctions::GetEventPayloadAsBool4(const UPopcornFXEmitterComponen
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXFunctions::GetEventPayloadAsRotator(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FRotator &OutValue, bool InApplyGlobalScale)
+bool	UPopcornFXFunctions::GetEventPayloadAsRotator(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FRotator &OutValue, bool InApplyGlobalScale)
 {
 	PK_ALIGN(0x10) float	outValue[4];
-	if (GetEventPayloadAsFloat4(InSelf, PayloadName, outValue[0], outValue[1], outValue[2], outValue[3], InApplyGlobalScale))
+	if (GetEventPayloadAsFloat4(Emitter, PayloadName, outValue[0], outValue[1], outValue[2], outValue[3], InApplyGlobalScale))
 	{
 		OutValue = FQuat(outValue[0], outValue[1], outValue[2], outValue[3]).Rotator();
 		return true;

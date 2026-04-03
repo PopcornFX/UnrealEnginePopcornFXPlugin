@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -177,9 +177,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="PopcornFX|Emitter", meta=(Keywords="popcornfx particle emitter effect system", UnsafeDuringActorConstruction="true"))
 	bool							IsEmitterAlive() const;
 
-	/** Reset all attribute to their default values */
+	/** Reset attributes to their default values */
 	UFUNCTION(BlueprintCallable, Category="PopcornFX|Attributes", meta=(Keywords="popcornfx particle emitter effect system attribute"))
 	void							ResetAttributesToDefault();
+
+	/** Reset attribute samplers to their default values */
+	UFUNCTION(BlueprintCallable, Category = "PopcornFX|Attributes", meta = (Keywords = "popcornfx particle emitter effect system attribute"))
+	void							ResetSamplersToDefault();
 
 	/**
 	* Registers an event listener.

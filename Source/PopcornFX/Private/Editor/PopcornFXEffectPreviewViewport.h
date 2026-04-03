@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -47,6 +47,7 @@ public:
 	virtual void								OnFocusViewportToSelection() override;
 public:
 	void			ResetEmitterAttributes();
+	void			ResetEmitterSamplers();
 	void			ResetEmitter();
 
 	void			ToggleLoopEmitter(ECheckBoxState newState);
@@ -72,6 +73,11 @@ private:
 	bool	m_DisplayGrid;
 
 	FPreviewScene									m_PreviewScene;
+
+	/**
+	* Emitter placed in the viewport. Its attribute list needs to be refreshed every time we modify the effect's default attribute list
+	* (see FPopcornFXEffectEditor::OnObjectPropertyChanged())
+	*/
 	TObjectPtr<class UPopcornFXEmitterComponent>	m_EmitterComponent;
 
 	TWeakPtr<SDockTab>								m_ParentTab;

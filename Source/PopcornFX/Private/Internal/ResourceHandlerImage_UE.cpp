@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "ResourceHandlerImage_UE.h"
@@ -253,7 +253,7 @@ PopcornFX::CImage	*CResourceHandlerImage_UE::NewFromPath(const PopcornFX::CStrin
 
 		const FText		title = FText::FromString(FString("PopcornFX: Texture used for sampling"));
 		const FText		message = FText::Format(FText::FromString(FString("Texture \"{0}\" is used for CPU sampling so its LOD Group will be set to 'ColorLookupTable'.\n")), FText::FromString(texture->GetPathName()));
-		OpenMessageBox(EAppMsgType::Ok, message, title);
+		OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::Ok, message, title);
 		{
 			texture->Modify();
 			texture->MipGenSettings = TMGS_NoMipmaps;

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -30,6 +30,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXMeshVSUniforms, POPCORNFX_API)
 	SHADER_PARAMETER(int32, InDynamicParameter2sOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter3sOffset)
 	SHADER_PARAMETER(uint32, AtlasRectCount)
+	SHADER_PARAMETER(float, InstRandom)
 	SHADER_PARAMETER_SRV(Buffer<float4>, AtlasBuffer)
 END_GLOBAL_SHADER_PARAMETER_STRUCT()
 

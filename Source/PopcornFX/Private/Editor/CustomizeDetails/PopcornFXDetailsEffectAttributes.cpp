@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -17,7 +17,9 @@
 
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SScaleBox.h"
 
 #include "Styling/StyleColors.h"
 
@@ -107,7 +109,7 @@ void	FPopcornFXDetailsEffectAttributes::BuildSampler(const FPopcornFXSamplerDesc
 					SNew(STextBlock)
 						.Text(FText::FromString(name))
 						.ToolTipText(tooltipText)
-						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+						.Font(m_DetailLayoutBuilder->GetDetailFont())
 						.ColorAndOpacity(samplerNameColor)
 				]
 		];
@@ -133,6 +135,8 @@ void	FPopcornFXDetailsEffectAttributes::CustomizeDetails(class IDetailLayoutBuil
 	m_PropertyUtilities = DetailLayout.GetPropertyUtilities();
 	DetailLayout.GetObjectsBeingCustomized(m_BeingCustomized);
 
+	m_DetailLayoutBuilder = &DetailLayout;
+
 	m_AttributeListPty = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UPopcornFXEffect, DefaultAttributeList));
 	if (!PK_VERIFY(IsValidHandle(m_AttributeListPty)))
 	{
@@ -154,6 +158,58 @@ void	FPopcornFXDetailsEffectAttributes::CustomizeDetails(class IDetailLayoutBuil
 	}
 
 	m_AttributeListCategory = &DetailLayout.EditCategory("PopcornFX Default Attributes");
+	m_AttributeListCategory->SetDisplayName(FText::FromString("Default attribute values"));
+
+	FTextBlockStyle style;
+	style.SetColorAndOpacity(FSlateColor::UseForeground());
+	style.SetFont(DetailLayout.GetDetailFont());
+
+	TSharedPtr<SWidget> hbox;
+	SAssignNew(hbox, SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
+		[
+			SNew(SScaleBox)
+				[
+					SNew(SImage).Image(FCoreStyle::Get().GetBrush("Icons.Help"))
+				]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
+		[
+			SNew(SButton).Text(FText::FromString("Help")).TextStyle(&style).OnClicked_Lambda([]()
+				{
+					FPlatformProcess::LaunchURL(TEXT("https://documentation.popcornfx.com/PopcornFX/latest/plugins/ue-plugin/effects.html#_effect_attributes"), NULL, NULL);
+					return FReply::Handled();
+				})
+		];
+	m_AttributeListCategory->HeaderContent(hbox.ToSharedRef());
+
+	m_AttributeListCategory->AddCustomRow(FText::FromString("Tooltip"))
+		.NameContent()
+		[
+			SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(EVerticalAlignment::VAlign_Center)
+				[
+					SNew(SScaleBox)
+						[
+							SNew(SImage).Image(FCoreStyle::Get().GetBrush("Icons.Info"))
+						]
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(EVerticalAlignment::VAlign_Center)
+				[
+					SNew(STextBlock).Text(FText::FromString(" Note"))
+						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+				]
+		]
+		.ValueContent()
+		[
+			SNew(STextBlock)
+				.AutoWrapText(true)
+				.Font(DetailLayout.GetDetailFont())
+				.Text(FText::FromString("Here are the default attribute and attribute sampler values of your effect.\n"
+										"Every future emitter using this effect will have these values by default.\n"
+										"They also affect the emitter in the viewport above to preview your changes.\n"
+										"This can be changed per instance by editing emitters"))
+		];
 
 	Rebuild();
 }

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 #pragma once
 
@@ -127,6 +127,8 @@ private:
 	// Meshes buffers
 	PopcornFX::TMemoryView<const u32>			m_PerMeshParticleCount;
 	bool										m_HasMeshIDs;
+	// Random value between 0 and 1 used as a seed to generate random values per particle in the shader
+	float										m_Random;
 
 #if RHI_RAYTRACING
 	PopcornFX::CWorkingBuffer					m_RayTracing_Matrices;

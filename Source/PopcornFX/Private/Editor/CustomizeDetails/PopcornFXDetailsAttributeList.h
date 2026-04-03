@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -25,7 +25,6 @@
 class	UPopcornFXAttributeList;
 class	UPopcornFXEffect;
 class	IDetailGroup;
-namespace { class	SPopcornFXAttributeCategory; }
 
 UPopcornFXEffect						*ResolveEffect(const UPopcornFXAttributeList *attrList);
 FString									GenerateTypeName(PopcornFX::EBaseTypeID typeId);
@@ -35,6 +34,39 @@ TSharedPtr<IPropertyHandle>				ResolveSamplerProperties(const TSharedPtr<IProper
 class FPopcornFXDetailsAttributeList : public IDetailCustomization
 {
 public:
+
+	// Data needed to craft a widget representing an attribute
+	struct FAttributeDesc
+	{
+	public:
+		typedef FAttributeDesc					TSelf;
+		typedef FPopcornFXDetailsAttributeList	TParent;
+
+		UPopcornFXAttributeList					*m_AttributeList = nullptr;
+
+		bool									m_ReadOnly = false;
+
+		uint32									m_Index = 0;
+		u32										m_VectorDimension = 0;
+		const PopcornFX::CBaseTypeTraits		*m_Traits = null;
+
+		bool									m_IsColor = false;
+		bool									m_IsQuaternion = false;
+		bool									m_IsOneShotTrigger = false;
+		EPopcornFXAttributeDropDownMode::Type	m_DropDownMode;
+		TArray<FString>							m_EnumList; // copy
+		TArray<TSharedPtr<FString>>				m_SharedEnumList;
+		TArray<TSharedPtr<int32>>				m_EnumListIndices;
+		bool									m_HasMin;
+		bool									m_HasMax;
+
+		FSlateFontInfo							m_Font;
+
+		PopcornFX::SAttributesContainer_SAttrib	m_Min;
+		PopcornFX::SAttributesContainer_SAttrib	m_Max;
+		PopcornFX::SAttributesContainer_SAttrib	m_Def;
+	};
+
 	typedef FPopcornFXDetailsAttributeList		TSelf;
 
 	FPopcornFXDetailsAttributeList();
@@ -42,8 +74,9 @@ public:
 
 public:
 
-	UPopcornFXAttributeList		*UnsafeAttrList();
-	UPopcornFXAttributeList		*AttrList();
+	UPopcornFXAttributeList			*UnsafeAttrList();
+	const UPopcornFXAttributeList	*UnsafeAttrList() const;
+	UPopcornFXAttributeList			*AttrList();
 
 protected:
 
@@ -54,13 +87,13 @@ protected:
 	void						BuildAttribute(const FPopcornFXAttributeDesc *desc, const UPopcornFXAttributeList *attrList, uint32 attri, uint32 iCategory);
 	void						RebuildSamplers();
 	virtual void				BuildSampler(const FPopcornFXSamplerDesc *desc, const TSharedPtr<IPropertyHandle> samplerPty, const TSharedPtr<IPropertyHandle> samplerDescPty, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory) {}
-
-	bool								m_RefreshQueued;
-
-	float								m_ColumnWidth;
+	FReply						OnResetClicked(FAttributeDesc slateDesc);
+	FReply						OnDimResetClicked(uint32 dimi, FAttributeDesc slateDesc);
+	EVisibility					GetResetVisibility(FAttributeDesc slateDesc) const;
+	EVisibility					GetDimResetVisibility(uint32 dimi, FAttributeDesc slateDesc) const;
 
 	TArray<TWeakObjectPtr<UObject> >	m_BeingCustomized;
-	TWeakPtr<IDetailLayoutBuilder>		m_DetailLayoutBuilder;
+	IDetailLayoutBuilder				*m_DetailLayoutBuilder;
 	TSharedPtr<IPropertyUtilities>		m_PropertyUtilities;
 	IDetailCategoryBuilder				*m_AttributeListCategory;
 
@@ -68,8 +101,6 @@ protected:
 	TSharedPtr<IPropertyHandle>			m_SamplersPty;
 	TSharedPtr<IPropertyHandle>			m_SamplersDescPty;
 
-	TSharedPtr<IPropertyHandle>			m_FileVersionIdPty;
-	uint32								m_FileVersionId;
 	UPopcornFXEffect					*m_Effect;
 
 	TArray<IDetailGroup*>				m_IGroups;

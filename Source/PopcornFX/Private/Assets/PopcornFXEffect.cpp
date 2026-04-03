@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "Assets/PopcornFXEffect.h"
@@ -1024,77 +1024,103 @@ void	UPopcornFXEffect::ReloadRendererMaterials()
 	if (!LoadEffect())
 		return;
 
+	// TODO: optimize this, do we really have to destroy and recreate everything?
+	TArray<UPopcornFXRendererMaterial*>					oldMaterials = ParticleRendererMaterials;
+	ParticleRendererMaterials.Empty(oldMaterials.Num());
+
+	PopcornFX::PCEventConnectionMap	ecMap = m_Private->m_ParticleEffect->EventConnectionMap();
+	if (!PK_VERIFY(ecMap != null))
+		return;
+	s32				globalRendererIndex = -1;
+	const u32		layerCount = ecMap->m_LayerSlots.Count();
+	for (u32 iLayer = 0; iLayer < layerCount; ++iLayer)
 	{
-		TArray<UPopcornFXRendererMaterial*>					oldMaterials = ParticleRendererMaterials;
-		ParticleRendererMaterials.Empty(oldMaterials.Num());
-
-		PopcornFX::PCEventConnectionMap	ecMap = m_Private->m_ParticleEffect->EventConnectionMap();
-		if (!PK_VERIFY(ecMap != null))
+		const PopcornFX::PParticleDescriptor	desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
+		if (!PK_VERIFY(desc != null))
 			return;
-		s32				globalRendererIndex = -1;
-		const u32		layerCount = ecMap->m_LayerSlots.Count();
-		for (u32 iLayer = 0; iLayer < layerCount; ++iLayer)
+
+		PopcornFX::TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
+		const u32													rendererCount = renderers.Count();
+		for (u32 iRenderer = 0; iRenderer < rendererCount; ++iRenderer)
 		{
-			const PopcornFX::PParticleDescriptor	desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
-			if (!PK_VERIFY(desc != null))
+			globalRendererIndex++;
+
+			const PopcornFX::CRendererDataBase	*rBase = renderers[iRenderer].Get();
+			if (!PK_VERIFY(rBase != null))
 				return;
-			PopcornFX::TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
-			const u32													rendererCount = renderers.Count();
-			for (u32 iRenderer = 0; iRenderer < rendererCount; ++iRenderer)
+
+			PopcornFX::CString		customName;
+			PopcornFX::PBaseObject	rendererObj = m_Private->m_ParticleEffect->File()->FindObject(rBase->m_Declaration.m_RendererUID);
+			if (PK_VERIFY(PopcornFX::CParticleNodeRendererBase::m_Handler->IsBaseClassOf(rendererObj.Get())))
 			{
-				globalRendererIndex++;
+				PopcornFX::CParticleNodeRendererBase *rendererNode = checked_cast<PopcornFX::CParticleNodeRendererBase *>((rendererObj.Get()));
+				customName = rendererNode->CustomName().MapDefault().ToUTF8();
+			}
+				
+			UPopcornFXRendererMaterial	*newMat = NewObject<UPopcornFXRendererMaterial>(this);
+			FPopcornFXRendererDesc renderer(ToUE(customName), ToUE(desc->LayerName()), iLayer, static_cast<unsigned int>(rBase->m_RendererType));
+			if (!newMat->Setup(this, rBase, globalRendererIndex, renderer))
+			{
+				newMat->ConditionalBeginDestroy();
+				newMat = null;
+				continue;
+			}
 
-				const PopcornFX::CRendererDataBase	*rBase = renderers[iRenderer].Get();
-				if (!PK_VERIFY(rBase != null))
-					return;
-
-				UPopcornFXRendererMaterial	*newMat = NewObject<UPopcornFXRendererMaterial>(this);
-				if (!newMat->Setup(this, rBase, globalRendererIndex))
+			// search old renderer materials
+			for (int32 oldi = 0; oldi < oldMaterials.Num(); ++oldi)
+			{
+				UPopcornFXRendererMaterial *oldMat = oldMaterials[oldi];
+				if (oldMat != null &&
+					oldMat->UID == newMat->UID)
 				{
-					newMat->ConditionalBeginDestroy();
+					//oldMat->SetupIndex(globalRendererIndex);
+					oldMat->Setup(this, rBase, globalRendererIndex, renderer);
+
+					oldMaterials[oldi] = null;
+					ParticleRendererMaterials.Add(oldMat);
 					newMat = null;
-					continue;
+					break;
 				}
+			}
 
-				// search existing renderer materials
-				for (int32 mati = 0; mati < ParticleRendererMaterials.Num(); ++mati)
-				{
-					UPopcornFXRendererMaterial			*otherMat = ParticleRendererMaterials[mati];
-					if (PK_VERIFY(otherMat != null) &&
-						newMat->CanBeMergedWith(otherMat))
-					{
-						otherMat->Add(this, globalRendererIndex);
-						newMat = null;
-						break;
-					}
-				}
-
-				if (newMat == null) // has been inserted
-					continue;
-
-				// search old renderer materials
-				for (int32 oldi = 0; oldi < oldMaterials.Num(); ++oldi)
-				{
-					UPopcornFXRendererMaterial	*oldMat = oldMaterials[oldi];
-					if (oldMat != null &&
-						newMat->CanBeMergedWith(oldMat))
-					{
-						oldMat->Setup(this, rBase, globalRendererIndex);
-						oldMaterials[oldi] = null;
-						ParticleRendererMaterials.Add(oldMat);
-						newMat = null;
-						break;
-					}
-				}
-
-				if (newMat != null)
-				{
-					ParticleRendererMaterials.Add(newMat);
-					newMat = null;
-				}
+			if (newMat != null)
+			{
+				ParticleRendererMaterials.Add(newMat);
+				newMat = null;
 			}
 		}
 	}
+
+	for (int32 oldi = 0; oldi < oldMaterials.Num(); ++oldi)
+	{
+		UPopcornFXRendererMaterial *oldMat = oldMaterials[oldi];
+		if (oldMat != null)
+		{
+			UE_LOG(LogPopcornFXEffect, Display, TEXT("Render %s in layer %s is not present anymore"), *oldMat->SubMaterials[0].Renderer.Name, *oldMat->SubMaterials[0].Renderer.ParentLayerName);
+			PopcornFX::PBaseObject	rendererObj = m_Private->m_ParticleEffect->File()->FindObject(oldMat->UID);
+			if (rendererObj != null)
+			{
+				if (PopcornFX::CParticleNodeRendererBase::m_Handler->IsBaseClassOf(rendererObj.Get()))
+				{
+					PopcornFX::CParticleNodeRendererBase *rendererNode = checked_cast<PopcornFX::CParticleNodeRendererBase *>((rendererObj.Get()));
+					if (!rendererNode->Active())
+					{
+						UE_LOG(LogPopcornFXEffect, Display, TEXT("But is still present in the file, just inactive!"));
+						oldMat->SetupIndex(globalRendererIndex);
+						globalRendererIndex++;
+						oldMaterials[oldi] = null;
+						ParticleRendererMaterials.Add(oldMat);
+					}
+				}
+			}
+			//oldMat->SetupIndex(globalRendererIndex);
+
+			//oldMaterials[oldi] = null;
+			//ParticleRendererMaterials.Add(oldMat);
+		}
+	}
+
+
 	// Trigger everything to rebuild renderer drawers
 	for (int32 mati = 0; mati < ParticleRendererMaterials.Num(); ++mati)
 	{

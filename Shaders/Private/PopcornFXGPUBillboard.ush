@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 /*=============================================================================
@@ -71,6 +71,9 @@ struct	FVertexFactoryIntermediates
 #if (DYNAMIC_PARAMETERS_MASK & 8)
 	float4	DynamicParameter3;
 #endif
+
+	/** Random value per particle [0-1]. */
+	float Random;
 
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
@@ -187,8 +190,8 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	const uint		billboarderType = flags & BB_Flag_BillboardMask;
 	const float		normalBendingFactor = currentDr.y;
     const uint		rotateUV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_RotateUV) != 0;
-    const uint      flipV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipU) != 0;
-    const uint      flipU = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipV) != 0;
+    const uint      flipU = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipU) != 0;
+    const uint      flipV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipV) != 0;
 
 	const float2	cornerCoords = texCoords;
 
@@ -454,5 +457,11 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	BRANCH
 	if (PopcornFXGPUBillboardVSUniforms.InDynamicParameter3sOffset != -1)
 		intermediates.DynamicParameter3 = PKSimData_Load4f(particleID, PopcornFXGPUBillboardVSUniforms.InDynamicParameter3sOffset);
+#endif
+
+#if NEEDS_PARTICLE_RANDOM
+	intermediates.Random = PseudoRandom(float2(particleID, particleID) + float2(PopcornFXGPUBillboardVSUniforms.InstRandom, PopcornFXGPUBillboardVSUniforms.InstRandom));
+#else
+	intermediates.Random = 0.0f;
 #endif
 }

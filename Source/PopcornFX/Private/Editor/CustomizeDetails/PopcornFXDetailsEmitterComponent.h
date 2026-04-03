@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -18,10 +18,7 @@
 class UPopcornFXEmitterComponent;
 class UPopcornFXAttributeList;
 class UPopcornFXEffect;
-class IDetailGroup;
-class IPropertyHandleArray;
 class IDetailCategoryBuilder;
-struct FPopcornFXAttributeDesc;
 struct FPopcornFXSamplerDesc;
 
 class FPopcornFXDetailsEmitterComponent : public FPopcornFXDetailsAttributeList

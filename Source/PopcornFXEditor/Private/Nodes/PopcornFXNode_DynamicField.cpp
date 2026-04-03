@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "Nodes/PopcornFXNode_DynamicField.h"
@@ -23,143 +23,6 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXNode, Log, All);
 
 //----------------------------------------------------------------------------
 
-namespace	PopcornFXPinDataType
-{
-	uint32		RequiredPinNum(EPopcornFXPinDataType::Type type)
-	{
-		switch (type)
-		{
-		case EPopcornFXPinDataType::Float:
-		case EPopcornFXPinDataType::Int:
-		case EPopcornFXPinDataType::Bool:
-		case EPopcornFXPinDataType::Vector2D:
-		case EPopcornFXPinDataType::Vector:
-		case EPopcornFXPinDataType::LinearColor:
-		case EPopcornFXPinDataType::Rotator:
-			return 1;
-		case EPopcornFXPinDataType::Float2:
-		case EPopcornFXPinDataType::Int2:
-		case EPopcornFXPinDataType::Bool2:
-			return 2;
-		case EPopcornFXPinDataType::Float3:
-		case EPopcornFXPinDataType::Int3:
-		case EPopcornFXPinDataType::Bool3:
-			return 3;
-		case EPopcornFXPinDataType::Float4:
-		case EPopcornFXPinDataType::Int4:
-		case EPopcornFXPinDataType::Bool4:
-			return 4;
-		}
-		checkNoEntry();
-		return 0;
-	}
-
-	bool		CanBeGlobalScaled(EPopcornFXPinDataType::Type type)
-	{
-		switch (type)
-		{
-		case EPopcornFXPinDataType::Float:
-		case EPopcornFXPinDataType::Float2:
-		case EPopcornFXPinDataType::Float3:
-		case EPopcornFXPinDataType::Float4:
-		case EPopcornFXPinDataType::Vector2D:
-		case EPopcornFXPinDataType::Vector:
-			return true;
-		case EPopcornFXPinDataType::Int:
-		case EPopcornFXPinDataType::Int2:
-		case EPopcornFXPinDataType::Int3:
-		case EPopcornFXPinDataType::Int4:
-		case EPopcornFXPinDataType::Bool:
-		case EPopcornFXPinDataType::Bool2:
-		case EPopcornFXPinDataType::Bool3:
-		case EPopcornFXPinDataType::Bool4:
-		case EPopcornFXPinDataType::LinearColor:
-		case EPopcornFXPinDataType::Rotator:
-			return false;
-		}
-		checkNoEntry()
-		return false;
-	}
-
-#define _GET_BASE_STRUCT(__type)		TBaseStructure<__type>::Get()
-
-	bool		GetGraphPinsType(EPopcornFXPinDataType::Type type, FEdGraphPinType &outPinType)
-	{
-		switch (type)
-		{
-		case EPopcornFXPinDataType::Float:
-		case EPopcornFXPinDataType::Float2:
-		case EPopcornFXPinDataType::Float3:
-		case EPopcornFXPinDataType::Float4:
-			outPinType.PinCategory = UEdGraphSchema_K2::PC_Real;
-			return true;
-		case EPopcornFXPinDataType::Int:
-		case EPopcornFXPinDataType::Int2:
-		case EPopcornFXPinDataType::Int3:
-		case EPopcornFXPinDataType::Int4:
-			outPinType.PinCategory = UEdGraphSchema_K2::PC_Int;
-			return true;
-		case EPopcornFXPinDataType::Bool:
-		case EPopcornFXPinDataType::Bool2:
-		case EPopcornFXPinDataType::Bool3:
-		case EPopcornFXPinDataType::Bool4:
-			outPinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
-			return true;
-		case EPopcornFXPinDataType::Vector2D:
-			outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
-			outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FVector2D);
-			return true;
-		case EPopcornFXPinDataType::Vector:
-			outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
-			outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FVector);
-			return true;
-		case EPopcornFXPinDataType::LinearColor:
-			outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
-			outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FLinearColor);
-			return true;
-		case EPopcornFXPinDataType::Rotator:
-			outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
-			outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FRotator);
-			return true;
-		}
-		checkNoEntry()
-		return false;
-	}
-
-#undef _GET_BASE_STRUCT
-
-	// Removes leading "EPopcornFXPinFieldType::" if nessecary for Pin value
-	FString		GetPinValueName(EPopcornFXPinDataType::Type value)
-	{
-		static const TCHAR	kEnumName[] = TEXT("/Script/PopcornFX.EPopcornFXPinDataType");
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-		UEnum				*pinTypeEnum = FindObject<UEnum>(null, kEnumName, EFindObjectFlags::ExactClass);
-#else
-		UEnum				*pinTypeEnum = FindObject<UEnum>(null, kEnumName, true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-		check(pinTypeEnum);
-		FString		name = pinTypeEnum->GetNameByValue(value).ToString();
-		static const TCHAR	kEnumNameDoubleColon[] = TEXT("EPopcornFXPinDataType::");
-		if (name.Len() > PK_ARRAY_COUNT(kEnumNameDoubleColon) && name.StartsWith(kEnumNameDoubleColon))
-			name = name.RightChop(PK_ARRAY_COUNT(kEnumNameDoubleColon) - 1);
-		return name;
-	}
-
-	FName	GetPinTypeName()
-	{
-		static FName	pinTypeName = "PinType";
-		return pinTypeName;
-	}
-
-	FName	GetSelfName()
-	{
-		static FName	inSelfName = "InSelf";
-		return inSelfName;
-	}
-}
-
-//----------------------------------------------------------------------------
-
 UPopcornFXNode_DynamicField::UPopcornFXNode_DynamicField(const FObjectInitializer &objectInitializer)
 :	Super(objectInitializer)
 ,	m_ValueDirection(EGPD_Output)
@@ -168,6 +31,131 @@ UPopcornFXNode_DynamicField::UPopcornFXNode_DynamicField(const FObjectInitialize
 ,	m_BreakValue_DEPRECATED(false)
 ,	m_ParticleFieldType_DEPRECATED(uint32(-1)) // old default value is same as new default m_PinType(Float)
 {
+}
+
+//----------------------------------------------------------------------------
+
+uint32	UPopcornFXNode_DynamicField::RequiredPinNum(EPopcornFXPinDataType::Type type) const
+{
+	switch (type)
+	{
+	case EPopcornFXPinDataType::Float:
+	case EPopcornFXPinDataType::Int:
+	case EPopcornFXPinDataType::Bool:
+	case EPopcornFXPinDataType::Vector2D:
+	case EPopcornFXPinDataType::Vector:
+	case EPopcornFXPinDataType::LinearColor:
+	case EPopcornFXPinDataType::Rotator:
+		return 1;
+	case EPopcornFXPinDataType::Float2:
+	case EPopcornFXPinDataType::Int2:
+	case EPopcornFXPinDataType::Bool2:
+		return 2;
+	case EPopcornFXPinDataType::Float3:
+	case EPopcornFXPinDataType::Int3:
+	case EPopcornFXPinDataType::Bool3:
+		return 3;
+	case EPopcornFXPinDataType::Float4:
+	case EPopcornFXPinDataType::Int4:
+	case EPopcornFXPinDataType::Bool4:
+		return 4;
+	}
+	checkNoEntry();
+	return 0;
+}
+
+//----------------------------------------------------------------------------
+
+bool	UPopcornFXNode_DynamicField::CanBeGlobalScaled(EPopcornFXPinDataType::Type type) const
+{
+	switch (type)
+	{
+	case EPopcornFXPinDataType::Float:
+	case EPopcornFXPinDataType::Float2:
+	case EPopcornFXPinDataType::Float3:
+	case EPopcornFXPinDataType::Float4:
+	case EPopcornFXPinDataType::Vector2D:
+	case EPopcornFXPinDataType::Vector:
+		return true;
+	case EPopcornFXPinDataType::Int:
+	case EPopcornFXPinDataType::Int2:
+	case EPopcornFXPinDataType::Int3:
+	case EPopcornFXPinDataType::Int4:
+	case EPopcornFXPinDataType::Bool:
+	case EPopcornFXPinDataType::Bool2:
+	case EPopcornFXPinDataType::Bool3:
+	case EPopcornFXPinDataType::Bool4:
+	case EPopcornFXPinDataType::LinearColor:
+	case EPopcornFXPinDataType::Rotator:
+		return false;
+	}
+	checkNoEntry()
+		return false;
+}
+
+//----------------------------------------------------------------------------
+
+#define _GET_BASE_STRUCT(__type)		TBaseStructure<__type>::Get()
+
+bool	UPopcornFXNode_DynamicField::GetGraphPinsType(EPopcornFXPinDataType::Type type, FEdGraphPinType &outPinType) const
+{
+	switch (type)
+	{
+	case EPopcornFXPinDataType::Float:
+	case EPopcornFXPinDataType::Float2:
+	case EPopcornFXPinDataType::Float3:
+	case EPopcornFXPinDataType::Float4:
+		outPinType.PinCategory = UEdGraphSchema_K2::PC_Real;
+		return true;
+	case EPopcornFXPinDataType::Int:
+	case EPopcornFXPinDataType::Int2:
+	case EPopcornFXPinDataType::Int3:
+	case EPopcornFXPinDataType::Int4:
+		outPinType.PinCategory = UEdGraphSchema_K2::PC_Int;
+		return true;
+	case EPopcornFXPinDataType::Bool:
+	case EPopcornFXPinDataType::Bool2:
+	case EPopcornFXPinDataType::Bool3:
+	case EPopcornFXPinDataType::Bool4:
+		outPinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
+		return true;
+	case EPopcornFXPinDataType::Vector2D:
+		outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+		outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FVector2D);
+		return true;
+	case EPopcornFXPinDataType::Vector:
+		outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+		outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FVector);
+		return true;
+	case EPopcornFXPinDataType::LinearColor:
+		outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+		outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FLinearColor);
+		return true;
+	case EPopcornFXPinDataType::Rotator:
+		outPinType.PinCategory = UEdGraphSchema_K2::PC_Struct;
+		outPinType.PinSubCategoryObject = _GET_BASE_STRUCT(FRotator);
+		return true;
+	}
+	checkNoEntry()
+		return false;
+}
+
+#undef _GET_BASE_STRUCT
+
+//----------------------------------------------------------------------------
+
+FName	UPopcornFXNode_DynamicField::GetPinTypeName() const
+{
+	static FName	pinTypeName = "PinType";
+	return pinTypeName;
+}
+
+//----------------------------------------------------------------------------
+
+FName	UPopcornFXNode_DynamicField::GetSelfName() const
+{
+	static FName	inSelfName = "Emitter";
+	return inSelfName;
 }
 
 //----------------------------------------------------------------------------
@@ -192,8 +180,9 @@ void	UPopcornFXNode_DynamicField::AllocateDefaultPins()
 	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Exec, UEdGraphSchema_K2::PN_Execute);
 	CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Exec, UEdGraphSchema_K2::PN_Then);
 
-	// Create the input pins
-	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Object, TEXT(""), GetSelfPinClass(), PopcornFXPinDataType::GetSelfName());
+	// Create the input pins, here the "Emitter" pin
+	CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Object, TEXT(""), GetSelfPinClass(), GetSelfName());
+
 	const u32	paramCount = m_CustomParameters.Num();
 	for (u32 iParam = 0; iParam < paramCount; ++iParam)
 	{
@@ -208,29 +197,27 @@ void	UPopcornFXNode_DynamicField::AllocateDefaultPins()
 	// Create the return value pin
 	CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Boolean, UEdGraphSchema_K2::PN_ReturnValue);
 
+	// Data type pin
 	{
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 		UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), EFindObjectFlags::ExactClass);
 #else
 		UEnum		*pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), true);
 #endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-		UEdGraphPin		*pinTypePin = CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Byte, pinTypeEnum, PopcornFXPinDataType::GetPinTypeName());
+		UEdGraphPin		*pinTypePin = CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Byte, pinTypeEnum, GetPinTypeName());
 		PK_ASSERT(pinTypePin != null);
 
 		if (!m_PinFieldTypeTooltip.IsEmpty())
 			pinTypePin->PinToolTip = m_PinFieldTypeTooltip;
 
 		pinTypePin->bNotConnectable = true;
-
-		const FString	&newValue = PopcornFXPinDataType::GetPinValueName(m_DataType);
-		// graphSchema->TrySetDefaultValue(*pinTypePin, newValue); // !!! Will call ReconstructNode() !! infinite recurse !
-		pinTypePin->DefaultValue = newValue;
+		pinTypePin->DefaultValue = pinTypeEnum->GetNameStringByValue(m_DataType);
 	}
 
 	const EEdGraphPinDirection	pinDirection = m_ValueDirection.GetValue();
-	const uint32				pinCount = PopcornFXPinDataType::RequiredPinNum(m_DataType);
+	const uint32				pinCount = RequiredPinNum(m_DataType);
 	FEdGraphPinType				pinsType;
-	PopcornFXPinDataType::GetGraphPinsType(m_DataType, pinsType);
+	GetGraphPinsType(m_DataType, pinsType);
 
 	if (pinCount <= 1)
 	{
@@ -306,7 +293,7 @@ void	UPopcornFXNode_DynamicField::Serialize(FArchive& Ar)
 		}
 		if (m_PinType_DEPRECATED != EPopcornFXPinFieldType::Float)
 		{
-			RemovePin(FindPinChecked(PopcornFXPinDataType::GetPinTypeName()));
+			RemovePin(FindPinChecked(GetPinTypeName()));
 
 			m_DataType = *reinterpret_cast<EPopcornFXPinDataType::Type*>(&m_PinType_DEPRECATED);
 
@@ -331,7 +318,7 @@ void	UPopcornFXNode_DynamicField::PostReconstructNode()
 
 	// Break and Hide unwanted pins
 
-	const uint32				pinCount = PopcornFXPinDataType::RequiredPinNum(m_DataType);
+	const uint32				pinCount = RequiredPinNum(m_DataType);
 	if (pinCount <= 1)
 	{
 		BreakAndHidePinByName(m_ValueNameX);
@@ -353,7 +340,7 @@ void	UPopcornFXNode_DynamicField::PostReconstructNode()
 	}
 
 	// InApplyGlobalScale can exists in m_CustomParameters
-	if (!PopcornFXPinDataType::CanBeGlobalScaled(m_DataType))
+	if (!CanBeGlobalScaled(m_DataType))
 		BreakAndHidePinByName("InApplyGlobalScale");
 }
 
@@ -372,30 +359,32 @@ FSlateIcon	UPopcornFXNode_DynamicField::GetIconAndTint(FLinearColor& OutColor) c
 
 void	UPopcornFXNode_DynamicField::PinDefaultValueChanged(UEdGraphPin *pin)
 {
-	if (pin != FindPinChecked(PopcornFXPinDataType::GetPinTypeName()))
-		return;
-
-	if (!PK_VERIFY(!pin->DefaultValue.IsEmpty()))
-		return;
-
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-	UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), EFindObjectFlags::ExactClass);
-#else
-	UEnum		*pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-	check(pinTypeEnum);
-	int32		rawValue = pinTypeEnum->GetValueByName(FName(*pin->DefaultValue)); // GetValueByName is fine with or without "EPopcornFXPinDataType::"...
-	if (!PK_VERIFY(rawValue != INDEX_NONE))
+	// Data type pin
+	if (pin == FindPinChecked(GetPinTypeName()))
 	{
-		rawValue = EPopcornFXPinDataType::Float;
+		if (!PK_VERIFY(!pin->DefaultValue.IsEmpty()))
+			return;
+		{
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+			UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), EFindObjectFlags::ExactClass);
+#else
+			UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), true);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+			check(pinTypeEnum);
+			int32		rawValue = pinTypeEnum->GetValueByName(FName(*pin->DefaultValue)); // GetValueByName is fine with or without "EPopcornFXPinDataType::"...
+			if (!PK_VERIFY(rawValue != INDEX_NONE))
+			{
+				rawValue = EPopcornFXPinDataType::Float;
+			}
+			EPopcornFXPinDataType::Type	newValue = (EPopcornFXPinDataType::Type)rawValue;
+
+			if (newValue == m_DataType)
+				return; // no need to ReconstructNode()
+
+			m_DataType = newValue;
+		}
+		ReconstructNode();
 	}
-	EPopcornFXPinDataType::Type	newValue = (EPopcornFXPinDataType::Type)rawValue;
-
-	if (newValue == m_DataType)
-		return; // no need to ReconstructNode()
-
-	m_DataType = newValue;
-	ReconstructNode();
 }
 
 //----------------------------------------------------------------------------
@@ -420,7 +409,7 @@ void	UPopcornFXNode_DynamicField::ExpandNode(class FKismetCompilerContext &compi
 	Super::ExpandNode(compilerContext, sourceGraph);
 
 	// Force rebuild output category
-	UEdGraphPin	*pinTypePin = FindPinChecked(PopcornFXPinDataType::GetPinTypeName());
+	UEdGraphPin	*pinTypePin = FindPinChecked(GetPinTypeName());
 	PK_ASSERT(pinTypePin != null);
 	if (pinTypePin->DefaultValue.IsEmpty())
 	{
@@ -428,9 +417,13 @@ void	UPopcornFXNode_DynamicField::ExpandNode(class FKismetCompilerContext &compi
 		BreakAllNodeLinks();
 		return;
 	}
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+	UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), EFindObjectFlags::ExactClass);
+#else
+	UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), true);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 	PK_ONLY_IF_ASSERTS({
-			const FString	&value = PopcornFXPinDataType::GetPinValueName(m_DataType);
-			PK_ASSERT(pinTypePin->DefaultValue == value);
+			PK_ASSERT(pinTypePin->DefaultValue == pinTypeEnum->GetNameStringByValue(m_DataType));
 	});
 
 	UK2Node_CallFunction	*nativeFunctionCall = compilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, sourceGraph);
@@ -445,16 +438,15 @@ void	UPopcornFXNode_DynamicField::ExpandNode(class FKismetCompilerContext &compi
 
 	success &= PK_VERIFY(MovePinByName(compilerContext, nativeFunctionCall, UEdGraphSchema_K2::PN_Execute, true));
 	success &= PK_VERIFY(MovePinByName(compilerContext, nativeFunctionCall, UEdGraphSchema_K2::PN_Then, true));
-	success &= PK_VERIFY(MovePinByName(compilerContext, nativeFunctionCall, PopcornFXPinDataType::GetSelfName(), true));
+	success &= PK_VERIFY(MovePinByName(compilerContext, nativeFunctionCall, GetSelfName(), true));
 
 	const u32	paramCount = m_CustomParameters.Num();
 	for (u32 iParam = 0; iParam < paramCount; ++iParam)
 	{
-		// m_CustomParameters are optional
-		/*success &= */MovePinByName(compilerContext, nativeFunctionCall, m_CustomParameters[iParam].Key, false);
+		MovePinByName(compilerContext, nativeFunctionCall, m_CustomParameters[iParam].Key, false);
 	}
 
-	const uint32	pinCount = PopcornFXPinDataType::RequiredPinNum(m_DataType);
+	const uint32	pinCount = RequiredPinNum(m_DataType);
 
 	if (pinCount <= 1)
 	{

@@ -1,15 +1,15 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXGPUSim_D3D11.h"
 
-// Most of this file contains editor only hacks because UE4 doesn't export some "low level" RHI symbols
+// Most of this file contains editor only hacks because UE doesn't export some "low level" RHI symbols
 // So our only option is to copy paste implementations
 // Right now we create native API resources on PKFX side for GPU simulation, and have to convert those native resources
 // In RHI resources, but we don't let RHI create the resources.
-// So all those low level function implementations are not exposed by UE4 as it's not a use case for them
+// So all those low level function implementations are not exposed by UE as it's not a use case for them
 
 #if (PK_GPU_D3D11 == 1)
 

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -79,7 +79,7 @@ void FPopcornFXCustomizationAttributeSampler::UpdatePreviewEmitter()
 {
 	if (m_Effect && m_Effect->PreviewEmitter)
 	{
-		m_Effect->PreviewEmitter->ResetAttributesToDefault();
+		m_Effect->PreviewEmitter->ResetSamplersToDefault();
 	}
 }
 

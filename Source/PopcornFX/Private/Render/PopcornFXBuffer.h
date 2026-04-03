@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -240,14 +240,28 @@ public:
 protected:
 	bool		BufferAllocate(CBuffer &buffer, u32 sizeInBytes)
 	{
-		check(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+		check(IsInAnyRenderingThread());
+#else
+		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 		buffer.SetResourceUsage(m_BuffersUsedAsUAV, m_BuffersUsedAsSRV, m_ByteAddressBuffers, m_DrawIndirectBuffers);
 		return buffer.HardResize(sizeInBytes);
 	}
 
 	void		BufferRelease(CBuffer &buffer)
 	{
-		check(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+		check(IsInAnyRenderingThread());
+#else
+		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 		buffer.Release();
 	}
 };
@@ -263,14 +277,28 @@ public:
 protected:
 	bool		BufferAllocate(CBuffer &buffer, u32 sizeInBytes)
 	{
-		check(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+		check(IsInAnyRenderingThread());
+#else
+		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 		buffer.SetResourceUsage(m_BuffersUsedAsUAV, m_BuffersUsedAsSRV, m_ByteAddressBuffers);
 		return buffer.HardResize(sizeInBytes);
 	}
 
 	void		BufferRelease(CBuffer &buffer)
 	{
-		check(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+		check(IsInAnyRenderingThread());
+#else
+		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 		buffer.Release();
 	}
 };

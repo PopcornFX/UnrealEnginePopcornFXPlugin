@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -25,13 +25,15 @@ class UPopcornFXEffect : public UPopcornFXFile
 	~UPopcornFXEffect();
 
 public:
+	/** Attribute list used as default values for future emitters and the one in the asset editor viewport */
 	UPROPERTY(Category="PopcornFX Default Attributes", Instanced, VisibleAnywhere)
 	UPopcornFXAttributeList					*DefaultAttributeList;
 
-	/** Attribute samplers used by this effect in its preview window */
+	/** Attribute samplers to used as default values for future emitters and the one in the asset editor viewport */
 	UPROPERTY(Category = "PopcornFX Default Attributes", VisibleAnywhere)
 	TArray<UPopcornFXAttributeSampler*>		DefaultSamplers;
 
+	/** UE materials used by the effect to render its particles */
 	UPROPERTY(Category="PopcornFX RendererMaterials", Instanced, VisibleAnywhere)
 	TArray<UPopcornFXRendererMaterial*>		ParticleRendererMaterials;
 

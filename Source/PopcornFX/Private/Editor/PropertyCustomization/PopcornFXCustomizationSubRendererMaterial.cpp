@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -11,6 +11,8 @@
 
 #include "PropertyHandle.h"
 #include "DetailWidgetRow.h"
+#include "IDetailChildrenBuilder.h"
+#include "IDetailGroup.h"
 #include "PropertyCustomizationHelpers.h"
 #include "AssetThumbnail.h"
 #include "Engine/Texture2D.h"
@@ -24,6 +26,8 @@
 #include "Widgets/Input/SButton.h"
 
 #include "PopcornFXSDK.h"
+
+#include <pk_particles/include/Renderers/ps_renderer_enums.h>
 
 DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXCustomizationSubRendererMaterial, Log, All);
 #define LOCTEXT_NAMESPACE "PopcornFXCustomizationRendererMaterial"
@@ -46,6 +50,31 @@ struct FPopcornFXSubRendererMaterial	*FPopcornFXCustomizationSubRendererMaterial
 	return pself;
 }
 
+#define EXEC_PK_RENDERER_CLASSES(op) \
+	op(Renderer_Billboard) \
+	op(Renderer_Ribbon) \
+	op(Renderer_Mesh) \
+	op(Renderer_Triangle) \
+	op(Renderer_Decal) \
+	op(Renderer_Light) \
+	op(Renderer_Sound)
+
+#define RENDERER_NAME_CASE_TO_STRING(_rendererType) case PopcornFX::ERendererClass::_rendererType : return FString(#_rendererType);
+
+FString	FPopcornFXCustomizationSubRendererMaterial::_RendererNameFromType(const int type)
+{
+	switch (type)
+	{
+#define	X_RENDERER_CLASSES(__name)	Renderer_ ## __name,
+		EXEC_PK_RENDERER_CLASSES(RENDERER_NAME_CASE_TO_STRING)
+#undef	X_RENDERER_CLASSES
+	default :
+		return FString("Renderer_Invalid");
+	}
+}
+
+#undef RENDERER_NAME_CASE_TO_STRING
+
 void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 	TSharedRef<IPropertyHandle> PropertyHandle,
 	FDetailWidgetRow& HeaderRow,
@@ -53,7 +82,7 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 {
 	m_SelfPty = PropertyHandle;
 
-	TSharedRef<IPropertyHandle>		material = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, Material)).ToSharedRef();
+	TSharedRef<IPropertyHandle>		material = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, Material)).ToSharedRef();
 	check(material->IsValidHandle());
 	m_MaterialPty = material;
 
@@ -89,166 +118,191 @@ void	FPopcornFXCustomizationSubRendererMaterial::CustomizeHeader(
 	if (!PK_VERIFY(self != null))
 		return;
 
-	m_Thumbs[Thumb_Diffuse].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureDiffuse)).ToSharedRef();
-	m_Thumbs[Thumb_Diffuse].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureDiffuse, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_Diffuse].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureDiffuse)).ToSharedRef();
+	m_Thumbs[Thumb_Diffuse].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureDiffuse, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_DiffuseRamp].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureDiffuseRamp)).ToSharedRef();
-	m_Thumbs[Thumb_DiffuseRamp].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureDiffuseRamp, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_DiffuseRamp].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureDiffuseRamp)).ToSharedRef();
+	m_Thumbs[Thumb_DiffuseRamp].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureDiffuseRamp, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_Emissive].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureEmissive)).ToSharedRef();
-	m_Thumbs[Thumb_Emissive].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureEmissive, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_Emissive].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureEmissive)).ToSharedRef();
+	m_Thumbs[Thumb_Emissive].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureEmissive, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_AlphaRemap].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureAlphaRemapper)).ToSharedRef();
-	m_Thumbs[Thumb_AlphaRemap].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureAlphaRemapper, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_AlphaRemap].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureAlphaRemapper)).ToSharedRef();
+	m_Thumbs[Thumb_AlphaRemap].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureAlphaRemapper, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_MotionVectors].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureMotionVectors)).ToSharedRef();
-	m_Thumbs[Thumb_MotionVectors].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureMotionVectors, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_MotionVectors].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureMotionVectors)).ToSharedRef();
+	m_Thumbs[Thumb_MotionVectors].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureMotionVectors, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_SixWay_RLTS].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureSixWay_RLTS)).ToSharedRef();
-	m_Thumbs[Thumb_SixWay_RLTS].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureSixWay_RLTS, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_SixWay_RLTS].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureSixWay_RLTS)).ToSharedRef();
+	m_Thumbs[Thumb_SixWay_RLTS].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureSixWay_RLTS, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_SixWay_BBF].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureSixWay_BBF)).ToSharedRef();
-	m_Thumbs[Thumb_SixWay_BBF].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureSixWay_BBF, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_SixWay_BBF].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureSixWay_BBF)).ToSharedRef();
+	m_Thumbs[Thumb_SixWay_BBF].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureSixWay_BBF, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_VATPosition].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, VATTexturePosition)).ToSharedRef();
-	m_Thumbs[Thumb_VATPosition].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->VATTexturePosition, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_VATPosition].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, VATTexturePosition)).ToSharedRef();
+	m_Thumbs[Thumb_VATPosition].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.VATTexturePosition, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_VATNormal].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, VATTextureNormal)).ToSharedRef();
-	m_Thumbs[Thumb_VATNormal].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->VATTextureNormal, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_VATNormal].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, VATTextureNormal)).ToSharedRef();
+	m_Thumbs[Thumb_VATNormal].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.VATTextureNormal, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_VATColor].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, VATTextureColor)).ToSharedRef();
-	m_Thumbs[Thumb_VATColor].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->VATTextureColor, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_VATColor].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, VATTextureColor)).ToSharedRef();
+	m_Thumbs[Thumb_VATColor].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.VATTextureColor, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_VATRotation].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, VATTextureRotation)).ToSharedRef();
-	m_Thumbs[Thumb_VATRotation].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->VATTextureRotation, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_VATRotation].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, VATTextureRotation)).ToSharedRef();
+	m_Thumbs[Thumb_VATRotation].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.VATTextureRotation, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_SkeletalAnimation].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureSkeletalAnimation)).ToSharedRef();
-	m_Thumbs[Thumb_SkeletalAnimation].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureSkeletalAnimation, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_SkeletalAnimation].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureSkeletalAnimation)).ToSharedRef();
+	m_Thumbs[Thumb_SkeletalAnimation].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureSkeletalAnimation, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_Normal].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureNormal)).ToSharedRef();
-	m_Thumbs[Thumb_Normal].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureNormal, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_Normal].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureNormal)).ToSharedRef();
+	m_Thumbs[Thumb_Normal].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureNormal, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_Normal].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureNormal)).ToSharedRef();
-	m_Thumbs[Thumb_Normal].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureNormal, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_Normal].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureNormal)).ToSharedRef();
+	m_Thumbs[Thumb_Normal].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureNormal, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_Specular].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, TextureSpecular)).ToSharedRef();
-	m_Thumbs[Thumb_Specular].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->TextureSpecular, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_Specular].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, TextureSpecular)).ToSharedRef();
+	m_Thumbs[Thumb_Specular].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.TextureSpecular, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_Mesh].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, StaticMesh)).ToSharedRef();
-	m_Thumbs[Thumb_Mesh].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->StaticMesh, 64, 64, CustomizationUtils.GetThumbnailPool()));
+	m_Thumbs[Thumb_Mesh].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, StaticMesh)).ToSharedRef();
+	m_Thumbs[Thumb_Mesh].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.StaticMesh, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
-	m_Thumbs[Thumb_SkeletalMesh].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, SkeletalMesh)).ToSharedRef();
-	m_Thumbs[Thumb_SkeletalMesh].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->SkeletalMesh, 64, 64, CustomizationUtils.GetThumbnailPool()));
-
-	PropertyHandle->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationSubRendererMaterial::OnThumbnailPtyChange, -1));
+	m_Thumbs[Thumb_SkeletalMesh].m_Pty = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, SkeletalMesh)).ToSharedRef();
+	m_Thumbs[Thumb_SkeletalMesh].m_Tumbnail = MakeShareable(new FAssetThumbnail(self->EditableProperties.SkeletalMesh, 64, 64, CustomizationUtils.GetThumbnailPool()));
 
 	TSharedPtr<SHorizontalBox>	thumbnails;
-
-	// TODO: VAT NoAlpha/PackedData?
-
-	HeaderRow.NameContent()
-		.MinDesiredWidth(125.f * 3.f)
-		.MaxDesiredWidth(125.f * 4.f)
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				[materialType->CreatePropertyValueWidget()]
-				+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[noAlpha->CreatePropertyValueWidget()]
-				+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[softAnimBlending->CreatePropertyValueWidget()]
-				+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[motionVectorsBlending->CreatePropertyValueWidget()]
-				+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[castShadow->CreatePropertyValueWidget()]
-				+ SHorizontalBox::Slot()
-					.AutoWidth()
-					[staticMeshLOD->CreatePropertyValueWidget()]
-			]
-			+ SVerticalBox::Slot()
-				[
-					SAssignNew(thumbnails, SHorizontalBox)
-				]
-		]
-	.ValueContent()
-		.MinDesiredWidth(125.f * 3.f)
-		.MaxDesiredWidth(125.f * 4.f)
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.FillWidth(1.f)
-			[
-				//material->CreatePropertyValueWidget()
-				SNew(SObjectPropertyEntryBox)
-				.PropertyHandle(material)
-				.AllowedClass(UMaterialInterface::StaticClass())
-				.ThumbnailPool(CustomizationUtils.GetThumbnailPool())
-			]
-			+ SHorizontalBox::Slot()
-				.Padding(1.f)
-				.AutoWidth()
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
-				[
-					SNew(SButton)
-					.OnClicked(this, &FPopcornFXCustomizationSubRendererMaterial::OnResetClicked)
-					// too slow
-					.Visibility(this, &FPopcornFXCustomizationSubRendererMaterial::GetResetVisibility)
-					.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
-					.ButtonStyle(FAppStyle::Get(), "NoBorder")
-					.Content()
-					[
-						SNew(SImage)
-						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
-					]
-				]
-		]
-	;
-
-	for (int32 i = 0; i < PK_ARRAY_COUNT(m_Thumbs); ++i)
-	{
-		m_Thumbs[i].m_Pty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationSubRendererMaterial::OnThumbnailPtyChange, i));
-		thumbnails->AddSlot()
-			.AutoWidth()
-			[
-				SNew(SBorder)
-				.Padding(5.0f)
-				[
-					SNew(SBox)
-					.Visibility(this, &FPopcornFXCustomizationSubRendererMaterial::OnGetThumbnailVisibility, i)
-					.ToolTipText(this, &FPopcornFXCustomizationSubRendererMaterial::OnGetThumbnailToolTip, i)
-					.WidthOverride(64)
-					.HeightOverride(64)
-					[
-						m_Thumbs[i].m_Tumbnail->MakeThumbnailWidget()
-					]
-				]
-			]
-		;
-	}
-
-	// padding dummy
-	thumbnails->AddSlot()
-		.FillWidth(1.f)
-		[
-			SNew(SVerticalBox)
-		];
 }
 
 void	FPopcornFXCustomizationSubRendererMaterial::CustomizeChildren(
 	TSharedRef<class IPropertyHandle> PropertyHandle,
-	IDetailChildrenBuilder& StructBuilder,
+	IDetailChildrenBuilder &ChildBuilder,
 	IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
+	m_SelfPty = PropertyHandle;
+
+	TSharedRef<IPropertyHandle>		material = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXEditableMaterialProperties, Material)).ToSharedRef();
+	check(material->IsValidHandle());
+	m_MaterialPty = material;
+
+	FPopcornFXSubRendererMaterial *self = Self();
+	if (!PK_VERIFY(self != null))
+		return;
+
+	FString rendererName = "Renderer: ";
+	if (self->Renderer.Name.IsEmpty())
+	{
+		rendererName += _RendererNameFromType(self->Renderer.Type) + " (no custom name)";
+	}
+	else
+	{
+		rendererName += "'" + self->Renderer.Name + "'";
+	}
+
+	TSharedPtr<SWidget>	nameWidget;
+	TSharedPtr<SWidget>	valueWidget;
+	TSharedPtr<SWidget>	resetToDefaultWidget;
+	IDetailPropertyRow	&materialRow = ChildBuilder.AddProperty(material);
+	materialRow.DisplayName(FText::FromString("Material")).GetDefaultWidgets(nameWidget, valueWidget, true);
+	
+	FDetailWidgetRow &customWidget = materialRow.CustomWidget();
+	resetToDefaultWidget = customWidget.ResetToDefaultWidget.Widget;
+	customWidget.NameContent()[nameWidget.ToSharedRef()].ValueContent()[valueWidget.ToSharedRef()]
+		.ResetToDefaultContent()
+		[
+			SNew(SButton)
+				.OnClicked(this, &FPopcornFXCustomizationSubRendererMaterial::OnResetClicked)
+				.Visibility(this, &FPopcornFXCustomizationSubRendererMaterial::GetResetVisibility)
+				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset this property to its default value"))
+				.ButtonColorAndOpacity(FSlateColor::UseForeground())
+				.ButtonStyle(FAppStyle::Get(), "NoBorder")
+				.Content()
+				[
+					SNew(SImage)
+						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+				]
+		];
+
+	if (self->EditableProperties.Material == null)
+		return;
+	if (self->IsLegacy && self->EditableProperties.Material != self->FindLegacyMaterial())
+			return;
+	else if (!self->IsLegacy && self->EditableProperties.Material != self->FindDefaultMaterial())
+			return;
+
+	if (self->bHasTextureDiffuse)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_Diffuse].m_Pty.ToSharedRef());
+	if (self->bHasTextureDiffuseRamp)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_DiffuseRamp].m_Pty.ToSharedRef());
+	if (self->bHasTextureEmissive)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_Emissive].m_Pty.ToSharedRef());
+	/*if (self->bHasTextureEmissiveRamp) TODO?
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_EmissiveRamp].m_Pty.ToSharedRef());*/
+	if (self->bHasTextureNormal)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_Normal].m_Pty.ToSharedRef());
+	/*if (self->bHasTextureRoughMetal) TODO?
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_RoughMetal].m_Pty.ToSharedRef());*/
+	if (self->bHasTextureSpecular)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_Specular].m_Pty.ToSharedRef());
+	if (self->bHasTextureAlphaRemapper)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_AlphaRemap].m_Pty.ToSharedRef());
+	if (self->bHasTextureMotionVectors)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_MotionVectors].m_Pty.ToSharedRef());
+	if (self->bHasTextureSixWay_RLTS)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_SixWay_RLTS].m_Pty.ToSharedRef());
+	if (self->bHasTextureSixWay_BBF)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_SixWay_BBF].m_Pty.ToSharedRef());
+	if (self->bHasVATTexturePosition)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_VATPosition].m_Pty.ToSharedRef());
+	if (self->bHasVATTextureNormal)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_VATNormal].m_Pty.ToSharedRef());
+	if (self->bHasVATTextureColor)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_VATColor].m_Pty.ToSharedRef());
+	if (self->bHasVATTextureRotation)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_VATRotation].m_Pty.ToSharedRef());
+	if (self->bHasTextureSkeletalAnimation)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_SkeletalAnimation].m_Pty.ToSharedRef());
+	if (self->bHasStaticMesh)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_Mesh].m_Pty.ToSharedRef());
+	if (self->bHasSkeletalMesh)
+		ChildBuilder.AddProperty(m_Thumbs[Thumb_SkeletalMesh].m_Pty.ToSharedRef());
+	/*if (self->bHasTextureAtlas) TODO?
+		newGroup.AddPropertyRow(m_Thumbs[Thumb_Atlas].m_Pty.ToSharedRef());*/
+
+
+	// TODO: show some render features (enabled or not) without confusing the user?
+
+	// TODO: VAT NoAlpha/PackedData?
+	/*TSharedRef<IPropertyHandle>		legacyMaterialType = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, LegacyMaterialType)).ToSharedRef();
+	check(legacyMaterialType->IsValidHandle());
+
+	TSharedRef<IPropertyHandle>		defaultMaterialType = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, DefaultMaterialType)).ToSharedRef();
+	check(defaultMaterialType->IsValidHandle());
+
+	TSharedRef<IPropertyHandle>		isLegacyHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, IsLegacy)).ToSharedRef();
+	check(isLegacyHandle->IsValidHandle());
+
+	bool isLegacy = false;
+	isLegacyHandle.Get().GetValue(isLegacy);
+	TSharedRef<IPropertyHandle>		materialType = isLegacy ? legacyMaterialType : defaultMaterialType;
+	ChildBuilder.AddProperty(materialType);
+
+	TSharedRef<IPropertyHandle>		noAlpha = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, NoAlpha)).ToSharedRef();
+	check(noAlpha->IsValidHandle());
+	ChildBuilder.AddProperty(noAlpha);
+
+	TSharedRef<IPropertyHandle>		softAnimBlending = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, SoftAnimBlending)).ToSharedRef();
+	check(softAnimBlending->IsValidHandle());
+	ChildBuilder.AddProperty(softAnimBlending);
+
+	TSharedRef<IPropertyHandle>		motionVectorsBlending = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, MotionVectorsBlending)).ToSharedRef();
+	check(motionVectorsBlending->IsValidHandle());
+	ChildBuilder.AddProperty(motionVectorsBlending);
+
+	TSharedRef<IPropertyHandle>		castShadow = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, CastShadow)).ToSharedRef();
+	check(castShadow->IsValidHandle());
+	ChildBuilder.AddProperty(castShadow);
+
+	TSharedRef<IPropertyHandle>		staticMeshLOD = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSubRendererMaterial, StaticMeshLOD)).ToSharedRef();
+	ChildBuilder.AddProperty(staticMeshLOD);*/
 }
 
 FText	FPopcornFXCustomizationSubRendererMaterial::OnGetThumbnailToolTip(int32 thumbId) const
@@ -306,16 +360,16 @@ EVisibility		FPopcornFXCustomizationSubRendererMaterial::GetResetVisibility() co
 	FPopcornFXSubRendererMaterial		*self = Self();
 	if (!PK_VERIFY(self != null))
 		return EVisibility::Hidden;
-	if (self->Material == null)
+	if (self->EditableProperties.Material == null)
 		return EVisibility::Visible;
 	if (self->IsLegacy)
 	{
-		if (self->Material != self->FindLegacyMaterial())
+		if (self->EditableProperties.Material != self->FindLegacyMaterial())
 			return EVisibility::Visible;
 	}
 	else
 	{
-		if (self->Material != self->FindDefaultMaterial())
+		if (self->EditableProperties.Material != self->FindDefaultMaterial())
 			return EVisibility::Visible;
 	}
 	return EVisibility::Hidden;

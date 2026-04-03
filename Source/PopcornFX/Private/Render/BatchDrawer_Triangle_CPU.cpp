@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Triangle_CPU.h"
@@ -82,6 +82,9 @@ bool	CBatchDrawer_Triangle_CPUBB::Setup(const PopcornFX::CRendererDataBase *rend
 
 	m_NeedsBTN = renderer->m_RendererCache->m_Flags.m_HasNormal;
 	m_SecondUVSet = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending && renderer->m_RendererCache->m_Flags.m_HasUV;
+	uint32 Seed = FPlatformTime::Cycles();
+	FRandomStream RandomStream = FRandomStream((int32)Seed);
+	m_Random = RandomStream.GetFraction();
 	return true;
 }
 
@@ -604,6 +607,7 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 			commonUniformsBillboard.FlipUVs = false;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = false;
+			commonUniformsBillboard.InstRandom = m_Random;
 
 			vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardVSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsBillboard, UniformBuffer_SingleDraw);

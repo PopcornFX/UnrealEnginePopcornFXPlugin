@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -45,6 +45,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, POPCORNFX
 	SHADER_PARAMETER(uint32, AtlasRectCount)
 	SHADER_PARAMETER(uint32, BasicTransforms) // 0 : RotateUV, 1: FlipU, 2 : FlipV (bitfield)
 	SHADER_PARAMETER(FVector4f, DrawRequest) // Unbatched, GPU
+	SHADER_PARAMETER(float, InstRandom)
 	SHADER_PARAMETER_SRV(Buffer<uint>, InSortedIndices)
 	SHADER_PARAMETER_SRV(Buffer<float4>, AtlasBuffer)
 	SHADER_PARAMETER_SRV(Buffer<float4>, DrawRequests) // Batched, CPU

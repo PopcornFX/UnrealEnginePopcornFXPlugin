@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXProfiler.h"
@@ -346,8 +346,8 @@ void	CPopcornFXProfiler::_End_RecordAndSaveProfilerReport()
 		outputPath = saveFilenames[0];
 		FEditorDirectories::Get().SetLastDirectory(ELastDirectory::GENERIC_SAVE, FPaths::GetPath(outputPath)); // Save path as default for next time.
 #else
-		outputPath = "ue4.pkpr"; // relative to execution dir
-		//outputPath = FPaths::GameDir() / "ue4.pkpr"; // relative to game dir
+		outputPath = "ue.pkpr"; // relative to execution dir
+		//outputPath = FPaths::GameDir() / "ue.pkpr"; // relative to game dir
 #endif
 	}
 

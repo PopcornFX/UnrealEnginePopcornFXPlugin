@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 #include "PopcornFXMeshVertexFactory.h"
 #include "PopcornFXVertexFactoryCommon.h"
@@ -92,7 +92,14 @@ bool	FPopcornFXMeshVertexFactory::IsCompatible(UMaterialInterface *material)
 
 void	FPopcornFXMeshVertexFactory::SetData(const FDataType& InData)
 {
-	check(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+	check(IsInAnyRenderingThread());
+#else
+	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 	Data = InData;
 	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
 }

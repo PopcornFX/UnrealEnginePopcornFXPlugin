@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -120,10 +120,18 @@ void	FPopcornFXCustomizationAssetDep::CustomizeHeader(
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					SNew(STextBlock).Text(FText::FromString("Path: "))
+				]
+				+ SHorizontalBox::Slot()
+				[
 				SNew(SEditableTextBox)
 				.Font(FontStyle)
 				.IsReadOnly(true)
 				.Text(this, &FPopcornFXCustomizationAssetDep::GetCurrentAssetPath)
+				]
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()

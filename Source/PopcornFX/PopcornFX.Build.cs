@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 using System;
@@ -571,7 +571,13 @@ namespace UnrealBuildTool.Rules
 				PrivateDependencyModuleNames.Add("PhysX");
 			if (Target.bBuildEditor)
 			{
-				PrivateDependencyModuleNames.AddRange(
+                PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    "GraphEditor",
+                }
+                );
+                PrivateDependencyModuleNames.AddRange(
 					new string[]
 					{
 						"UnrealEd",

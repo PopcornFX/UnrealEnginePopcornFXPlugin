@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 #pragma once
 
@@ -149,6 +149,8 @@ private:
 private:
 	bool					m_BuffersInitialized = false;
 	bool					m_ShouldInitLODConsts = false;
+	// Random value between 0 and 1 used as a seed to generate random values per particle in the shader
+	float					m_Random;
 	u32						m_DrawRequestCount = 0;
 	u32						m_TotalParticleCount = 0;
 	u32						m_ParticleBuffersSize = 0; // The number of elements in GPU buffers that contain an element per particle

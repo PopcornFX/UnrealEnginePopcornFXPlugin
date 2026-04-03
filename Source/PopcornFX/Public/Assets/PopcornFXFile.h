@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -35,7 +35,7 @@ public:
 #endif
 
 	/** Array of user data stored with the asset */
-	UPROPERTY(Category="UserDatas", EditAnywhere, AdvancedDisplay, Instanced)
+	UPROPERTY(Category="UserDatas", EditAnywhere, Instanced, meta = (DisplayName = "Asset user datas"))
 	TArray<UAssetUserData*>		m_AssetUserDatas;
 
 protected:
@@ -44,7 +44,7 @@ protected:
 	UPROPERTY(Category="Source", VisibleAnywhere)
 	FString				FileSourceVirtualPath;
 
-	UPROPERTY(Category="Source", VisibleAnywhere)
+	UPROPERTY()
 	uint32				FileSourceVirtualPathIsNotVirtual;
 
 public:

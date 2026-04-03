@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Ribbon_CPU.h"
@@ -105,7 +105,9 @@ bool	CBatchDrawer_Ribbon_CPUBB::Setup(const PopcornFX::CRendererDataBase *render
 	m_SecondUVSet = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending && renderer->m_RendererCache->m_Flags.m_HasUV;
 	m_RibbonCorrectDeformation = renderer->m_RendererCache->m_Flags.m_HasRibbonCorrectDeformation;
 	m_RotateUV = renderer->m_RendererCache->m_Flags.m_RotateTexture;
-
+	uint32 Seed = FPlatformTime::Cycles();
+	FRandomStream RandomStream = FRandomStream((int32)Seed);
+	m_Random = RandomStream.GetFraction();
 
 	const PopcornFX::ERibbonMode	mode = renderer->m_Declaration.GetPropertyValue_Enum<PopcornFX::ERibbonMode>(PopcornFX::BasicRendererProperties::SID_BillboardingMode(), PopcornFX::RibbonMode_ViewposAligned);
 	if (mode == PopcornFX::RibbonMode_SideAxisAlignedTube)
@@ -759,6 +761,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			commonUniformsBillboard.FlipUVs = m_RotateUV && m_RibbonCorrectDeformation;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = m_RibbonCorrectDeformation;
+			commonUniformsBillboard.InstRandom = m_Random;
 
 			vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardVSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsbillboard, UniformBuffer_SingleDraw);

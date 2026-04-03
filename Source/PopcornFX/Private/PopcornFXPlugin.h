@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -81,7 +81,6 @@ public:
 	static int32						TotalParticleCount();
 	static void							IncTotalParticleCount(s32 newTotalParticleCount);
 
-	static void							RegisterRenderThreadIFN();
 	static void							RegisterCurrentThreadAsUserIFN();
 
 	static bool							IsMainThread();

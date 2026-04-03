@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -127,50 +127,50 @@ public:
 
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsFloat(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValue, bool InApplyGlobalScale);
+	static bool		GetEventPayloadAsFloat(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValue, bool InApplyGlobalScale);
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsFloat2(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValueX, float &OutValueY, bool InApplyGlobalScale);
+	static bool		GetEventPayloadAsFloat2(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValueX, float &OutValueY, bool InApplyGlobalScale);
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsVector2D(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FVector2D &OutValue, bool InApplyGlobalScale);
+	static bool		GetEventPayloadAsVector2D(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FVector2D &OutValue, bool InApplyGlobalScale);
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsFloat3(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, bool InApplyGlobalScale);
+	static bool		GetEventPayloadAsFloat3(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, bool InApplyGlobalScale);
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsVector(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FVector &OutValue, bool InApplyGlobalScale);
+	static bool		GetEventPayloadAsVector(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FVector &OutValue, bool InApplyGlobalScale);
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsFloat4(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, float &OutValueW, bool InApplyGlobalScale);
+	static bool		GetEventPayloadAsFloat4(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, float &OutValueX, float &OutValueY, float &OutValueZ, float &OutValueW, bool InApplyGlobalScale);
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsLinearColor(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FLinearColor &OutValue);
-
-
-	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsInt(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValue);
-
-	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsInt2(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValueX, int32 &OutValueY);
-
-	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsInt3(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ);
-
-	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsInt4(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ, int32 &OutValueW);
+	static bool		GetEventPayloadAsLinearColor(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FLinearColor &OutValue);
 
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsBool(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValue);
+	static bool		GetEventPayloadAsInt(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValue);
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsBool2(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValueX, bool &OutValueY);
+	static bool		GetEventPayloadAsInt2(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValueX, int32 &OutValueY);
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsBool3(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ);
+	static bool		GetEventPayloadAsInt3(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ);
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsBool4(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ, bool &OutValueW);
+	static bool		GetEventPayloadAsInt4(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, int32 &OutValueX, int32 &OutValueY, int32 &OutValueZ, int32 &OutValueW);
 
 
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
-	static bool		GetEventPayloadAsRotator(const UPopcornFXEmitterComponent *InSelf, FString PayloadName, FRotator &OutValue, bool InApplyGlobalScale);
+	static bool		GetEventPayloadAsBool(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValue);
+
+	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
+	static bool		GetEventPayloadAsBool2(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValueX, bool &OutValueY);
+
+	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
+	static bool		GetEventPayloadAsBool3(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ);
+
+	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
+	static bool		GetEventPayloadAsBool4(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, bool &OutValueX, bool &OutValueY, bool &OutValueZ, bool &OutValueW);
+
+
+	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Event Payload", BlueprintInternalUseOnly="true"), Category="PopcornFX|Events")
+	static bool		GetEventPayloadAsRotator(const UPopcornFXEmitterComponent *Emitter, FString PayloadName, FRotator &OutValue, bool InApplyGlobalScale);
 };

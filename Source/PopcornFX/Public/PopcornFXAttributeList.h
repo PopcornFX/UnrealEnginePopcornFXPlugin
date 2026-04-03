@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -107,8 +107,11 @@ struct FPopcornFXAttributeDesc
 		return Valid() && m_AttributeName == other.m_AttributeName &&
 			m_AttributeType == other.m_AttributeType &&
 			m_AttributeCategoryName == other.m_AttributeCategoryName &&
+#if WITH_EDITORONLY_DATA
+			m_EnumList == other.m_EnumList &&
+#endif // WITH_EDITORONLY_DATA
 			m_IsPrivate == other.m_IsPrivate;
-	}
+		}
 };
 
 USTRUCT()
@@ -231,7 +234,9 @@ public:
 
 	const UPopcornFXAttributeList		*GetDefaultAttributeList(UPopcornFXEffect *effect) const; // can be self
 
-	void			ResetToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
+	void			ResetAllToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
+	void			ResetAttributesToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
+	void			ResetSamplersToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
 
 	void			RefreshAttributeSamplers(UPopcornFXEmitterComponent *emitter, bool reload = false) { if (m_Samplers.Num() > 0) _RefreshAttributeSamplers(emitter, reload); }
 	void			RefreshAttributes(const UPopcornFXEmitterComponent *emitter) { if (m_Attributes.Num() > 0) _RefreshAttributes(emitter); }

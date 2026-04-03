@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 /*=============================================================================
@@ -114,6 +114,10 @@ struct	FVertexFactoryInterpolantsVSToPS
 	nointerpolation float	ParticleRotation					: PARTICLE_SPRITE_ROTATION;
 #endif
 
+#if NEEDS_PARTICLE_RANDOM
+	nointerpolation float ParticleRandom						: PARTICLE_RANDOM;
+#endif
+
 #if INSTANCED_STEREO
 	nointerpolation uint EyeIndex : PACKED_EYE_INDEX;
 #endif // (INSTANCED_STEREO)
@@ -205,8 +209,10 @@ FMaterialVertexParameters	GetMaterialVertexParameters(FVertexFactoryInput Input,
 	//VertexParameters.Particle.RelativeTime = Intermediates.ParticleLifeRatio;
 #endif
 
-#if USE_PARTICLE_RANDOM
-	VertexParameters.Particle.Random = 0.0f; // TODO: Spawn random per particle for material stuff
+#if NEEDS_PARTICLE_RANDOM
+	VertexParameters.Particle.Random = Intermediates.Random;
+#else
+	VertexParameters.Particle.Random = 0.0f;
 #endif
 
 #if USE_PARTICLE_SUBUVS
@@ -275,6 +281,10 @@ FVertexFactoryInterpolantsVSToPS	VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 
 #if USE_PARTICLE_SPRITE_ROTATION
 	Interpolants.ParticleRotation = Intermediates.ParticleRotation;
+#endif
+
+#if NEEDS_PARTICLE_RANDOM
+	Interpolants.ParticleRandom = Intermediates.Random;
 #endif
 
 	//Interpolants.LightingPositionOffset = Interpolants.LightingPositionOffset; TODO
@@ -354,7 +364,9 @@ FMaterialPixelParameters	GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 	PixelParameters.Particle.SpriteRotation = Interpolants.ParticleRotation;
 #endif
 
-#if USE_PARTICLE_RANDOM
+#if NEEDS_PARTICLE_RANDOM
+	PixelParameters.Particle.Random = Interpolants.ParticleRandom;
+#else
 	PixelParameters.Particle.Random = 0.0f;
 #endif
 

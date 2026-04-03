@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "Assets/PopcornFXFile.h"
@@ -52,7 +52,7 @@ namespace
 				FText	title = LOCTEXT("import_outside_mountpoint_title", "PopcornFX: Invalid file location");
 				FText	finalText = FText::FromString(FString::Printf(TEXT("The PopcornFX file '%s' is outside the mount point of the PopcornFX pack '%s'"), *ToUE(rawFilePath), *ToUE(packPath)));
 
-				OpenMessageBox(EAppMsgType::Ok, finalText, title);
+				OpenMessageBox(EAppMsgCategory::Error, EAppMsgType::Ok, finalText, title);
 			}
 #endif // WITH_EDITOR
 			return null;
@@ -155,7 +155,7 @@ bool	UPopcornFXFile::_ImportFile(const FString &inFilePath)
 					LOCTEXT("PopcornFXCannotImportBakedText",
 					"Please import the original source file of:\n\n{0}\n\nThen, PopcornFX Plugin and UE will take care of properly baking it.\n"),
 					FText::FromString(filePath));
-				OpenMessageBox(EAppMsgType::Ok, msg, title);
+				OpenMessageBox(EAppMsgCategory::Error, EAppMsgType::Ok, msg, title);
 				FPopcornFXPlugin::Get().UnloadPkFile(this); // unload via this method (SetInternalUserData(null))
 				return false;
 			}
@@ -380,7 +380,7 @@ void	UPopcornFXFile::AskImportAssetDependenciesIFN()
 			doImport = true;
 		else
 		{
-			const EAppReturnType::Type	response = OpenMessageBox(EAppMsgType::YesNoYesAll, FText::FromString(msg), title);
+			const EAppReturnType::Type	response = OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNoYesAll, FText::FromString(msg), title);
 			if (response == EAppReturnType::YesAll)
 			{
 				FPopcornFXPlugin::SetAskImportAssetDependencies_YesAll(true);

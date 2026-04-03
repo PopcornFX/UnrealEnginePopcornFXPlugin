@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Mesh_GPU.h"
@@ -88,6 +88,9 @@ bool	CBatchDrawer_Mesh_GPUBB::Setup(const PopcornFX::CRendererDataBase *renderer
 	CRendererCache	*matCache = static_cast<CRendererCache*>(renderer->m_RendererCache.Get());
 	if (!PK_VERIFY(matCache != null))
 		return false;
+	uint32 Seed = FPlatformTime::Cycles();
+	FRandomStream RandomStream = FRandomStream((int32)Seed);
+	m_Random = RandomStream.GetFraction();
 
 	_PreSetupVFData(matCache->GameThread_Desc().m_StaticMeshRenderData);
 #endif // (PK_HAS_GPU == 1)
@@ -671,7 +674,8 @@ void	CBatchDrawer_Mesh_GPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 	vsUniformsMesh.InDynamicParameter1sOffset =	m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();
 	vsUniformsMesh.InDynamicParameter2sOffset =	m_AdditionalStreamOffsets[StreamOffset_DynParam2s].OffsetForShaderConstant();
 	vsUniformsMesh.InDynamicParameter3sOffset =	m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
-	
+	vsUniformsMesh.InstRandom = m_Random;
+
 	vsUniformsGPUMesh.DrawRequest = drawData.iDr;
 
 	// The indirection offsets buffer has two halves, each with one element per draw call

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Billboard_GPU.h"
@@ -289,6 +289,9 @@ bool	CBatchDrawer_Billboard_GPUBB::Setup(const PopcornFX::CRendererDataBase *ren
 	m_RotateUVs = renderer->m_RendererCache->m_Flags.m_RotateTexture;
 	m_FlipU = renderer->m_RendererCache->m_Flags.m_FlipU;
 	m_FlipV = renderer->m_RendererCache->m_Flags.m_FlipV;
+	uint32 Seed = FPlatformTime::Cycles();
+	FRandomStream RandomStream = FRandomStream((int32)Seed);
+	m_Random = RandomStream.GetFraction();
 
 	// Billboarding mode
 	{
@@ -919,10 +922,6 @@ bool	CBatchDrawer_Billboard_GPUBB::_FillDrawCallUniforms_CPU(FPopcornFXGPUVertex
 	PK_ASSERT(m_Indices.Valid() || (viewDep != null && viewDep->m_Indices.Valid()));
 
 	vsUniforms.InSimData = m_SimData.Buffer()->SRV();
-	vsUniformsGPUBillboard.BasicTransforms = 0;
-	vsUniformsGPUBillboard.BasicTransforms |= m_RotateUVs ? 1u : 0u;
-	vsUniformsGPUBillboard.BasicTransforms |= m_FlipU ? 2u : 0u;
-	vsUniformsGPUBillboard.BasicTransforms |= m_FlipV ? 4u : 0u;
 	vsUniformsGPUBillboard.DrawRequestID = -1;
 	vsUniformsGPUBillboard.HasSortedIndices = 1; // By default we always generate indices, even when not required. TODO: Fix that to save perf/mem
 	vsUniformsGPUBillboard.InIndicesOffset = desc.m_IndexOffset;
@@ -1100,17 +1099,24 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 				vsUniformsGPUBillboard.InAxis1sOffset = m_StreamOffsets[StreamOffset_Axis1s].Valid() ? static_cast<s32>(m_StreamOffsets[StreamOffset_Axis1s] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InTextureIDsOffset = m_AdditionalStreamOffsets[StreamOffset_TextureIDs].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_TextureIDs] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) : -1;
-				vsUniformsGPUBillboard.InVelocityOffset = m_AdditionalStreamOffsets[StreamOffset_Velocity].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Velocity] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4] / sizeof(float)) : -1;
+				vsUniformsGPUBillboard.InVelocityOffset = m_AdditionalStreamOffsets[StreamOffset_Velocity].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Velocity] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_AlphaCursors] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InDynamicParameter2sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ? static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) : -1;
 				vsUniformsGPUBillboard.AtlasRectCount = m_AtlasRects.m_AtlasRectsCount;
 
+				vsUniformsGPUBillboard.BasicTransforms = 0;
+				vsUniformsGPUBillboard.BasicTransforms |= m_RotateUVs ? 1u : 0u;
+				vsUniformsGPUBillboard.BasicTransforms |= m_FlipU ? 2u : 0u;
+				vsUniformsGPUBillboard.BasicTransforms |= m_FlipV ? 4u : 0u;
+
 				vsUniformsGPUBillboard.AtlasBuffer = m_AtlasRects.m_AtlasBufferSRV == null ? GPopcornFXNullFloat4Buffer.SRV : m_AtlasRects.m_AtlasBufferSRV;
 				vsUniformsGPUBillboard.DrawRequests = gpuStorage ? GPopcornFXNullFloat4Buffer.SRV : m_DrawRequests.m_DrawRequestsBufferSRV;
+
+				vsUniformsGPUBillboard.InstRandom = m_Random;
 
 				vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
 				vertexFactory->m_GPUBillboardVSUniformBuffer = FPopcornFXGPUBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsGPUBillboard, UniformBuffer_SingleFrame);

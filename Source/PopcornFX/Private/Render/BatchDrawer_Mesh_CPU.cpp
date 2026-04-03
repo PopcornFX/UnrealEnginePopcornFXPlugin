@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Mesh_CPU.h"
@@ -65,6 +65,10 @@ bool	CBatchDrawer_Mesh_CPUBB::Setup(const PopcornFX::CRendererDataBase *renderer
 {
 	if (!Super::Setup(renderer, owner, fc, storageClass))
 		return false;
+
+	uint32 Seed = FPlatformTime::Cycles();
+	FRandomStream RandomStream = FRandomStream((int32)Seed);
+	m_Random = RandomStream.GetFraction();
 	return true;
 }
 
@@ -474,6 +478,7 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 	vsUniformsMesh.InDynamicParameter1sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter2sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter3sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) + buffersOffset * 4) : -1;
+	vsUniformsMesh.InstRandom = m_Random;
 
 	m_VFData.bInitialized = true;
 

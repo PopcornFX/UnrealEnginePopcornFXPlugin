@@ -1,12 +1,13 @@
 
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
 
 #include "PopcornFXMinimal.h"
+#include "PopcornFXPlugin.h"
 
 #include "Render/RendererSubView.h"
 #include "Render/PopcornFXBuffer.h"
@@ -289,7 +290,9 @@ private:
 	void					_PreUpdate_Collisions();
 #if PK_WITH_PHYSX
 	physx::PxScene		*m_CurrentPhysxScene = null;
-#else
+#elif WITH_HAVOK_PHYSICS
+	FHavokPhysicsWorld	*m_CurrentHavokWorld = null;
+#elif PK_WITH_CHAOS
 	FChaosScene			*m_CurrentChaosScene = null;
 #endif
 

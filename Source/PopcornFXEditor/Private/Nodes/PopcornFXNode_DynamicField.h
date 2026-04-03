@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -35,12 +35,15 @@ namespace	EPopcornFXPinFieldType
 	};
 }
 
+/*
+*	A custom Blueprint node that has a variable number and type of input or output values
+*/
 UCLASS(Abstract)
 class UPopcornFXNode_DynamicField : public UK2Node
 {
 	GENERATED_UCLASS_BODY()
 
-private:
+protected:
 	virtual void	Serialize(FArchive& Ar) override;
 	virtual void	PostLoad() override;
 
@@ -52,19 +55,21 @@ private:
 	virtual FSlateIcon	GetIconAndTint(FLinearColor& OutColor) const override;
 	virtual void		GetMenuActions(FBlueprintActionDatabaseRegistrar &actionRegistrar) const override;
 	virtual FText		GetMenuCategory() const override { return m_MenuCategory; }
-	virtual bool		NodeCausesStructuralBlueprintChange() const { return true; }
+	virtual bool		NodeCausesStructuralBlueprintChange() const override { return true; }
 	virtual void		ExpandNode(class FKismetCompilerContext &compilerContext, UEdGraph *sourceGraph) override;
 
-private:
-	bool			MovePinByName(class FKismetCompilerContext &compilerContext, UK2Node_CallFunction *nativeFunctionCall, const FName &name, bool required);
-	void			BreakAndHidePinByName(const FName &name);
-
-protected:
+	bool								MovePinByName(class FKismetCompilerContext &compilerContext, UK2Node_CallFunction *nativeFunctionCall, const FName &name, bool required);
+	void								BreakAndHidePinByName(const FName &name);
 	EPopcornFXPinDataType::Type			DataType() const { return m_DataType; }
 	virtual bool						SetupNativeFunctionCall(UK2Node_CallFunction *functionCall) { check(false); return false; }
 	virtual UClass						*GetSelfPinClass() const { check(false); return nullptr; }
 
 	void			SetValuesPrefix(const FString &prefix);
+	uint32			RequiredPinNum(EPopcornFXPinDataType::Type type) const;
+	bool			CanBeGlobalScaled(EPopcornFXPinDataType::Type type) const;
+	bool			GetGraphPinsType(EPopcornFXPinDataType::Type type, FEdGraphPinType &outPinType) const;
+	FName			GetPinTypeName() const;
+	FName			GetSelfName() const;
 
 protected:
 	TEnumAsByte<EEdGraphPinDirection>	m_ValueDirection;
@@ -83,10 +88,11 @@ protected:
 	TArray<FString>						m_CustomParametersTooltip;
 	FString								m_PinFieldTypeTooltip;
 
-private:
+protected:
 	UPROPERTY()
 	TEnumAsByte<EPopcornFXPinDataType::Type>	m_DataType;
 
+private:
 	UPROPERTY()
 	TEnumAsByte<EPopcornFXPinFieldType::Type>	m_PinType_DEPRECATED;
 

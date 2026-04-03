@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Billboard_CPU.h"
@@ -100,6 +100,9 @@ bool	CBatchDrawer_Billboard_CPUBB::Setup(const PopcornFX::CRendererDataBase *ren
 	m_RotateUV = renderer->m_RendererCache->m_Flags.m_RotateTexture;
 	m_FlipU = renderer->m_RendererCache->m_Flags.m_FlipU;
 	m_FlipV = renderer->m_RendererCache->m_Flags.m_FlipV;
+	uint32 Seed = FPlatformTime::Cycles();
+	FRandomStream RandomStream = FRandomStream((int32)Seed);
+	m_Random = RandomStream.GetFraction();
 	return true;
 }
 
@@ -481,6 +484,7 @@ bool	CBatchDrawer_Billboard_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 			return false;
 		m_BBJobs_Billboard.m_Exec_Texcoords.m_Texcoords2 = uv1s;
 	}
+
 	if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
 	{
 		PK_ASSERT(m_SimData.Valid());
@@ -687,6 +691,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			commonUniformsBillboard.FlipUVs = m_RotateUV;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = false;
+			commonUniformsBillboard.InstRandom = m_Random;
 
 			vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardVSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsBillboard, UniformBuffer_SingleDraw);

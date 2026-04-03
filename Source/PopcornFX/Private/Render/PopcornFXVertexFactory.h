@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -50,6 +50,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardCommonUniforms, POPCORNF
 	SHADER_PARAMETER(int32, FlipUVs) // Are the UVs flipped (u <-> v)
 	SHADER_PARAMETER(int32, NeedsBTN) // Do we need the BTN matrix
 	SHADER_PARAMETER(int32, CorrectRibbonDeformation)
+	SHADER_PARAMETER(float, InstRandom)
 END_GLOBAL_SHADER_PARAMETER_STRUCT()
 
 typedef TUniformBufferRef<FPopcornFXBillboardCommonUniforms>	FPopcornFXBillboardCommonUniformsRef;

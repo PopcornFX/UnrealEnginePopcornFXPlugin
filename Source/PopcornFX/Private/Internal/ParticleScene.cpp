@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "ParticleScene.h"
@@ -145,6 +145,7 @@
 
 #if WITH_HAVOK_PHYSICS
 #include "Runtime/Engine/Private/PhysicsEngine/HavokPhysicsSupport.h"
+#include "HavokTypeConversions.h"
 #include "HavokStartIncludes.h"
 #include "Physics/Physics/Collide/Query/hknpCollisionResult.h"
 #include "Physics/Physics/Collide/Query/Collector/hknpClosestHitCollector.h"
@@ -310,7 +311,7 @@ bool	CParticleScene::InternalSetup(const UPopcornFXSceneComponent *sceneComp)
 
 	// Hook the simulation dispatch filtering callback.
 	// This is what allows us to forbid certain layers from being run on the GPU
-	// Here, we don't support the light, ribbon, mesh, and sound renderers in GPU sims,
+	// Here, we don't support the light, ribbon, and sound renderers in GPU sims,
 	// so this callback makes layers fallback on the CPU whenever they have any of those.
 	m_ParticleMediumCollection->SetSimDispatchFallbackOnCPUCallback(PopcornFX::CParticleMediumCollection::CbSimDispatchFallbackOnCPU(&_SimDispatchFallbackOnCPU));
 
@@ -731,10 +732,18 @@ void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *s
 	// Right now, uses a reference view (first view).
 	// First thing called during render loop, before init views
 	// With RT enabled call flow can be : GDRTI -> GDME (main - all views) -> GDME (shadows)
-	if (!IsInActualRenderingThread()) // GetDynamicMeshElements is called on the game thread when resizing viewports
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+	if (!IsInAnyRenderingThread()) // GetDynamicMeshElements is called on the game thread when resizing viewports
 		return;
+#else
+	if (!(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread)))
+		return;
+#endif
 
-	FPopcornFXPlugin::RegisterRenderThreadIFN();
+	FPopcornFXPlugin::RegisterCurrentThreadAsUserIFN(); // UE rendering is now done on multiple threads
 
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::GetDynamicRayTracingInstances", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -762,10 +771,18 @@ void	CParticleScene::GetDynamicMeshElements(
 	uint32 VisibilityMap,
 	FMeshElementCollector& Collector)
 {
-	if (!IsInActualRenderingThread()) // GetDynamicMeshElements is called on the game thread when resizing viewports
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+	if (!IsInAnyRenderingThread()) // GetDynamicMeshElements is called on the game thread when resizing viewports
 		return;
+#else
+	if (!(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread)))
+		return;
+#endif
 
-	FPopcornFXPlugin::RegisterRenderThreadIFN();
+	FPopcornFXPlugin::RegisterCurrentThreadAsUserIFN(); // UE rendering is now done on multiple threads
 
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::GetDynamicMeshElements", POPCORNFX_UE_PROFILER_COLOR);
 	SCOPE_CYCLE_COUNTER(STAT_PopcornFX_GDMETime);
@@ -1519,7 +1536,7 @@ void	CParticleScene::RayTracePacket(
 	const float		scalePkToUE = FPopcornFXPlugin::GlobalScale();
 	const float		scaleUEToPk = FPopcornFXPlugin::GlobalScaleRcp();
 
-	// m_FilterFlags is a bitfield, matching UE4's object channels
+	// m_FilterFlags is a bitfield, matching UE's object channels
 	s32		objectTypesToQuery = traceFilter.m_FilterFlags;
 	if (objectTypesToQuery == 0) // "None" : no collision preset is specified
 	{
@@ -1714,9 +1731,10 @@ void	CParticleScene::RayTracePacket(
 	};
 	PK_STACKMEMORYVIEW(FRaycastBufferAndIndex, hitResultBuffers, resCount);
 
-	FPhysicsCommand::ExecuteRead(m_CurrentChaosScene, [&]()
+	FHavokPhysicsWorld* HkWorld = m_CurrentHavokWorld;
+
+	HkWorld->lockRead();
 	{
-		FHavokPhysicsWorld* HkWorld = m_CurrentChaosScene->GetHavokWorld();
 		for (u32 rayi = 0; rayi < resCount; ++rayi)
 		{
 			if (!emptyMasks && packet.m_RayMasks_Aligned16[rayi] == 0)
@@ -1771,7 +1789,7 @@ void	CParticleScene::RayTracePacket(
 
 					bool IsCollisionEnabled(uint32 EnabledChannels, hkUint32 FilterInfo) const
 					{
-						const FHavokPhysicsContext* PhysicsContext = FHavokPhysicsContext::GetInstance();
+						const FHavokPhysicsContextCore* PhysicsContext = FHavokPhysicsContextCore::GetInstance();
 						const FHavokPhysicsCollisionProfile& Profile = PhysicsContext->GetCollisionProfile(FilterInfo);
 						return EnabledChannels & (1 << Profile.ObjectChannel);
 					}
@@ -1825,7 +1843,8 @@ void	CParticleScene::RayTracePacket(
 			resultBufferAndIndex.m_RayIndex = rayi;
 			++hitResultBufferCurrentIndex;
 		}
-	});
+	}
+	HkWorld->unlockRead();
 
 	void** contactSurfaces = queryPhysicalMaterial ? results.m_ContactSurfaces_Aligned16 : null;
 
@@ -2106,8 +2125,20 @@ void	CParticleScene::_PreUpdate_Collisions()
 				m_CurrentPhysxScene = worldPhysScene->GetPxScene();
 		}
 	}
+#elif WITH_HAVOK_PHYSICS
+	m_CurrentHavokWorld = null;
+	if (SceneComponent() != null)
+	{
+		const UWorld	*world = m_SceneComponent->GetWorld();
+		if (PK_VERIFY(world != null))
+		{
+			FPhysScene		*worldPhysScene = world->GetPhysicsScene();
+			if (worldPhysScene != null)
+				m_CurrentHavokWorld = worldPhysScene->GetHavokWorld();
+		}
+	}
 #elif PK_WITH_CHAOS
-	 m_CurrentChaosScene = null;
+	m_CurrentChaosScene = null;
 	if (SceneComponent() != null)
 	{
 		const UWorld	*world = m_SceneComponent->GetWorld();

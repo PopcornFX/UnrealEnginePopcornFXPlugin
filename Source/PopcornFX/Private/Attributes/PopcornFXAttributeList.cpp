@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXAttributeList.h"
@@ -658,7 +658,6 @@ bool	UPopcornFXAttributeList::PrepareAttributes(TArray<FPopcornFXAttributeDesc> 
 			PK_ASSERT(refAttr.Valid());
 			if (attr->m_AttributeName != refAttr.m_AttributeName ||
 				attr->m_AttributeCategoryName != refAttr.m_AttributeCategoryName)
-
 			{
 				attrsChanged = true;
 				PopcornFX::CGuid		found;
@@ -716,6 +715,12 @@ bool	UPopcornFXAttributeList::PrepareAttributes(TArray<FPopcornFXAttributeDesc> 
 			{
 				attr->m_IsPrivate = refAttr.m_IsPrivate;
 			}
+#if WITH_EDITOR
+			if (attr->m_EnumList != refAttr.m_EnumList)
+			{
+				attr->m_EnumList = refAttr.m_EnumList;
+			}
+#endif
 
 			PK_ASSERT(attr->ExactMatch(refAttr)); // Name, Category and Type must match now
 		}
@@ -950,7 +955,7 @@ void	UPopcornFXAttributeList::RestoreAttributesFromCachedRawData(const TArray<ui
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeList::ResetToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect)
+void	UPopcornFXAttributeList::ResetAllToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect)
 {
 	DBG_HERE();
 
@@ -977,6 +982,63 @@ void	UPopcornFXAttributeList::ResetToDefaultValues(UPopcornFXEmitterComponent *e
 	if (emitter)
 	{
 		_RefreshAttributes(emitter);
+		_RefreshAttributeSamplers(emitter, false);
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeList::ResetAttributesToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect)
+{
+	DBG_HERE();
+
+	if (!PK_VERIFY(Valid()))
+		return;
+
+#if WITH_EDITOR
+	Modify();
+#endif
+
+	PK_ASSERT(CheckDataIntegrity());
+
+	const UPopcornFXAttributeList *defAttribs = GetDefaultAttributeList(effect);
+	if (defAttribs == null)
+		return;
+
+	const TArray<uint8> &defRawData = defAttribs->m_AttributesRawData;
+	PK_ASSERT(m_AttributesRawData.Num() == defRawData.Num());
+	m_AttributesRawData = defRawData;
+
+	if (emitter)
+	{
+		_RefreshAttributes(emitter);
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXAttributeList::ResetSamplersToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect)
+{
+	DBG_HERE();
+
+	if (!PK_VERIFY(Valid()))
+		return;
+
+#if WITH_EDITOR
+	Modify();
+#endif
+
+	PK_ASSERT(CheckDataIntegrity());
+
+	const UPopcornFXAttributeList *defAttribs = GetDefaultAttributeList(effect);
+	if (defAttribs == null)
+		return;
+
+	for (int32 i = 0; i < m_Samplers.Num(); ++i)
+		m_Samplers[i].CopyValuesFrom(*defAttribs->GetSamplerDesc(i));
+
+	if (emitter)
+	{
 		_RefreshAttributeSamplers(emitter, false);
 	}
 }
@@ -1215,7 +1277,7 @@ template<typename _Scalar>
 _Scalar	UPopcornFXAttributeList::GetAttributeDim(uint32 attributeId, uint32 dim)
 {
 	PopcornFX::SAttributesContainer_SAttrib	value;
-	GetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&value)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	GetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&value)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE nativization bugs. To refactor some day
 
 	return value.Get<_Scalar>()[dim];
 }
@@ -1226,7 +1288,7 @@ template<>
 bool	UPopcornFXAttributeList::GetAttributeDim<bool>(uint32 attributeId, uint32 dim)
 {
 	PopcornFX::SAttributesContainer_SAttrib	value;
-	GetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&value)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	GetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&value)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE nativization bugs. To refactor some day
 
 	return reinterpret_cast<bool*>(value.Get<uint32>())[dim];
 }
@@ -1243,7 +1305,7 @@ float UPopcornFXAttributeList::GetAttributeQuaternionDim(uint32 attributeId, uin
 #endif
 
 	PopcornFX::SAttributesContainer_SAttrib	value;
-	GetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&value)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	GetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&value)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE nativization bugs. To refactor some day
 
 	const float	*scalarValue = value.Get<float>();
 	const FQuat	quat = FQuat(scalarValue[0], scalarValue[1], scalarValue[2], scalarValue[3]);
@@ -1283,7 +1345,7 @@ void UPopcornFXAttributeList::SetAttributeQuaternionDim(uint32 attributeId, uint
 	newValue.m_Data32f[2] = quaternion.Z;
 	newValue.m_Data32f[3] = quaternion.W;
 
-	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE nativization bugs. To refactor some day
 }
 
 //----------------------------------------------------------------------------
@@ -1301,7 +1363,7 @@ void	UPopcornFXAttributeList::SetAttributeDim(uint32 attributeId, uint32 dim, _S
 	PopcornFX::SAttributesContainer_SAttrib	newValue = AttributeRawDataAttributes(this)[attributeId];
 	newValue.Get<_Scalar>()[dim] = value;
 
-	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE nativization bugs. To refactor some day
 }
 
 //----------------------------------------------------------------------------
@@ -1319,7 +1381,7 @@ void	UPopcornFXAttributeList::SetAttributeDim<bool>(uint32 attributeId, uint32 d
 	PopcornFX::SAttributesContainer_SAttrib	newValue = AttributeRawDataAttributes(this)[attributeId];
 	reinterpret_cast<bool*>(newValue.Get<uint32>())[dim] = value;
 
-	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE4 nativization bugs. To refactor some day
+	SetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&newValue), fromUI); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE nativization bugs. To refactor some day
 }
 
 //----------------------------------------------------------------------------

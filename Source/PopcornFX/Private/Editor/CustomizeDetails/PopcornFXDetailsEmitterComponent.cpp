@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -272,7 +272,7 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 					SNew(STextBlock)
 						.Text(FText::FromString(name))
 						.ToolTipText(tooltipText)
-						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+						.Font(m_DetailLayoutBuilder->GetDetailFont())
 						.ColorAndOpacity(samplerNameColor)
 				]
 		];
@@ -305,7 +305,7 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 				SNew(STextBlock)
 					.Text(useExternalSamplerPty->GetPropertyDisplayName())
 					.ToolTipText(useExternalSamplerPty->GetToolTipText())
-					.Font(FAppStyle::GetFontStyle("PropertyWindow.BoldFont"))
+					.Font(m_DetailLayoutBuilder->GetDetailFont())
 					.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Foreground))
 			]
 	]
@@ -353,7 +353,7 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 						SNew(STextBlock)
 							.Text(samplerCpntPty->GetPropertyDisplayName())
 							.ToolTipText(samplerCpntPty->GetToolTipText())
-							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+							.Font(m_DetailLayoutBuilder->GetDetailFont())
 							.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
 					]
 			]
@@ -372,7 +372,7 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 					[
 						SNew(STextBlock)
 							.Text(FText::FromString("Can't find a valid sampler component with this name in the target actor"))
-							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+							.Font(m_DetailLayoutBuilder->GetDetailFont())
 							.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
 					]
 			];
@@ -391,7 +391,7 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 						[
 							SNew(STextBlock)
 								.Text(FText::FromString(elem.Value))
-								.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+								.Font(m_DetailLayoutBuilder->GetDetailFont())
 								.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
 						]
 				];
@@ -420,14 +420,20 @@ void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& D
 	// Keep this EditCategory order since it reorder categories in the editor
 	IDetailCategoryBuilder &fxEditorCategory = DetailLayout.EditCategory("PopcornFX Emitter");
 	m_AttributeListCategory = &DetailLayout.EditCategory("PopcornFX Attributes");
+	m_AttributeListCategory->SetDisplayName(FText::FromString("PopcornFX Attributes"));
 
 	DetailLayout.HideProperty("Samplers");
+
+	FTextBlockStyle style;
+	style.SetColorAndOpacity(FSlateColor::UseForeground());
+	style.SetFont(DetailLayout.GetDetailFont());
 
 	// Add some buttons
 	fxEditorCategory.AddCustomRow(LOCTEXT("Emitter Actions", "Emitter Actions"), false)
 		.NameContent()
 		[
 			SNew(STextBlock)
+				.Font(DetailLayout.GetDetailFont())
 				.Text(LOCTEXT("EmitterActions", "Emitter Actions"))
 		]
 		.ValueContent()
@@ -438,12 +444,14 @@ void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& D
 				+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Start", "Start")).ContentPadding(FMargin(0.0f, 1.0f))
+				.TextStyle(&style)
 				.ToolTipText(LOCTEXT("Start_ToolTip", "Starts the emitter. Available if the emitter is not \"IsEmitterStarted\"."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnStartEmitter)
 				.IsEnabled(this, &FPopcornFXDetailsEmitterComponent::IsStartEnabled)]
 				+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Stop", "Stop")).ContentPadding(FMargin(0.0f, 1.0f))
+				.TextStyle(&style)
 				.ToolTipText(LOCTEXT("Stop_ToolTip", "Stops the emitter. Available if the emitter is \"IsEmitterEmitting\"."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnStopEmitter)
 				.IsEnabled(this, &FPopcornFXDetailsEmitterComponent::IsStopEnabled)
@@ -451,11 +459,13 @@ void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& D
 				+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Restart", "Restart")).ContentPadding(FMargin(0.0f, 1.0f))
+				.TextStyle(&style)
 				.ToolTipText(LOCTEXT("Restart_ToolTip", "Terminates then starts the emitter."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnRestartEmitter)]
 				+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Kill Particles", "Kill Particles")).HAlign(EHorizontalAlignment::HAlign_Fill).ContentPadding(FMargin(0.0f, 1.0f))
+				.TextStyle(&style)
 				.ToolTipText(LOCTEXT("kill_ToolTip", "Kill emitter's particles and stop the emitter."))
 				.OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnKillParticles)]
 		]
@@ -465,6 +475,7 @@ void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& D
 		.NameContent()
 		[
 			SNew(STextBlock)
+				.Font(DetailLayout.GetDetailFont())
 				.Text(LOCTEXT("EffectActions", "Effect Actions"))
 		]
 		.ValueContent()
@@ -475,10 +486,12 @@ void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& D
 				+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Reload", "Reload")).OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnReloadEffect)
+				.TextStyle(&style)
 				.ToolTipText(LOCTEXT("Reload_ToolTip", "Reloads the PopcornFXEffect, will kill all particles related to this effect."))]
 				+ SHorizontalBox::Slot()
 				[SNew(SButton)
 				.Text(LOCTEXT("Reimport", "Reimport")).OnClicked(this, &FPopcornFXDetailsEmitterComponent::OnReimportEffect)
+				.TextStyle(&style)
 				.ToolTipText(LOCTEXT("Reimport_ToolTip", "Reimports the PopcornFXEffect."))]
 		];
 

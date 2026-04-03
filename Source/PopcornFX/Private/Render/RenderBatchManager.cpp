@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 
@@ -296,11 +296,11 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 		if (matDesc.HasMaterial() && PK_VERIFY(matDesc.MaterialIsValid()))
 		{
 			const FPopcornFXSubRendererMaterial	*rendererSubMat = matDesc.m_RendererMaterial->GetSubMaterial(0);
-			if (!PK_VERIFY(rendererSubMat != null) ||
-				!PK_VERIFY(rendererSubMat->Material != null))
+			if (rendererSubMat == null ||
+				rendererSubMat->EditableProperties.Material == null)
 				return null;
 
-			UMaterial	*material = rendererSubMat->Material->GetMaterial();
+			UMaterial	*material = rendererSubMat->EditableProperties.Material->GetMaterial();
 			if (!PK_VERIFY(material != null))
 			{
 				// Avoid creating a render batch for no reason
@@ -327,7 +327,7 @@ PopcornFX::CRendererBatchDrawer	*CRenderBatchManager::CreateBatchDrawer(PopcornF
 				PK_ASSERT_NOT_REACHED();
 				break;
 			}
-			hasSkelMesh = rendererSubMat->SkeletalMesh != null;
+			hasSkelMesh = rendererSubMat->EditableProperties.SkeletalMesh != null;
 			PK_ASSERT(!hasSkelMesh || rendererType == PopcornFX::Renderer_Mesh);
 		}
 	}
@@ -792,7 +792,14 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 {
 	PK_NAMEDSCOPEDPROFILE("CRenderBatchManager::RenderThread_DrawCalls");
 
-	PK_ASSERT(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+	check(IsInAnyRenderingThread());
+#else
+	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 
 	GarbageBufferPools();
 

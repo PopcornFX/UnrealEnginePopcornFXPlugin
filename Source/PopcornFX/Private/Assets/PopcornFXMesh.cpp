@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXMesh.h"
@@ -193,7 +193,7 @@ PopcornFX::PResourceMesh	UPopcornFXMesh::LoadResourceMeshIFN(bool editorBuildIFN
 			FText		title = LOCTEXT("PopcornFX: Build Mesh data", "PopcornFX: Build Mesh data");
 			FString		msg;
 			msg += "Do you want to (re)generate PopcornFX mesh data for \"" + SourceMeshObject()->GetPathName() + "\" ?\nThis mesh is used by an effect for static/skeletal mesh sampling. \nIf yes, make sure to save the mesh afterwards.";
-			const EAppReturnType::Type	response = OpenMessageBox(EAppMsgType::YesNoYesAll, FText::FromString(msg), title);
+			const EAppReturnType::Type	response = OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNoYesAll, FText::FromString(msg), title);
 			if (response == EAppReturnType::YesAll)
 			{
 				reload = true;
@@ -948,7 +948,7 @@ void	UPopcornFXMesh::WriteMesh()
 			FText	title = LOCTEXT("mesh_write_fail", "PopcornFX: Failed to serialize PopcornFX mesh");
 			FText	finalText = FText::FromString(FString::Printf(TEXT("Couldn't store PopcornFX mesh in '%s'"), *GetPathName()));
 
-			OpenMessageBox(EAppMsgType::Ok, finalText, title);
+			OpenMessageBox(EAppMsgCategory::Error, EAppMsgType::Ok, finalText, title);
 		}
 	}
 }

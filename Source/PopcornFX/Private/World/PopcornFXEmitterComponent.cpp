@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXEmitterComponent.h"
@@ -1133,7 +1133,24 @@ void	UPopcornFXEmitterComponent::ResetAttributesToDefault()
 		{
 			Samplers[samplerIdx]->CopyPropertiesFrom(Effect->DefaultSamplers[samplerIdx]);
 		}
-		attributeList->ResetToDefaultValues(this, Effect);
+		attributeList->ResetAttributesToDefaultValues(this, Effect);
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::ResetSamplersToDefault()
+{
+	if (!PK_VERIFY(AttributeList != null)) // something can go wrong when deleting stuff
+		return;
+	UPopcornFXAttributeList *attributeList = GetAttributeList();
+	if (attributeList != null)
+	{
+		for (uint32 samplerIdx = 0; samplerIdx < attributeList->SamplerCount(); samplerIdx++)
+		{
+			Samplers[samplerIdx]->CopyPropertiesFrom(Effect->DefaultSamplers[samplerIdx]);
+		}
+		attributeList->ResetSamplersToDefaultValues(this, Effect);
 	}
 }
 

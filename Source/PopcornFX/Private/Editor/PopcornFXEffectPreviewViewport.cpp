@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -504,6 +504,17 @@ void	SPopcornFXEffectPreviewViewport::ResetEmitterAttributes()
 	PK_ASSERT(m_EmitterComponent->GetAttributeList() != null);
 
 	m_EmitterComponent->ResetAttributesToDefault();
+}
+
+//----------------------------------------------------------------------------
+
+void	SPopcornFXEffectPreviewViewport::ResetEmitterSamplers()
+{
+	PK_ASSERT(m_EmitterComponent != null);
+	PK_ASSERT(m_EmitterComponent->Effect != null);
+	PK_ASSERT(m_EmitterComponent->GetAttributeList() != null);
+
+	m_EmitterComponent->ResetSamplersToDefault();
 }
 
 //----------------------------------------------------------------------------

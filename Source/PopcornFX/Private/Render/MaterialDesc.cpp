@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL. All Rights Reserved.
-// https://www.popcornfx.com/terms-and-conditions/
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
 //----------------------------------------------------------------------------
 
 
@@ -202,9 +202,9 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 		{
 			const FPopcornFXSubRendererMaterial	*rendererSubMat = m_GameThreadDesc.m_RendererMaterial->GetSubMaterial(0);
 			if (PK_VERIFY(rendererSubMat != null) &&
-				rendererSubMat->Material != null)
+				rendererSubMat->EditableProperties.Material != null)
 			{
-				const EBlendMode	blendMode = rendererSubMat->Material->GetBlendMode();
+				const EBlendMode	blendMode = rendererSubMat->EditableProperties.Material->GetBlendMode();
 				m_Flags.m_Slicable = (blendMode == BLEND_Translucent) || (blendMode == BLEND_Additive) || (blendMode == BLEND_AlphaComposite) || (blendMode == BLEND_Modulate);
 			}
 		}
@@ -450,13 +450,13 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 		if (m_RendererClass == PopcornFX::Renderer_Mesh)
 		{
 #if WITH_EDITOR
-			const bool	meshChanged = m_StaticMesh != rendererSubMat->StaticMesh;
+			const bool	meshChanged = m_StaticMesh != rendererSubMat->EditableProperties.StaticMesh;
 			if (meshChanged && m_StaticMesh != null)
 			{
 				m_StaticMesh->GetOnMeshChanged().RemoveAll(this);
 				m_StaticMesh->OnPostMeshBuild().RemoveAll(this);
 			}
-			const bool	skelMeshChanged = m_SkeletalMesh != rendererSubMat->SkeletalMesh;
+			const bool	skelMeshChanged = m_SkeletalMesh != rendererSubMat->EditableProperties.SkeletalMesh;
 			if (skelMeshChanged && m_SkeletalMesh != null)
 				m_SkeletalMesh->GetOnMeshChanged().RemoveAll(this);
 #endif // WITH_EDITOR
@@ -464,11 +464,11 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 			m_PerParticleLOD = rendererSubMat->PerParticleLOD;
 			m_MotionBlur = rendererSubMat->MotionBlur;
 			const u32	baseLODLevel = 0; // TODO
-			if (rendererSubMat->SkeletalMesh != null &&
-				rendererSubMat->TextureSkeletalAnimation != null)
+			if (rendererSubMat->EditableProperties.SkeletalMesh != null &&
+				rendererSubMat->EditableProperties.TextureSkeletalAnimation != null)
 			{
-				m_SkeletalMesh = rendererSubMat->SkeletalMesh;
-				m_SkeletalAnimationTexture = rendererSubMat->TextureSkeletalAnimation;
+				m_SkeletalMesh = rendererSubMat->EditableProperties.SkeletalMesh;
+				m_SkeletalAnimationTexture = rendererSubMat->EditableProperties.TextureSkeletalAnimation;
 				m_SkeletalAnimationCount = rendererSubMat->SkeletalAnimationCount;
 				m_SkeletalAnimationPosBoundsMin = FVector3f(rendererSubMat->SkeletalAnimationPosBoundsMin);
 				m_SkeletalAnimationPosBoundsMax = FVector3f(rendererSubMat->SkeletalAnimationPosBoundsMax);
@@ -476,11 +476,11 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 				m_SkeletalAnimationLinearInterpolateTracks = rendererSubMat->SkeletalAnimationLinearInterpolateTracks ? 1 : 0;
 				_BuildSkelMesh();
 			}
-			else if (rendererSubMat->StaticMesh != null)
+			else if (rendererSubMat->EditableProperties.StaticMesh != null)
 			{
-				if (!rendererSubMat->StaticMesh->HasValidRenderData())
+				if (!rendererSubMat->EditableProperties.StaticMesh->HasValidRenderData())
 					return false;
-				m_StaticMesh = rendererSubMat->StaticMesh;
+				m_StaticMesh = rendererSubMat->EditableProperties.StaticMesh;
 				_BuildStaticMesh();
 			}
 			else
@@ -506,7 +506,7 @@ bool	CMaterialDesc_GameThread::GameThread_Setup()
 		{
 			m_NeedSort = (rendererSubMat->SortIndices != 0);
 			m_HasAtlasBlending = (rendererSubMat->SoftAnimBlending != 0 || rendererSubMat->MotionVectorsBlending != 0);
-			m_HasAlphaRemapper = (rendererSubMat->TextureAlphaRemapper != 0);
+			m_HasAlphaRemapper = (rendererSubMat->EditableProperties.TextureAlphaRemapper != 0);
 		}
 	}
 	return true;
@@ -533,8 +533,8 @@ bool	CMaterialDesc_RenderThread::ValidForRendering() const
 		return false;
 	if (m_RendererClass == PopcornFX::Renderer_Mesh)
 	{
-		return	rendererSubMat->StaticMesh != null ||
-				(rendererSubMat->SkeletalMesh != null && rendererSubMat->TextureSkeletalAnimation != null);
+		return	rendererSubMat->EditableProperties.StaticMesh != null ||
+				(rendererSubMat->EditableProperties.SkeletalMesh != null && rendererSubMat->EditableProperties.TextureSkeletalAnimation != null);
 	}
 //#endif
 	return true;
@@ -554,7 +554,14 @@ void	CMaterialDesc_RenderThread::Clear()
 
 bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &gameMat)
 {
-	PK_ASSERT(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+	check(IsInAnyRenderingThread());
+#else
+	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 
 	m_HasAtlasBlending = gameMat.m_HasAtlasBlending;
 	m_HasAlphaRemapper = gameMat.m_HasAlphaRemapper;
@@ -581,7 +588,7 @@ bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &g
 	//	m_SkeletalMesh->GetOnMeshChanged().RemoveAll(this);
 #endif // WITH_EDITOR
 
-	// Temp code for raytracing testing. Requires modification on UE4 side.
+	// Temp code for raytracing testing. Requires modification on UE side.
 #if 0
 #	if RHI_RAYTRACING
 	if (IsRayTracingEnabled() && m_LODResources != null && m_HasMeshAtlas && m_Raytraced)
@@ -667,7 +674,14 @@ bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardi
 	if (m_RendererClass == PopcornFX::Renderer_Light ||
 		m_RendererClass == PopcornFX::Renderer_Sound)
 		return true; // No material to resolve for lights/sounds
-	PK_ASSERT(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+	check(IsInAnyRenderingThread());
+#else
+	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 	if (!MaterialIsValid())
 		return false;
 
