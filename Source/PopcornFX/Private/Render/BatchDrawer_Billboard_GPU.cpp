@@ -431,7 +431,8 @@ bool	CBatchDrawer_Billboard_GPUBB::_IsAdditionalInputSupported(const PopcornFX::
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
 			outStreamOffsetType = StreamOffset_TextureIDs;
-		else if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
+		else if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
+				 fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 	}
 	return outStreamOffsetType != EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;

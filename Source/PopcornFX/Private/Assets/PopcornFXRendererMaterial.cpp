@@ -17,6 +17,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "Engine/SkinnedAssetCommon.h"
 #include "MaterialShared.h"
+#include "PrimitiveSceneProxy.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_base_object/include/hbo_handler.h>
@@ -2322,6 +2323,17 @@ bool	UPopcornFXRendererMaterial::_ReloadInstance(uint32 subMatId)
 	newInstance->SetFlags(RF_Public);
 	newInstance->SetParentEditorOnly(subMat.EditableProperties.Material);
 
+	if (subMat.CastShadow && IsParallelGatherDynamicMeshElementsEnabled())
+	{
+		FText		title = LOCTEXT("parallel_gather_dynamic_mesh_elements_not_supported_title", "PopcornFX: Compression Settings");
+		const FText	message = FText(LOCTEXT("parallel_gather_dynamic_mesh_elements_not_supported",
+			"Parallel gathering of dynamic mesh elements is not supported for shadow casting renderers."
+			"Disable it by setting `r.Visibility.DynamicMeshElements.Parallel 0` in the console and reimport your effect,"
+			" or add `r.Visibility.DynamicMeshElements.Parallel=0` in your Config/DefaultEngine.ini file and restart the editor"));
+
+		OpenMessageBox(EAppMsgCategory::Warning, EAppMsgType::Ok, message, title);
+		subMat.CastShadow = false;
+	}
 	kRendererMaterialFuncs[subMat.m_RMId].m_ParamsConstFunc(this, newInstance, subMatId);
 
 	subMat.MaterialInstance = newInstance;

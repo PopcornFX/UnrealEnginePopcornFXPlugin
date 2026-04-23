@@ -209,7 +209,8 @@ bool	CBatchDrawer_Ribbon_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CSt
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
+			fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
 			outStreamOffsetType = StreamOffset_TextureID;
