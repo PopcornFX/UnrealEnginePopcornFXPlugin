@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -11,7 +11,6 @@
 #include <pk_particles/include/ps_mediums.h>
 
 #include "SceneManagement.h"
-#include "SceneView.h"
 
 #if RHI_RAYTRACING
 #	include "RayTracingInstance.h"
@@ -75,7 +74,8 @@ public:
 #if RHI_RAYTRACING
 	bool			Setup_GetDynamicRayTracingInstances(
 		const FPopcornFXSceneProxy *sceneProxy,
-		FRayTracingInstanceCollector &context);
+		FRayTracingMaterialGatheringContext &context,
+		::TArray<FRayTracingInstance> &outRayTracingInstances);
 #endif //RHI_RAYTRACING
 
 	bool						Setup_PostUpdate();
@@ -93,7 +93,10 @@ public:
 	FMeshElementCollector		*Collector() const { return m_Collector; }
 
 #if RHI_RAYTRACING
-	FRayTracingInstanceCollector						*RTCollector() const { return m_RTCollector; }
+	const FScene										*Scene() const { return m_Scene; }
+	FRayTracingMeshResourceCollector					*RTCollector() const { return m_RTCollector; }
+	::TArray<FRayTracingDynamicGeometryUpdateParams>	*DynamicRayTracingGeometries() { return m_DynamicRayTracingGeometries; }
+	::TArray<FRayTracingInstance>						*OutRayTracingInstances() { return m_OutRayTracingInstances; }
 #endif // RHI_RAYTRACING
 
 	const TStaticCountedArray<SSceneView, kMaxViews>	&SceneViews() const { return m_SceneViews; }
@@ -107,7 +110,10 @@ private:
 	const FSceneViewFamily				*m_ViewFamily = null;
 	FMeshElementCollector				*m_Collector = null;
 #if RHI_RAYTRACING
-	FRayTracingInstanceCollector						*m_RTCollector = null;
+	const FScene										*m_Scene = null;
+	FRayTracingMeshResourceCollector					*m_RTCollector = null;
+	::TArray<FRayTracingDynamicGeometryUpdateParams>	*m_DynamicRayTracingGeometries = null;
+	::TArray<FRayTracingInstance>						*m_OutRayTracingInstances = null;
 #endif // RHI_RAYTRACING
 
 	u32									m_ViewsMask = 0;

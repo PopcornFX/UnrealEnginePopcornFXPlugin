@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -38,17 +38,17 @@ private:
 
 	void	AddScalarAttribute(FGuid objectBinding,
 		UPopcornFXAttributeTrack *attributeTrack,
-		FString attrName,
+		FName attrName,
 		u32 attrIndex);
 
 	void	AddVectorAttribute(FGuid objectBinding,
 		UPopcornFXAttributeTrack *attributeTrack,
-		FString attrName,
+		FName attrName,
 		u32 attrIndex);
 
 	void	AddColorAttribute(FGuid objectBinding,
 		UPopcornFXAttributeTrack *attributeTrack,
-		FString attrName,
+		FName attrName,
 		u32 attrIndex);
 };
 

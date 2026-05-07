@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 #pragma once
 
@@ -24,7 +24,7 @@ private:
 		StreamOffset_Colors = 0,
 		StreamOffset_EmissiveColors3,
 		StreamOffset_EmissiveColors4,
-		StreamOffset_Velocity,
+		StreamOffset_PreviousPosition,
 		StreamOffset_AlphaCursors,
 		StreamOffset_AtlasTextureID,
 		StreamOffset_DynParam1s,
@@ -91,8 +91,6 @@ private:
 	bool							m_RotateUV = false;
 	bool							m_FlipU = false;
 	bool							m_FlipV = false;
-	// Random value between 0 and 1 used as a seed to generate random values per particle in the shader
-	float							m_Random;
 
 	// View independent buffers
 	CPooledIndexBuffer				m_Indices;

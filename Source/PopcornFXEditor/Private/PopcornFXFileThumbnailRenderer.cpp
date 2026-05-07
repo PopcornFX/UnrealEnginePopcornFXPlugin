@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 
@@ -19,15 +19,6 @@ UPopcornFXFileThumbnailRenderer::UPopcornFXFileThumbnailRenderer(const FObjectIn
 }
 
 //----------------------------------------------------------------------------
-
-bool	UPopcornFXFileThumbnailRenderer::CanVisualizeAsset(UObject* Object)
-{
-	UPopcornFXFile* file = Cast<UPopcornFXFile>(Object);
-	if (!file)
-		return false;
-	UTexture2D* texture = file->ThumbnailImage;
-	return (texture && !texture->IsCompiling());
-}
 
 void	UPopcornFXFileThumbnailRenderer::Draw(UObject *object, int32 x, int32 y, uint32 width, uint32 height, FRenderTarget *renderTarget, FCanvas *canvas, bool bAdditionalViewFamily)
 {

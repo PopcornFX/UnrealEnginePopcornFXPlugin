@@ -1,12 +1,11 @@
-//----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
-//----------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL. All Rights Reserved. https://www.popcornfx.com/terms-and-conditions/
+//--------------------------------------------------------------------------------------------------------
 
 // AUTO GENERATED FILE
 #pragma once
 
 #define POPCORNFX_PLUGIN_VERSION_MAJOR 2
-#define POPCORNFX_PLUGIN_VERSION_MINOR 24
-#define POPCORNFX_PLUGIN_VERSION_PATCH 2
+#define POPCORNFX_PLUGIN_VERSION_MINOR 20
+#define POPCORNFX_PLUGIN_VERSION_PATCH 13
 #define POPCORNFX_PLUGIN_VERSION_TAG ""

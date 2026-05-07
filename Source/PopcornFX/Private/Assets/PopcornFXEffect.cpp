@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "Assets/PopcornFXEffect.h"
@@ -157,12 +157,21 @@ void	UPopcornFXEffect::PreReimport_Clean()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 void	UPopcornFXEffect::GetAssetRegistryTags(FAssetRegistryTagsContext context) const
 {
 	context.AddTag(FAssetRegistryTag("NumMaterials", LexToString(ParticleRendererMaterials.Num()), FAssetRegistryTag::TT_Numerical));
 
 	Super::GetAssetRegistryTags(context);
 }
+#else
+void	UPopcornFXEffect::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const
+{
+	outTags.Add(FAssetRegistryTag("NumMaterials", LexToString(ParticleRendererMaterials.Num()), FAssetRegistryTag::TT_Numerical));
+
+	Super::GetAssetRegistryTags(outTags);
+}
+#endif
 
 //----------------------------------------------------------------------------
 
@@ -273,51 +282,6 @@ bool	UPopcornFXEffect::LoadEffect(bool forceImport)
 	m_Loaded = true;
 
 	DefaultAttributeList->SetupDefault(this, forceImport);
-
-	int32 samplerCount = DefaultAttributeList->SamplerCount();
-	// Shrink the array if some samplers were removed and we're reimporting
-	if (samplerCount < DefaultSamplers.Num())
-	{
-		DefaultSamplers.SetNum(samplerCount);
-	}
-	else
-	{
-		DefaultSamplers.Reserve(samplerCount);
-	}
-	for (int32 samplerIdx = 0; samplerIdx < samplerCount; samplerIdx++)
-	{
-		const FPopcornFXSamplerDesc *desc = DefaultAttributeList->GetSamplerDesc(samplerIdx);
-		if (!PK_VERIFY(desc != null))
-		{
-			continue;
-		}
-
-		const UClass *samplerClass = GetSamplerClass(desc->m_SamplerType);
-		if (!PK_VERIFY(samplerClass != null))
-		{
-			continue;
-		}
-
-		if (samplerIdx >= DefaultSamplers.Num())
-		{
-			// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-			UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-			DefaultSamplers.Add(newSampler);
-		}
-		else
-		{
-			if (!DefaultSamplers[samplerIdx] || DefaultSamplers[samplerIdx]->SamplerType() != desc->m_SamplerType
-				|| (samplerIdx < DefaultAttributeList->m_Samplers.Num() && DefaultAttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName))
-			{
-				// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-				UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-				DefaultSamplers[samplerIdx] = newSampler;
-			}
-		}
-#if WITH_EDITOR
-		DefaultSamplers[samplerIdx]->SetupDefaults(this, samplerIdx, true);
-#endif
-	}
 	return m_Loaded;
 }
 
@@ -367,7 +331,6 @@ namespace
 	static const char	*kMagicLeap = "magicleap";
 
 	static const char	*kEditor = "editor";
-	static const char	*kEngineTag = "unrealengine";
 
 	//----------------------------------------------------------------------------
 
@@ -387,11 +350,9 @@ namespace
 	void	UEPlatformToPkBackendConfig(const FString &platformName, SBackendAndBuildTags &outBackendAndBuildTags)
 	{
 		// Keep this an array, allows to do some compile time checks if the list mismatches PopcornFX supported tags
-		PopcornFX::TStaticCountedArray<PopcornFX::CString, 6>	buildTags;
+		PopcornFX::TStaticCountedArray<PopcornFX::CString, 5>	buildTags;
 
 		outBackendAndBuildTags.m_BackendTargets = 0;
-
-		PK_VERIFY(buildTags.PushBack(kEngineTag).Valid());
 
 		if (platformName == "AllDesktop")
 		{
@@ -422,13 +383,13 @@ namespace
 			}
 			else
 			{
-				const FString	hardwareDetails = FHardwareInfo::GetHardwareDetailsString();
+			const FString	hardwareDetails = FHardwareInfo::GetHardwareDetailsString();
 
-				if (hardwareDetails.Contains("D3D12") && FModuleManager::Get().IsModuleLoaded("D3D12RHI"))
-					outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D12;
-				else if (hardwareDetails.Contains("D3D11") && FModuleManager::Get().IsModuleLoaded("D3D11RHI"))
-					outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D11;
-			}
+			if (hardwareDetails.Contains("D3D12") && FModuleManager::Get().IsModuleLoaded("D3D12RHI"))
+				outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D12;
+			else if (hardwareDetails.Contains("D3D11") && FModuleManager::Get().IsModuleLoaded("D3D11RHI"))
+				outBackendAndBuildTags.m_BackendTargets = 1 << PopcornFX::BackendTarget_D3D11;
+		}
 		}
 		else if (platformName.Contains("Win"))
 		{
@@ -785,7 +746,6 @@ bool	UPopcornFXEffect::_ImportFile(const FString &filePath)
 
 	if (!Super::_ImportFile(filePath))
 		return false;
-	OnEffectReimported.Broadcast();
 	return true;
 }
 
@@ -903,9 +863,9 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 	else
 	{
 		bakeConfig->SetBakeMode(FPopcornFXPlugin::Get().SettingsEditor()->bDebugBakedEffects ? PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsText : PopcornFX::COvenBakeConfig_HBO::Bake_SaveAsBinary); // "Final" bake when cooking: store as binary
+		// GOREFIX: #12621 - UnrealEngine: texture sampling does not work in packaged games
+		bakeConfig->SetCompilerSwitches("--no-sam-cfl");
 	}
-	// GOREFIX: #14683 - UnrealEngine: Some effects that reference .exr files fail loading them once in unreal
-	bakeConfig->SetCompilerSwitches("--no-sam-cfl");
 
 	// build versions
 	PopcornFX::COvenBakeConfig_Particle::_TypeOfBuildVersions	buildVersions;
@@ -1024,103 +984,77 @@ void	UPopcornFXEffect::ReloadRendererMaterials()
 	if (!LoadEffect())
 		return;
 
-	// TODO: optimize this, do we really have to destroy and recreate everything?
-	TArray<UPopcornFXRendererMaterial*>					oldMaterials = ParticleRendererMaterials;
-	ParticleRendererMaterials.Empty(oldMaterials.Num());
-
-	PopcornFX::PCEventConnectionMap	ecMap = m_Private->m_ParticleEffect->EventConnectionMap();
-	if (!PK_VERIFY(ecMap != null))
-		return;
-	s32				globalRendererIndex = -1;
-	const u32		layerCount = ecMap->m_LayerSlots.Count();
-	for (u32 iLayer = 0; iLayer < layerCount; ++iLayer)
 	{
-		const PopcornFX::PParticleDescriptor	desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
-		if (!PK_VERIFY(desc != null))
+		TArray<UPopcornFXRendererMaterial*>					oldMaterials = ParticleRendererMaterials;
+		ParticleRendererMaterials.Empty(oldMaterials.Num());
+
+		PopcornFX::PCEventConnectionMap	ecMap = m_Private->m_ParticleEffect->EventConnectionMap();
+		if (!PK_VERIFY(ecMap != null))
 			return;
-
-		PopcornFX::TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
-		const u32													rendererCount = renderers.Count();
-		for (u32 iRenderer = 0; iRenderer < rendererCount; ++iRenderer)
+		s32				globalRendererIndex = -1;
+		const u32		layerCount = ecMap->m_LayerSlots.Count();
+		for (u32 iLayer = 0; iLayer < layerCount; ++iLayer)
 		{
-			globalRendererIndex++;
-
-			const PopcornFX::CRendererDataBase	*rBase = renderers[iRenderer].Get();
-			if (!PK_VERIFY(rBase != null))
+			const PopcornFX::PParticleDescriptor	desc = ecMap->m_LayerSlots[iLayer].m_ParentDescriptor;
+			if (!PK_VERIFY(desc != null))
 				return;
+			PopcornFX::TMemoryView<const PopcornFX::PRendererDataBase>	renderers = desc->Renderers();
+			const u32													rendererCount = renderers.Count();
+			for (u32 iRenderer = 0; iRenderer < rendererCount; ++iRenderer)
+			{
+				globalRendererIndex++;
 
-			PopcornFX::CString		customName;
-			PopcornFX::PBaseObject	rendererObj = m_Private->m_ParticleEffect->File()->FindObject(rBase->m_Declaration.m_RendererUID);
-			if (PK_VERIFY(PopcornFX::CParticleNodeRendererBase::m_Handler->IsBaseClassOf(rendererObj.Get())))
-			{
-				PopcornFX::CParticleNodeRendererBase *rendererNode = checked_cast<PopcornFX::CParticleNodeRendererBase *>((rendererObj.Get()));
-				customName = rendererNode->CustomName().MapDefault().ToUTF8();
-			}
-				
-			UPopcornFXRendererMaterial	*newMat = NewObject<UPopcornFXRendererMaterial>(this);
-			FPopcornFXRendererDesc renderer(ToUE(customName), ToUE(desc->LayerName()), iLayer, static_cast<unsigned int>(rBase->m_RendererType));
-			if (!newMat->Setup(this, rBase, globalRendererIndex, renderer))
-			{
-				newMat->ConditionalBeginDestroy();
-				newMat = null;
-				continue;
-			}
+				const PopcornFX::CRendererDataBase	*rBase = renderers[iRenderer].Get();
+				if (!PK_VERIFY(rBase != null))
+					return;
 
-			// search old renderer materials
-			for (int32 oldi = 0; oldi < oldMaterials.Num(); ++oldi)
-			{
-				UPopcornFXRendererMaterial *oldMat = oldMaterials[oldi];
-				if (oldMat != null &&
-					oldMat->UID == newMat->UID)
+				UPopcornFXRendererMaterial	*newMat = NewObject<UPopcornFXRendererMaterial>(this);
+				if (!newMat->Setup(this, rBase, globalRendererIndex))
 				{
-					//oldMat->SetupIndex(globalRendererIndex);
-					oldMat->Setup(this, rBase, globalRendererIndex, renderer);
-
-					oldMaterials[oldi] = null;
-					ParticleRendererMaterials.Add(oldMat);
+					newMat->ConditionalBeginDestroy();
 					newMat = null;
-					break;
+					continue;
 				}
-			}
 
-			if (newMat != null)
-			{
-				ParticleRendererMaterials.Add(newMat);
-				newMat = null;
-			}
-		}
-	}
-
-	for (int32 oldi = 0; oldi < oldMaterials.Num(); ++oldi)
-	{
-		UPopcornFXRendererMaterial *oldMat = oldMaterials[oldi];
-		if (oldMat != null)
-		{
-			UE_LOG(LogPopcornFXEffect, Display, TEXT("Render %s in layer %s is not present anymore"), *oldMat->SubMaterials[0].Renderer.Name, *oldMat->SubMaterials[0].Renderer.ParentLayerName);
-			PopcornFX::PBaseObject	rendererObj = m_Private->m_ParticleEffect->File()->FindObject(oldMat->UID);
-			if (rendererObj != null)
-			{
-				if (PopcornFX::CParticleNodeRendererBase::m_Handler->IsBaseClassOf(rendererObj.Get()))
+				// search existing renderer materials
+				for (int32 mati = 0; mati < ParticleRendererMaterials.Num(); ++mati)
 				{
-					PopcornFX::CParticleNodeRendererBase *rendererNode = checked_cast<PopcornFX::CParticleNodeRendererBase *>((rendererObj.Get()));
-					if (!rendererNode->Active())
+					UPopcornFXRendererMaterial			*otherMat = ParticleRendererMaterials[mati];
+					if (PK_VERIFY(otherMat != null) &&
+						newMat->CanBeMergedWith(otherMat))
 					{
-						UE_LOG(LogPopcornFXEffect, Display, TEXT("But is still present in the file, just inactive!"));
-						oldMat->SetupIndex(globalRendererIndex);
-						globalRendererIndex++;
-						oldMaterials[oldi] = null;
-						ParticleRendererMaterials.Add(oldMat);
+						otherMat->Add(this, globalRendererIndex);
+						newMat = null;
+						break;
 					}
 				}
-			}
-			//oldMat->SetupIndex(globalRendererIndex);
 
-			//oldMaterials[oldi] = null;
-			//ParticleRendererMaterials.Add(oldMat);
+				if (newMat == null) // has been inserted
+					continue;
+
+				// search old renderer materials
+				for (int32 oldi = 0; oldi < oldMaterials.Num(); ++oldi)
+				{
+					UPopcornFXRendererMaterial	*oldMat = oldMaterials[oldi];
+					if (oldMat != null &&
+						newMat->CanBeMergedWith(oldMat))
+					{
+						oldMat->Setup(this, rBase, globalRendererIndex);
+						oldMaterials[oldi] = null;
+						ParticleRendererMaterials.Add(oldMat);
+						newMat = null;
+						break;
+					}
+				}
+
+				if (newMat != null)
+				{
+					ParticleRendererMaterials.Add(newMat);
+					newMat = null;
+				}
+			}
 		}
 	}
-
-
 	// Trigger everything to rebuild renderer drawers
 	for (int32 mati = 0; mati < ParticleRendererMaterials.Num(); ++mati)
 	{

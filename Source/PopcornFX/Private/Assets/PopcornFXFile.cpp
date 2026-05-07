@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "Assets/PopcornFXFile.h"
@@ -17,7 +17,11 @@
 #include "UObject/LinkerLoad.h"
 #if WITH_EDITOR
 #	include "Factories/TextureFactory.h"
+#	if (ENGINE_MAJOR_VERSION == 5)
 #		include "AssetRegistry/AssetRegistryModule.h"
+#	else
+#		include "AssetRegistryModule.h"
+#	endif // (ENGINE_MAJOR_VERSION == 5)
 #	include "EditorReimportHandler.h"
 #endif // WITH_EDITOR
 
@@ -52,7 +56,7 @@ namespace
 				FText	title = LOCTEXT("import_outside_mountpoint_title", "PopcornFX: Invalid file location");
 				FText	finalText = FText::FromString(FString::Printf(TEXT("The PopcornFX file '%s' is outside the mount point of the PopcornFX pack '%s'"), *ToUE(rawFilePath), *ToUE(packPath)));
 
-				OpenMessageBox(EAppMsgCategory::Error, EAppMsgType::Ok, finalText, title);
+				OpenMessageBox(EAppMsgType::Ok, finalText, title);
 			}
 #endif // WITH_EDITOR
 			return null;
@@ -155,7 +159,7 @@ bool	UPopcornFXFile::_ImportFile(const FString &inFilePath)
 					LOCTEXT("PopcornFXCannotImportBakedText",
 					"Please import the original source file of:\n\n{0}\n\nThen, PopcornFX Plugin and UE will take care of properly baking it.\n"),
 					FText::FromString(filePath));
-				OpenMessageBox(EAppMsgCategory::Error, EAppMsgType::Ok, msg, title);
+				OpenMessageBox(EAppMsgType::Ok, msg, title);
 				FPopcornFXPlugin::Get().UnloadPkFile(this); // unload via this method (SetInternalUserData(null))
 				return false;
 			}
@@ -380,7 +384,7 @@ void	UPopcornFXFile::AskImportAssetDependenciesIFN()
 			doImport = true;
 		else
 		{
-			const EAppReturnType::Type	response = OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNoYesAll, FText::FromString(msg), title);
+			const EAppReturnType::Type	response = OpenMessageBox(EAppMsgType::YesNoYesAll, FText::FromString(msg), title);
 			if (response == EAppReturnType::YesAll)
 			{
 				FPopcornFXPlugin::SetAskImportAssetDependencies_YesAll(true);
@@ -419,6 +423,7 @@ void	UPopcornFXFile::PreReimport_Clean()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 void	UPopcornFXFile::GetAssetRegistryTags(FAssetRegistryTagsContext context) const
 {
 	if (AssetImportData != null)
@@ -426,6 +431,15 @@ void	UPopcornFXFile::GetAssetRegistryTags(FAssetRegistryTagsContext context) con
 
 	Super::GetAssetRegistryTags(context);
 }
+#else
+void	UPopcornFXFile::GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const
+{
+	if (AssetImportData != null)
+		outTags.Add( FAssetRegistryTag(SourceFileTagName(), AssetImportData->GetSourceData().ToJson(), FAssetRegistryTag::TT_Hidden) );
+
+	Super::GetAssetRegistryTags(outTags);
+}
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 
 //----------------------------------------------------------------------------
 

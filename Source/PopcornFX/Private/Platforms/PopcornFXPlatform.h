@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -18,8 +18,10 @@
 #	endif // (PK_HAS_GPU != 0)
 #endif // WITH_EDITOR
 
-#if (PK_COMPILE_GPU != 0)
-#	include "RHIShaderPlatform.h"
+#if (ENGINE_MINOR_VERSION >= 2)
+#	if (PK_COMPILE_GPU != 0)
+#		include "RHIShaderPlatform.h"
+#	endif
 #endif
 
 FWD_PK_API_BEGIN

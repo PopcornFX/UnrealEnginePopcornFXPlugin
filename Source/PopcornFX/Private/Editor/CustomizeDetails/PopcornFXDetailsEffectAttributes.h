@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -9,22 +9,13 @@
 
 #include "PopcornFXMinimal.h"
 
-#include "PopcornFXDetailsAttributeList.h"
 #include "Runtime/Launch/Resources/Version.h"
-#include "PropertyEditorModule.h"
-
 #include "IDetailCustomization.h"
 
-class UPopcornFXAttributeList;
-
-class FPopcornFXDetailsEffectAttributes : public FPopcornFXDetailsAttributeList
+class FPopcornFXDetailsEffectAttributes : public IDetailCustomization
 {
 public:
-
 	virtual void	CustomizeDetails(class IDetailLayoutBuilder& DetailBuilder) override;
-
-private:
-	void			BuildSampler(const FPopcornFXSamplerDesc *desc, const TSharedPtr<IPropertyHandle> samplerPty, const TSharedPtr<IPropertyHandle> samplerDescPty, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory) override;
 };
 
 #endif // WITH_EDITOR

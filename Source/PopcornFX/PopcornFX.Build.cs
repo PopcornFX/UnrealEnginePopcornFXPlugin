@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 using System;
@@ -103,7 +103,6 @@ namespace UnrealBuildTool.Rules
 #endif // WITH_FORWARDED_MODULE_RULES_CTOR
 		{
 			CurrentSDK = SDK.No;
-            bUseUnity = false;
 
 			string		sdkRoot = null;
 
@@ -210,8 +209,6 @@ namespace UnrealBuildTool.Rules
 			bool	isUNKNOWN = false;
 			bool	isUNKNOWN2Compatible = false;
 			bool	isUNKNOWN2 = false;
-			bool	isUNKNOWN3Compatible = false;
-			bool	isUNKNOWN3 = false;
 
 			// Makes sure the plugin is compatible with Vanilla UnrealEngine
 			isUNKNOWNCompatible = UnrealTargetPlatform.IsValidName("WinUNKNOWN") || UnrealTargetPlatform.IsValidName("XboxOneUNKNOWN") || UnrealTargetPlatform.IsValidName("UNKNOWN");
@@ -221,8 +218,6 @@ namespace UnrealBuildTool.Rules
 			isUNKNOWN = isUNKNOWNCompatible && (Target.Platform.ToString() == "UNKNOWN");
 			isUNKNOWN2Compatible = UnrealTargetPlatform.IsValidName("UNKNOWN2");
 			isUNKNOWN2 = isUNKNOWN2Compatible && (Target.Platform.ToString() == "UNKNOWN2");
-            isUNKNOWN3Compatible = UnrealTargetPlatform.IsValidName("UNKNOWN3");
-            isUNKNOWN3 = isUNKNOWN3Compatible && (Target.Platform.ToString() == "UNKNOWN3");
 
 			if (isUNKNOWNCompatible)
 				Log("Detected UNKNOWN compatible Unreal Engine");
@@ -234,7 +229,7 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			if (Target.Platform == UnrealTargetPlatform.Win32)
 			{
-				libPrefix = clientLibDir + "vs2022_Win32/";
+				libPrefix = clientLibDir + "vs2019_Win32/";
 				libExt = ".lib";
 			}
 			else
@@ -242,7 +237,7 @@ namespace UnrealBuildTool.Rules
 			if (Target.Platform == UnrealTargetPlatform.Win64 ||
 				isWinUNKNOWN) // Win32 UNKNOWN (WINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP), just link with the same libs as Win64
 			{
-				libPrefix = clientLibDir + "vs2022_x64/";
+				libPrefix = clientLibDir + "vs2019_x64/";
 				libExt = ".lib";
 			}
 			else if (Target.Platform == UnrealTargetPlatform.Mac)
@@ -253,31 +248,31 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.XboxOne)
 			{
-				libPrefix = clientLibDir + "vs2022_Durango/";
+				libPrefix = clientLibDir + "vs2019_Durango/";
 				libExt = ".lib";
 			}
 #endif // !UE_5_0_OR_LATER
 			else if (isXboxOneUNKNOWN)
 			{
-				libPrefix = clientLibDir + "vs2022_UNKNOWN.x64/";
+				libPrefix = clientLibDir + "vs2019_UNKNOWN.x64/";
 				libExt = ".lib";
 			}
 			else if (isUNKNOWN)
 			{
-				libPrefix = clientLibDir + "vs2022_UNKNOWN.x64/";
+				libPrefix = clientLibDir + "vs2019_UNKNOWN.x64/";
 				libExt = ".lib";
 			}
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.PS4)
 			{
-				libPrefix = clientLibDir + "vs2022_ORBIS/";
+				libPrefix = clientLibDir + "vs2019_ORBIS/";
 				// "vs" + WindowsPlatform.GetVisualStudioCompilerVersionName(); // error (exception) on >= 4.16
 				libExt = ".a";
 			}
 #endif // !UE_5_0_OR_LATER
 			else if (isUNKNOWN2)
 			{
-				libPrefix = clientLibDir + "vs2022_UNKNOWN2/";
+				libPrefix = clientLibDir + "vs2019_UNKNOWN2/";
 				libExt = ".a";
 			}
 			else if (Target.Platform == UnrealTargetPlatform.IOS)
@@ -299,17 +294,17 @@ namespace UnrealBuildTool.Rules
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 			else if (Target.Platform == UnrealTargetPlatform.Switch)
 			{
-				libPrefix = clientLibDir + "vs2022_NX64/";
+				libPrefix = clientLibDir + "vs2019_NX64/";
 				libExt = ".a";
 			}
 #endif // !UE_5_0_OR_LATER
 #if UE_5_6_OR_LATER
-			else if (isUNKNOWN3)
+			else if (Target.Platform == UnrealTargetPlatform.UNKNOWN3)
 			{
 				libPrefix = clientLibDir + "vs2022_UNKNOWN3/";
 				libExt = ".a";
 			}
-#endif // !UE_6_0_OR_LATER
+#endif // !UE_5_0_OR_LATER
 			else
 			{
 				LogError("Target Platform " + Target.Platform.ToString() + " not supported by PopcornFX");
@@ -464,11 +459,7 @@ namespace UnrealBuildTool.Rules
 
 				// Needed for RHI buffers creation from native resources
 				PublicIncludePaths.Add("Runtime/D3D12RHI/Private");
-#if UE_5_6_OR_LATER
-				PublicIncludePaths.Add("Runtime/D3D12RHI/Internal");
-                PublicIncludePaths.Add("Runtime/RHICore/Internal");
-#endif // UE_5_6_OR_LATER
-                if (
+				if (
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 					Target.Platform == UnrealTargetPlatform.XboxOne ||
 #endif // !UE_5_0_OR_LATER
@@ -571,13 +562,7 @@ namespace UnrealBuildTool.Rules
 				PrivateDependencyModuleNames.Add("PhysX");
 			if (Target.bBuildEditor)
 			{
-                PublicDependencyModuleNames.AddRange(
-                new string[]
-                {
-                    "GraphEditor",
-                }
-                );
-                PrivateDependencyModuleNames.AddRange(
+				PrivateDependencyModuleNames.AddRange(
 					new string[]
 					{
 						"UnrealEd",

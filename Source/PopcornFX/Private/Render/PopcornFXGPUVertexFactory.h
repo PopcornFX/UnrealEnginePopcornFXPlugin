@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -34,7 +34,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, POPCORNFX
 	SHADER_PARAMETER(int32, InColorsOffset)
 	SHADER_PARAMETER(int32, InEmissiveColorsOffset3)
 	SHADER_PARAMETER(int32, InEmissiveColorsOffset4)
-	SHADER_PARAMETER(int32, InVelocityOffset)
+	SHADER_PARAMETER(int32, InPreviousPositionOffset)
 	SHADER_PARAMETER(int32, InAlphaCursorsOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter1sOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter2sOffset)
@@ -45,7 +45,6 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXGPUBillboardVSUniforms, POPCORNFX
 	SHADER_PARAMETER(uint32, AtlasRectCount)
 	SHADER_PARAMETER(uint32, BasicTransforms) // 0 : RotateUV, 1: FlipU, 2 : FlipV (bitfield)
 	SHADER_PARAMETER(FVector4f, DrawRequest) // Unbatched, GPU
-	SHADER_PARAMETER(float, InstRandom)
 	SHADER_PARAMETER_SRV(Buffer<uint>, InSortedIndices)
 	SHADER_PARAMETER_SRV(Buffer<float4>, AtlasBuffer)
 	SHADER_PARAMETER_SRV(Buffer<float4>, DrawRequests) // Batched, CPU
@@ -74,7 +73,11 @@ public:
 	static bool			IsCompatible(UMaterialInterface *material);
 
 	/** FRenderResource interface */
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	virtual void							InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
+	virtual void							InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 	/** Does the vertex factory supports tesselation shaders */
 	static bool								SupportsTessellationShaders() { return false; }

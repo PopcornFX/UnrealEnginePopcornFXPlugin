@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "ResourceHandlerImage_UE.h"
@@ -253,7 +253,7 @@ PopcornFX::CImage	*CResourceHandlerImage_UE::NewFromPath(const PopcornFX::CStrin
 
 		const FText		title = FText::FromString(FString("PopcornFX: Texture used for sampling"));
 		const FText		message = FText::Format(FText::FromString(FString("Texture \"{0}\" is used for CPU sampling so its LOD Group will be set to 'ColorLookupTable'.\n")), FText::FromString(texture->GetPathName()));
-		OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::Ok, message, title);
+		OpenMessageBox(EAppMsgType::Ok, message, title);
 		{
 			texture->Modify();
 			texture->MipGenSettings = TMGS_NoMipmaps;
@@ -748,13 +748,12 @@ PopcornFX::CImageGPU_D3D11		*CResourceHandlerImage_UE_D3D11::NewFromTexture(UTex
 		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference FRHITexture not available \"%s\""), *texture->GetPathName());
 		return null;
 	}
-
-	if (texRHI->GetDesc().Dimension != ETextureDimension::Texture2D)
+	FRHITexture2D	*texRHI2D = texRHI->GetTexture2D();
+	if (texRHI2D == null)
 	{
 		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference FRHITexture is not a Texture2D \"%s\""), *texture->GetPathName());
 		return null;
 	}
-
 	ID3D11Texture2D				*gpuTexture = static_cast<ID3D11Texture2D*>(texRHI->GetNativeResource());
 	ID3D11ShaderResourceView	*gpuTextureSRV = static_cast<ID3D11ShaderResourceView*>(texRHI->GetNativeShaderResourceView());
 	if (gpuTexture == null || gpuTextureSRV == null)
@@ -765,7 +764,7 @@ PopcornFX::CImageGPU_D3D11		*CResourceHandlerImage_UE_D3D11::NewFromTexture(UTex
 
 	PK_TODO("Find the true channel count !");
 	const u32				channelCount = 4;
-	const CUint2			dimensions = CUint2(texRHI->GetSizeX(), texRHI->GetSizeY());
+	const CUint2			dimensions = CUint2(texRHI2D->GetSizeX(), texRHI2D->GetSizeY());
 
 	PopcornFX::CImageGPU_D3D11		*image = PK_NEW(PopcornFX::CImageGPU_D3D11());
 	if (!PK_VERIFY(image != null) ||
@@ -1221,6 +1220,12 @@ PopcornFX::CImageGPU_D3D12		*CResourceHandlerImage_UE_D3D12::NewFromTexture(UTex
 		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference FRHITexture not available \"%s\""), *texture->GetPathName());
 		return null;
 	}
+	FRHITexture2D	*texRHI2D = texRHI->GetTexture2D();
+	if (texRHI2D == null)
+	{
+		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference FRHITexture is not a Texture2D \"%s\""), *texture->GetPathName());
+		return null;
+	}
 	ID3D12Resource	*gpuTexture = static_cast<ID3D12Resource*>(texRHI->GetNativeResource());
 	if (gpuTexture == null)
 	{
@@ -1230,7 +1235,7 @@ PopcornFX::CImageGPU_D3D12		*CResourceHandlerImage_UE_D3D12::NewFromTexture(UTex
 
 	PK_TODO("Find the true channel count !");
 	const u32							channelCount = 4;
-	const CUint2						dimensions = CUint2(texRHI->GetSizeX(), texRHI->GetSizeY());
+	const CUint2						dimensions = CUint2(texRHI2D->GetSizeX(), texRHI2D->GetSizeY());
 	const EPixelFormat					imageFormatUE = texRHI->GetFormat();
 	const PopcornFX::CImage::EFormat	imageFormatPK = _UE2PKImageFormat(imageFormatUE, texture->SRGB != 0);
 	if (imageFormatPK == PopcornFX::CImage::Format_Invalid)

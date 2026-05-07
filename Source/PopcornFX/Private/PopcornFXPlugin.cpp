@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXPlugin.h"
@@ -65,12 +65,13 @@ FString							FPopcornFXPlugin::s_PopornFXRuntimeVersionString;
 uint32							FPopcornFXPlugin::s_PopornFXRuntimeRevID = 0;
 uint16							FPopcornFXPlugin::s_PopornFXRuntimeMajMinPatch = 0;
 
-FString							FPopcornFXPlugin::s_URLDocumentation = "https://www.popcornfx.com/docs/popcornfx-v2/plugins/ue-plugin/";
+FString							FPopcornFXPlugin::s_URLDocumentation = "https://www.popcornfx.com/docs/popcornfx-v2/plugins/ue4-plugin/";
 FString							FPopcornFXPlugin::s_URLPluginWiki = "https://wiki.popcornfx.com/";
 FString							FPopcornFXPlugin::s_URLDiscord = "https://discord.gg/4ka27cVrsf";
 
 namespace
 {
+	s32			g_RenderThreadId = -1;
 	FString		g_PopcornFXPluginRoot;
 	FString		g_PopcornFXPluginContentDir;
 
@@ -111,9 +112,34 @@ void	FPopcornFXPlugin::IncTotalParticleCount(s32 incCount)
 
 //----------------------------------------------------------------------------
 
-static PopcornFX::TAtomic<u32>		g_RegisteredUserThreadsCount = 0;
-static u32							g_RegisteredUserThreads[PopcornFX::CThreadManager::MaxThreadCount] = { 0 };
+// static
+void	FPopcornFXPlugin::RegisterRenderThreadIFN()
+{
+	LLM_SCOPE(ELLMTag::Particles);
+	PopcornFX::CThreadID		renderThreadId = PopcornFX::CCurrentThread::ThreadID();
+	if (!renderThreadId.Valid())
+	{
+		//PK_ASSERT(g_RenderThreadId < 0);
+		if (g_RenderThreadId >= 0)
+		{
+			PopcornFX::CThreadManager::UnsafeUnregisterUserThread(g_RenderThreadId);
+			g_RenderThreadId = -1;
+		}
+		PK_ASSERT(g_RenderThreadId < 0);
+		renderThreadId = PopcornFX::CCurrentThread::RegisterUserThread();
+		if (!PK_VERIFY(renderThreadId.Valid()))
+			return;
+		g_RenderThreadId = renderThreadId;
+	}
+	PK_ASSERT(g_RenderThreadId >= 0);
+	if (!PK_VERIFY(u32(g_RenderThreadId) == u32(renderThreadId)))
+		g_RenderThreadId = renderThreadId; // force anyway
+}
 
+//----------------------------------------------------------------------------
+
+static PopcornFX::TAtomic<u32>		g_RegisteredUserThreadsCount = 0;
+static u32							g_RegisteredUserThreads[PopcornFX::CThreadManager::MaxThreadCount] = {0};
 
 void	FPopcornFXPlugin::RegisterCurrentThreadAsUserIFN()
 {
@@ -427,7 +453,13 @@ void	FPopcornFXPlugin::StartupModule()
 	}
 
 #if WITH_EDITOR
+
+#if (ENGINE_MAJOR_VERSION == 5)
 	m_OnObjectSavedDelegateHandle = FCoreUObjectDelegates::OnObjectPreSave.AddRaw(this, &FPopcornFXPlugin::_OnObjectSaved);
+#else
+	m_OnObjectSavedDelegateHandle = FCoreUObjectDelegates::OnObjectSaved.AddRaw(this, &FPopcornFXPlugin::_OnObjectSaved);
+#endif // (ENGINE_MAJOR_VERSION == 5)
+
 #endif
 
 #if WITH_HAVOK_PHYSICS
@@ -482,7 +514,11 @@ void	FPopcornFXPlugin::ShutdownModule()
 
 #if WITH_EDITOR
 
+#	if (ENGINE_MAJOR_VERSION == 5)
 	FCoreUObjectDelegates::OnObjectPreSave.Remove(m_OnObjectSavedDelegateHandle);
+#	else
+	FCoreUObjectDelegates::OnObjectSaved.Remove(m_OnObjectSavedDelegateHandle);
+#	endif // (ENGINE_MAJOR_VERSION == 5)
 
 	m_OnObjectSavedDelegateHandle.Reset();
 #endif
@@ -492,6 +528,10 @@ void	FPopcornFXPlugin::ShutdownModule()
 #if POPCORNFX_PROFILER_ENABLED
 	PK_SAFE_DELETE(m_Profiler);
 #endif // POPCORNFX_PROFILER_ENABLED
+
+	PK_ASSERT(g_RenderThreadId != 0);
+	if (g_RenderThreadId > 0)
+		PopcornFX::CThreadManager::UnsafeUnregisterUserThread(g_RenderThreadId);
 
 	const u32	registeredUserThreadsCount = g_RegisteredUserThreadsCount.Load();
 	g_RegisteredUserThreadsCount.Store(0);
@@ -978,7 +1018,11 @@ bool	FPopcornFXPlugin::AskBuildMeshData_YesAll() { return g_SetAskBuildMeshData_
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
+#if (ENGINE_MAJOR_VERSION == 5)
 void	FPopcornFXPlugin::_OnObjectSaved(UObject *object, FObjectPreSaveContext context)
+#else
+void	FPopcornFXPlugin::_OnObjectSaved(UObject *object)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
 	NotifyObjectChanged(object);
 }

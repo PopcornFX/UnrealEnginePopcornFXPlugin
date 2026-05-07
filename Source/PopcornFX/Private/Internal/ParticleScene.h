@@ -1,13 +1,12 @@
 
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
 
 #include "PopcornFXMinimal.h"
-#include "PopcornFXPlugin.h"
 
 #include "Render/RendererSubView.h"
 #include "Render/PopcornFXBuffer.h"
@@ -33,12 +32,14 @@
 
 class	UPopcornFXSceneComponent;
 class	FPopcornFXSceneProxy;
-class	FDeferredDecalProxy;
-struct	FDeferredDecalUpdateParams;
-class	CBatchDrawer_Decal_CPUBB;
 
+#if (ENGINE_MAJOR_VERSION == 5)
 #	define PK_WITH_PHYSX	0
 #	define PK_WITH_CHAOS	1
+#else
+#	define PK_WITH_PHYSX	PHYSICS_INTERFACE_PHYSX && WITH_PHYSX
+#	define PK_WITH_CHAOS	!(PK_WITH_PHYSX) && WITH_CHAOS
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 // The plugin doesn't support both being active at the same time.
 #if PK_WITH_PHYSX && PK_WITH_CHAOS
@@ -58,8 +59,6 @@ namespace	physx
 FWD_PK_API_BEGIN
 class	CParticleMediumCollection;
 class	CParticleDescriptor;
-class	CParticleUpdateManager_Auto;
-class	CParticleSpatialStorageManager_Auto;
 struct	SSimDispatchHint;
 namespace Drawers
 {
@@ -98,7 +97,7 @@ public:
 	void					GatherSimpleLights(const FSceneViewFamily& ViewFamily, FSimpleLightArray& OutParticleLights) const;
 
 #if RHI_RAYTRACING
-	void					GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingInstanceCollector &context);
+	void					GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *sceneProxy, FRayTracingMaterialGatheringContext &context, TArray<FRayTracingInstance> &outRayTracingInstances);
 #endif // RHI_RAYTRACING
 
 	void					GetDynamicMeshElements(const FPopcornFXSceneProxy *sceneProxy, const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector);
@@ -115,7 +114,7 @@ public:
 private:
 	bool										InternalSetup(const UPopcornFXSceneComponent *sceneComp);
 
-	static bool									_SimDispatchFallbackOnCPU(const PopcornFX::CParticleDescriptor *descriptor);
+	static bool									_SimDispatchMask(const PopcornFX::CParticleDescriptor *descriptor, PopcornFX::SSimDispatchHint &outHint);
 	u32											_InstanceCount(const PopcornFX::CParticleEffect *effect);
 
 	//----------------------------------------------------------------------------
@@ -245,32 +244,14 @@ private:
 	PopcornFX::Threads::CCriticalSection			m_EmittersLock;
 	PopcornFX::TChunkedSlotArray<SEmitterRegister>	m_Emitters;
 
-	//----------------------------------------------------------------------------
-	//
-	// Decals
-	//
-	//----------------------------------------------------------------------------
-public:
-	u32											&ActiveDecalCounter(CBatchDrawer_Decal_CPUBB *mat)	{ return m_ActiveDecals.FindOrAdd(mat).Key; }
-	TArray<FDeferredDecalProxy*>				&ActiveDecalProxies(CBatchDrawer_Decal_CPUBB *mat)	{ return m_ActiveDecals.FindOrAdd(mat).Value; }
-	TPair<u32, TArray<FDeferredDecalProxy*>>	&ActiveDecals(CBatchDrawer_Decal_CPUBB * mat)		{ return m_ActiveDecals.FindOrAdd(mat); }
-	TArray<FDeferredDecalUpdateParams>			&DecalUpdates()										{ return m_DecalUpdates; }
-
-	void	ClearDecals(CBatchDrawer_Decal_CPUBB *mat, bool removeEntry = true);
-
 private:
-	void	_PostUpdate_Decals();
-	void	_Clear_Decals();
-
-	TMap<CBatchDrawer_Decal_CPUBB*, TPair<u32, TArray<FDeferredDecalProxy*>>>	m_ActiveDecals;
-	TArray<FDeferredDecalUpdateParams>											m_DecalUpdates;
 
 	//----------------------------------------------------------------------------
 	//
 	// Collisions
 	//
 	//----------------------------------------------------------------------------
-private:
+
 	virtual void			RayTracePacket(
 		const PopcornFX::Colliders::STraceFilter &traceFilter,
 		const PopcornFX::Colliders::SRayPacket &packet,
@@ -290,9 +271,7 @@ private:
 	void					_PreUpdate_Collisions();
 #if PK_WITH_PHYSX
 	physx::PxScene		*m_CurrentPhysxScene = null;
-#elif WITH_HAVOK_PHYSICS
-	FHavokPhysicsWorld	*m_CurrentHavokWorld = null;
-#elif PK_WITH_CHAOS
+#else
 	FChaosScene			*m_CurrentChaosScene = null;
 #endif
 
@@ -318,7 +297,7 @@ private:
 	//----------------------------------------------------------------------------
 
 private:
-	bool			GPU_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto);
+	bool			GPU_InitIFN();
 	void			GPU_Destroy();
 	void			GPU_PreRender();
 	void			GPU_PreUpdate();
@@ -335,11 +314,13 @@ public:
 	struct ID3D11Device				*D3D11_Device() const { PK_ASSERT(D3D11Ready()); return m_D3D11_Device; }
 	struct ID3D11DeviceContext		*D3D11_DeferedContext() const { PK_ASSERT(D3D11Ready()); return m_D3D11_DeferedContext; }
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	class FRHIBuffer				*m_D3D11_DummyResource = null;
 	class FRHIUnorderedAccessView	*m_D3D11_DummyView = null;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 private:
-	bool			D3D11_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto);
+	bool			D3D11_InitIFN();
 	void			D3D11_Destroy();
 	void			D3D11_PreRender();
 	void			D3D11_PreUpdate();
@@ -369,7 +350,7 @@ public:
 	struct ID3D12Device				*D3D12_Device() const { PK_ASSERT(D3D12Ready()); return m_D3D12_Device; }
 
 private:
-	bool			D3D12_InitIFN(PopcornFX::CParticleUpdateManager_Auto *updateManagerAuto, PopcornFX::CParticleSpatialStorageManager_Auto *spatialManagerAuto);
+	bool			D3D12_InitIFN();
 	void			D3D12_Destroy();
 	void			D3D12_PreRender();
 	void			D3D12_PreUpdate();
@@ -501,7 +482,7 @@ public:
 	void	UnregisterAllEventListeners();
 
 	bool	GetPayloadValue(
-		const FString &payloadName,
+		const FName &payloadName,
 		EPopcornFXPayloadType::Type expectedPayloadType,
 		void *outValue) const;
 

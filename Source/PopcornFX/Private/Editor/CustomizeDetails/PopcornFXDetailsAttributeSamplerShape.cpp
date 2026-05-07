@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -91,22 +91,7 @@ void	FPopcornFXDetailsAttributeSamplerShape::CustomizeDetails(IDetailLayoutBuild
 			detailLayout.HideProperty("ShapeSamplingMode");
 			detailLayout.HideProperty("DensityColorChannel");
 			break;
-		case	EPopcornFXAttribSamplerShapeType::StaticMesh:
-			detailLayout.HideProperty("SkeletalMesh");
-			detailLayout.HideProperty("BoxDimension");
-			detailLayout.HideProperty("Radius");
-			detailLayout.HideProperty("InnerRadius");
-			detailLayout.HideProperty("Height");
-			detailLayout.HideProperty("Shapes");
-#if 0 // To re-enable when shape collections are supported by PopcornFX v2
-			detailLayout.HideProperty("CollectionSamplingHeuristic");
-			detailLayout.HideProperty("CollectionUseShapeWeights");
-#endif
-			if (shapeSamplingModeValue != EPopcornFXMeshSamplingMode::Weighted)
-				detailLayout.HideProperty("DensityColorChannel");
-			break;
-		case	EPopcornFXAttribSamplerShapeType::SkeletalMesh:
-			detailLayout.HideProperty("StaticMesh");
+		case	EPopcornFXAttribSamplerShapeType::Mesh:
 			detailLayout.HideProperty("BoxDimension");
 			detailLayout.HideProperty("Radius");
 			detailLayout.HideProperty("InnerRadius");

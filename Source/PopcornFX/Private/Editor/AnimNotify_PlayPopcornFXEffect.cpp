@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 
@@ -28,9 +28,17 @@ UAnimNotify_PlayPopcornFXEffect::UAnimNotify_PlayPopcornFXEffect()
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
 void	UAnimNotify_PlayPopcornFXEffect::Notify(class USkeletalMeshComponent *meshComp, class UAnimSequenceBase *animation, const FAnimNotifyEventReference &eventReference)
+#else
+void	UAnimNotify_PlayPopcornFXEffect::Notify(class USkeletalMeshComponent *meshComp, class UAnimSequenceBase *animation)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 {
+#if (ENGINE_MAJOR_VERSION == 5)
 	Super::Notify(meshComp, animation, eventReference);
+#else
+	Super::Notify(meshComp, animation);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	if (Effect == null)
 	{

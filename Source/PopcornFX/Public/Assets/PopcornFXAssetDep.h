@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -72,11 +72,6 @@ public:
 	{
 		return BaseObjectUID == baseObjectUID && FieldName == fieldName;
 	}
-
-	FPopcornFXFieldPath()
-	:	BaseObjectUID()
-	,	FieldName()
-	{ }
 };
 
 /** Describe an Asset needed by a PopcornFX Asset. */

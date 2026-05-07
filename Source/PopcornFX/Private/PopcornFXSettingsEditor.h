@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -135,10 +135,7 @@ public:
 	uint32				bDebugBakedEffects : 1;
 
 	/** If enabled, will build GPU simulated effects for all supported RHIs (D3D11, D3D12) on desktop. */
-	/*	GOREFIX #14716: For now we're building all supported RHIs to make sure effects will
-	*	still be able to load their GPU backend when changing the editor's RHI.
-	*	Otherwise we would have to force rebake every asset to update their GPU backend..
-	UPROPERTY(Config, EditAnywhere, Category="Cook")*/
+	UPROPERTY(Config, EditAnywhere, Category="Cook")
 	uint32				bBuildAllDesktopBytecodes : 1;
 
 	/** If enabled, will automatically create a PopcornFXSceneActor when drag&dropping an emitter into a level with no scene actor available */

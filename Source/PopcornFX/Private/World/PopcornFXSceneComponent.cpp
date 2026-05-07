@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXSceneComponent.h"
@@ -15,11 +15,8 @@
 #include "Assets/PopcornFXEffectPriv.h"
 
 #include "Engine/World.h"
+
 #include "Engine/CollisionProfile.h"
-#include "UObject/StrongObjectPtr.h"
-#include "Containers/Map.h"
-#include "Async/Async.h"
-#include "Async/TaskGraphInterfaces.h"
 
 #include "PopcornFXSDK.h"
 
@@ -65,7 +62,7 @@ UPopcornFXSceneComponent::UPopcornFXSceneComponent(const FObjectInitializer& PCI
 
 	SetGenerateOverlapEvents(false);
 
-	bReceivesDecals = true;
+	bReceivesDecals = false;
 
 	bCastVolumetricTranslucentShadow = true;
 	//bCastVolumetricTranslucentShadow = false;
@@ -237,13 +234,7 @@ void	UPopcornFXSceneComponent::TickComponent(float deltaTime, enum ELevelTick ti
 	}
 
 	PK_ASSERT(m_ParticleScene->SceneComponent() == this);
-	UpdateParticleScene(deltaTime);
-}
 
-//----------------------------------------------------------------------------
-
-void	UPopcornFXSceneComponent::UpdateParticleScene(float deltaTime)
-{
 	m_ParticleScene->StartUpdate(deltaTime);
 
 	FBoxSphereBounds			bounds;
@@ -256,10 +247,8 @@ void	UPopcornFXSceneComponent::UpdateParticleScene(float deltaTime)
 	{
 		bounds = Union(FBoxSphereBounds(FixedRelativeBoundingBox.ShiftBy(GetComponentLocation())), m_ParticleScene->Bounds());
 	}
-	else
-	{
+	else if (BoundingBoxMode == EPopcornFXSceneBBMode::Fixed)
 		bounds = FixedRelativeBoundingBox.ShiftBy(GetComponentLocation());
-	}
 
 	if (bounds.SphereRadius <= 0.001f)
 	{

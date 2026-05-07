@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXVertexFactoryShaderParameters.h"
@@ -61,8 +61,10 @@ void	FPopcornFXVertexFactoryShaderParametersPixel::GetElementShaderBindings(cons
 
 //----------------------------------------------------------------------------
 
-IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersVertex);
-IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersPixel);
+#if (ENGINE_MAJOR_VERSION == 5)
+	IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersVertex);
+	IMPLEMENT_TYPE_LAYOUT(FPopcornFXVertexFactoryShaderParametersPixel);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 //----------------------------------------------------------------------------
 

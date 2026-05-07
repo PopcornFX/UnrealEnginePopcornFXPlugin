@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -129,8 +129,6 @@ public:
 public:
 	bool						ForceLightsTranslucent() { return m_ForceLightsTranslucent; }
 
-	const CParticleScene		&ParticleScene() { return *m_ParticleScene; }
-
 	CVertexBufferPool			&VBPool() { return *m_VertexBufferPool; }
 	CIndexBufferPool			&IBPool() { return *m_IndexBufferPool; }
 	const CVertexBufferPool		&VBPool() const { return *m_VertexBufferPool; }
@@ -138,9 +136,6 @@ public:
 
 	CVertexBufferPool			&VBPool_VertexBB() { return *m_VertexBufferPool_VertexBB; }
 	const CVertexBufferPool		&VBPool_VertexBB() const { return *m_VertexBufferPool_VertexBB; }
-
-	CVertexBufferPool			&VBPool_DrawIndirect() { return *m_VertexBufferPool_DrawIndirect; }
-	const CVertexBufferPool		&VBPool_DrawIndirect() const { return *m_VertexBufferPool_DrawIndirect; }
 
 	CVertexBufferPool			&VBPool_GPU() { return *m_VertexBufferPool_GPU; }
 	CIndexBufferPool			&IBPool_GPU() { return *m_IndexBufferPool_GPU; }
@@ -200,7 +195,6 @@ private:
 	PopcornFX::CTimer							m_RenderTimer;
 	CVertexBufferPool							*m_VertexBufferPool;
 	CVertexBufferPool							*m_VertexBufferPool_VertexBB;
-	CVertexBufferPool							*m_VertexBufferPool_DrawIndirect;
 	CVertexBufferPool							*m_VertexBufferPool_GPU;
 	CIndexBufferPool							*m_IndexBufferPool;
 	CIndexBufferPool							*m_IndexBufferPool_GPU;

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXFileReimportFactory.h"
@@ -10,7 +10,11 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 #include "EditorReimportHandler.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "AssetRegistry/AssetRegistryModule.h"
+#else
+#	include "AssetRegistryModule.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
 #include "EditorFramework/AssetImportData.h"
 #include "UObject/UnrealType.h"
 
@@ -126,7 +130,11 @@ EReimportResult::Type	UPopcornFXFileReimportFactory::Reimport(UObject *obj)
 				{
 					// we need to notify templates too, attributes must always be up to date
 					//if (ref.Referencer->IsTemplate() || ref.Referencer->IsPendingKill())
+#if (ENGINE_MAJOR_VERSION == 5)
 					if (!IsValid(ref.Referencer))
+#else
+					if (ref.Referencer->IsPendingKill())
+#endif // (ENGINE_MAJOR_VERSION == 5)
 						continue;
 
 					FPropertyChangedEvent	ptyChangedEvent(const_cast<FProperty*>(ref.ReferencingProperties[ptyi]));

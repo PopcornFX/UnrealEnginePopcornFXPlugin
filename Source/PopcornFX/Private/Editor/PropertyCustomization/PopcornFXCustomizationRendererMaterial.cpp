@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -57,7 +57,11 @@ void	FPopcornFXCustomizationRendererMaterial::CustomizeHeader(
 	;
 
 	static const FName	propertyFontStyle(TEXT("PropertyWindow.NormalFont"));
+#if (ENGINE_MAJOR_VERSION == 5)
 	FSlateFontInfo		fontStyle = FAppStyle::GetFontStyle(propertyFontStyle);
+#else
+	FSlateFontInfo		fontStyle = FEditorStyle::GetFontStyle(propertyFontStyle);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	uint32		numBaseObjects;
 	//baseObjectNames->GetNumChildren(numBaseObjects);

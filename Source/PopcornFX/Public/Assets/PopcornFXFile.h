@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -8,7 +8,9 @@
 #include "PopcornFXSDK.h"
 #include "Assets/PopcornFXAssetDep.h"
 #include "Interfaces/Interface_AssetUserData.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 #include "UObject/AssetRegistryTagsContext.h"
+#endif
 
 #include "PopcornFXFile.generated.h"
 
@@ -35,7 +37,7 @@ public:
 #endif
 
 	/** Array of user data stored with the asset */
-	UPROPERTY(Category="UserDatas", EditAnywhere, Instanced, meta = (DisplayName = "Asset user datas"))
+	UPROPERTY(Category="UserDatas", EditAnywhere, AdvancedDisplay, Instanced)
 	TArray<UAssetUserData*>		m_AssetUserDatas;
 
 protected:
@@ -44,7 +46,7 @@ protected:
 	UPROPERTY(Category="Source", VisibleAnywhere)
 	FString				FileSourceVirtualPath;
 
-	UPROPERTY()
+	UPROPERTY(Category="Source", VisibleAnywhere)
 	uint32				FileSourceVirtualPathIsNotVirtual;
 
 public:
@@ -85,7 +87,11 @@ public:
 
 	void						AskImportAssetDependenciesIFN();
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 	void						GetAssetRegistryTags(FAssetRegistryTagsContext context) const override;
+#else
+	void						GetAssetRegistryTags(TArray<FAssetRegistryTag> &outTags) const override;
+#endif
 
 	virtual void				PreReimport_Clean();
 #endif // WITH_EDITOR

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 
@@ -20,6 +20,10 @@
 #include "Sequencer/Tracks/PopcornFXPlayTrack.h"
 #include "Sequencer/Templates/PopcornFXPlaySectionTemplate.h"
 #include "EditorStyleSet.h"
+
+#if (ENGINE_MAJOR_VERSION <= 5 && ENGINE_MINOR_VERSION < 4)
+#include "CommonMovieSceneTools.h"
+#endif
 
 #include "Sections/MovieSceneParticleSection.h"
 #include "SequencerSectionPainter.h"

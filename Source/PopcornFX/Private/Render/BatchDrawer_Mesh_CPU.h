@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 #pragma once
 
@@ -10,7 +10,7 @@
 #include "Render/RendererSubView.h"
 #include "Render/MaterialDesc.h"
 #include "Render/PopcornFXMeshVertexFactory.h"
-#include "Render/PopcornFXRenderUtils.h" // FPopcornFXAtlasRectsVertexBuffer
+#include "Render/BatchDrawer_Billboard_GPU.h" // FPopcornFXAtlasRectsVertexBuffer
 
 #include <pk_particles/include/Renderers/ps_renderer_base.h>
 #include <pk_render_helpers/include/batch_jobs/rh_batch_jobs_mesh_cpu.h>
@@ -45,7 +45,6 @@ private:
 		StreamOffset_Colors = 0,
 		StreamOffset_EmissiveColors3,
 		StreamOffset_EmissiveColors4,
-		StreamOffset_Velocity,
 		StreamOffset_AlphaCursors,
 		StreamOffset_TextureIDs,
 		StreamOffset_VATCursors,
@@ -127,8 +126,6 @@ private:
 	// Meshes buffers
 	PopcornFX::TMemoryView<const u32>			m_PerMeshParticleCount;
 	bool										m_HasMeshIDs;
-	// Random value between 0 and 1 used as a seed to generate random values per particle in the shader
-	float										m_Random;
 
 #if RHI_RAYTRACING
 	PopcornFX::CWorkingBuffer					m_RayTracing_Matrices;

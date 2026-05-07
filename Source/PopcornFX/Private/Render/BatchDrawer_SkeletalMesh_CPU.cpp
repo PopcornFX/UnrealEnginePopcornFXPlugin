@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_SkeletalMesh_CPU.h"
@@ -13,7 +13,7 @@
 #include "Engine/Texture2D.h"
 #if (ENGINE_MAJOR_VERSION == 5)
 #	include "Engine/SkinnedAssetCommon.h"
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif
 #include "RHIStaticStates.h"
 
 #include "Engine/Engine.h"
@@ -190,8 +190,7 @@ bool	CBatchDrawer_SkeletalMesh_CPUBB::_IsAdditionalInputSupported(const PopcornF
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
-			fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
 			outStreamOffsetType = StreamOffset_TextureIDs;
@@ -303,10 +302,20 @@ bool	CBatchDrawer_SkeletalMesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ct
 			m_BoneMatrices.Release();
 			m_PreviousBoneMatrices.Release();
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			FRHICommandListImmediate	&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 			m_BoneMatrices.Initialize(RHICmdList, TEXT("PopcornFXBoneMatrices"), sizeof(PopcornFX::CFloat4), m_BoneMatricesCapacity, EPixelFormat::PF_A32B32G32R32F, BUF_UnorderedAccess | BUF_ShaderResource);
 			if (m_MotionBlur)
 				m_PreviousBoneMatrices.Initialize(RHICmdList, TEXT("PopcornFXPreviousBoneMatrices"), sizeof(PopcornFX::CFloat4), m_BoneMatricesCapacity, EPixelFormat::PF_A32B32G32R32F, BUF_UnorderedAccess | BUF_ShaderResource);
+#elif (ENGINE_MAJOR_VERSION == 5)
+			m_BoneMatrices.Initialize(TEXT("PopcornFXBoneMatrices"), sizeof(PopcornFX::CFloat4), m_BoneMatricesCapacity, EPixelFormat::PF_A32B32G32R32F, BUF_UnorderedAccess | BUF_ShaderResource);
+			if (m_MotionBlur)
+				m_PreviousBoneMatrices.Initialize(TEXT("PopcornFXPreviousBoneMatrices"), sizeof(PopcornFX::CFloat4), m_BoneMatricesCapacity, EPixelFormat::PF_A32B32G32R32F, BUF_UnorderedAccess | BUF_ShaderResource);
+#else
+			m_BoneMatrices.Initialize(sizeof(PopcornFX::CFloat4), m_BoneMatricesCapacity, EPixelFormat::PF_A32B32G32R32F, BUF_UnorderedAccess | BUF_ShaderResource, TEXT("PopcornFXBoneMatrices"));
+			if (m_MotionBlur)
+				m_PreviousBoneMatrices.Initialize(sizeof(PopcornFX::CFloat4), m_BoneMatricesCapacity, EPixelFormat::PF_A32B32G32R32F, BUF_UnorderedAccess | BUF_ShaderResource, TEXT("PopcornFXPreviousBoneMatrices"));
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 #endif // (PK_PREBUILD_BONE_TRANSFORMS != 0)
 
@@ -628,7 +637,11 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_CreateSkelMeshVertexFactory(	CMaterialDes
 		outFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleFrame);
 		outFactory->m_SkelMeshVSUniformBuffer = FPopcornFXSkelMeshUniformsRef::CreateUniformBufferImmediate(uniformsSkelMesh, UniformBuffer_SingleFrame);
 		PK_ASSERT(!outFactory->IsInitialized());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		outFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
+		outFactory->InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 }
 
@@ -706,6 +719,12 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUE
 
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices + buffersOffset), sectionPCount);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
+			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
+#else
+			rayTracingInstance.BuildInstanceMaskAndFlags();
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 
@@ -741,6 +760,12 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUE
 		{
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices), m_TotalParticleCount);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
+			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
+#else
+			rayTracingInstance.BuildInstanceMaskAndFlags();
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 		}
@@ -832,12 +857,12 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh_Sections(	const FPopco
 	// Vertex factory and collector resource are either used to render all sections (if all sections of the mesh are being rendered of m_TotalParticleCount)
 	// If there is a mesh atlas, we have to create a vertex factory per mesh section, because we cannot specify per FMeshBatchElement an offset into the instances buffers
 	FPopcornFXSkelMeshVertexFactory	*vertexFactory = null;
-	FPopcornFXSkelMeshCollector		*collectorRes = null;
+	FPopcornFXSkelMeshCollector			*collectorRes = null;
 	if (!m_HasMeshIDs)
 		_CreateSkelMeshVertexFactory(matDesc, 0, collector, vertexFactory, collectorRes);
 
-	PK_ASSERT(LODLevel < (u32)matDesc.m_SkeletalMesh->GetLODNum() || matDesc.m_SkeletalMesh->GetLODNum() == 0);
-	const FSkeletalMeshLODInfo	*LODInfo = matDesc.m_SkeletalMesh->GetLODNum() != 0 ? matDesc.m_SkeletalMesh->GetLODInfo(LODLevel) : null;
+	PK_ASSERT(LODLevel < (u32)matDesc.m_SkeletalMeshLODInfos.Count() || matDesc.m_SkeletalMeshLODInfos.Empty());
+	const FSkeletalMeshLODInfo	*LODInfo = !matDesc.m_SkeletalMeshLODInfos.Empty() ? &matDesc.m_SkeletalMeshLODInfos[LODLevel] : null;
 
 	PK_ASSERT(desc.m_ViewIndex < m_RealViewCount);
 	PK_ASSERT(renderContext.m_RendererSubView->BBViews().Count() == m_RealViewCount);
@@ -934,13 +959,21 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext
 		if (m_MotionBlur)
 		{
 			TShaderMapRef< FPopcornFXComputeMBBoneTransformsCS >	computeBoneTransformsCS(GetGlobalShaderMap(m_FeatureLevel));
+#if (ENGINE_MAJOR_VERSION == 5)
 			SetComputePipelineState(RHICmdList, computeBoneTransformsCS.GetComputeShader());
+#else
+			RHICmdList.SetComputeShader(computeBoneTransformsCS.GetComputeShader());
+#endif // (ENGINE_MAJOR_VERSION == 5)
 			computeBoneTransformsCS->Dispatch(RHICmdList, params);
 		}
 		else
 		{
 			TShaderMapRef< FPopcornFXComputeBoneTransformsCS >	computeBoneTransformsCS(GetGlobalShaderMap(m_FeatureLevel));
+#if (ENGINE_MAJOR_VERSION == 5)
 			SetComputePipelineState(RHICmdList, computeBoneTransformsCS.GetComputeShader());
+#else
+			RHICmdList.SetComputeShader(computeBoneTransformsCS.GetComputeShader());
+#endif // (ENGINE_MAJOR_VERSION == 5)
 			computeBoneTransformsCS->Dispatch(RHICmdList, params);
 		}
 	}

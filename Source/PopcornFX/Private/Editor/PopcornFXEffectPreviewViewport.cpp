@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
@@ -21,7 +21,10 @@
 #include "Engine/TextureCube.h"
 #include "Engine/StaticMesh.h"
 #include "Components/StaticMeshComponent.h"
-#include "UnrealWidget.h"
+
+#if (ENGINE_MAJOR_VERSION == 5)
+#	include "UnrealWidget.h"
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #include "PopcornFXSDK.h"
 
@@ -198,7 +201,11 @@ public:
 		Invalidate();
 	}
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	virtual void	SetWidgetMode(UE::Widget::EWidgetMode NewMode) override { }
+#else
+	virtual void	SetWidgetMode(FWidget::EWidgetMode newMode) override { }
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 private:
 	UStaticMeshComponent	*m_FloorComponent;
@@ -215,9 +222,9 @@ private:
 void	SPopcornFXEffectPreviewViewport::Construct(const FArguments &args)
 {
 	m_EffectEditor = args._EffectEditor;
-	m_DisplayFloor = false;
+	m_DisplayFloor = true;
 	m_DisplayCubemap = true;
-	m_DisplayGrid = true;
+	m_DisplayGrid = false;
 
 	// Rotate the light in the preview scene so that it faces the preview object
 	m_PreviewScene.SetLightDirection(FRotator(-40.0f, 27.5f, 0.0f));
@@ -262,11 +269,10 @@ void	SPopcornFXEffectPreviewViewport::SetPreviewEffect(UPopcornFXEffect *effect)
 	PK_ASSERT(IsInGameThread());
 	if (!PK_VERIFY(effect != null))
 		return;
-	FName	name = *(*effect->GetName() + FString(" preview"));
 	if (m_EmitterComponent == null)
 	{
 		// Should automatically resolve the preview scene and mirror the real scene if possible
-		m_EmitterComponent = NewObject<UPopcornFXEmitterComponent>((UObject*)GetTransientPackage(), name, RF_Transient);
+		m_EmitterComponent = NewObject<UPopcornFXEmitterComponent>((UObject*)GetTransientPackage(), NAME_None, RF_Transient);
 		if (!PK_VERIFY(m_EmitterComponent != null))
 			return;
 		m_EmitterComponent->bAutoDestroy = false;
@@ -276,7 +282,6 @@ void	SPopcornFXEffectPreviewViewport::SetPreviewEffect(UPopcornFXEffect *effect)
 		m_ViewportClient->SetEmitterComponent(m_EmitterComponent);
 		m_ViewportClient->ResetLoopTimer();
 	}
-	effect->PreviewEmitter = m_EmitterComponent;
 	m_EmitterComponent->SetEffect(effect, true);
 	return;
 }
@@ -503,18 +508,7 @@ void	SPopcornFXEffectPreviewViewport::ResetEmitterAttributes()
 	PK_ASSERT(m_EmitterComponent->Effect != null);
 	PK_ASSERT(m_EmitterComponent->GetAttributeList() != null);
 
-	m_EmitterComponent->ResetAttributesToDefault();
-}
-
-//----------------------------------------------------------------------------
-
-void	SPopcornFXEffectPreviewViewport::ResetEmitterSamplers()
-{
-	PK_ASSERT(m_EmitterComponent != null);
-	PK_ASSERT(m_EmitterComponent->Effect != null);
-	PK_ASSERT(m_EmitterComponent->GetAttributeList() != null);
-
-	m_EmitterComponent->ResetSamplersToDefault();
+	m_EmitterComponent->GetAttributeList()->ResetToDefaultValues(m_EmitterComponent->Effect);
 }
 
 //----------------------------------------------------------------------------

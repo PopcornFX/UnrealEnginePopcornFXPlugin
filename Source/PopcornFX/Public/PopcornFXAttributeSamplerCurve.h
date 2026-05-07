@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -29,23 +29,24 @@ namespace	EAttributeSamplerCurveDimension
 	enum	Type
 	{
 		Float1 = 1,
-		Float2 UMETA(Hidden, DisplayName = "Float2 - Unsupported"),
+		Float2,
 		Float3,
 		Float4
 	};
 }
 
-USTRUCT(BlueprintType)
-struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesCurve : public FPopcornFXAttributeSamplerProperties
+/** Can override an Attribute Sampler **Curve** by a **UCurve...**. */
+UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
+class POPCORNFX_API UPopcornFXAttributeSamplerCurve : public UPopcornFXAttributeSampler
 {
-	GENERATED_USTRUCT_BODY()
+	GENERATED_UCLASS_BODY()
 
 public:
 	/** Curve dimension*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
 	TEnumAsByte<EAttributeSamplerCurveDimension::Type>	CurveDimension;
 
-	/** Enables DoubleCurve sampling. Legacy feature from v1 that does not exist anymore */
+	/** Enables DoubleCurve sampling */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PopcornFX AttributeSampler")
 	uint32				bIsDoubleCurve : 1;
 
@@ -73,25 +74,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
 	UCurveLinearColor	*SecondCurve4D;
 
-	FPopcornFXAttributeSamplerPropertiesCurve()
-	:	CurveDimension(EAttributeSamplerCurveDimension::Float1)
-	,	bIsDoubleCurve(false)
-	,	Curve1D()
-	,	SecondCurve1D()
-	,	Curve3D()
-	,	SecondCurve3D()
-	,	Curve4D()
-	,	SecondCurve4D()
-	{ }
-};
-
-/** Can override an Attribute Sampler **Curve** by a **UCurve...**. */
-UCLASS(EditInlineNew, meta = (BlueprintSpawnableComponent), ClassGroup = PopcornFX)
-	class POPCORNFX_API UPopcornFXAttributeSamplerCurve : public UPopcornFXAttributeSampler
-{
-	GENERATED_UCLASS_BODY()
-
-public:
 	/** Changes the Curve Dimension, will clear the current Curve if dimension changes */
 	UFUNCTION(BlueprintCallable, Category="PopcornFX|AttributeSampler")
 	void	SetCurveDimension(TEnumAsByte<EAttributeSamplerCurveDimension::Type> InCurveDimension);
@@ -103,24 +85,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="PopcornFX|AttributeSampler")
 	bool	SetCurve(class UCurveBase *InCurve, bool InIsSecondCurve);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="PopcornFX AttributeSampler")
-	FPopcornFXAttributeSamplerPropertiesCurve	Properties;
-
 	// overrides
 #if WITH_EDITOR
 	void			PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif // WITH_EDITOR
 	void			BeginDestroy() override;
 
-	// UPopcornFXAttributeSampler overrides
-	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
-	virtual bool									ArePropertiesSupported() override;
-	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-#if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
-	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
-#endif
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	// PopcornFX Internal
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
 private:
 	bool			RebuildCurvesData();

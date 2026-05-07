@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Ribbon_CPU.h"
@@ -77,9 +77,7 @@ CBatchDrawer_Ribbon_CPUBB::~CBatchDrawer_Ribbon_CPUBB()
 	PK_ASSERT(!m_Normals.Valid());
 	PK_ASSERT(!m_Tangents.Valid());
 	PK_ASSERT(!m_Texcoords.Valid());
-	PK_ASSERT(!m_Texcoord2s.Valid());
 	PK_ASSERT(!m_UVRemaps.Valid());
-	PK_ASSERT(!m_UV1Remaps.Valid());
 	PK_ASSERT(!m_UVFactors.Valid());
 
 	PK_ASSERT(!m_SimData.Valid());
@@ -105,9 +103,7 @@ bool	CBatchDrawer_Ribbon_CPUBB::Setup(const PopcornFX::CRendererDataBase *render
 	m_SecondUVSet = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending && renderer->m_RendererCache->m_Flags.m_HasUV;
 	m_RibbonCorrectDeformation = renderer->m_RendererCache->m_Flags.m_HasRibbonCorrectDeformation;
 	m_RotateUV = renderer->m_RendererCache->m_Flags.m_RotateTexture;
-	uint32 Seed = FPlatformTime::Cycles();
-	FRandomStream RandomStream = FRandomStream((int32)Seed);
-	m_Random = RandomStream.GetFraction();
+
 
 	const PopcornFX::ERibbonMode	mode = renderer->m_Declaration.GetPropertyValue_Enum<PopcornFX::ERibbonMode>(PopcornFX::BasicRendererProperties::SID_BillboardingMode(), PopcornFX::RibbonMode_ViewposAligned);
 	if (mode == PopcornFX::RibbonMode_SideAxisAlignedTube)
@@ -204,13 +200,12 @@ bool	CBatchDrawer_Ribbon_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CSt
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
 			outStreamOffsetType = StreamOffset_EmissiveColors3;
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_MoveVector())
-			outStreamOffsetType = StreamOffset_Velocity;
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_PreviousPosition())
+			outStreamOffsetType = StreamOffset_PreviousPosition;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
-			fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
 			outStreamOffsetType = StreamOffset_TextureID;
@@ -265,12 +260,10 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 
 	// Ribbon complex
 	const bool	needsUVRemaps = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVRemap) != 0;
-	const bool	needsUV1Remaps = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1Remap) != 0;
 	const bool	needsUVFactors = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVFactors) != 0;
 
 	// Billboard View independent
 	const bool	needsUV0 = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV0) != 0;
-	const bool	needsUV1 = (toGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1) != 0;
 
 	bool	largeIndices = false;
 
@@ -287,11 +280,7 @@ bool	CBatchDrawer_Ribbon_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 			return false;
 		if (!mainVBPool->AllocateIf(needsUV0, m_Texcoords, totalVertexCount, sizeof(CFloat2), false))
 			return false;
-		if (!mainVBPool->AllocateIf(needsUV1, m_Texcoord2s, totalVertexCount, sizeof(CFloat2), false))
-			return false;
 		if (!mainVBPool->AllocateIf(needsUVRemaps, m_UVRemaps, totalVertexCount, sizeof(CFloat4), false))
-			return false;
-		if (!mainVBPool->AllocateIf(needsUV1Remaps, m_UV1Remaps, totalVertexCount, sizeof(CFloat4), false))
 			return false;
 		if (!mainVBPool->AllocateIf(needsUVFactors, m_UVFactors, totalVertexCount, sizeof(CFloat4), false))
 			return false;
@@ -404,9 +393,7 @@ bool	CBatchDrawer_Ribbon_CPUBB::UnmapBuffers(PopcornFX::SRenderContext &ctx)
 	m_Normals.Unmap();
 	m_Tangents.Unmap();
 	m_Texcoords.Unmap();
-	m_Texcoord2s.Unmap();
 	m_UVRemaps.Unmap();
-	m_UV1Remaps.Unmap();
 	m_UVFactors.Unmap();
 
 	m_SimData.Unmap();
@@ -430,9 +417,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_ClearBuffers()
 	m_Normals.UnmapAndClear();
 	m_Tangents.UnmapAndClear();
 	m_Texcoords.UnmapAndClear();
-	m_Texcoord2s.UnmapAndClear();
 	m_UVRemaps.UnmapAndClear();
-	m_UV1Remaps.UnmapAndClear();
 	m_UVFactors.UnmapAndClear();
 
 	m_SimData.UnmapAndClear();
@@ -505,14 +490,6 @@ bool	CBatchDrawer_Ribbon_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 			return false;
 		m_BBJobs_Ribbon.m_Exec_Texcoords.m_Texcoords = uv0s;
 	}
-	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1)
-	{
-		PK_ASSERT(m_Texcoord2s.Valid());
-		TStridedMemoryView<CFloat2>	uv1s(null, totalVertexCount);
-		if (!m_Texcoord2s->Map(uv1s))
-			return false;
-		m_BBJobs_Ribbon.m_Exec_Texcoords.m_Texcoords2 = uv1s;
-	}
 	bool	hasUVFactors = false;
 	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVRemap)
 	{
@@ -521,14 +498,6 @@ bool	CBatchDrawer_Ribbon_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 		if (!m_UVRemaps->Map(uvRemap))
 			return false;
 		m_BBJobs_Ribbon.m_Exec_UVRemap.m_UVRemap = uvRemap;
-	}
-	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UV1Remap)
-	{
-		PK_ASSERT(m_UV1Remaps.Valid());
-		TStridedMemoryView<CFloat4>	uv1Remap(null, totalVertexCount);
-		if (!m_UV1Remaps->Map(uv1Remap))
-			return false;
-		m_BBJobs_Ribbon.m_Exec_UVRemap.m_UV1Remap = uv1Remap;
 	}
 	if (drawPass.m_ToGenerate.m_GeneratedInputs & PopcornFX::Drawers::GenInput_UVFactors)
 	{
@@ -726,7 +695,6 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			// be carefull streams could change Strides and/or formats on the fly !
 			vertexFactory = collectorRes->m_VertexFactory;
 			vertexFactory->m_Texcoords.Setup(m_Texcoords);
-			vertexFactory->m_Texcoord2s.Setup(m_Texcoord2s);
 
 			vertexFactory->m_Positions.Setup(viewIndependentPNT ? m_Positions : viewDep->m_Positions);
 			vertexFactory->m_Normals.Setup(viewIndependentPNT ? m_Normals : viewDep->m_Normals);
@@ -734,7 +702,6 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 
 			vertexFactory->m_UVFactors.Setup(viewIndependentUVFactors ? m_UVFactors : viewDep->m_UVFactors);
 			vertexFactory->m_UVScalesAndOffsets.Setup(m_UVRemaps);
-			vertexFactory->m_UV1ScalesAndOffsets.Setup(m_UV1Remaps);
 
 			FPopcornFXUniforms					vsUniforms;
 			FPopcornFXBillboardVSUniforms		vsUniformsbillboard;
@@ -751,7 +718,7 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vsUniformsbillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
 			vsUniformsbillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].OffsetForShaderConstant();
 			vsUniformsbillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].OffsetForShaderConstant();
-			vsUniformsbillboard.InVelocityOffset = m_AdditionalStreamOffsets[StreamOffset_Velocity].OffsetForShaderConstant();
+			vsUniformsbillboard.InPreviousPositionOffset = m_AdditionalStreamOffsets[StreamOffset_PreviousPosition].OffsetForShaderConstant();
 			vsUniformsbillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
 			vsUniformsbillboard.InTextureIDsOffset = m_AdditionalStreamOffsets[StreamOffset_TextureID].OffsetForShaderConstant();
 			vsUniformsbillboard.InDynamicParameter1sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam1s].OffsetForShaderConstant();
@@ -759,17 +726,20 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 			vsUniformsbillboard.InDynamicParameter3sOffset = m_AdditionalStreamOffsets[StreamOffset_DynParam3s].OffsetForShaderConstant();
 
 			commonUniformsBillboard.HasSecondUVSet = m_SecondUVSet;
-			commonUniformsBillboard.FlipUVs = m_RotateUV && m_RibbonCorrectDeformation;
+			commonUniformsBillboard.FlipUVs = m_RotateUV;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = m_RibbonCorrectDeformation;
-			commonUniformsBillboard.InstRandom = m_Random;
 
 			vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardVSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsbillboard, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardCommonUniformBuffer = FPopcornFXBillboardCommonUniformsRef::CreateUniformBufferImmediate(commonUniformsBillboard, UniformBuffer_SingleDraw);
 
 			PK_ASSERT(!vertexFactory->IsInitialized());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			vertexFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
+			vertexFactory->InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 
 		if (!PK_VERIFY(vertexFactory->IsInitialized()))
@@ -796,7 +766,13 @@ void	CBatchDrawer_Ribbon_CPUBB::_IssueDrawCall_Ribbon(const SUERenderContext &re
 		meshElement.MaxVertexIndex = m_TotalVertexCount - 1;
 
 		FDynamicPrimitiveUniformBuffer	&dynamicPrimitiveUniformBuffer = collector->AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 		dynamicPrimitiveUniformBuffer.Set(FRHICommandListExecutor::GetImmediateCommandList(), localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
+#elif (ENGINE_MAJOR_VERSION == 5)
+		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
+#else
+		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, drawsVelocity, outputVelocity);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		meshElement.PrimitiveUniformBuffer = dynamicPrimitiveUniformBuffer.UniformBuffer.GetUniformBufferRHI();
 
 		PK_ASSERT(meshElement.NumPrimitives > 0);

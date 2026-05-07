@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Sound.h"
@@ -9,7 +9,15 @@
 
 #include "Render/AudioPools.h"
 
+#if (ENGINE_MAJOR_VERSION == 5)
 #	include "AudioDevice.h"
+#else
+#	if !PLATFORM_PS4
+#		include "AudioDevice.h"
+#	else
+#		define PK_CAN_USE_AUDIO_DEVICE	0
+#	endif // !PLATFORM_PS4
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #ifndef PK_CAN_USE_AUDIO_DEVICE
 #	define PK_CAN_USE_AUDIO_DEVICE	1

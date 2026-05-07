@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXSettingsEditor.h"
@@ -32,10 +32,7 @@ UPopcornFXSettingsEditor::UPopcornFXSettingsEditor(const FObjectInitializer& PCI
 ,	bAddSourcePackToMonitoredDirectories(false)
 ,	AssetDependenciesAutoImport(EPopcornFXAssetDependenciesAutoImport::Always)
 ,	bDebugBakedEffects(false)
-/*	GOREFIX #14716: For now we're building all supported RHIs to make sure effects will
-*	still be able to load their GPU backend when changing the editor's RHI.
-*	Otherwise we would have to force rebake every asset to update their GPU backend.. */
-,	bBuildAllDesktopBytecodes(true)
+,	bBuildAllDesktopBytecodes(false)
 ,	bAutoInsertSceneActor(true)
 ,	bAlwaysRenderAttributeSamplerShapes(false)
 ,	bRestartEmitterWhenAttributesChanged(false)
@@ -315,9 +312,8 @@ static FString	FixAndAppendPopcornFXProjectFileName(const FString &path)
 	// fix old path
 	if (path.EndsWith(kOldPopcornFXProjectFileName))
 	{
-		FString		newPath = path;
-		const s32	oldFileNameLen = kOldPopcornFXProjectFileName.Len();
-		newPath.RemoveAt(newPath.Len() - oldFileNameLen, oldFileNameLen, EAllowShrinking::No);
+		FString	newPath = path;
+		newPath.RemoveAt(newPath.Len() - kOldPopcornFXProjectFileName.Len(), kOldPopcornFXProjectFileName.Len(), false);
 		newPath /= kPopcornFXProjectFileName;
 		return newPath;
 	}
@@ -468,7 +464,7 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 													"\n"
 													"Continue anyway ?\n"), FText::FromString(sourceAssetPathAbs), FText::FromString(AbsSourcePackRootDir));
 
-			return OpenMessageBox(EAppMsgCategory::Warning, EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
+			return OpenMessageBox(EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
 		}
 		return true;
 	}
@@ -535,7 +531,7 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 				LOCTEXT("PopcornFXSourcePackFoundMsg",
 				"Source PopcornFX Project found and saved.\n\nProject Settings > PopcornFX > Source PopcornFX Project path\n\nis now {0}\n"),
 				FText::FromString(ImportSourcePack));
-		OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::Ok, text, title);
+		OpenMessageBox(EAppMsgType::Ok, text, title);
 
 		SaveConfig(); // Force save
 	}
@@ -558,7 +554,7 @@ bool	UPopcornFXSettingsEditor::AskForAValidSourcePackForIFN(const FString &sourc
 									"Project Settings > PopcornFX > Source PopcornFX Project path\n"
 									"\n"
 									"Continue anyway ?\n");
-		return OpenMessageBox(EAppMsgCategory::Error, EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
+		return OpenMessageBox(EAppMsgType::YesNo, msg, title) == EAppReturnType::Yes;
 	}
 
 	return isValid;

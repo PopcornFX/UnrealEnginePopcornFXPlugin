@@ -1,20 +1,17 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
 #include "PopcornFXDetailsAttributeSamplerImage.h"
-
 #include "PopcornFXAttributeSamplerImage.h"
 #include "PopcornFXSDK.h"
 
 #include "DetailLayoutBuilder.h"
 #include "DetailCategoryBuilder.h"
-
-DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXDetailsAttributeSamplerImage, Log, All);
-
-class FPopcornFXEffectPreviewViewportClient;
+#include "PropertyCustomizationHelpers.h"
+#include "PropertyHandle.h"
 
 //----------------------------------------------------------------------------
 
@@ -71,5 +68,4 @@ void	FPopcornFXDetailsAttributeSamplerImage::CustomizeDetails(IDetailLayoutBuild
 }
 
 //----------------------------------------------------------------------------
-
 #endif // WITH_EDITOR

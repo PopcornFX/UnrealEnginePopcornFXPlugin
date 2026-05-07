@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -34,7 +34,11 @@ public:
 										const int32			SampleRate,
 										double				AudioClock) override;
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 	const FString&	GetListenerName() const override;
+#else
+	const FString& GetListenerName() const;
+#endif
 	
 private:
 	FPopcornFXSubmixListener();

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -145,8 +145,6 @@ class POPCORNFX_API UPopcornFXSceneComponent : public UPrimitiveComponent
 
 	inline CParticleScene				*ParticleScene() const { return m_ParticleScene; }
 	inline CParticleScene				*ParticleSceneToRender() const { return bEnableRender != 0 ? ParticleScene() : nullptr; }
-
-	void								UpdateParticleScene(float deltaTime);
 
 #if WITH_EDITOR
 	void								MirrorGameWorldProperties(const UPopcornFXSceneComponent *other);

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 #pragma once
 
@@ -10,12 +10,10 @@
 #include "Render/RendererSubView.h"
 #include "Render/MaterialDesc.h"
 #include "Render/PopcornFXSkeletalMeshVertexFactory.h"
-#include "Render/PopcornFXRenderUtils.h" // FPopcornFXAtlasRectsVertexBuffer
+#include "Render/BatchDrawer_Billboard_GPU.h" // FPopcornFXAtlasRectsVertexBuffer
 
 #include <pk_particles/include/Renderers/ps_renderer_base.h>
 #include <pk_render_helpers/include/batch_jobs/rh_batch_jobs_mesh_cpu.h>
-
-class	FPopcornFXUniforms;
 
 //----------------------------------------------------------------------------
 

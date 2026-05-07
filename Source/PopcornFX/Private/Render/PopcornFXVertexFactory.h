@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -33,7 +33,7 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardVSUniforms, POPCORNFX_AP
 	SHADER_PARAMETER(int32, InColorsOffset)
 	SHADER_PARAMETER(int32, InEmissiveColorsOffset3)
 	SHADER_PARAMETER(int32, InEmissiveColorsOffset4)
-	SHADER_PARAMETER(int32, InVelocityOffset)
+	SHADER_PARAMETER(int32, InPreviousPositionOffset)
 	SHADER_PARAMETER(int32, InAlphaCursorsOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter1sOffset)
 	SHADER_PARAMETER(int32, InDynamicParameter2sOffset)
@@ -50,7 +50,6 @@ BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FPopcornFXBillboardCommonUniforms, POPCORNF
 	SHADER_PARAMETER(int32, FlipUVs) // Are the UVs flipped (u <-> v)
 	SHADER_PARAMETER(int32, NeedsBTN) // Do we need the BTN matrix
 	SHADER_PARAMETER(int32, CorrectRibbonDeformation)
-	SHADER_PARAMETER(float, InstRandom)
 END_GLOBAL_SHADER_PARAMETER_STRUCT()
 
 typedef TUniformBufferRef<FPopcornFXBillboardCommonUniforms>	FPopcornFXBillboardCommonUniformsRef;
@@ -73,7 +72,6 @@ public:
 	FPopcornFXVertexBufferView		m_Texcoord2s;
 	FPopcornFXVertexBufferView		m_UVFactors;
 	FPopcornFXVertexBufferView		m_UVScalesAndOffsets;
-	FPopcornFXVertexBufferView		m_UV1ScalesAndOffsets;
 
 	static bool			ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters);
 
@@ -82,7 +80,11 @@ public:
 	static bool			IsCompatible(UMaterialInterface *material);
 
 	/** FRenderResource interface */
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	virtual void							InitRHI(FRHICommandListBase &RHICmdList) override;
+#else
+	virtual void							InitRHI() override;
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 
 	/** Does the vertex factory supports tesselation shaders */
 	static bool								SupportsTessellationShaders() { return false; }

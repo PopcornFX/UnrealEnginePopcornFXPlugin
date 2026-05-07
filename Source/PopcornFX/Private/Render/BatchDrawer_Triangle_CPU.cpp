@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Triangle_CPU.h"
@@ -82,9 +82,6 @@ bool	CBatchDrawer_Triangle_CPUBB::Setup(const PopcornFX::CRendererDataBase *rend
 
 	m_NeedsBTN = renderer->m_RendererCache->m_Flags.m_HasNormal;
 	m_SecondUVSet = renderer->m_RendererCache->m_Flags.m_HasAtlasBlending && renderer->m_RendererCache->m_Flags.m_HasUV;
-	uint32 Seed = FPlatformTime::Cycles();
-	FRandomStream RandomStream = FRandomStream((int32)Seed);
-	m_Random = RandomStream.GetFraction();
 	return true;
 }
 
@@ -175,13 +172,10 @@ bool	CBatchDrawer_Triangle_CPUBB::_IsAdditionalInputSupported(const PopcornFX::C
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
 			outStreamOffsetType = StreamOffset_EmissiveColors3;
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_MoveVector())
-			outStreamOffsetType = StreamOffset_Velocity;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
-		 	fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 	}
 	return outStreamOffsetType != EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
@@ -527,10 +521,7 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 
 	FMatrix	localToWorld = FMatrix::Identity;
 	if (view->GlobalScale() != 1.0f)
-	{
 		localToWorld *= view->GlobalScale();
-		previousLocalToWorld *= view->GlobalScale();
-	}
 
 	CRendererCache	*matCache = static_cast<CRendererCache*>(desc.m_RendererCaches.First().Get());
 	if (!PK_VERIFY(matCache != null))
@@ -596,7 +587,6 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 			vsUniformsBillboard.RendererType = static_cast<u32>(PopcornFX::Renderer_Triangle);
 			vsUniformsBillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
-			vsUniformsBillboard.InVelocityOffset = m_AdditionalStreamOffsets[StreamOffset_Velocity].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].OffsetForShaderConstant();
 			vsUniformsBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
@@ -608,14 +598,17 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 			commonUniformsBillboard.FlipUVs = false;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = false;
-			commonUniformsBillboard.InstRandom = m_Random;
 
 			vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardVSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsBillboard, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardCommonUniformBuffer = FPopcornFXBillboardCommonUniformsRef::CreateUniformBufferImmediate(commonUniformsBillboard, UniformBuffer_SingleDraw);
 
 			PK_ASSERT(!vertexFactory->IsInitialized());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			vertexFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
+			vertexFactory->InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 
 		if (!PK_VERIFY(vertexFactory->IsInitialized()))
@@ -641,7 +634,13 @@ void	CBatchDrawer_Triangle_CPUBB::_IssueDrawCall_Triangle(const SUERenderContext
 		meshElement.MinVertexIndex = 0;
 		meshElement.MaxVertexIndex = (m_TotalParticleCount * 3) - 1;
 		FDynamicPrimitiveUniformBuffer	&dynamicPrimitiveUniformBuffer = collector->AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 		dynamicPrimitiveUniformBuffer.Set(FRHICommandListExecutor::GetImmediateCommandList(), localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
+#elif (ENGINE_MAJOR_VERSION == 5)
+		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
+#else
+		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, drawsVelocity, outputVelocity);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		meshElement.PrimitiveUniformBuffer = dynamicPrimitiveUniformBuffer.UniformBuffer.GetUniformBufferRHI();
 
 		PK_ASSERT(meshElement.NumPrimitives > 0);

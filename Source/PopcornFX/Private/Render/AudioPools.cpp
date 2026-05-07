@@ -1,12 +1,20 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 
 #include "AudioPools.h"
 
+#if (ENGINE_MAJOR_VERSION == 5)
 #	include "AudioDevice.h"
+#else
+#	if PLATFORM_PS4
+#		define PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS	1
+#	else
+#		include "AudioDevice.h"
+#	endif // PLATFORM_PS4
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 #ifndef PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS
 #	define PK_SPAWN_SOUNDS_WITH_GAMEPLAYSTATICS	0

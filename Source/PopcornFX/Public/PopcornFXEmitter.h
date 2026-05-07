@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -66,6 +66,11 @@ public:
 	/** Matinee Toggle anim track compatibility */
 	UFUNCTION(BlueprintCallable, Category="Rendering", meta=(CallInEditor=true))
 	void				OnInterpToggle(bool bEnable);
+
+#if WITH_EDITORONLY_DATA
+	UPROPERTY()
+	class UBillboardComponent				*SpriteComponent;
+#endif
 
 	bool				SetEffect(class UPopcornFXEffect *effect);
 	UPopcornFXEffect	*GetEffect();

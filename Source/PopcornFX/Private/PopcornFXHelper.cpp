@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXHelper.h"
@@ -71,9 +71,13 @@ FString	ToUE(const PopcornFX::CStringUnicode &str)
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
-EAppReturnType::Type	OpenMessageBox(EAppMsgCategory category, EAppMsgType::Type messageType, const FText& message, const FText& title)
+EAppReturnType::Type	OpenMessageBox(EAppMsgType::Type messageType, const FText& message, const FText& title)
 {
-	return FMessageDialog::Open(category, messageType, message, title);
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
+	return FMessageDialog::Open(messageType, message, title);
+#else
+	return FMessageDialog::Open(messageType, message, &title);
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 #endif
 

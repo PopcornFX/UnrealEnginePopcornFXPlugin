@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 #include "PopcornFXMeshVertexFactory.h"
 #include "PopcornFXVertexFactoryCommon.h"
@@ -12,8 +12,10 @@
 #include "MeshBatch.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/Material.h"
-#include "MaterialDomain.h"
-#include "GlobalRenderResources.h"
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 2)
+#	include "MaterialDomain.h"
+#	include "GlobalRenderResources.h"
+#endif
 
 #include "MeshMaterialShader.h"
 #include "MeshDrawShaderBindings.h"
@@ -58,8 +60,12 @@ public:
 //
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5)
 IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXMeshVertexFactory, PKUE_SHADER_PATH("PopcornFXMeshVertexFactory"),
 	EVertexFactoryFlags::UsedWithMaterials | EVertexFactoryFlags::SupportsDynamicLighting); // TODO
+#else
+IMPLEMENT_VERTEX_FACTORY_TYPE(FPopcornFXMeshVertexFactory, PKUE_SHADER_PATH("PopcornFXMeshVertexFactory"), true, false, true, false, false);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_Vertex, FPopcornFXMeshVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPopcornFXMeshVertexFactory, SF_Compute, FPopcornFXMeshVertexFactoryShaderParameters);
@@ -92,21 +98,22 @@ bool	FPopcornFXMeshVertexFactory::IsCompatible(UMaterialInterface *material)
 
 void	FPopcornFXMeshVertexFactory::SetData(const FDataType& InData)
 {
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
-	check(IsInAnyRenderingThread());
-#else
-	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
+	check(IsInRenderingThread());
 	Data = InData;
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
+#else
+	UpdateRHI();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 }
 
 //----------------------------------------------------------------------------
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 void	FPopcornFXMeshVertexFactory::InitRHI(FRHICommandListBase &RHICmdList)
+#else
+void	FPopcornFXMeshVertexFactory::InitRHI()
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 {
 	FVertexDeclarationElementList Elements;
 

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Mesh_CPU.h"
@@ -65,10 +65,6 @@ bool	CBatchDrawer_Mesh_CPUBB::Setup(const PopcornFX::CRendererDataBase *renderer
 {
 	if (!Super::Setup(renderer, owner, fc, storageClass))
 		return false;
-
-	uint32 Seed = FPlatformTime::Cycles();
-	FRandomStream RandomStream = FRandomStream((int32)Seed);
-	m_Random = RandomStream.GetFraction();
 	return true;
 }
 
@@ -164,13 +160,10 @@ bool	CBatchDrawer_Mesh_CPUBB::_IsAdditionalInputSupported(const PopcornFX::CStri
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
 			outStreamOffsetType = StreamOffset_EmissiveColors3;
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_MoveVector())
-			outStreamOffsetType = StreamOffset_Velocity;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
-			fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 		else if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
 			outStreamOffsetType = StreamOffset_TextureIDs;
@@ -474,12 +467,10 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 	vsUniformsMesh.InEmissiveColorsOffset4 =		m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].Valid() ?	(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4] / sizeof(float)) + buffersOffset * 4) : -1;
 
 	vsUniformsMesh.InColorsOffset =					m_AdditionalStreamOffsets[StreamOffset_Colors].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Colors] / sizeof(float)) + buffersOffset * 4) : -1;
-	vsUniformsMesh.InVelocityOffset =				m_AdditionalStreamOffsets[StreamOffset_Velocity].Valid() ?			(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_Velocity] / sizeof(float)) + buffersOffset * 3) : -1;
 	vsUniformsMesh.InDynamicParameter0sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam0s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam0s] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter1sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam1s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam1s] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter2sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam2s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam2s] / sizeof(float)) + buffersOffset * 4) : -1;
 	vsUniformsMesh.InDynamicParameter3sOffset =		m_AdditionalStreamOffsets[StreamOffset_DynParam3s].Valid() ?		(static_cast<s32>(m_AdditionalStreamOffsets[StreamOffset_DynParam3s] / sizeof(float)) + buffersOffset * 4) : -1;
-	vsUniformsMesh.InstRandom = m_Random;
 
 	m_VFData.bInitialized = true;
 
@@ -499,7 +490,11 @@ void	CBatchDrawer_Mesh_CPUBB::_CreateMeshVertexFactory(	const CMaterialDesc_Rend
 		outFactory->m_MeshVSUniformBuffer = FPopcornFXMeshVSUniformsRef::CreateUniformBufferImmediate(vsUniformsMesh, UniformBuffer_SingleFrame);
 		PK_ASSERT(!outFactory->IsInitialized());
 
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		outFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
+		outFactory->InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 	}
 }
 
@@ -577,6 +572,12 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUERenderCo
 
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices + buffersOffset), sectionPCount);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
+			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
+#else
+			rayTracingInstance.BuildInstanceMaskAndFlags();
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 
@@ -612,6 +613,12 @@ void	CBatchDrawer_Mesh_CPUBB::_IssueDrawCall_Mesh_AccelStructs(const SUERenderCo
 		{
 			// Temp code, until we know for sure if we can use the gpu buffer matrices directly (untouched)
 			rayTracingInstance.InstanceTransforms.Append(reinterpret_cast<FMatrix*>(rayTracing_InstancedMatrices), m_TotalParticleCount);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION <= 1)
+			rayTracingInstance.BuildInstanceMaskAndFlags(m_FeatureLevel);
+#else
+			rayTracingInstance.BuildInstanceMaskAndFlags();
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 2)
 
 			view->OutRayTracingInstances()->Add(rayTracingInstance);
 		}

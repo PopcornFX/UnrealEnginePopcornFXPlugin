@@ -1,21 +1,18 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
 
-#include "Nodes/PopcornFXNode_Attribute.h"
+#include "Nodes/PopcornFXNode_DynamicField.h"
 #include "PopcornFXNode_SetAttribute.generated.h"
 
-/*
-*	A custom Blueprint node that represents any of the SetAttribute() functions
-*/
 UCLASS(MinimalApi)
-class UPopcornFXNode_SetAttribute : public UPopcornFXNode_Attribute
+class UPopcornFXNode_SetAttribute : public UPopcornFXNode_DynamicField
 {
 	GENERATED_UCLASS_BODY()
 private:
-	virtual bool		SetupNativeFunctionCallByName(UK2Node_CallFunction *functionCall) override;
-	virtual bool		SetupNativeFunctionCallByIndex(UK2Node_CallFunction *functionCall) override;
+	virtual bool		SetupNativeFunctionCall(UK2Node_CallFunction *functionCall) override;
+	virtual UClass		*GetSelfPinClass() const override;
 };

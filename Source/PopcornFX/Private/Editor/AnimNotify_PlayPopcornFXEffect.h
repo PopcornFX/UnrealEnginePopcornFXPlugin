@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -20,7 +20,11 @@ public:
 	UAnimNotify_PlayPopcornFXEffect();
 
 	virtual FString		GetNotifyName_Implementation() const override;
+#if (ENGINE_MAJOR_VERSION == 5)
 	virtual void		Notify(USkeletalMeshComponent *meshComp, UAnimSequenceBase *animation, const FAnimNotifyEventReference &eventReference);
+#else
+	virtual void		Notify(USkeletalMeshComponent *meshComp, UAnimSequenceBase *animation) override;
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	// PopcornFX Effect to Spawn
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="AnimNotify", meta=(DisplayName="Effect"))

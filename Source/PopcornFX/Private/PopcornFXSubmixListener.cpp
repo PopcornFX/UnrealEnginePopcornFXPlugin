@@ -67,8 +67,12 @@ void	FPopcornFXSubmixListener::RegisterToSubmix()
 	{
 		m_IsRegistered = true;
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 		USoundSubmix* SubmixToRegister = &AudioDevice->GetMainSubmixObject();
 		AudioDevice->RegisterSubmixBufferListener(AsShared(), *SubmixToRegister);
+#else
+		AudioDevice->RegisterSubmixBufferListener(this, nullptr);
+#endif
 		
 		// RegisterSubmixBufferListener lazily enqueues the registration on the audio thread,
 		// so we have to wait for the audio thread to destroy.
@@ -89,14 +93,22 @@ void	FPopcornFXSubmixListener::UnregisterFromSubmix()
 		{
 			if (IsInGameThread())
 			{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 				DeviceHandle->UnregisterSubmixBufferListener(AsShared(), DeviceHandle->GetMainSubmixObject());
+#else
+				DeviceHandle->UnregisterSubmixBufferListener(this, nullptr);
+#endif
 			}
 			else
 			{
 				UE::Tasks::FTaskEvent CompletionEvent{ UE_SOURCE_LOCATION };
 				FAudioThread::RunCommandOnAudioThread([this, DeviceHandle, &CompletionEvent]()
 					{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 4
 						DeviceHandle->UnregisterSubmixBufferListener(AsShared(), DeviceHandle->GetMainSubmixObject());
+#else
+						DeviceHandle->UnregisterSubmixBufferListener(this, nullptr);
+#endif
 						CompletionEvent.Trigger();
 					});
 				CompletionEvent.Wait();

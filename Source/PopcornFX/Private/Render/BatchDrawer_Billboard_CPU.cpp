@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "BatchDrawer_Billboard_CPU.h"
@@ -100,9 +100,6 @@ bool	CBatchDrawer_Billboard_CPUBB::Setup(const PopcornFX::CRendererDataBase *ren
 	m_RotateUV = renderer->m_RendererCache->m_Flags.m_RotateTexture;
 	m_FlipU = renderer->m_RendererCache->m_Flags.m_FlipU;
 	m_FlipV = renderer->m_RendererCache->m_Flags.m_FlipV;
-	uint32 Seed = FPlatformTime::Cycles();
-	FRandomStream RandomStream = FRandomStream((int32)Seed);
-	m_Random = RandomStream.GetFraction();
 	return true;
 }
 
@@ -193,13 +190,13 @@ bool	CBatchDrawer_Billboard_CPUBB::_IsAdditionalInputSupported(const PopcornFX::
 	{
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveColor()) // Legacy
 			outStreamOffsetType = StreamOffset_EmissiveColors3;
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_MoveVector())
-			outStreamOffsetType = StreamOffset_Velocity;
+
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_ComputeVelocity_PreviousPosition())
+			outStreamOffsetType = StreamOffset_PreviousPosition;
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
-			fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 		if (fieldName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
 			outStreamOffsetType = StreamOffset_AtlasTextureID;
@@ -485,7 +482,6 @@ bool	CBatchDrawer_Billboard_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 			return false;
 		m_BBJobs_Billboard.m_Exec_Texcoords.m_Texcoords2 = uv1s;
 	}
-
 	if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
 	{
 		PK_ASSERT(m_SimData.Valid());
@@ -679,7 +675,7 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			vsUniformsBillboard.TotalParticleCount = desc.m_TotalParticleCount;
 			vsUniformsBillboard.CapsulesOffset = m_CapsulesOffset;
 			vsUniformsBillboard.InColorsOffset = m_AdditionalStreamOffsets[StreamOffset_Colors].OffsetForShaderConstant();
-			vsUniformsBillboard.InVelocityOffset = m_AdditionalStreamOffsets[StreamOffset_Velocity].OffsetForShaderConstant();
+			vsUniformsBillboard.InPreviousPositionOffset = m_AdditionalStreamOffsets[StreamOffset_PreviousPosition].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset3 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors3].OffsetForShaderConstant();
 			vsUniformsBillboard.InEmissiveColorsOffset4 = m_AdditionalStreamOffsets[StreamOffset_EmissiveColors4].OffsetForShaderConstant();
 			vsUniformsBillboard.InAlphaCursorsOffset = m_AdditionalStreamOffsets[StreamOffset_AlphaCursors].OffsetForShaderConstant();
@@ -692,14 +688,17 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 			commonUniformsBillboard.FlipUVs = m_RotateUV;
 			commonUniformsBillboard.NeedsBTN = m_NeedsBTN;
 			commonUniformsBillboard.CorrectRibbonDeformation = false;
-			commonUniformsBillboard.InstRandom = m_Random;
 
 			vertexFactory->m_VSUniformBuffer = FPopcornFXUniformsRef::CreateUniformBufferImmediate(vsUniforms, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardVSUniformBuffer = FPopcornFXBillboardVSUniformsRef::CreateUniformBufferImmediate(vsUniformsBillboard, UniformBuffer_SingleDraw);
 			vertexFactory->m_BillboardCommonUniformBuffer = FPopcornFXBillboardCommonUniformsRef::CreateUniformBufferImmediate(commonUniformsBillboard, UniformBuffer_SingleDraw);
 
 			PK_ASSERT(!vertexFactory->IsInitialized());
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 			vertexFactory->InitResource(FRHICommandListExecutor::GetImmediateCommandList());
+#else
+			vertexFactory->InitResource();
+#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 3)
 		}
 
 		if (!PK_VERIFY(vertexFactory->IsInitialized()))
@@ -726,7 +725,13 @@ void	CBatchDrawer_Billboard_CPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 		meshElement.MaxVertexIndex = m_TotalVertexCount - 1;
 
 		FDynamicPrimitiveUniformBuffer	&dynamicPrimitiveUniformBuffer = collector->AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 4)
 		dynamicPrimitiveUniformBuffer.Set(FRHICommandListExecutor::GetImmediateCommandList(), localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
+#elif (ENGINE_MAJOR_VERSION == 5)
+		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, outputVelocity);
+#else
+		dynamicPrimitiveUniformBuffer.Set(localToWorld, previousLocalToWorld, bounds, localBounds, true, hasPrecomputedVolumetricLightmap, drawsVelocity, outputVelocity);
+#endif // (ENGINE_MAJOR_VERSION == 5)
 		meshElement.PrimitiveUniformBuffer = dynamicPrimitiveUniformBuffer.UniformBuffer.GetUniformBufferRHI();
 
 		PK_ASSERT(meshElement.NumPrimitives > 0);

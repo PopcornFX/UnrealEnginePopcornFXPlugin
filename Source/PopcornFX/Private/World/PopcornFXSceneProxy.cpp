@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXSceneProxy.h"
@@ -22,8 +22,13 @@ FPopcornFXSceneProxy::FPopcornFXSceneProxy(UPopcornFXSceneComponent *component)
 
 	bVerifyUsedMaterials = true;
 
+#if (ENGINE_MAJOR_VERSION == 5)
 	bAlwaysHasVelocity = true;
+
+#if (ENGINE_MINOR_VERSION >= 4)
 	bSupportsParallelGDME = false;
+#endif // (ENGINE_MINOR_VERSION >= 4)
+#endif // (ENGINE_MAJOR_VERSION == 5)
 }
 
 //----------------------------------------------------------------------------
@@ -61,13 +66,12 @@ void	FPopcornFXSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*
 //----------------------------------------------------------------------------
 
 #if RHI_RAYTRACING
-void	FPopcornFXSceneProxy::GetDynamicRayTracingInstances(FRayTracingInstanceCollector &context)
-
+void	FPopcornFXSceneProxy::GetDynamicRayTracingInstances(FRayTracingMaterialGatheringContext &context, TArray<FRayTracingInstance> &outRayTracingInstances)
 {
 	CParticleScene	*particleScene = ParticleSceneToRender();
 	if (particleScene == null)
 		return;
-	particleScene->GetDynamicRayTracingInstances(this, context);
+	particleScene->GetDynamicRayTracingInstances(this, context, outRayTracingInstances);
 }
 #endif // RHI_RAYTRACING
 

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -30,11 +30,12 @@ public:
 	void	OnAddedToTab(const TSharedRef<SDockTab> &ownerTab);
 
 	virtual void	AddReferencedObjects(FReferenceCollector& Collector) override;
-
+#if (ENGINE_MAJOR_VERSION == 5)
 	virtual FString	GetReferencerName() const
 	{
 		return TEXT("SPopcornFXEffectPreviewViewport");
 	}
+#endif // (ENGINE_MAJOR_VERSION == 5)
 
 	virtual TSharedRef<class SEditorViewport>	GetViewportWidget() override;
 	virtual TSharedPtr<FExtender>				GetExtenders() const override;
@@ -47,7 +48,6 @@ public:
 	virtual void								OnFocusViewportToSelection() override;
 public:
 	void			ResetEmitterAttributes();
-	void			ResetEmitterSamplers();
 	void			ResetEmitter();
 
 	void			ToggleLoopEmitter(ECheckBoxState newState);
@@ -73,11 +73,6 @@ private:
 	bool	m_DisplayGrid;
 
 	FPreviewScene									m_PreviewScene;
-
-	/**
-	* Emitter placed in the viewport. Its attribute list needs to be refreshed every time we modify the effect's default attribute list
-	* (see FPopcornFXEffectEditor::OnObjectPropertyChanged())
-	*/
 	TObjectPtr<class UPopcornFXEmitterComponent>	m_EmitterComponent;
 
 	TWeakPtr<SDockTab>								m_ParentTab;

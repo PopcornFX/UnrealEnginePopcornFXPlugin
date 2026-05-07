@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #include "PopcornFXStats.h"
@@ -27,7 +27,6 @@ DEFINE_STAT(STAT_PopcornFX_DrawCallsRibbonCount);
 DEFINE_STAT(STAT_PopcornFX_DrawCallsTriangleCount);
 DEFINE_STAT(STAT_PopcornFX_DrawCallsMeshCount);
 DEFINE_STAT(STAT_PopcornFX_DrawCallsSkelMeshCount);
-DEFINE_STAT(STAT_PopcornFX_DrawCallsDecalCount);
 DEFINE_STAT(STAT_PopcornFX_LightCount);
 DEFINE_STAT(STAT_PopcornFX_SoundCount);
 DEFINE_STAT(STAT_PopcornFX_RayTracing_DrawCallsCount);

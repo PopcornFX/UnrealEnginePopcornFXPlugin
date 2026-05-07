@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------
-// Copyright Persistant Studios, SARL.
-// https://popcornfx.com/popcornfx-community-license/
+// Copyright Persistant Studios, SARL. All Rights Reserved.
+// https://www.popcornfx.com/terms-and-conditions/
 //----------------------------------------------------------------------------
 
 #pragma once
@@ -14,6 +14,5 @@ class UPopcornFXFileThumbnailRenderer : public UTextureThumbnailRenderer
 {
 	GENERATED_UCLASS_BODY()
 
-	virtual bool	CanVisualizeAsset(UObject* Object) override;
 	virtual void	Draw(UObject *object, int32 x, int32 y, uint32 width, uint32 height, FRenderTarget *renderTarget, FCanvas *canvas, bool bAdditionalViewFamily) override;
 };
