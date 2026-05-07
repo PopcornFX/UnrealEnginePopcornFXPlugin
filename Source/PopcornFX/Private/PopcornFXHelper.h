@@ -98,5 +98,5 @@ const TCHAR				*HumanReadS(float v, u32 base = 1024);
 static inline float		SafeRcp(float v) { return v == 0.f ? 0.f : 1.f / v; }
 
 #if WITH_EDITOR
-EAppReturnType::Type	OpenMessageBox(EAppMsgType::Type MessageType, const FText& Message, const FText& Title);
+EAppReturnType::Type	OpenMessageBox(EAppMsgCategory category, EAppMsgType::Type messageType, const FText& message, const FText& title);
 #endif

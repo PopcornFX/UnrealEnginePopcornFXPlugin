@@ -71,9 +71,9 @@ FString	ToUE(const PopcornFX::CStringUnicode &str)
 //----------------------------------------------------------------------------
 
 #if WITH_EDITOR
-EAppReturnType::Type	OpenMessageBox(EAppMsgType::Type messageType, const FText& message, const FText& title)
+EAppReturnType::Type	OpenMessageBox(EAppMsgCategory category, EAppMsgType::Type messageType, const FText& message, const FText& title)
 {
-	return FMessageDialog::Open(messageType, message, title);
+	return FMessageDialog::Open(category, messageType, message, title);
 }
 #endif
 

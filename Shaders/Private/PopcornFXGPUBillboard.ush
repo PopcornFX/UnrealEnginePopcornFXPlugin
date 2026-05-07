@@ -187,8 +187,8 @@ void	PopcornFXGPUBillboard(uint instanceID, float2 texCoords, out FVertexFactory
 	const uint		billboarderType = flags & BB_Flag_BillboardMask;
 	const float		normalBendingFactor = currentDr.y;
     const uint		rotateUV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_RotateUV) != 0;
-    const uint      flipV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipU) != 0;
-    const uint      flipU = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipV) != 0;
+    const uint      flipU = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipU) != 0;
+    const uint      flipV = (PopcornFXGPUBillboardVSUniforms.BasicTransforms & BasicTransform_Flag_FlipV) != 0;
 
 	const float2	cornerCoords = texCoords;
 

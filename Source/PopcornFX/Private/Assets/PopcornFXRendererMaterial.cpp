@@ -209,7 +209,7 @@ namespace
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
@@ -341,7 +341,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
@@ -577,7 +577,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
@@ -709,7 +709,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
@@ -905,7 +905,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 				!_IsVATTextureConfigured(mat.VATTexturePosition))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTexturePosition->GetPathName()));
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTexturePosition->Modify();
 					mat.VATTexturePosition->Filter = TF_Nearest;
@@ -915,7 +915,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 				!_IsVATTextureConfigured(mat.VATTextureNormal))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTextureNormal->GetPathName()));
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTextureNormal->Modify();
 					mat.VATTextureNormal->Filter = TF_Nearest;
@@ -925,7 +925,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 				!_IsVATTextureConfigured(mat.VATTextureColor))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTextureColor->GetPathName()));
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTextureColor->Modify();
 					mat.VATTextureColor->Filter = TF_Nearest;
@@ -935,7 +935,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 				!_IsVATTextureConfigured(mat.VATTextureRotation))
 			{
 				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.VATTextureRotation->GetPathName()));
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.VATTextureRotation->Modify();
 					mat.VATTextureRotation->Filter = TF_Nearest;
@@ -960,7 +960,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 					!_IsVATMeshConfigured(mat.StaticMesh))
 				{
 					const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Mesh \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings settings?"), FText::FromString(mat.StaticMesh->GetPathName()));
-					if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+					if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 					{
 						mat.StaticMesh->Modify();
 						mat.StaticMesh->GetSourceModel(0).BuildSettings.bUseFullPrecisionUVs = true;
@@ -1264,7 +1264,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
 					FText::FromString(mat.TextureDiffuse->GetPathName()));
 
-				if (OpenMessageBox(EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
+				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
 					mat.TextureDiffuse->Modify();
 					mat.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
