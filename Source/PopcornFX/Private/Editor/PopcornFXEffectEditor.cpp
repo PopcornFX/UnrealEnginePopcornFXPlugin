@@ -358,6 +358,7 @@ void	FPopcornFXEffectEditor::ReimportEffect()
 	PreviewViewport->ResetEmitterSamplers();
 	EffectDetailsView->ForceRefresh();
 	EffectAttributesView->ForceRefresh();
+	PreviewViewport->ResetEmitter();
 }
 
 //----------------------------------------------------------------------------

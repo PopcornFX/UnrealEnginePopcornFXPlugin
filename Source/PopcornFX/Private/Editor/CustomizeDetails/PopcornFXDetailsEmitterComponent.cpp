@@ -239,16 +239,26 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 
 	FSlateColor		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Foreground);
 	FText			tooltipText = FText::FromString(name + ": " + defNode);
+	bool			inBPEditor = emitter->GetName().EndsWith("_GEN_VARIABLE");
 	if (!sampler ||
 		(sampler->m_IncompatibleProperties.Contains(emitter) && !sampler->m_IncompatibleProperties[emitter].m_Properties.IsEmpty())
 		|| sampler->m_UnsupportedProperties.Num() > 0)
 	{
 		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Error);
-		tooltipText = FText::FromString("One or more properties are not supported. Default values exported from PopcornFX will be used");
+		if (inBPEditor)
+		{
+			tooltipText = FText::FromString("Editing samplers is not supported yet in Blueprint Editor");
+		}
+		else
+		{
+			tooltipText = FText::FromString("One or more properties are not supported. Default values exported from PopcornFX will be used");
+		}
 	}
 
-	IDetailGroup	&newGroup = m_IGroups[iCategory]->AddGroup(FName(desc->m_SamplerName), FText::FromString(desc->m_SamplerName));
-	newGroup.HeaderRow()
+	IDetailGroup		&newGroup = m_IGroups[iCategory]->AddGroup(FName(desc->m_SamplerName), FText::FromString(desc->m_SamplerName));
+	FDetailWidgetRow	&headerRow = newGroup.HeaderRow();
+	FDetailWidgetDecl	*headerRowContent = inBPEditor ? &headerRow.NameContent() : &headerRow.WholeRowContent();
+	(*headerRowContent)
 		[
 			SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -276,6 +286,17 @@ void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc
 						.ColorAndOpacity(samplerNameColor)
 				]
 		];
+
+	if (inBPEditor)
+	{
+		headerRow.ValueContent()
+			[
+				SNew(STextBlock)
+					.Text(tooltipText)
+					.Font(m_DetailLayoutBuilder->GetDetailFont())
+					.ColorAndOpacity(samplerNameColor)
+			];
+	}
 
 	if (!samplerPty.IsValid() || !samplerPty->IsValidHandle()
 		|| !samplerDescPty.IsValid() || !samplerDescPty->IsValidHandle())

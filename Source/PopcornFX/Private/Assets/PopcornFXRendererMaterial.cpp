@@ -152,13 +152,13 @@ namespace
 			if (legacyLit)
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
-				mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 			else
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-				mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-				mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 				mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 				mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 			}
@@ -172,8 +172,8 @@ namespace
 			{
 				mat.CastShadow = true; // Tmp: Force cast shadows true when six way lightmap material is used
 				finalMatType = EPopcornFXLegacyMaterialType::Billboard_SixWayLightmap;
-				mat.EditableProperties.TextureSixWay_RLTS = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_RightLeftTopSmoke(), PopcornFX::CString::EmptyString));
-				mat.EditableProperties.TextureSixWay_BBF = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_BottomBackFront(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureSixWay_RLTS = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_RightLeftTopSmoke(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureSixWay_BBF = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_SixWayLightmap_BottomBackFront(), PopcornFX::CString::EmptyString));
 			}
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
@@ -185,49 +185,49 @@ namespace
 		else if (decl.IsFeatureEnabled(UERendererProperties::SID_VolumetricFog()))
 		{
 			finalMatType = EPopcornFXLegacyMaterialType::Billboard_VolumetricFog;
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_VolumetricFog_AlbedoMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(UERendererProperties::SID_VolumetricFog_AlbedoMap(), PopcornFX::CString::EmptyString));
 			mat.SphereMaskHardness = decl.GetPropertyValue_F1(UERendererProperties::SID_VolumetricFog_SphereMaskHardness(), 0.0f);
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Distortion;
 
-			if (mat.EditableProperties.TextureDiffuse != null &&
-				mat.EditableProperties.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
+			if (mat.EditablePropertiesDefault.TextureDiffuse != null &&
+				mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
 			{
 				FText		title = LOCTEXT("import_distortion_texture_title", "PopcornFX: Compression Settings");
 				const FText	message = FText::Format(LOCTEXT("import_distortion_texture_message",
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
-					FText::FromString(mat.EditableProperties.TextureDiffuse->GetPathName()));
+					FText::FromString(mat.EditablePropertiesDefault.TextureDiffuse->GetPathName()));
 
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.TextureDiffuse->Modify();
-					mat.EditableProperties.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
+					mat.EditablePropertiesDefault.TextureDiffuse->Modify();
+					mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
 				}
 			}
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
 			mat.SoftAnimBlending = blendingType == 1;
 			mat.MotionVectorsBlending = blendingType == 2;
 			if (mat.MotionVectorsBlending)
 			{
-				mat.EditableProperties.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
 				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
@@ -235,7 +235,7 @@ namespace
 			}
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 		
@@ -293,8 +293,8 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		if (mat.Lit)
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-			mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
@@ -315,7 +315,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
 		{
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 			{
 				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Additive;
@@ -325,41 +325,41 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			finalMatType = EPopcornFXDefaultMaterialType::Billboard_Distortion;
 
-			if (mat.EditableProperties.TextureDiffuse != null &&
-				mat.EditableProperties.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
+			if (mat.EditablePropertiesDefault.TextureDiffuse != null &&
+				mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
 			{
 				FText		title = LOCTEXT("import_distortion_texture_title", "PopcornFX: Compression Settings");
 				const FText	message = FText::Format(LOCTEXT("import_distortion_texture_message",
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
-					FText::FromString(mat.EditableProperties.TextureDiffuse->GetPathName()));
+					FText::FromString(mat.EditablePropertiesDefault.TextureDiffuse->GetPathName()));
 
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.TextureDiffuse->Modify();
-					mat.EditableProperties.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
+					mat.EditablePropertiesDefault.TextureDiffuse->Modify();
+					mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
 				}
 			}
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
 			mat.SoftAnimBlending = blendingType == 1;
 			mat.MotionVectorsBlending = blendingType == 2;
 			if (mat.MotionVectorsBlending)
 			{
-				mat.EditableProperties.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
 				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
@@ -368,7 +368,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
@@ -533,13 +533,13 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			if (legacyLit)
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
-				mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 			else
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-				mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-				mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 				mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 				mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 			}
@@ -558,44 +558,44 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Distortion;
 
-			if (mat.EditableProperties.TextureDiffuse != null &&
-				mat.EditableProperties.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
+			if (mat.EditablePropertiesDefault.TextureDiffuse != null &&
+				mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
 			{
 				FText		title = LOCTEXT("import_distortion_texture_title", "PopcornFX: Compression Settings");
 				const FText	message = FText::Format(LOCTEXT("import_distortion_texture_message",
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
-					FText::FromString(mat.EditableProperties.TextureDiffuse->GetPathName()));
+					FText::FromString(mat.EditablePropertiesDefault.TextureDiffuse->GetPathName()));
 
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.TextureDiffuse->Modify();
-					mat.EditableProperties.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
+					mat.EditablePropertiesDefault.TextureDiffuse->Modify();
+					mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
 				}
 			}
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
 			mat.SoftAnimBlending = blendingType == 1;
 			mat.MotionVectorsBlending = blendingType == 2;
 			if (mat.MotionVectorsBlending)
 			{
-				mat.EditableProperties.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
 				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
@@ -603,7 +603,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			}
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 
@@ -660,8 +660,8 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		if (mat.Lit)
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-			mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		
@@ -683,7 +683,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive())) 
 		{
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 			{
 				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Additive;
@@ -693,41 +693,41 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			finalMatType = EPopcornFXDefaultMaterialType::Billboard_Distortion;
 
-			if (mat.EditableProperties.TextureDiffuse != null &&
-				mat.EditableProperties.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
+			if (mat.EditablePropertiesDefault.TextureDiffuse != null &&
+				mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
 			{
 				FText		title = LOCTEXT("import_distortion_texture_title", "PopcornFX: Compression Settings");
 				const FText	message = FText::Format(LOCTEXT("import_distortion_texture_message",
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
-					FText::FromString(mat.EditableProperties.TextureDiffuse->GetPathName()));
+					FText::FromString(mat.EditablePropertiesDefault.TextureDiffuse->GetPathName()));
 
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.TextureDiffuse->Modify();
-					mat.EditableProperties.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
+					mat.EditablePropertiesDefault.TextureDiffuse->Modify();
+					mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
 				}
 			}
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 			const s32	blendingType = decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Atlas_Blending(), 0); // 1 = LinearAtlasBlending. 2 = MotionVectors blending (optical flow);
 			mat.SoftAnimBlending = blendingType == 1;
 			mat.MotionVectorsBlending = blendingType == 2;
 			if (mat.MotionVectorsBlending)
 			{
-				mat.EditableProperties.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
 				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
@@ -735,7 +735,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			}
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_SoftParticles()))
 			mat.SoftnessDistance = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_SoftParticles_SoftnessDistance(), 0.0f);
 
@@ -831,10 +831,10 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		const bool	skelMesh = decl.IsFeatureEnabled(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation());
 		if (skelMesh)
-			mat.EditableProperties.SkeletalMesh = LoadSkelMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.SkeletalMesh = LoadSkelMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
 		else
 		{
-			mat.EditableProperties.StaticMesh = LoadMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.StaticMesh = LoadMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
 			mat.StaticMeshLOD = 0; // TODO
 		}
 
@@ -846,14 +846,14 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 			if (legacyLit)
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
-				mat.EditableProperties.TextureSpecular = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_SpecularMap(), PopcornFX::CString::EmptyString));
-				mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureSpecular = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_SpecularMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 			}
 			else
 			{
 				mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-				mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-				mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 				mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 				mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 			}
@@ -861,23 +861,23 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (fluidVAT)
 		{
-			mat.EditableProperties.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_PositionMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.VATTextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_NormalMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.VATTextureColor = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_ColorMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_PositionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.VATTextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.VATTextureColor = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_ColorMap(), PopcornFX::CString::EmptyString));
 			mat.VATNumFrames = decl.GetPropertyValue_I1(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_NumFrames(), 0);
 			mat.VATPackedData = decl.GetPropertyValue_B(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Fluid_PackedData(), false);
 		}
 		else if (softVAT)
 		{
-			mat.EditableProperties.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_PositionMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.VATTextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_PositionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.VATTextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_NormalMap(), PopcornFX::CString::EmptyString));
 			mat.VATNumFrames = decl.GetPropertyValue_I1(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_NumFrames(), 0);
 			mat.VATPackedData = decl.GetPropertyValue_B(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Soft_PackedData(), false);
 		}
 		else if (rigidVAT)
 		{
-			mat.EditableProperties.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_PositionMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.VATTextureRotation = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_RotationMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.VATTexturePosition = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_PositionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.VATTextureRotation = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_RotationMap(), PopcornFX::CString::EmptyString));
 			mat.VATNumFrames = decl.GetPropertyValue_I1(PopcornFX::VertexAnimationRendererProperties::SID_VertexAnimation_Rigid_NumFrames(), 0);
 
 			const float		globalScale = FPopcornFXPlugin::GlobalScale();
@@ -897,76 +897,76 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 		if (fluidVAT || softVAT || rigidVAT)
 		{
 			const FText	title = LOCTEXT("import_VAT_asset_title", "PopcornFX: Asset used for vertex animation");
-			if (mat.EditableProperties.VATTexturePosition != null &&
-				!_IsVATTextureConfigured(mat.EditableProperties.VATTexturePosition))
+			if (mat.EditablePropertiesDefault.VATTexturePosition != null &&
+				!_IsVATTextureConfigured(mat.EditablePropertiesDefault.VATTexturePosition))
 			{
-				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditableProperties.VATTexturePosition->GetPathName()));
+				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditablePropertiesDefault.VATTexturePosition->GetPathName()));
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.VATTexturePosition->Modify();
-					mat.EditableProperties.VATTexturePosition->Filter = TF_Nearest;
+					mat.EditablePropertiesDefault.VATTexturePosition->Modify();
+					mat.EditablePropertiesDefault.VATTexturePosition->Filter = TF_Nearest;
 				}
 			}
-			if (mat.EditableProperties.VATTextureNormal != null &&
-				!_IsVATTextureConfigured(mat.EditableProperties.VATTextureNormal))
+			if (mat.EditablePropertiesDefault.VATTextureNormal != null &&
+				!_IsVATTextureConfigured(mat.EditablePropertiesDefault.VATTextureNormal))
 			{
-				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditableProperties.VATTextureNormal->GetPathName()));
+				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditablePropertiesDefault.VATTextureNormal->GetPathName()));
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.VATTextureNormal->Modify();
-					mat.EditableProperties.VATTextureNormal->Filter = TF_Nearest;
+					mat.EditablePropertiesDefault.VATTextureNormal->Modify();
+					mat.EditablePropertiesDefault.VATTextureNormal->Filter = TF_Nearest;
 				}
 			}
-			if (mat.EditableProperties.VATTextureColor != null &&
-				!_IsVATTextureConfigured(mat.EditableProperties.VATTextureColor))
+			if (mat.EditablePropertiesDefault.VATTextureColor != null &&
+				!_IsVATTextureConfigured(mat.EditablePropertiesDefault.VATTextureColor))
 			{
-				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditableProperties.VATTextureColor->GetPathName()));
+				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditablePropertiesDefault.VATTextureColor->GetPathName()));
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.VATTextureColor->Modify();
-					mat.EditableProperties.VATTextureColor->Filter = TF_Nearest;
+					mat.EditablePropertiesDefault.VATTextureColor->Modify();
+					mat.EditablePropertiesDefault.VATTextureColor->Filter = TF_Nearest;
 				}
 			}
-			if (mat.EditableProperties.VATTextureRotation != null &&
-				!_IsVATTextureConfigured(mat.EditableProperties.VATTextureRotation))
+			if (mat.EditablePropertiesDefault.VATTextureRotation != null &&
+				!_IsVATTextureConfigured(mat.EditablePropertiesDefault.VATTextureRotation))
 			{
-				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditableProperties.VATTextureRotation->GetPathName()));
+				const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Texture \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings?"), FText::FromString(mat.EditablePropertiesDefault.VATTextureRotation->GetPathName()));
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.VATTextureRotation->Modify();
-					mat.EditableProperties.VATTextureRotation->Filter = TF_Nearest;
+					mat.EditablePropertiesDefault.VATTextureRotation->Modify();
+					mat.EditablePropertiesDefault.VATTextureRotation->Filter = TF_Nearest;
 				}
 			}
-			if (mat.EditableProperties.StaticMesh != null)
+			if (mat.EditablePropertiesDefault.StaticMesh != null)
 			{
 				if (rigidVAT)
 				{
 					// The info isn't stored in the serialized mesh, force a reimport whenever the effect is reimported.
 #if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-					UFbxStaticMeshImportData	*meshImportData = Cast<UFbxStaticMeshImportData>(mat.EditableProperties.StaticMesh->GetAssetImportData());
+					UFbxStaticMeshImportData	*meshImportData = Cast<UFbxStaticMeshImportData>(mat.EditablePropertiesDefault.StaticMesh->GetAssetImportData());
 #else
-					UFbxStaticMeshImportData *meshImportData = Cast<UFbxStaticMeshImportData>(mat.EditableProperties.StaticMesh->AssetImportData);
+					UFbxStaticMeshImportData *meshImportData = Cast<UFbxStaticMeshImportData>(mat.EditablePropertiesDefault.StaticMesh->AssetImportData);
 #endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 					meshImportData->Modify();
 					meshImportData->VertexColorImportOption = EVertexColorImportOption::Replace;
 					UReimportFbxStaticMeshFactory*	FbxStaticMeshReimportFactory = NewObject<UReimportFbxStaticMeshFactory>(UReimportFbxStaticMeshFactory::StaticClass());
-					FbxStaticMeshReimportFactory->Reimport(mat.EditableProperties.StaticMesh);
+					FbxStaticMeshReimportFactory->Reimport(mat.EditablePropertiesDefault.StaticMesh);
 				}
-				if (mat.EditableProperties.StaticMesh != null &&
-					!_IsVATMeshConfigured(mat.EditableProperties.StaticMesh))
+				if (mat.EditablePropertiesDefault.StaticMesh != null &&
+					!_IsVATMeshConfigured(mat.EditablePropertiesDefault.StaticMesh))
 				{
-					const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Mesh \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings settings?"), FText::FromString(mat.EditableProperties.StaticMesh->GetPathName()));
+					const FText	message = FText::Format(LOCTEXT("import_VAT_asset_message", "Mesh \"{0}\" is used for vertex animation. Do you want to import it using VAT compatible settings settings?"), FText::FromString(mat.EditablePropertiesDefault.StaticMesh->GetPathName()));
 					if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 					{
-						mat.EditableProperties.StaticMesh->Modify();
-						mat.EditableProperties.StaticMesh->GetSourceModel(0).BuildSettings.bUseFullPrecisionUVs = true;
-						mat.EditableProperties.StaticMesh->GetSourceModel(0).BuildSettings.bRemoveDegenerates = false;
-						mat.EditableProperties.StaticMesh->Build();
+						mat.EditablePropertiesDefault.StaticMesh->Modify();
+						mat.EditablePropertiesDefault.StaticMesh->GetSourceModel(0).BuildSettings.bUseFullPrecisionUVs = true;
+						mat.EditablePropertiesDefault.StaticMesh->GetSourceModel(0).BuildSettings.bRemoveDegenerates = false;
+						mat.EditablePropertiesDefault.StaticMesh->Build();
 					}
 				}
 			}
@@ -975,11 +975,11 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		{
 			// Alpha remap only supported for non VAT materials.
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-				mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 		}
-		if (skelMesh && mat.EditableProperties.SkeletalMesh != null)
+		if (skelMesh && mat.EditablePropertiesDefault.SkeletalMesh != null)
 		{
-			mat.EditableProperties.TextureSkeletalAnimation = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimationTexture(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureSkeletalAnimation = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimationTexture(), PopcornFX::CString::EmptyString));
 			mat.SkeletalAnimationCount = decl.GetPropertyValue_I1(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimTracksCount(), 0);
 			mat.SkeletalAnimationPosBoundsMin = FVector(ToUE(decl.GetPropertyValue_F3(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimPositionsBoundsMin(), PopcornFX::CFloat3::ZERO)));
 			mat.SkeletalAnimationPosBoundsMax = FVector(ToUE(decl.GetPropertyValue_F3(PopcornFX::SkeletalAnimationTexture::SID_SkeletalAnimation_AnimPositionsBoundsMax(), PopcornFX::CFloat3::ZERO)));
@@ -1027,12 +1027,12 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 
 		mat.LegacyMaterialType = type;
 
@@ -1042,7 +1042,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 	bool		RM_Setup_Mesh_Default(FPopcornFXSubRendererMaterial &mat, const PopcornFX::SRendererDeclaration &decl)
 	{
-		mat.EditableProperties.StaticMesh = LoadMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
+		mat.EditablePropertiesDefault.StaticMesh = LoadMeshPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Mesh(), PopcornFX::CString::EmptyString));
 		mat.StaticMeshLOD = 0; // TODO
 
 		mat.Lit = decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Lit());
@@ -1051,17 +1051,17 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		if (mat.Lit)
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-			mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
@@ -1081,9 +1081,9 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
 		{
@@ -1092,7 +1092,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 				type = EPopcornFXDefaultMaterialType::Mesh_Additive;
 				mat.NoAlpha = true;
 			}
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 		}
 			
 		mat.DefaultMaterialType = type;
@@ -1221,13 +1221,13 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		if (legacyLit)
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_LegacyLit_CastShadows(), false);
-			mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_LegacyLit_NormalMap(), PopcornFX::CString::EmptyString));
 		}
 		else if (mat.Lit)
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-			mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
@@ -1245,36 +1245,36 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
 			finalMatType = EPopcornFXLegacyMaterialType::Mesh_Distortion;
 
-			if (mat.EditableProperties.TextureDiffuse != null &&
-				mat.EditableProperties.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
+			if (mat.EditablePropertiesDefault.TextureDiffuse != null &&
+				mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
 			{
 				FText		title = LOCTEXT("import_distortion_texture_title", "PopcornFX: Compression Settings");
 				const FText	message = FText::Format(LOCTEXT("import_distortion_texture_message",
 					"Texture \"{0}\" is used for distortion but has incompatible compression settings. Do you want to import it using NormalMap compression settings instead?"),
-					FText::FromString(mat.EditableProperties.TextureDiffuse->GetPathName()));
+					FText::FromString(mat.EditablePropertiesDefault.TextureDiffuse->GetPathName()));
 
 				if (OpenMessageBox(EAppMsgCategory::Info, EAppMsgType::YesNo, message, title) == EAppReturnType::Yes)
 				{
-					mat.EditableProperties.TextureDiffuse->Modify();
-					mat.EditableProperties.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
+					mat.EditablePropertiesDefault.TextureDiffuse->Modify();
+					mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings = TextureCompressionSettings::TC_Normalmap;
 				}
 			}
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
 
 		switch (finalMatType)
@@ -1328,8 +1328,8 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		if (mat.Lit)
 		{
 			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
-			mat.EditableProperties.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
-			mat.EditableProperties.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
 			mat.Metalness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Metalness(), 0.0f);
 		}
@@ -1348,7 +1348,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
 		{
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 			if (!decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 			{
 				finalMatType = EPopcornFXDefaultMaterialType::Billboard_Additive;
@@ -1357,13 +1357,13 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
 		switch (finalMatType)
 		{
@@ -1448,7 +1448,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 
 			const CInt2	&AtlasSubDiv = decl.GetPropertyValue_I2(PopcornFX::BasicRendererProperties::SID_Atlas_SubDiv(), CInt2::ONE);
 			mat.AtlasSubDivX = (float)AtlasSubDiv.x();
@@ -1460,7 +1460,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 			if (mat.MotionVectorsBlending)
 			{
-				mat.EditableProperties.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
 				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
@@ -1469,10 +1469,10 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 
 		return true;
 	}
@@ -1481,7 +1481,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 	{
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 		{
-			mat.EditableProperties.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAtlas = LoadAtlasPk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_Definition(), PopcornFX::CString::EmptyString));
 			const CInt2	&AtlasSubDiv = decl.GetPropertyValue_I2(PopcornFX::BasicRendererProperties::SID_Atlas_SubDiv(), CInt2::ONE);
 			mat.AtlasSubDivX = (float)AtlasSubDiv.x();
 			mat.AtlasSubDivY = (float)AtlasSubDiv.y();
@@ -1492,7 +1492,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 			if (mat.MotionVectorsBlending)
 			{
-				mat.EditableProperties.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureMotionVectors = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Atlas_MotionVectorsMap(), PopcornFX::CString::EmptyString));
 
 				const CFloat2	distortionStrength = decl.GetPropertyValue_F2(PopcornFX::BasicRendererProperties::SID_Atlas_DistortionStrength(), CFloat2::ZERO);
 				mat.MVDistortionStrengthColumns = distortionStrength.x();
@@ -1501,20 +1501,20 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_AlphaRemap()))
-			mat.EditableProperties.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureAlphaRemapper = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaMap(), PopcornFX::CString::EmptyString));
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 		{
-			mat.EditableProperties.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Diffuse_DiffuseMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_DiffuseRamp()))
-				mat.EditableProperties.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureDiffuseRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_DiffuseRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Emissive()))
 		{
-			mat.EditableProperties.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
+			mat.EditablePropertiesDefault.TextureEmissive = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Emissive_EmissiveMap(), PopcornFX::CString::EmptyString));
 			if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_EmissiveRamp()))
-				mat.EditableProperties.TextureEmissiveRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_EmissiveRamp_RampMap(), PopcornFX::CString::EmptyString));
+				mat.EditablePropertiesDefault.TextureEmissiveRamp = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_EmissiveRamp_RampMap(), PopcornFX::CString::EmptyString));
 		}
 
 		return true;
@@ -1688,11 +1688,73 @@ FPopcornFXSubRendererMaterial::~FPopcornFXSubRendererMaterial()
 bool	FPopcornFXSubRendererMaterial::_ResetDefaultMaterial_NoReload()
 {
 	if (IsLegacy)
-		EditableProperties.Material = FindLegacyMaterial();
+		EditablePropertiesDefault.Material = FindLegacyMaterial();
 	else
-		EditableProperties.Material = FindDefaultMaterial();
-	return EditableProperties.Material != null;
+		EditablePropertiesDefault.Material = FindDefaultMaterial();
+	return EditablePropertiesDefault.Material != null;
 }
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXSubRendererMaterial::ResetParameters()
+{
+	bHasTextureDiffuse = false;
+	bHasTextureDiffuseRamp = false;
+	bHasTextureEmissive = false;
+	bHasTextureEmissiveRamp = false;
+	bHasTextureNormal = false;
+	bHasTextureRoughMetal = false;
+	bHasTextureSpecular = false;
+	bHasTextureAlphaRemapper = false;
+	bHasTextureMotionVectors = false;
+	bHasTextureSixWay_RLTS = false;
+	bHasTextureSixWay_BBF = false;
+	bHasVATTexturePosition = false;
+	bHasVATTextureNormal = false;
+	bHasVATTextureColor = false;
+	bHasVATTextureRotation = false;
+	bHasTextureSkeletalAnimation = false;
+	bHasStaticMesh = false;
+	bHasSkeletalMesh = false;
+	bHasTextureAtlas = false;
+	NoAlpha = false;
+	MeshAtlas = false;
+	Raytraced = false;
+	SoftAnimBlending = false;
+	MotionVectorsBlending = false;
+	CastShadow = false;
+	Lit = false;
+	SortIndices = false;
+	CorrectDeformation = false;
+	Roughness = 1;
+	Metalness = 0;
+	SoftnessDistance = 0;
+	SphereMaskHardness = 100.0f;
+	AtlasSubDivX = 1.0f;
+	AtlasSubDivY = 1.0f;
+	MVDistortionStrengthColumns = 1.0f;
+	MVDistortionStrengthRows = 1.0f;
+	VATNumFrames = 0;
+	VATPackedData = false;
+	VATPivotBoundsMin = 0.0f;
+	VATPivotBoundsMax = 0.0f;
+	VATNormalizedData = false;
+	VATPositionBoundsMin = 0.0f;
+	VATPositionBoundsMax = 0.0f;
+	SkeletalAnimationCount = 0;
+	SkeletalAnimationPosBoundsMin = FVector::ZeroVector;
+	SkeletalAnimationPosBoundsMax = FVector::ZeroVector;
+	SkeletalAnimationLinearInterpolate = false;
+	SkeletalAnimationLinearInterpolateTracks = false;
+	MaskThreshold = 0.0f;
+	DrawOrder = 0;
+	DynamicParameterMask = 0;
+	StaticMeshLOD = 0;
+	PerParticleLOD = false;
+	MotionBlur = false;
+	IsLegacy = false;
+}
+
 
 //----------------------------------------------------------------------------
 
@@ -1966,25 +2028,28 @@ bool	FPopcornFXSubRendererMaterial::CanBeMergedWith(const FPopcornFXSubRendererM
 		EditableProperties.Material == other.EditableProperties.Material && // Mandatory
 		DefaultMaterialType == other.DefaultMaterialType &&
 		LegacyMaterialType == other.LegacyMaterialType &&
-		EditableProperties.TextureDiffuse == other.EditableProperties.TextureDiffuse &&
-		EditableProperties.TextureDiffuseRamp == other.EditableProperties.TextureDiffuseRamp &&
-		EditableProperties.TextureEmissive == other.EditableProperties.TextureEmissive &&
-		EditableProperties.TextureNormal == other.EditableProperties.TextureNormal &&
-		EditableProperties.TextureRoughMetal == other.EditableProperties.TextureRoughMetal &&
-		EditableProperties.TextureSpecular == other.EditableProperties.TextureSpecular &&
-		EditableProperties.TextureAlphaRemapper == other.EditableProperties.TextureAlphaRemapper &&
-		EditableProperties.TextureAtlas == other.EditableProperties.TextureAtlas &&
+		(bHasTextureDiffuse == other.bHasTextureDiffuse) && (!bHasTextureDiffuse || EditableProperties.TextureDiffuse == other.EditableProperties.TextureDiffuse) &&
+		(bHasTextureDiffuseRamp == other.bHasTextureDiffuseRamp) && (!bHasTextureDiffuseRamp || EditableProperties.TextureDiffuseRamp == other.EditableProperties.TextureDiffuseRamp) &&
+		(bHasTextureEmissive == other.bHasTextureEmissive) && (!bHasTextureEmissive || EditableProperties.TextureEmissive == other.EditableProperties.TextureEmissive) &&
+		(bHasTextureEmissiveRamp == other.bHasTextureEmissiveRamp) && (!bHasTextureEmissiveRamp || EditableProperties.TextureEmissiveRamp == other.EditableProperties.TextureEmissiveRamp) &&
+		(bHasTextureNormal == other.bHasTextureNormal) && (!bHasTextureNormal || EditableProperties.TextureNormal == other.EditableProperties.TextureNormal) &&
+		(bHasTextureRoughMetal == other.bHasTextureRoughMetal) && (!bHasTextureRoughMetal || EditableProperties.TextureRoughMetal == other.EditableProperties.TextureRoughMetal) &&
+		(bHasTextureSpecular == other.bHasTextureSpecular) && (!bHasTextureSpecular || EditableProperties.TextureSpecular == other.EditableProperties.TextureSpecular) &&
+		(bHasTextureAlphaRemapper == other.bHasTextureAlphaRemapper) && (!bHasTextureAlphaRemapper || EditableProperties.TextureAlphaRemapper == other.EditableProperties.TextureAlphaRemapper) &&
+		(bHasTextureMotionVectors == other.bHasTextureMotionVectors) && (!bHasTextureMotionVectors || EditableProperties.TextureMotionVectors == other.EditableProperties.TextureMotionVectors) &&
+		(bHasTextureSixWay_RLTS == other.bHasTextureSixWay_RLTS) && (!bHasTextureSixWay_RLTS || EditableProperties.TextureSixWay_RLTS == other.EditableProperties.TextureSixWay_RLTS) &&
+		(bHasTextureSixWay_BBF == other.bHasTextureSixWay_BBF) && (!bHasTextureSixWay_BBF || EditableProperties.TextureSixWay_BBF == other.EditableProperties.TextureSixWay_BBF) &&
+		(bHasVATTexturePosition == other.bHasVATTexturePosition) && (!bHasVATTexturePosition || EditableProperties.VATTexturePosition == other.EditableProperties.VATTexturePosition) &&
+		(bHasVATTextureNormal == other.bHasVATTextureNormal) && (!bHasVATTextureNormal || EditableProperties.VATTextureNormal == other.EditableProperties.VATTextureNormal) &&
+		(bHasVATTextureColor == other.bHasVATTextureColor) && (!bHasVATTextureColor || EditableProperties.VATTextureColor == other.EditableProperties.VATTextureColor) &&
+		(bHasVATTextureRotation == other.bHasVATTextureRotation) && (!bHasVATTextureRotation || EditableProperties.VATTextureRotation == other.EditableProperties.VATTextureRotation) &&
+		(bHasTextureSkeletalAnimation == other.bHasTextureSkeletalAnimation) && (!bHasTextureSkeletalAnimation || EditableProperties.TextureSkeletalAnimation == other.EditableProperties.TextureSkeletalAnimation) &&
+		(bHasStaticMesh == other.bHasStaticMesh) && (!bHasStaticMesh || EditableProperties.StaticMesh == other.EditableProperties.StaticMesh) &&
+		(bHasSkeletalMesh == other.bHasSkeletalMesh) && (!bHasSkeletalMesh || EditableProperties.SkeletalMesh == other.EditableProperties.SkeletalMesh) &&
+		(bHasTextureAtlas == other.bHasTextureAtlas) && (!bHasTextureAtlas || EditableProperties.TextureAtlas == other.EditableProperties.TextureAtlas) &&
 		NoAlpha == other.NoAlpha &&
 		SoftAnimBlending == other.SoftAnimBlending &&
 		MotionVectorsBlending == other.MotionVectorsBlending &&
-		EditableProperties.TextureMotionVectors == other.EditableProperties.TextureMotionVectors &&
-		EditableProperties.TextureSixWay_RLTS == other.EditableProperties.TextureSixWay_RLTS &&
-		EditableProperties.TextureSixWay_BBF == other.EditableProperties.TextureSixWay_BBF &&
-		EditableProperties.VATTexturePosition == other.EditableProperties.VATTexturePosition &&
-		EditableProperties.VATTextureNormal == other.EditableProperties.VATTextureNormal &&
-		EditableProperties.VATTextureColor == other.EditableProperties.VATTextureColor &&
-		EditableProperties.VATTextureRotation == other.EditableProperties.VATTextureRotation &&
-		EditableProperties.TextureSkeletalAnimation == other.EditableProperties.TextureSkeletalAnimation &&
 		VATNumFrames == other.VATNumFrames &&
 		VATPackedData == other.VATPackedData &&
 		VATPivotBoundsMin == other.VATPivotBoundsMin &&
@@ -2004,8 +2069,6 @@ bool	FPopcornFXSubRendererMaterial::CanBeMergedWith(const FPopcornFXSubRendererM
 		MaskThreshold == other.MaskThreshold &&
 		DrawOrder == other.DrawOrder &&
 		DynamicParameterMask == other.DynamicParameterMask &&
-		EditableProperties.SkeletalMesh == other.EditableProperties.SkeletalMesh &&
-		EditableProperties.StaticMesh == other.EditableProperties.StaticMesh &&
 		StaticMeshLOD == other.StaticMeshLOD &&
 		PerParticleLOD == other.PerParticleLOD &&
 		MotionBlur == other.MotionBlur;
@@ -2148,9 +2211,14 @@ void	UPopcornFXRendererMaterial::SetupIndex(uint32 rIndex)
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXRendererMaterial::_Setup(UPopcornFXEffect *parentEffect, const void *renderer /* PopcornFX::CRendererDataBase */, uint32 rIndex, const FPopcornFXRendererDesc &rendererData)
+bool	UPopcornFXRendererMaterial::_Setup(UPopcornFXEffect *parentEffect, const void *renderer /* PopcornFX::CRendererDataBase */, uint32 rIndex, const FPopcornFXRendererDesc &rendererData, bool bResetToDefault)
 {
 	ParentEffect = parentEffect;
+
+	for (int32 mati = 0; mati < SubMaterials.Num(); ++mati)
+	{
+		SubMaterials[mati].ResetParameters();
+	}
 
 	SetupIndex(rIndex);
 
@@ -2180,10 +2248,8 @@ bool	UPopcornFXRendererMaterial::_Setup(UPopcornFXEffect *parentEffect, const vo
 
 	for (int32 mati = 0; mati < SubMaterials.Num(); ++mati)
 	{
-		if (SubMaterials[mati].EditableProperties.Material == null)
-		{
-			SubMaterials[mati]._ResetDefaultMaterial_NoReload();
-		}
+		SubMaterials[mati]._ResetDefaultMaterial_NoReload();
+
 		SubMaterials[mati].Renderer = rendererData;
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Diffuse()))
 			SubMaterials[mati].bHasTextureDiffuse = true;
@@ -2250,15 +2316,19 @@ bool	UPopcornFXRendererMaterial::_Setup(UPopcornFXEffect *parentEffect, const vo
 		}
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Atlas()))
 			SubMaterials[mati].bHasTextureAtlas = true;
+		if (bResetToDefault)
+		{
+			SubMaterials[mati].EditableProperties = SubMaterials[mati].EditablePropertiesDefault;
+		}
 	}
 	return true;
 }
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXRendererMaterial::Setup(UPopcornFXEffect *parentEffect, const void *renderer /* PopcornFX::CRendererDataBase */, u32 rIndex, const FPopcornFXRendererDesc &rendererData)
+bool	UPopcornFXRendererMaterial::Setup(UPopcornFXEffect *parentEffect, const void *renderer /* PopcornFX::CRendererDataBase */, u32 rIndex, const FPopcornFXRendererDesc &rendererData, bool bResetToDefault)
 {
-	return _Setup(parentEffect, renderer, rIndex, rendererData);
+	return _Setup(parentEffect, renderer, rIndex, rendererData, bResetToDefault);
 }
 
 //----------------------------------------------------------------------------

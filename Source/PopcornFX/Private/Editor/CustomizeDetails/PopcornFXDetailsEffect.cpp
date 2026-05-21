@@ -90,6 +90,7 @@ void	FPopcornFXDetailsEffect::BuildAssetDependenciesArray(class IDetailLayoutBui
 		[
 			SNew(STextBlock)
 				.AutoWrapText(true)
+				.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
 				.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
 				.Text(FText::FromString("Here are listed all the dependencies used by your effect.\n"
 										"Use this to fix pipeline/import issues or what source asset should be used, not to \"edit\" your effect\n"
@@ -192,7 +193,7 @@ void	FPopcornFXDetailsEffect::ListAllRenderers(UPopcornFXEffect* effect, TShared
 	for (uint32 rendereri = 0; rendereri < count; rendereri++)
 	{
 		const UPopcornFXRendererMaterial *mat = effect->ParticleRendererMaterials[renderers[rendereri].MatID];
-		if (mat == null || mat->SubMaterialCount() == 0)
+		if (mat == null || mat->SubMaterialCount() == 0 || !mat->bActive)
 		{
 			continue;
 		}
@@ -311,6 +312,7 @@ void	FPopcornFXDetailsEffect::BuildRendererMaterialsArray(class IDetailLayoutBui
 		[
 			SNew(STextBlock)
 				.AutoWrapText(true)
+				.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
 				.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
 				.Text(FText::FromString("Here are listed all the unique combinations of materials and their features used by your effect.\n"
 										"Each combination is a single draw call. You can find which renderer is batched in which draw call in the drop downs below\n"
@@ -332,7 +334,7 @@ void	FPopcornFXDetailsEffect::BuildRendererMaterialsArray(class IDetailLayoutBui
 	for (uint32 i = 0; i < count; ++i)
 	{
 		const UPopcornFXRendererMaterial	*mat = effect->ParticleRendererMaterials[i];
-		if (mat == null || mat->SubMaterialCount() == 0)
+		if (mat == null || mat->SubMaterialCount() == 0 || !mat->bActive)
 		{
 			continue;
 		}
@@ -395,12 +397,7 @@ void	FPopcornFXDetailsEffect::BuildRendererMaterialsArray(class IDetailLayoutBui
 		renderersGroup.HeaderRow()
 			.NameContent()
 			[
-				SNew(STextBlock).Text(FText::FromString("Layers"))
-					.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-			]
-			.ValueContent()
-			[
-				SNew(STextBlock).Text(FText::FromString("Renderers"))
+				SNew(STextBlock).Text(FText::FromString("Batched renderers (Layer | Renderer)"))
 					.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
 			];
 
@@ -429,16 +426,8 @@ void	FPopcornFXDetailsEffect::BuildRendererMaterialsArray(class IDetailLayoutBui
 				totalUnnamedRenderersInUnnamedLayers += desc.UniqueRendererNames[""];
 				continue;
 			}
-			FDetailWidgetRow &row = renderersGroup.AddWidgetRow()
-				.NameContent()
-				[
-					SNew(STextBlock).Text(FText::FromString(desc.Name.IsEmpty() ? "unnamed" : desc.Name))
-						.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-						.ColorAndOpacity(desc.Name.IsEmpty() ? USlateThemeManager::Get().GetColor(EStyleColor::Hover) : USlateThemeManager::Get().GetColor(EStyleColor::Foreground))
 
-				];
-
-			FString rendererNames;
+			FString rendererNames = "  ";
 			uint32 printed = 0;
 			for (const TPair<FString, uint32> &rendererName : desc.UniqueRendererNames)
 			{
@@ -459,15 +448,29 @@ void	FPopcornFXDetailsEffect::BuildRendererMaterialsArray(class IDetailLayoutBui
 			}
 
 			TSharedPtr<SHorizontalBox> hbox;
-			row.ValueContent()
+			FDetailWidgetRow &row = renderersGroup.AddWidgetRow()
+				.NameContent()
 				[
-					SAssignNew(hbox, SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth()
-					[
-						SNew(STextBlock).Text(FText::FromString(rendererNames))
-							.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
-					]
+					SNew(SSplitter)
+						.PhysicalSplitterHandleSize(1.0f)
+						.Style(FAppStyle::Get(), "DetailsView.Splitter")
+						+ SSplitter::Slot().SizeRule(SSplitter::ESizeRule::SizeToContent)
+						[
+							SNew(STextBlock).Text(FText::FromString(desc.Name.IsEmpty() ? "unnamed  " : desc.Name + "  "))
+								.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+								.ColorAndOpacity(desc.Name.IsEmpty() ? USlateThemeManager::Get().GetColor(EStyleColor::Hover) : USlateThemeManager::Get().GetColor(EStyleColor::Foreground))
+						]
+						+ SSplitter::Slot().SizeRule(SSplitter::ESizeRule::SizeToContent)
+						[
+							SAssignNew(hbox, SHorizontalBox)
+								+ SHorizontalBox::Slot().AutoWidth()
+								[
+									SNew(STextBlock).Text(FText::FromString(rendererNames))
+										.Font(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"))
+								]
+						]
 				];
+
 			if (desc.UniqueRendererNames.Contains("") && desc.UniqueRendererNames[""] > 0)
 			{
 				FString unnamedString;

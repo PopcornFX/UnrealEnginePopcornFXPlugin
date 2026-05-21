@@ -204,6 +204,7 @@ void	FPopcornFXDetailsEffectAttributes::CustomizeDetails(class IDetailLayoutBuil
 		[
 			SNew(STextBlock)
 				.AutoWrapText(true)
+				.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
 				.Font(DetailLayout.GetDetailFont())
 				.Text(FText::FromString("Here are the default attribute and attribute sampler values of your effect.\n"
 										"Every future emitter using this effect will have these values by default.\n"

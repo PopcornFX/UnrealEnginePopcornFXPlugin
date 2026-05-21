@@ -99,23 +99,6 @@ void	FPopcornFXCustomizationAssetDep::CustomizeHeader(
 					.ThumbnailPool(CustomizationUtils.GetThumbnailPool())
 					.OnShouldFilterAsset(this, &FPopcornFXCustomizationAssetDep::OnFilterAssetPicker)
 				]
-				+ SHorizontalBox::Slot()
-				.Padding(1.f)
-				.AutoWidth()
-				.HAlign(HAlign_Center)
-				.VAlign(VAlign_Center)
-				[
-					SNew(SButton)
-					.OnClicked(this, &FPopcornFXCustomizationAssetDep::OnResetClicked)
-					.Visibility(this, &FPopcornFXCustomizationAssetDep::GetResetVisibility)
-					.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
-					.ButtonStyle(FAppStyle::Get(), "NoBorder")
-					.Content()
-					[
-						SNew(SImage)
-						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
-					]
-				]
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -158,6 +141,19 @@ void	FPopcornFXCustomizationAssetDep::CustomizeHeader(
 					SNew(SSpacer)
 				]
 			]
+		]
+	.ResetToDefaultContent()
+		[
+			SNew(SButton)
+				.OnClicked(this, &FPopcornFXCustomizationAssetDep::OnResetClicked)
+				.Visibility(this, &FPopcornFXCustomizationAssetDep::GetResetVisibility)
+				.ToolTipText(LOCTEXT("ResetToDefaultToolTip", "Reset to Default"))
+				.ButtonStyle(FAppStyle::Get(), "NoBorder")
+				.Content()
+				[
+					SNew(SImage)
+						.Image(FAppStyle::GetBrush("PropertyWindow.DiffersFromDefault"))
+				]
 		];
 }
 

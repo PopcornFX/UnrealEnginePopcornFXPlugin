@@ -146,23 +146,6 @@ public:
 		// Tick the preview scene world.
 		if (GIntraFrameDebuggingGameThread)
 			return;
-		if (m_EmitterComponent != null &&
-			m_EmitterComponent->Effect != null)
-		{
-			if (m_EmitterComponent->Effect->EditorLoopEmitter)
-			{
-				m_Time += deltaSeconds;
-				if (m_Time >= m_EmitterComponent->Effect->EditorLoopDelay)
-				{
-					PK_ASSERT(m_EmitterComponent != null);
-
-					m_EmitterComponent->RestartEmitter();
-					m_Time = 0.0f;
-				}
-			}
-			else
-				m_Time = 0.0f;
-		}
 
 		PreviewScene->GetWorld()->Tick(LEVELTICK_All, deltaSeconds);
 	}
@@ -171,7 +154,7 @@ public:
 	void	SetDisplayFloor(bool displayFloor) { PK_ASSERT(m_FloorComponent != null); m_FloorComponent->SetVisibility(displayFloor); }
 	void	SetDisplayCubemap(bool displayCubemap) { PK_ASSERT(m_SkyComponent != null); m_SkyComponent->SetVisibility(displayCubemap); }
 	void	SetEmitterComponent(UPopcornFXEmitterComponent *emitterComponent) { m_EmitterComponent = emitterComponent; }
-	void	ResetLoopTimer() { m_Time = 0.0f; }
+	//void	ResetLoopTimer() { m_Time = 0.0f; }
 	void	FocusViewportOnBounds(const FBoxSphereBounds bounds)
 	{
 		float	radius = bounds.SphereRadius * 0.3f;
@@ -205,7 +188,6 @@ private:
 	UStaticMeshComponent	*m_SkyComponent;
 
 	UPopcornFXEmitterComponent	*m_EmitterComponent = null;
-	float						m_Time = 0.0f;
 
 	TWeakPtr<FPopcornFXEffectEditor>	m_EffectEditor;
 };
@@ -274,7 +256,7 @@ void	SPopcornFXEffectPreviewViewport::SetPreviewEffect(UPopcornFXEffect *effect)
 		FTransform	spawnTransform = FTransform::Identity;
 		m_PreviewScene.AddComponent(m_EmitterComponent, spawnTransform);
 		m_ViewportClient->SetEmitterComponent(m_EmitterComponent);
-		m_ViewportClient->ResetLoopTimer();
+		m_EmitterComponent->ResetLoopTimer();
 	}
 	effect->PreviewEmitter = m_EmitterComponent;
 	m_EmitterComponent->SetEffect(effect, true);
@@ -337,7 +319,7 @@ void	SPopcornFXEffectPreviewViewport::ResetEmitter()
 		return;
 	sceneComponent->Clear();
 	if (m_ViewportClient.IsValid())
-		m_ViewportClient->ResetLoopTimer();
+		m_EmitterComponent->ResetLoopTimer();
 	m_EmitterComponent->StartEmitter();
 }
 
@@ -416,8 +398,8 @@ void	SPopcornFXEffectPreviewViewport::ToggleLoopEmitter(ECheckBoxState newState)
 	PK_ASSERT(m_EmitterComponent->Effect != null);
 	
 	if (m_ViewportClient.IsValid())
-		m_ViewportClient->ResetLoopTimer();
-	m_EmitterComponent->Effect->EditorLoopEmitter = (newState == ECheckBoxState::Checked) ? true : false;
+		m_EmitterComponent->ResetLoopTimer();
+	m_EmitterComponent->bLoopEmitter = (newState == ECheckBoxState::Checked) ? true : false;
 	m_EmitterComponent->Effect->MarkPackageDirty();
 }
 
@@ -428,7 +410,7 @@ ECheckBoxState	SPopcornFXEffectPreviewViewport::IsToggleLoopEmitterChecked() con
 	PK_ASSERT(m_EmitterComponent != null);
 	PK_ASSERT(m_EmitterComponent->Effect != null);
 
-	return m_EmitterComponent->Effect->EditorLoopEmitter ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+	return m_EmitterComponent->bLoopEmitter ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
 }
 
 //----------------------------------------------------------------------------
@@ -438,7 +420,7 @@ void	SPopcornFXEffectPreviewViewport::OnLoopDelayValueChanged(float newDelay)
 	PK_ASSERT(m_EmitterComponent != null);
 	PK_ASSERT(m_EmitterComponent->Effect != null);
 
-	m_EmitterComponent->Effect->EditorLoopDelay = newDelay;
+	m_EmitterComponent->LoopDelay = newDelay;
 	m_EmitterComponent->Effect->MarkPackageDirty();
 }
 
@@ -449,7 +431,7 @@ float	SPopcornFXEffectPreviewViewport::OnGetLoopDelayValue() const
 	PK_ASSERT(m_EmitterComponent != null);
 	PK_ASSERT(m_EmitterComponent->Effect != null);
 
-	return m_EmitterComponent->Effect->EditorLoopDelay;
+	return m_EmitterComponent->LoopDelay;
 }
 
 //----------------------------------------------------------------------------

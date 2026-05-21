@@ -29,11 +29,16 @@ private:
 
 private:
 	FReply					OnClear();
+	FReply					OnPause();
+	FReply					OnResume();
 	FReply					OnResetMaterials();
 	FReply					OnReloadMaterials();
+	bool					CanPause() const;
+	bool					CanResume() const;
 
 	/** Cached off reference to the layout builder */
-	IDetailLayoutBuilder	*m_DetailLayout;
+	IDetailLayoutBuilder				*m_DetailLayout;
+	TArray<TWeakObjectPtr<UObject> >	m_BeingCustomized;
 };
 
 #endif // WITH_EDITOR

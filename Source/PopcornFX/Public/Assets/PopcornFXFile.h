@@ -75,8 +75,8 @@ protected:
 public:
 
 #if WITH_EDITOR
-	bool						ImportFile(const FString &filePath);
-	virtual bool				_ImportFile(const FString &filePath);
+	bool						ImportFile(const FString &filePath, bool bIsReimport = false);
+	virtual bool				_ImportFile(const FString &filePath, bool bIsReimport = false);
 	virtual bool				_BakeFile(const FString &srcFilePath, FString &outBakedFilePath, bool forEditor, const FString &targetPlatformName) { outBakedFilePath = srcFilePath; return true; }
 
 	FString						FileSourcePath() const;
@@ -133,7 +133,7 @@ protected:
 
 #if WITH_EDITOR
 	virtual bool				ImportThumbnail();
-	virtual bool				FinishImport() { return true; }
+	virtual bool				FinishImport(bool bIsReimport = false) { return true; }
 public: // internal
 	virtual void				OnAssetDepChanged(UPopcornFXAssetDep *assetDep, UObject *oldAsset = nullptr, UObject *newAsset = nullptr) { }
 protected:

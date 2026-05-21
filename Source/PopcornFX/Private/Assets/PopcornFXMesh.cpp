@@ -961,7 +961,7 @@ void	UPopcornFXMesh::WriteMesh()
 #if WITH_EDITOR
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXMesh::_ImportFile(const FString &filePath)
+bool	UPopcornFXMesh::_ImportFile(const FString &filePath, bool bIsReimport)
 {
 	return false;
 }

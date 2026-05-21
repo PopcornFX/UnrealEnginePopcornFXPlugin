@@ -100,6 +100,10 @@ class POPCORNFX_API UPopcornFXSceneComponent : public UPrimitiveComponent
 	UFUNCTION(BlueprintCallable, Category="PopcornFX|Scene", meta=(Keywords="popcornfx scene preload install"))
 	bool								InstallEffects(TArray<UPopcornFXEffect*> Effects);
 
+	/** Get whether the scene is paused or not */
+	UFUNCTION(BlueprintCallable, Category = "PopcornFX|Emitter", meta = (Keywords = "popcornfx particle emitter effect system", UnsafeDuringActorConstruction = "true"))
+	bool								IsScenePaused() const { return m_Paused; }
+
 	/**
 	* Set your own audio sampling class. Used by effects sampling audio spectrum/waveform.
 	*/
@@ -137,6 +141,8 @@ class POPCORNFX_API UPopcornFXSceneComponent : public UPrimitiveComponent
 
 	/** In Game builds, needs to be manually called to reload settings. */
 	void								ResolveSettings();
+	void								Pause() { m_Paused = true; }
+	void								Resume() { m_Paused = false ; }
 
 	/** Actual Resolved Simulation Settings. */
 	inline const FPopcornFXSimulationSettings		&ResolvedSimulationSettings() const { return m_ResolvedSimulationSettings; }
@@ -147,6 +153,7 @@ class POPCORNFX_API UPopcornFXSceneComponent : public UPrimitiveComponent
 	inline CParticleScene				*ParticleSceneToRender() const { return bEnableRender != 0 ? ParticleScene() : nullptr; }
 
 	void								UpdateParticleScene(float deltaTime);
+	bool								IsPaused() const { return m_Paused; }
 
 #if WITH_EDITOR
 	void								MirrorGameWorldProperties(const UPopcornFXSceneComponent *other);
@@ -159,4 +166,6 @@ private:
 	FPopcornFXSimulationSettings		m_ResolvedSimulationSettings;
 	FPopcornFXRenderSettings			m_ResolvedRenderSettings;
 	FDelegateHandle						m_OnSettingsChangedHandle;
+
+	bool								m_Paused = false;
 };

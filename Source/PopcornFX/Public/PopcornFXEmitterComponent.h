@@ -61,6 +61,18 @@ public:
 	UPROPERTY(Category="PopcornFX Emitter", EditAnywhere, BlueprintReadWrite)
 	uint32									bPlayOnLoad : 1;
 
+	/** If true, the Emitter will be restarted after a given time */
+	UPROPERTY(Category = "PopcornFX Emitter", EditAnywhere, BlueprintReadWrite)
+	uint32									bLoopEmitter : 1;
+
+	/**  */
+	UPROPERTY(Category = "PopcornFX Emitter", EditAnywhere, BlueprintReadWrite, meta=(EditCondition=bLoopEmitter, EditConditionHides=true))
+	float									LoopDelay = 2.0f;
+
+	/**  */
+	UPROPERTY(Category = "PopcornFX Emitter", EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.1", ClampMax = "10.0"))
+	float									TimeScale = 1.0f;
+
 	/** If true, particles are killed when this emitter gets destroyed */
 	UPROPERTY(Category="PopcornFX Emitter", EditAnywhere, BlueprintReadWrite)
 	uint32									bKillParticlesOnDestroy : 1;
@@ -306,6 +318,7 @@ public:
 
 	/** Update (create if necessary) sampler objects that will be used by this emitter */
 	void							UpdateSamplerObjects(UPopcornFXEffect *effect);
+	void							ResetLoopTimer() { m_Time = 0.0f; }
 
 	//overrides
 	virtual void					PostLoad() override;
@@ -380,6 +393,8 @@ private:
 	bool							m_DiedThisFrame;
 	bool							m_TeleportThisFrame;
 	bool							m_Destroyed;
+
+	float							m_Time = 0.0f;
 
 	bool							m_DidAutoAttach;
 	FVector							m_SavedAutoAttachRelativeLocation;

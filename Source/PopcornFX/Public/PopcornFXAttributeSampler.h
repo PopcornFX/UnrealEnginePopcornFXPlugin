@@ -83,7 +83,8 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerProperties
 	GENERATED_USTRUCT_BODY()
 };
 
-const UClass *GetSamplerClass(EPopcornFXAttributeSamplerType::Type type);
+const UClass *GetSamplerClassConst(EPopcornFXAttributeSamplerType::Type type);
+UClass *GetSamplerClass(EPopcornFXAttributeSamplerType::Type type);
 
 #define UE_LOG_UNSUPPORTED_SAMPLER(Category, LogLevel, SamplerType, Sampler, ErrorString) \
 	UE_LOG(Category, LogLevel, \

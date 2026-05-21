@@ -217,7 +217,10 @@ extern const EPopcornFXDefaultMaterialType		kOpaqueBillboard_DefaultMaterial_ToU
 extern const EPopcornFXLegacyMaterialType		kOpaqueMesh_LegacyMaterial_ToUE[3];
 extern const EPopcornFXDefaultMaterialType		kOpaqueMesh_DefaultMaterial_ToUE[3];
 
-// Every UE asset used by a PopcornFX material, I.E. parameters that the user can edit in the effect window
+/* 
+* Every UE parameter used by a PopcornFX material, I.E.parameters that the user can edit in the effect window
+* If you want to make more parameters editable by the user directly in the plugin, move them from FPopcornFXSubRendererMaterial to here
+*/
 USTRUCT()
 struct FPopcornFXEditableMaterialProperties
 {
@@ -478,6 +481,7 @@ public:
 	bool				BuildSkelMeshBoneIndicesReorder();
 	void				BuildDynamicParameterMask(const PopcornFX::CRendererDataBase *renderer, const PopcornFX::SRendererDeclaration &decl);
 	void				RenameDependenciesIFN(UObject* oldAsset, UObject* newAsset);
+	void				ResetParameters();
 #endif
 
 	bool				CanBeMergedWith(const FPopcornFXSubRendererMaterial &other) const;
@@ -668,6 +672,9 @@ public:
 	UPROPERTY()
 	uint32										UID;
 
+	UPROPERTY()
+	bool										bActive = true;
+
 	virtual void		BeginDestroy() override;
 	virtual bool		IsReadyForFinishDestroy() override;
 
@@ -686,7 +693,7 @@ public:
 
 #if WITH_EDITOR
 	void				TriggerParticleRenderersModification();
-	bool				Setup(UPopcornFXEffect *parentEffect, const void *renderer, uint32 rIndex, const FPopcornFXRendererDesc &rendererData);
+	bool				Setup(UPopcornFXEffect *parentEffect, const void *renderer, uint32 rIndex, const FPopcornFXRendererDesc &rendererData, bool bResetToDefault = false);
 	void				SetupIndex(uint32 rIndex);
 	bool				Add(UPopcornFXEffect *parentEffect, uint32 rIndex);
 	void				ReloadInstances();
@@ -706,7 +713,7 @@ public:
 private:
 #if WITH_EDITOR
 	bool				_ReloadInstance(uint32 subMatId);
-	bool				_Setup(UPopcornFXEffect *parentEffect, const void *rendererBase, uint32 rIndex, const FPopcornFXRendererDesc &rendererData);
+	bool				_Setup(UPopcornFXEffect *parentEffect, const void *rendererBase, uint32 rIndex, const FPopcornFXRendererDesc &rendererData, bool bResetToDefault = false);
 	void				_AddRendererIndex(uint32 rIndex);
 #endif
 

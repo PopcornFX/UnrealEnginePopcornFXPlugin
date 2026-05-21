@@ -253,7 +253,33 @@ void	APopcornFXAttributeSamplerActor::PostActorCreated()
 
 //----------------------------------------------------------------------------
 
-const UClass	*GetSamplerClass(EPopcornFXAttributeSamplerType::Type type)
+const UClass	*GetSamplerClassConst(EPopcornFXAttributeSamplerType::Type type)
+{
+	switch (type)
+	{
+	case EPopcornFXAttributeSamplerType::Type::None:
+		return null;
+	case EPopcornFXAttributeSamplerType::Type::Shape:
+		return UPopcornFXAttributeSamplerShape::StaticClass();
+	case EPopcornFXAttributeSamplerType::Type::Image:
+		return UPopcornFXAttributeSamplerImage::StaticClass();
+	case EPopcornFXAttributeSamplerType::Type::Grid:
+		return UPopcornFXAttributeSamplerGrid::StaticClass();
+	case EPopcornFXAttributeSamplerType::Type::Curve:
+		return UPopcornFXAttributeSamplerCurve::StaticClass();
+	case EPopcornFXAttributeSamplerType::Type::AnimTrack:
+		return UPopcornFXAttributeSamplerAnimTrack::StaticClass();
+	case EPopcornFXAttributeSamplerType::Type::Turbulence:
+		return UPopcornFXAttributeSamplerVectorField::StaticClass();
+	case EPopcornFXAttributeSamplerType::Type::Text:
+		return UPopcornFXAttributeSamplerText::StaticClass();
+	}
+	return null;
+}
+
+//----------------------------------------------------------------------------
+
+ UClass *GetSamplerClass(EPopcornFXAttributeSamplerType::Type type)
 {
 	switch (type)
 	{
