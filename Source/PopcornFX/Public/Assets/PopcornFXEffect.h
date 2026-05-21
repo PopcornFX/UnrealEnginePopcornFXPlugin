@@ -38,12 +38,6 @@ public:
 	TArray<UPopcornFXRendererMaterial*>		ParticleRendererMaterials;
 
 #if WITH_EDITORONLY_DATA
-	UPROPERTY()
-	uint32	EditorLoopEmitter:1;
-
-	UPROPERTY(meta=(ClampMin="0.0", ClampMax="20.0"))
-	float	EditorLoopDelay;
-
 	// The emitter in the preview/asset edition window if there is one
 	UPROPERTY()
 	UPopcornFXEmitterComponent *PreviewEmitter;
@@ -78,12 +72,12 @@ private:
 
 protected:
 #if WITH_EDITOR
-	void					ReloadRendererMaterials();
+	void					ReloadRendererMaterials(bool bIsReimport = false);
 
 	// overrides FPopcornFXFile
-	virtual bool			_ImportFile(const FString &filePath) override;
+	virtual bool			_ImportFile(const FString &filePath, bool bIsReimport = false) override;
 	virtual bool			_BakeFile(const FString &srcFilePath, FString &outBakedFilePath, bool forEditor, const FString &targetPlatformName) override;
-	virtual bool			FinishImport() override;
+	virtual bool			FinishImport(bool bIsReimport) override;
 	virtual void			OnAssetDepChanged(UPopcornFXAssetDep *assetDep, UObject *oldAsset = nullptr, UObject *newAsset = nullptr) override;
 #endif
 

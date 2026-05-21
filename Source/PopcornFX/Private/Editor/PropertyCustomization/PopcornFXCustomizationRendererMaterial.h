@@ -20,6 +20,11 @@ public:
 	// overrides IPropertyTypeCustomization
 	virtual void	CustomizeHeader(TSharedRef<class IPropertyHandle> StructPropertyHandle, class FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& StructCustomizationUtils) override;
 	virtual void	CustomizeChildren(TSharedRef<class IPropertyHandle> StructPropertyHandle, class IDetailChildrenBuilder& StructBuilder, IPropertyTypeCustomizationUtils& StructCustomizationUtils) override;
+
+private:
+	class UPopcornFXRendererMaterial	*Self() const;
+
+	TSharedPtr<IPropertyHandle>			m_SelfPty;
 };
 
 #endif // WITH_EDITOR

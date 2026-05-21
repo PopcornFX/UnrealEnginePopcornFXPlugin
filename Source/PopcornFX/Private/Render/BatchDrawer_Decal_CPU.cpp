@@ -184,7 +184,8 @@ void CBatchDrawer_Decal_CPUBB::_GetDecalStreams(SDecalStreams &outStreams, const
 			if (inputName == PopcornFX::BasicRendererProperties::SID_Atlas_TextureID())
 				_GetStreamForReading(outStreams.atlasTextureIDs, page, additionnalInput.m_StreamId, pcount);
 
-			else if (inputName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
+			else if (inputName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
+					 inputName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
 				_GetStreamForReading(outStreams.alphaRemapCursors, page, additionnalInput.m_StreamId, pcount);
 			break;
 		}

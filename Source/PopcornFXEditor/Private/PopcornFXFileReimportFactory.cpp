@@ -88,7 +88,7 @@ EReimportResult::Type	UPopcornFXFileReimportFactory::Reimport(UObject *obj)
 	}
 	//file->PreEditChange();
 
-	if (!file->ImportFile(fileSourcePath))
+	if (!file->ImportFile(fileSourcePath, true /* bIsReimport*/))
 	{
 		UE_LOG(LogPopcornFXFileReimportFactory, Error, TEXT("Reimport failed '%s'"), *file->GetPathName());
 		return EReimportResult::Failed;

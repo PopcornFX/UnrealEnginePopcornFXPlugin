@@ -17,6 +17,8 @@
 #include "IDetailPropertyRow.h"
 #include "Widgets/Input/SEditableTextBox.h"
 
+#include "PopcornFXSDK.h"
+
 #define LOCTEXT_NAMESPACE "PopcornFXCustomizationRendererMaterial"
 
 // static
@@ -86,13 +88,32 @@ void	FPopcornFXCustomizationRendererMaterial::CustomizeHeader(
 		}
 	}
 #endif // 0
+	m_SelfPty = PropertyHandle;
 }
+
+UPopcornFXRendererMaterial	*FPopcornFXCustomizationRendererMaterial::Self() const
+{
+	if (!m_SelfPty->IsValidHandle())
+		return nullptr;
+	UObject *pself;
+	m_SelfPty->GetValue(pself);
+	return Cast<UPopcornFXRendererMaterial>(pself);
+}
+
 
 void	FPopcornFXCustomizationRendererMaterial::CustomizeChildren(
 	TSharedRef<class IPropertyHandle> PropertyHandle,
 	IDetailChildrenBuilder& StructBuilder,
 	IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
+	m_SelfPty = PropertyHandle;
+
+	UPopcornFXRendererMaterial *self = Self();
+	if (!self || !self->bActive)
+	{
+		return;
+	}
+
 	TSharedRef<IPropertyHandle>		materials = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(UPopcornFXRendererMaterial, SubMaterials)).ToSharedRef();
 	check(materials->IsValidHandle());
 

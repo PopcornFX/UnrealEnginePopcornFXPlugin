@@ -271,6 +271,19 @@ void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick 
 		// Ugly but necessary for blueprints because modifying their properties only updates the UI instance 
 		// and not the actual BP in the level
 		UpdateSamplerObjects(Effect);
+
+		if (bLoopEmitter)
+		{
+			m_Time += deltaTime;
+			if (m_Time >= LoopDelay)
+			{
+				UE_LOG(LogPopcornFXEmitterComponent, Display, TEXT("Loop time = %f >= %f, restarting"), m_Time, LoopDelay);
+				RestartEmitter();
+				m_Time = 0.0f;
+			}
+		}
+		else
+			m_Time = 0.0f;
 #endif
 	}
 }
@@ -715,7 +728,7 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 	if (PK_VERIFY(m_EffectInstancePtr != null))
 	{
 		m_EffectInstancePtr->SetVisible(isVisible);
-		m_EffectInstancePtr->SetTimeScale(timeScale);
+		m_EffectInstancePtr->SetTimeScale(timeScale * TimeScale);
 	}
 
 	// actual spawn
@@ -826,7 +839,7 @@ void	UPopcornFXEmitterComponent::UpdateSamplerObjects(UPopcornFXEffect *effect)
 			continue;
 		}
 
-		const UClass *samplerClass = GetSamplerClass(desc->m_SamplerType);
+		UClass *samplerClass = GetSamplerClass(desc->m_SamplerType);
 		if (!PK_VERIFY(samplerClass != null))
 		{
 			continue;
@@ -1404,7 +1417,7 @@ void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float de
 	if (PK_VERIFY(m_EffectInstancePtr != null))
 	{
 		m_EffectInstancePtr->SetVisible(isVisible);
-		m_EffectInstancePtr->SetTimeScale(timeScale);
+		m_EffectInstancePtr->SetTimeScale(timeScale * TimeScale);
 	}
 
 #if WITH_EDITOR

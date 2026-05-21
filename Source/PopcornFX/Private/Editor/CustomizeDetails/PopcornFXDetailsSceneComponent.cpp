@@ -43,16 +43,59 @@ TSharedRef<IDetailCustomization>	FPopcornFXDetailsSceneComponent::MakeInstance()
 
 //----------------------------------------------------------------------------
 
+FReply		FPopcornFXDetailsSceneComponent::OnPause()
+{
+	const TArray< TWeakObjectPtr<UObject> > &objects = m_BeingCustomized;
+	for (int32 obji = 0; obji < objects.Num(); ++obji)
+	{
+		if (objects[obji].IsValid())
+		{
+			UPopcornFXSceneComponent *sceneComponent = Cast<UPopcornFXSceneComponent>(objects[obji].Get());
+			if (sceneComponent == null)
+			{
+				APopcornFXSceneActor *actor = Cast<APopcornFXSceneActor>(objects[obji].Get());
+				if (actor != null)
+					sceneComponent = actor->PopcornFXSceneComponent;
+			}
+			if (sceneComponent != null)
+				sceneComponent->Pause();
+		}
+	}
+	return FReply::Unhandled();
+}
+
+
+//----------------------------------------------------------------------------
+
+FReply		FPopcornFXDetailsSceneComponent::OnResume()
+{
+	const TArray< TWeakObjectPtr<UObject> > &objects = m_BeingCustomized;
+	for (int32 obji = 0; obji < objects.Num(); ++obji)
+	{
+		if (objects[obji].IsValid())
+		{
+			UPopcornFXSceneComponent *sceneComponent = Cast<UPopcornFXSceneComponent>(objects[obji].Get());
+			if (sceneComponent == null)
+			{
+				APopcornFXSceneActor *actor = Cast<APopcornFXSceneActor>(objects[obji].Get());
+				if (actor != null)
+					sceneComponent = actor->PopcornFXSceneComponent;
+			}
+			if (sceneComponent != null)
+				sceneComponent->Resume();
+		}
+	}
+	return FReply::Unhandled();
+}
+
+//----------------------------------------------------------------------------
+
 FReply		FPopcornFXDetailsSceneComponent::OnClear()
 {
 	if (!PK_VERIFY(m_DetailLayout != null))
 		return FReply::Unhandled();
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
-	const TArray< TWeakObjectPtr<UObject> >		&objects = m_DetailLayout->GetDetailsViewSharedPtr()->GetSelectedObjects();
-#else
-	const TArray< TWeakObjectPtr<UObject> >		&objects = m_DetailLayout->GetDetailsView()->GetSelectedObjects();
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+	const TArray< TWeakObjectPtr<UObject> >		&objects = m_BeingCustomized;
 	for (int32 obji = 0; obji < objects.Num(); ++obji)
 	{
 		if (objects[obji].IsValid())
@@ -73,6 +116,36 @@ FReply		FPopcornFXDetailsSceneComponent::OnClear()
 
 //----------------------------------------------------------------------------
 
+bool	FPopcornFXDetailsSceneComponent::CanPause() const
+{
+	const TArray< TWeakObjectPtr<UObject> > &objects = m_BeingCustomized;
+	for (int32 obji = 0; obji < objects.Num(); ++obji)
+	{
+		if (objects[obji].IsValid())
+		{
+			UPopcornFXSceneComponent *sceneComponent = Cast<UPopcornFXSceneComponent>(objects[obji].Get());
+			if (sceneComponent == null)
+			{
+				APopcornFXSceneActor *actor = Cast<APopcornFXSceneActor>(objects[obji].Get());
+				if (actor != null)
+					sceneComponent = actor->PopcornFXSceneComponent;
+			}
+			if (sceneComponent != null && !sceneComponent->IsPaused())
+				return true;
+		}
+	}
+	return false;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXDetailsSceneComponent::CanResume() const
+{
+	return !CanPause();
+}
+
+//----------------------------------------------------------------------------
+
 void	FPopcornFXDetailsSceneComponent::RebuildDetails()
 {
 	if (!PK_VERIFY(m_DetailLayout != null))
@@ -85,6 +158,7 @@ void	FPopcornFXDetailsSceneComponent::RebuildDetails()
 void	FPopcornFXDetailsSceneComponent::CustomizeDetails(IDetailLayoutBuilder &DetailLayout)
 {
 	m_DetailLayout = &DetailLayout;
+	DetailLayout.GetObjectsBeingCustomized(m_BeingCustomized);
 
 	FTextBlockStyle			buttonTextStyle;
 	buttonTextStyle.SetFont(FAppStyle::GetFontStyle("PropertyWindow.NormalFont"));
@@ -109,6 +183,22 @@ void	FPopcornFXDetailsSceneComponent::CustomizeDetails(IDetailLayoutBuilder &Det
 					.Text(LOCTEXT("Clear", "Clear"))
 					.TextStyle(&buttonTextStyle)
 					.OnClicked(this, &FPopcornFXDetailsSceneComponent::OnClear)
+			]
+			+ SHorizontalBox::Slot()
+			[
+				SNew(SButton)
+					.Text(LOCTEXT("Pause", "Pause"))
+					.TextStyle(&buttonTextStyle)
+					.IsEnabled(this, &FPopcornFXDetailsSceneComponent::CanPause)
+					.OnClicked(this, &FPopcornFXDetailsSceneComponent::OnPause)
+			]
+			+ SHorizontalBox::Slot()
+			[
+				SNew(SButton)
+					.Text(LOCTEXT("Resume", "Resume"))
+					.TextStyle(&buttonTextStyle)
+					.IsEnabled(this, &FPopcornFXDetailsSceneComponent::CanResume)
+					.OnClicked(this, &FPopcornFXDetailsSceneComponent::OnResume)
 			]
 		];
 

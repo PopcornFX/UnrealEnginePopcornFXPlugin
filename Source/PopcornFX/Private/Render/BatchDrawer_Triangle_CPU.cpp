@@ -180,7 +180,8 @@ bool	CBatchDrawer_Triangle_CPUBB::_IsAdditionalInputSupported(const PopcornFX::C
 	}
 	else if (type == PopcornFX::BaseType_Float)
 	{
-		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor())
+		if (fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_Cursor() ||
+		 	fieldName == PopcornFX::BasicRendererProperties::SID_AlphaRemap_AlphaRemapCursor())
 			outStreamOffsetType = StreamOffset_AlphaCursors;
 	}
 	return outStreamOffsetType != EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;

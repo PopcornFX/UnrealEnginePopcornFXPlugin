@@ -98,7 +98,7 @@ UPopcornFXFile::UPopcornFXFile(const FObjectInitializer& PCIP)
 //----------------------------------------------------------------------------
 #if WITH_EDITOR
 
-bool	UPopcornFXFile::ImportFile(const FString &inFilePath)
+bool	UPopcornFXFile::ImportFile(const FString &inFilePath, bool bIsReimport)
 {
 	UPopcornFXSettingsEditor	*settings = GetMutableDefault<UPopcornFXSettingsEditor>();
 	if (!PK_VERIFY(settings != null))
@@ -106,10 +106,10 @@ bool	UPopcornFXFile::ImportFile(const FString &inFilePath)
 	if (!settings->AskForAValidSourcePackForIFN(inFilePath))
 		return false;
 
-	return _ImportFile(inFilePath);
+	return _ImportFile(inFilePath, bIsReimport);
 }
 
-bool	UPopcornFXFile::_ImportFile(const FString &inFilePath)
+bool	UPopcornFXFile::_ImportFile(const FString &inFilePath, bool bIsReimport)
 {
 	Modify();
 
@@ -175,7 +175,7 @@ bool	UPopcornFXFile::_ImportFile(const FString &inFilePath)
 
 		ImportThumbnail();
 
-		if (!FinishImport())
+		if (!FinishImport(bIsReimport))
 		{
 			UE_LOG(LogPopcornFile, Error, TEXT("Could not finish importing asset '%s'"), *filePath);
 			return false;

@@ -103,8 +103,6 @@ PopcornFX::PParticleEffect	CPopcornFXEffect::Unsafe_ParticleEffect() const
 UPopcornFXEffect::UPopcornFXEffect(const FObjectInitializer& PCIP)
 	: Super(PCIP)
 #if WITH_EDITORONLY_DATA
-	, EditorLoopEmitter(false)
-	, EditorLoopDelay(2.0f)
 #endif // WITH_EDITORONLY_DATA
 	, m_Loaded(false)
 	, m_Cooked(false) // TMP: Until proper implementation of platform cached data
@@ -357,7 +355,7 @@ namespace
 	static const char	*kXOne = "xboxone";
 	static const char	*kXSeries = "UNKNOWN1eries";
 	static const char	*kPS4 = "ps4";
-	static const char	*kUNKNOWN2 = "UNKNOWN2";
+	static const char	*kUNKNOWN2 = "ps5";
 	static const char	*kSwitch = "switch"; // console?
 	static const char	*kUNKNOWN3 = "UNKNOWN3"; // console?
 
@@ -779,11 +777,11 @@ namespace
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXEffect::_ImportFile(const FString &filePath)
+bool	UPopcornFXEffect::_ImportFile(const FString &filePath, bool bIsReimport)
 {
 	ClearEffect();
 
-	if (!Super::_ImportFile(filePath))
+	if (!Super::_ImportFile(filePath, bIsReimport))
 		return false;
 	OnEffectReimported.Broadcast();
 	return true;
@@ -959,7 +957,7 @@ bool	UPopcornFXEffect::_BakeFile(const FString &srcFilePath, FString &outBakedFi
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXEffect::FinishImport()
+bool	UPopcornFXEffect::FinishImport(bool bIsReimport)
 {
 	if (!LoadEffect(true))
 		return false;
@@ -989,7 +987,7 @@ bool	UPopcornFXEffect::FinishImport()
 
 	FPopcornFXPlugin::Get().UnloadPkFile(this); // Unload loaded effect
 
-	ReloadRendererMaterials();
+	ReloadRendererMaterials(bIsReimport);
 
 	return true;
 }
@@ -1018,7 +1016,7 @@ void	UPopcornFXEffect::OnAssetDepChanged(UPopcornFXAssetDep *assetDep, UObject* 
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXEffect::ReloadRendererMaterials()
+void	UPopcornFXEffect::ReloadRendererMaterials(bool bIsReimport)
 {
 	// Gather renderers
 	if (!LoadEffect())
@@ -1059,7 +1057,7 @@ void	UPopcornFXEffect::ReloadRendererMaterials()
 				
 			UPopcornFXRendererMaterial	*newMat = NewObject<UPopcornFXRendererMaterial>(this);
 			FPopcornFXRendererDesc renderer(ToUE(customName), ToUE(desc->LayerName()), iLayer, static_cast<unsigned int>(rBase->m_RendererType));
-			if (!newMat->Setup(this, rBase, globalRendererIndex, renderer))
+			if (!newMat->Setup(this, rBase, globalRendererIndex, renderer, true))
 			{
 				newMat->ConditionalBeginDestroy();
 				newMat = null;
@@ -1073,8 +1071,8 @@ void	UPopcornFXEffect::ReloadRendererMaterials()
 				if (oldMat != null &&
 					oldMat->UID == newMat->UID)
 				{
-					//oldMat->SetupIndex(globalRendererIndex);
-					oldMat->Setup(this, rBase, globalRendererIndex, renderer);
+					oldMat->Setup(this, rBase, globalRendererIndex, renderer, false);
+					oldMat->bActive = true;
 
 					oldMaterials[oldi] = null;
 					ParticleRendererMaterials.Add(oldMat);
@@ -1096,7 +1094,6 @@ void	UPopcornFXEffect::ReloadRendererMaterials()
 		UPopcornFXRendererMaterial *oldMat = oldMaterials[oldi];
 		if (oldMat != null)
 		{
-			UE_LOG(LogPopcornFXEffect, Display, TEXT("Render %s in layer %s is not present anymore"), *oldMat->SubMaterials[0].Renderer.Name, *oldMat->SubMaterials[0].Renderer.ParentLayerName);
 			PopcornFX::PBaseObject	rendererObj = m_Private->m_ParticleEffect->File()->FindObject(oldMat->UID);
 			if (rendererObj != null)
 			{
@@ -1105,18 +1102,15 @@ void	UPopcornFXEffect::ReloadRendererMaterials()
 					PopcornFX::CParticleNodeRendererBase *rendererNode = checked_cast<PopcornFX::CParticleNodeRendererBase *>((rendererObj.Get()));
 					if (!rendererNode->Active())
 					{
-						UE_LOG(LogPopcornFXEffect, Display, TEXT("But is still present in the file, just inactive!"));
+						UE_LOG(LogPopcornFXEffect, Log, TEXT("Render %s in layer %s is still present but not active anymore"), *oldMat->SubMaterials[0].Renderer.Name, *oldMat->SubMaterials[0].Renderer.ParentLayerName);
 						oldMat->SetupIndex(globalRendererIndex);
+						oldMat->bActive = false;
 						globalRendererIndex++;
 						oldMaterials[oldi] = null;
 						ParticleRendererMaterials.Add(oldMat);
 					}
 				}
 			}
-			//oldMat->SetupIndex(globalRendererIndex);
-
-			//oldMaterials[oldi] = null;
-			//ParticleRendererMaterials.Add(oldMat);
 		}
 	}
 

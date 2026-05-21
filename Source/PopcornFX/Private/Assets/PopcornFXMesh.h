@@ -80,7 +80,7 @@ public:
 
 protected:
 #if WITH_EDITOR
-	virtual bool				_ImportFile(const FString &filePath) override;
+	virtual bool				_ImportFile(const FString &filePath, bool bIsReimport = false) override;
 #endif // WITH_EDITOR
 	virtual void				OnFileUnload() override;
 	virtual void				OnFileLoad() override;

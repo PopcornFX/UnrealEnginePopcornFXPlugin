@@ -477,7 +477,8 @@ void	CParticleScene::StartUpdate(float dt)
 		updateTimer.Start();
 #endif //	(PK_PARTICLES_HAS_STATS != 0)
 
-		m_ParticleMediumCollection->Update(dt);
+		if (!m_SceneComponent->IsPaused())
+			m_ParticleMediumCollection->Update(dt);
 
 #if (PK_HAS_GPU != 0)
 		GPU_PreUpdateFence();
