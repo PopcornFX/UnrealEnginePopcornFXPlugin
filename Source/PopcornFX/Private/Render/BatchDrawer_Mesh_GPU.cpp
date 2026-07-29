@@ -9,7 +9,9 @@
 #include "SceneManagement.h"
 #include "MaterialDesc.h"
 #include "StaticMeshResources.h"
-#include "ParticleResources.h"
+#if (ENGINE_MAJOR_VERSION < 6)
+#	include "ParticleResources.h"
+#endif
 #include "Render/PopcornFXVertexFactoryCommon.h"
 #include "Render/PopcornFXMeshVertexFactory.h"
 
@@ -24,6 +26,7 @@
 #include <pk_render_helpers/include/render_features/rh_features_basic.h>
 #include <pk_render_helpers/include/render_features/rh_features_vat_static.h>
 #include <pk_maths/include/pk_numeric_tools_int.h>
+#include <pk_kernel/include/kr_containers_onstack.h>
 
 #if (PK_HAS_GPU == 1)
 #	include "GPUSim/PopcornFXBillboarderCS.h"
@@ -503,10 +506,10 @@ bool	CBatchDrawer_Mesh_GPUBB::LaunchCustomTasks(PopcornFX::SRenderContext &ctx)
 			m_AdditionalStreamOffsets[iStream].Reset();
 
 		// We know additional inputs match for all draw requests: just flag those that will need to be filled per draw request
-		const u32	aFieldCount = drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Count();
+		const u32	aFieldCount = m_AdditionalInputs.Count();
 		for (u32 iField = 0; iField < aFieldCount; ++iField)
 		{
-			const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = drawPass.m_ToGenerate.m_AdditionalGeneratedInputs[iField];
+			const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = m_AdditionalInputs[iField];
 			EPopcornFXAdditionalStreamOffsets					streamOffsetType = EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
 
 			if (!_IsAdditionalInputSupported(additionalInput.m_Name, additionalInput.m_Type, streamOffsetType))

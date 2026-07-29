@@ -13,6 +13,7 @@
 #include "PopcornFXPlugin.h"
 #include "PopcornFXStats.h"
 #include "PopcornFXAttributeList.h"
+#include "PopcornFXEmitterComponent.h"
 #include "Assets/PopcornFXEffect.h"
 #include "Assets/PopcornFXEffectPriv.h"
 
@@ -31,6 +32,33 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerVectorField, Log, All);
 
 //----------------------------------------------------------------------------
 //
+// FPopcornFXAttributeSamplerPropertiesVectorField
+//
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesVectorField::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	if (VectorField == null)
+	{
+		FString	errorMsg = TEXT("Null vector field");
+#if WITH_EDITOR
+		m_UnsupportedProperties.Add(TEXT("VectorField"), errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerVectorField, Error, vectorfield, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesVectorField::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+//
 // FAttributeSamplerVectorFieldData
 //
 //----------------------------------------------------------------------------
@@ -45,13 +73,9 @@ struct FAttributeSamplerVectorFieldData
 #endif // WITH_EDITOR
 };
 
-UPopcornFXAttributeSamplerVectorField::UPopcornFXAttributeSamplerVectorField(const FObjectInitializer &PCIP)
-	: Super(PCIP)
+FPopcornFXAttributeSamplerVectorField::FPopcornFXAttributeSamplerVectorField()
 {
-	bAutoActivate = true;
 #if WITH_EDITOR
-	PrimaryComponentTick.bCanEverTick = true;
-	bTickInEditor = true;
 	m_IndirectSelectedThisTick = false;
 #if 0
 	bDrawCells = false;
@@ -65,17 +89,17 @@ UPopcornFXAttributeSamplerVectorField::UPopcornFXAttributeSamplerVectorField(con
 	Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Trilinear;
 	Properties.WrapMode = EPopcornFXVectorFieldWrapMode::Wrap;
 
-	// Guess here, turbulence sampler probably used by physics evolver or script evolver
+	// Guess here, VectorField sampler probably used by physics evolver or script evolver
 	Properties.bUseRelativeTransform = false;
 
 	m_TimeAccumulation = 0.f;
-	m_SamplerType = EPopcornFXAttributeSamplerType::Turbulence;
+	m_SamplerType = EPopcornFXAttributeSamplerType::VectorField;
 	m_Data = new FAttributeSamplerVectorFieldData();
 }
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::BeginDestroy()
+void	FPopcornFXAttributeSamplerVectorField::BeginDestroy()
 {
 	if (m_Data != null)
 	{
@@ -92,7 +116,7 @@ void	UPopcornFXAttributeSamplerVectorField::BeginDestroy()
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::_SetBounds()
+void	FPopcornFXAttributeSamplerVectorField::_SetBounds()
 {
 	PK_ASSERT(Properties.VectorField != null);
 
@@ -120,7 +144,7 @@ void	UPopcornFXAttributeSamplerVectorField::_SetBounds()
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::_BuildVectorFieldFlags(uint32 &flags, uint32 &interpolation) const
+void	FPopcornFXAttributeSamplerVectorField::_BuildVectorFieldFlags(uint32 &flags, uint32 &interpolation) const
 {
 	if (Properties.WrapMode == EPopcornFXVectorFieldWrapMode::Wrap)
 	{
@@ -138,14 +162,14 @@ void	UPopcornFXAttributeSamplerVectorField::_BuildVectorFieldFlags(uint32 &flags
 
 #if WITH_EDITOR
 
-void	UPopcornFXAttributeSamplerVectorField::RenderVectorFieldShape(const FMatrix &transforms, const FQuat &rotation, bool isSelected)
+void	FPopcornFXAttributeSamplerVectorField::RenderVectorFieldShape(UPopcornFXEmitterComponent *owner, const FMatrix &transforms, const FQuat &rotation, bool isSelected)
 {
 	if (m_Data->m_RealExtentUnscaled == FVector3f::ZeroVector)
 		return;
-	const UWorld	*world = GetWorld();
+	const UWorld	*world = owner->GetWorld();
 	const FColor	debugColor = isSelected ? kSamplerShapesDebugColorSelected : kSamplerShapesDebugColor;
 
-	const FVector	boxDims = FVector(m_Data->m_RealExtentUnscaled) * GetComponentTransform().GetScale3D() * 0.5f;
+	const FVector	boxDims = FVector(m_Data->m_RealExtentUnscaled) * owner->GetComponentTransform().GetScale3D() * 0.5f;
 	DrawDebugBox(world, transforms.GetOrigin(), boxDims, rotation, debugColor);
 #if 0
 	if (!bDrawCells)
@@ -199,7 +223,7 @@ void	UPopcornFXAttributeSamplerVectorField::RenderVectorFieldShape(const FMatrix
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+void	FPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.MemberProperty != null && m_Data->m_Desc != null)
 	{
@@ -242,9 +266,9 @@ void	UPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChan
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXAttributeSampler *other)
+void	FPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
 {
-	const FPopcornFXAttributeSamplerPropertiesVectorField *newVectorFieldProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesVectorField *>(other->GetProperties());
+	const FPopcornFXAttributeSamplerPropertiesVectorField *newVectorFieldProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesVectorField *>(other);
 	if (!PK_VERIFY(newVectorFieldProperties != null))
 	{
 		UE_LOG(LogPopcornFXAttributeSamplerVectorField, Error, TEXT("New properties are null or not VectorField properties"));
@@ -253,11 +277,15 @@ void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXA
 
 	Super::CopyPropertiesFrom(other);
 
+	const FPopcornFXAttributeSamplerPropertiesVectorField oldProperties = Properties;
+
+	Properties = *newVectorFieldProperties;
+
 	if (m_Data->m_Desc == null)
 	{
 		return;
 	}
-	if (newVectorFieldProperties->VectorField != Properties.VectorField)
+	if (newVectorFieldProperties->VectorField != oldProperties.VectorField)
 	{
 		m_Data->m_NeedsReload = true;
 		if (Properties.VectorField == null)
@@ -268,14 +296,58 @@ void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXA
 				m_Data->m_RealExtentUnscaled = FVector3f::ZeroVector;
 		}
 	}
-	if (newVectorFieldProperties->Intensity != Properties.Intensity)
+	if (newVectorFieldProperties->Intensity != oldProperties.Intensity)
 	{
 		m_Data->m_Desc->SetStrength(Properties.Intensity);
+	}
+	if (newVectorFieldProperties->BoundsSource != oldProperties.BoundsSource ||
+		newVectorFieldProperties->VolumeDimensions != oldProperties.VolumeDimensions)
+	{
+		if (Properties.VectorField != null)
+			_SetBounds();
+	}
+	if (newVectorFieldProperties->WrapMode != oldProperties.WrapMode ||
+		newVectorFieldProperties->SamplingMode != oldProperties.SamplingMode)
+	{
+		u32	flags = 0;
+		u32	interpolation = 0;
+
+		_BuildVectorFieldFlags(flags, interpolation);
+		m_Data->m_Desc->SetFlags(flags, static_cast<PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::EInterpolation>(interpolation));
+	}
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerVectorField::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
+{
+	const FPopcornFXAttributeSamplerPropertiesVectorField *newVectorFieldProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesVectorField *>(other);
+	if (newVectorFieldProperties == null)
+		return;
+
+	if (m_Data->m_Desc == null)
+	{
+		return;
+	}
+	if (newVectorFieldProperties->VectorField != Properties.VectorField)
+	{
+		m_Data->m_NeedsReload = true;
+		if (newVectorFieldProperties->VectorField == null)
+		{
+			m_Data->m_Desc->Clear();
+			// Disable debug rendering, we don't have that info
+			if (newVectorFieldProperties->BoundsSource == EPopcornFXVectorFieldBounds::Source)
+				m_Data->m_RealExtentUnscaled = FVector3f::ZeroVector;
+		}
+	}
+	if (newVectorFieldProperties->Intensity != Properties.Intensity)
+	{
+		m_Data->m_Desc->SetStrength(newVectorFieldProperties->Intensity);
 	}
 	if (newVectorFieldProperties->BoundsSource != Properties.BoundsSource ||
 		newVectorFieldProperties->VolumeDimensions != Properties.VolumeDimensions)
 	{
-		if (Properties.VectorField != null)
+		if (newVectorFieldProperties->VectorField != null)
 			_SetBounds();
 	}
 	if (newVectorFieldProperties->WrapMode != Properties.WrapMode ||
@@ -293,29 +365,15 @@ void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXA
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+void	FPopcornFXAttributeSamplerPropertiesVectorField::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
 {
-	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+	Super::SetupDefaults(decl, updateUnlockedValues);
 
-	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
-
-	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	if (decl == null)
 	{
 		return;
 	}
-
-	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
-	if (samplerList.Count() == 0)
-	{
-		return;
-	}
-	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
-	PK_ASSERT(samplerDesc != null);
-	if (samplerDesc == null)
-	{
-		return;
-	}
-	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+	const PopcornFX::PResourceDescriptor		defaultSampler = decl->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_VectorField *vectorField = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_VectorField>(defaultSampler.Get());
 	if (vectorField != null)
@@ -325,17 +383,17 @@ void	UPopcornFXAttributeSamplerVectorField::SetupDefaults(UPopcornFXEffect *effe
 			switch (vectorField->Filtering())
 			{
 			case PopcornFX::EGridInterpolator::GridInterpolator_Point:
-				Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
+				SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
 				break;
 			case PopcornFX::EGridInterpolator::GridInterpolator_Trilinear:
 			default:
-				Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
+				SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
 				break;
 			}
-			Properties.Intensity = vectorField->Strength();
+			Intensity = vectorField->Strength();
 			if (vectorField->WrapVertical() && vectorField->WrapSide() && vectorField->WrapDepth())
 			{
-				Properties.WrapMode = EPopcornFXVectorFieldWrapMode::Wrap;
+				WrapMode = EPopcornFXVectorFieldWrapMode::Wrap;
 			}
 		}
 	}
@@ -345,38 +403,23 @@ void	UPopcornFXAttributeSamplerVectorField::SetupDefaults(UPopcornFXEffect *effe
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerVectorField::ArePropertiesSupported()
-{
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerVectorField::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerVectorField::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSamplerVectorField::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerVectorField::Build Vectorfield", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerVectorField::Build Vectorfield", POPCORNFX_UE_PROFILER_COLOR);
 
 	check(m_Data != null);
-	const PopcornFX::CResourceDescriptor_VectorField *defaultTurbulenceSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_VectorField>(defaultSampler);
-	if (!PK_VERIFY(defaultTurbulenceSampler != null))
+	const PopcornFX::CResourceDescriptor_VectorField *defaultVectorFieldSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_VectorField>(defaultSampler);
+	if (!PK_VERIFY(defaultVectorFieldSampler != null))
 		return null;
+
+	const FPopcornFXAttributeSamplerPropertiesVectorField *propertiesVectorField = static_cast<const FPopcornFXAttributeSamplerPropertiesVectorField *>(properties);
+	if (propertiesVectorField == nullptr)
+		return null;
+	Properties = *propertiesVectorField;
+
 	if (Properties.VectorField == null)
-	{
-		FString	errorMsg = TEXT("Null vector field");
-#if WITH_EDITOR
-		m_UnsupportedProperties.Add(TEXT("VectorField"), errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerVectorField, Error, vectorfield, this, errorMsg);
 		return null;
-	}
 
 	if (m_Data->m_Desc == null)
 	{
@@ -423,18 +466,19 @@ PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerVectorField::_A
 		_SetBounds();
 	}
 
-	desc.m_NeedUpdate = true;
-	_AttribSampler_PreUpdate(0.f);
+	m_NeedUpdate = true;
+	_AttribSampler_PreUpdate(emitter, 0.f);
 	return m_Data->m_Desc.Get();
 }
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerVectorField::_AttribSampler_PreUpdate(float deltaTime)
+void	FPopcornFXAttributeSamplerVectorField::_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime)
 {
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerVectorField::Update transforms", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerVectorField::Update transforms", POPCORNFX_UE_PROFILER_COLOR);
 
 	FMatrix		transforms;
+
 	if (Properties.RotationAnimation != FVector::ZeroVector)
 	{
 		m_TimeAccumulation += deltaTime;
@@ -442,31 +486,31 @@ void	UPopcornFXAttributeSamplerVectorField::_AttribSampler_PreUpdate(float delta
 		const FVector		animationRotation = Properties.RotationAnimation * m_TimeAccumulation;
 		const FTransform	eulerAngles(FQuat::MakeFromEuler(animationRotation));
 		if (Properties.bUseRelativeTransform)
-			transforms = (eulerAngles * GetRelativeTransform()).ToMatrixWithScale();
+			transforms = (eulerAngles * owner->GetRelativeTransform()).ToMatrixWithScale();
 		else
-			transforms = (eulerAngles * GetComponentTransform()).ToMatrixWithScale();
+			transforms = (eulerAngles * owner->GetComponentTransform()).ToMatrixWithScale();
 	}
 	else
 	{
 		if (Properties.bUseRelativeTransform)
-			transforms = GetRelativeTransform().ToMatrixWithScale();
+			transforms = owner->GetRelativeTransform().ToMatrixWithScale();
 		else
-			transforms = GetComponentTransform().ToMatrixWithScale();
+			transforms = owner->GetComponentTransform().ToMatrixWithScale();
 	}
 
 #if WITH_EDITOR
-	PK_ASSERT(GetWorld() != null);
-	if (!GetWorld()->IsGameWorld())
+	PK_ASSERT(owner->GetWorld() != null);
+	if (!owner->GetWorld()->IsGameWorld())
 	{
 		const USelection *selectedAssets = GEditor->GetSelectedActors();
 		PK_ASSERT(selectedAssets != null);
-		const bool			isSelected = selectedAssets->IsSelected(GetOwner());
+		const bool			isSelected = selectedAssets->IsSelected(owner->GetOwner());
 		if (m_IndirectSelectedThisTick || isSelected)
 		{
 			const FQuat			eulerAngles = FQuat::MakeFromEuler(Properties.RotationAnimation * m_TimeAccumulation);
-			const FMatrix		worldTransforms = (FTransform(eulerAngles) * GetComponentTransform()).ToMatrixWithScale();
+			const FMatrix		worldTransforms = (FTransform(eulerAngles) * owner->GetComponentTransform()).ToMatrixWithScale();
 
-			RenderVectorFieldShape(worldTransforms, eulerAngles, isSelected);
+			RenderVectorFieldShape(owner, worldTransforms, eulerAngles, isSelected);
 			m_IndirectSelectedThisTick = false;
 		}
 	}

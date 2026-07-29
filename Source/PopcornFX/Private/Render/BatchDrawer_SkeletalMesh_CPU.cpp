@@ -11,9 +11,7 @@
 #include "Rendering/SkeletalMeshLODRenderData.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/Texture2D.h"
-#if (ENGINE_MAJOR_VERSION == 5)
-#	include "Engine/SkinnedAssetCommon.h"
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#include "Engine/SkinnedAssetCommon.h"
 #include "RHIStaticStates.h"
 
 #include "Engine/Engine.h"
@@ -35,7 +33,7 @@ DECLARE_GPU_STAT_NAMED(PopcornFXComputeBoneTransformsCS, TEXT("PopcornFX Bone tr
 
 //----------------------------------------------------------------------------
 
-void	CBatchDrawer_SkeletalMesh_CPUBB::SAdditionalInput::Clear()
+void	CBatchDrawer_SkeletalMesh_CPUBB::SAdditionalInputDesc::Clear()
 {
 	m_ByteSize = 0;
 	m_BufferOffset = 0;
@@ -327,19 +325,19 @@ bool	CBatchDrawer_SkeletalMesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ct
 		}
 
 		// Additional inputs sent to shaders (AlphaRemapCursor, Colors, ..)
-		const u32	aFieldCount = toGenerate.m_AdditionalGeneratedInputs.Count();
+		const u32	aFieldCount = m_AdditionalInputs.Count();
 
-		m_AdditionalInputs.Clear();
-		if (!PK_VERIFY(m_AdditionalInputs.Reserve(aFieldCount))) // Max possible additional field count
+		m_AdditionalInputDescs.Clear();
+		if (!PK_VERIFY(m_AdditionalInputDescs.Reserve(aFieldCount))) // Max possible additional field count
 			return false;
 
 		for (u32 iField = 0; iField < aFieldCount; ++iField)
 		{
-			const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = toGenerate.m_AdditionalGeneratedInputs[iField];
+			const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = m_AdditionalInputs[iField];
 
 			const PopcornFX::CStringId			&fieldName = additionalInput.m_Name;
 			u32									typeSize = PopcornFX::CBaseTypeTraits::Traits(additionalInput.m_Type).Size;
-			const u32							fieldID = m_AdditionalInputs.Count();
+			const u32							fieldID = m_AdditionalInputDescs.Count();
 			EPopcornFXAdditionalStreamOffsets	streamOffsetType = EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
 
 			if (!_IsAdditionalInputSupported(fieldName, additionalInput.m_Type, streamOffsetType))
@@ -347,9 +345,9 @@ bool	CBatchDrawer_SkeletalMesh_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ct
 			PK_ASSERT(streamOffsetType < EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount);
 			m_AdditionalStreamOffsets[streamOffsetType].Setup(m_SimDataBufferSizeInBytes, iField);
 
-			if (!PK_VERIFY(m_AdditionalInputs.PushBack().Valid()))
+			if (!PK_VERIFY(m_AdditionalInputDescs.PushBack().Valid()))
 				return false;
-			SAdditionalInput	&newAdditionalInput = m_AdditionalInputs.Last();
+			SAdditionalInputDesc	&newAdditionalInput = m_AdditionalInputDescs.Last();
 
 			newAdditionalInput.m_BufferOffset = m_SimDataBufferSizeInBytes;
 			newAdditionalInput.m_ByteSize = typeSize;
@@ -428,9 +426,9 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_ClearBuffers()
 
 	m_Mapped_Matrices.Clear();
 
-	const u32	aFieldCount = m_AdditionalInputs.Count();
+	const u32	aFieldCount = m_AdditionalInputDescs.Count();
 	for (u32 iField = 0; iField < aFieldCount; ++iField)
-		m_AdditionalInputs[iField].Clear();
+		m_AdditionalInputDescs[iField].Clear();
 }
 
 //----------------------------------------------------------------------------
@@ -478,16 +476,16 @@ bool	CBatchDrawer_SkeletalMesh_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 	}
 #endif // RHI_RAYTRACING
 
-	if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
+	if (!m_AdditionalInputs.Empty())
 	{
 		// Additional inputs
-		const u32	aFieldCount = m_AdditionalInputs.Count();
+		const u32	aFieldCount = m_AdditionalInputDescs.Count();
 
 		if (!PK_VERIFY(m_MappedAdditionalInputs.Resize(aFieldCount)))
 			return false;
 		for (u32 iField = 0; iField < aFieldCount; ++iField)
 		{
-			SAdditionalInput					&field = m_AdditionalInputs[iField];
+			SAdditionalInputDesc				&field = m_AdditionalInputDescs[iField];
 			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[iField];
 
 			desc.m_Storage.m_Count = m_TotalParticleCount;
@@ -930,7 +928,11 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext
 		params.m_MeshUniformBuffer = FPopcornFXSkelMeshUniformsRef::CreateUniformBufferImmediate(uniformsSkelMesh, UniformBuffer_SingleFrame);
 
 		SCOPED_DRAW_EVENT(RHICmdList, PopcornFXComputeBoneTransformsCS);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+		RHI_BREADCRUMB_EVENT_STAT(RHICmdList, PopcornFXComputeBoneTransformsCS, "PopcornFXComputeBoneTransformsCS");
+#else
 		SCOPED_GPU_STAT(RHICmdList, PopcornFXComputeBoneTransformsCS);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 		if (m_MotionBlur)
 		{
 			TShaderMapRef< FPopcornFXComputeMBBoneTransformsCS >	computeBoneTransformsCS(GetGlobalShaderMap(m_FeatureLevel));

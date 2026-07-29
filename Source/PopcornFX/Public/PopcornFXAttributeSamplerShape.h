@@ -58,19 +58,33 @@ namespace EPopcornFXShapeCollectionSamplingHeuristic
 	};
 }
 
+/** Sampling location option for skinned meshes */
 UENUM()
 namespace	EPopcornFXSkinnedTransforms
 {
 	enum	Type
 	{
-		/** Use Skinned Mesh Actor local transforms relative to it's parent actor */
+		/** Use Skinned Mesh Actor local transforms relative to its parent actor */
 		SkinnedComponentRelativeTr,
 		/** Use Skinned Mesh Actor world transforms */
 		SkinnedComponentWorldTr,
-		/** Use Attribute Sampler Actor local transforms relative to it's parent actor */
-		AttrSamplerRelativeTr,
-		/** Use Attribute Sampler Actor world transforms */
-		AttrSamplerWorldTr,
+		/** Use emitter local transforms relative to its parent actor */
+		EmitterRelativeTr,
+		/** Use emitter world transforms */
+		EmitterSamplerWorldTr,
+	};
+}
+
+/** Sampling location option for other meshes */
+UENUM()
+namespace	EPopcornFXShapeTransforms
+{
+	enum	Type
+	{
+		/** Use emitter local transforms relative to its parent actor */
+		EmitterRelativeTr,
+		/** Use emitter Actor world transforms */
+		EmitterSamplerWorldTr,
 	};
 }
 
@@ -102,29 +116,47 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesShape : public FPopcorn
 {
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+public:
+	//virtual void			CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
+	virtual bool			ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) override;
+	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
+	virtual bool			ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+
+	USkinnedMeshComponent	*ResolveSkinnedMeshComponent(UPopcornFXEmitterComponent *emitter, const FString &samplerName);
+
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<EPopcornFXAttribSamplerShapeType::Type>		ShapeType;
 
 	/** Weights sampling distribution when is a sub-Shape of a Shape Collection
 	* (if CollectionUseShapeWeights is enabled in the Shape Collection).
 	*/
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	float					Weight;
 
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", UIMin = "0.0"))
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.0", UIMin = "0.0"))
 	FVector					BoxDimension;
 
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", UIMin = "0.0"))
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float					Radius;
 
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", UIMin = "0.0"))
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float					InnerRadius;
 
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", UIMin = "0.0"))
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float					Height;
 
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", UIMin = "0.0"))
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0.0", UIMin = "0.0"))
 	FVector					Scale;
+
+	/** Position of the mesh */
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
+	FVector					Position;
+
+	/** Rotation of the mesh */
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
+	FRotator				Rotation;
 
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 	/** Distribute sampling by the given CollectionSamplingHeuristic of sub-Shapes */
@@ -136,7 +168,7 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesShape : public FPopcorn
 	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
 	TEnumAsByte<EPopcornFXMeshSamplingMode::Type>					ShapeSamplingMode;
 
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<EPopcornFXColorChannel::Type>						DensityColorChannel;
 
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
@@ -178,35 +210,35 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesShape : public FPopcorn
 	uint32					bPauseSkinning : 1;
 
 	/** Enable this if you want to access this skinned mesh's Positions */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bSkinPositions : 1;
 
 	/** Enable this if you want to access this skinned mesh's Normals */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bSkinNormals : 1;
 
 	/** Enable this if you want to access this skinned mesh's Tangents */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bSkinTangents : 1;
 
 	/** Enable this if you want to access this skinned mesh's Colors */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bBuildColors : 1;
 
 	/** Enable this if you want to access this skinned mesh's UVs */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bBuildUVs : 1;
 
 	/** Enable this if you want to access this skinned mesh's Velocities */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bComputeVelocities : 1;
 
 	/** Enable this if you want to use the simulated cloth positions/normals (tangents unavailable). */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bBuildClothData : 1;
 
 	/** Enable this if you want to use scaled transforms */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bApplyScale : 1;
 
 #if WITH_EDITORONLY_DATA
@@ -215,18 +247,20 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesShape : public FPopcorn
 #endif // WITH_EDITORONLY_DATA
 
 	/** Determines what transforms will be used for this attribute sampler */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	TEnumAsByte<EPopcornFXSkinnedTransforms::Type>	Transforms;
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<EPopcornFXSkinnedTransforms::Type>	SkinnedTransforms;
 
-	/** Relative Transforms will be used if activated.
-	* Enable if sampled in SpawnerScript's Eval(), so shape will be sampled locally to the Emitter.
-	* Disable if sampled in SpawnerScript's **Post**Eval(), so the shape will be sampled world space.
-	*/
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	uint32					bUseRelativeTransform : 1;
+	/** Determines what transforms will be used for this attribute sampler */
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<EPopcornFXShapeTransforms::Type>	ShapeTransforms;
+
+#if WITH_EDITOR
+	virtual void			SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues = false) override;
+#endif
 
 	FPopcornFXAttributeSamplerPropertiesShape()
-	:	ShapeType(EPopcornFXAttribSamplerShapeType::Sphere)
+	:	FPopcornFXAttributeSamplerProperties(EPopcornFXAttributeSamplerType::Shape)
+	,	ShapeType(EPopcornFXAttribSamplerShapeType::Sphere)
 	,	Weight(1.0f)
 	,	BoxDimension(FVector(100.0f))
 	,	Radius(100.0f)
@@ -255,47 +289,41 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesShape : public FPopcorn
 #if WITH_EDITORONLY_DATA
 	,	bEditorBuildInitialPose(false)
 #endif // WITH_EDITORONLY_DATA
-	,	Transforms()
-	,	bUseRelativeTransform(true)
+	,	SkinnedTransforms(EPopcornFXSkinnedTransforms::EmitterSamplerWorldTr)
+	,	ShapeTransforms(EPopcornFXShapeTransforms::EmitterSamplerWorldTr)
 	{ }
 };
 
-
 /** Can override an Attribute Sampler **Shape** by a **UStaticMesh**. */
-UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
-class POPCORNFX_API UPopcornFXAttributeSamplerShape : public UPopcornFXAttributeSampler
+USTRUCT(meta=(BlueprintSpawnableComponent))
+struct POPCORNFX_API FPopcornFXAttributeSamplerShape : public FPopcornFXAttributeSampler
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
-	UFUNCTION(Category="PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetRadius(float radius);
 
-	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetWeight(float height);
 
-	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetBoxDimension(FVector boxDimensions);
 
-	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetInnerRadius(float innerRadius);
 
-	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetHeight(float height);
 
-	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
 	void					SetScale(FVector scale);
 
 	/**
 		To manually call if the mesh is changed at runtime after a call to SetTargetActor or SetSkinnedMeshComponentName.
 		Only needed if the target mesh is modified dynamically.
 	*/
-	UFUNCTION(Category = "PopcornFX AttributeSampler", BlueprintCallable)
-	bool					Rebuild();
+	bool					Rebuild(UPopcornFXEmitterComponent *emitter);
+
+	FPopcornFXAttributeSamplerShape();
 
 	// overrides
 	virtual void			BeginDestroy() override;
-	void					TickComponent(float deltaTime, ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
+	void					TickComponent(UPopcornFXEmitterComponent *emitter, float deltaTime, ELevelTick tickType, FActorComponentTickFunction *thisTickFunction);
 #if WITH_EDITOR
 	void					PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif // WITH_EDITOR
@@ -308,22 +336,20 @@ public:
 	PopcornFX::CShapeDescriptor		*GetShapeDescriptor() const;
 
 #if WITH_EDITOR
-	void							RenderShapeIFP(bool isSelected) const;
+	void							RenderShapeIFP(UPopcornFXEmitterComponent *emitter, bool isSelected) const;
 #endif
 
 	PopcornFX::CMeshSurfaceSamplerStructuresRandom	*SamplerSurface() const;
+	PopcornFX::CMeshVolumeSamplerStructuresRandom	*SamplerVolume() const;
 
-	// UPopcornFXAttributeSampler overrides
+	// FPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
 #if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
-	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
+	virtual void									CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	virtual void									RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) override;
 #endif
-	virtual bool									ArePropertiesSupported() override;
-	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual void									_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime) override;
 
 #if WITH_EDITOR
 	virtual void									_AttribSampler_IndirectSelectedThisTick() override { m_IndirectSelectedThisTick = true; }
@@ -332,12 +358,10 @@ private:
 	bool											CanUpdateShapeProperties(EPopcornFXAttribSamplerShapeType::Type newType);
 	void											UpdateShapeProperties();
 
-	USkinnedMeshComponent							*ResolveSkinnedMeshComponent();
-
 	bool											SetComponentTickingGroup(USkinnedMeshComponent *skinnedMesh);
-	bool											BuildInitialPose();
+	bool											BuildInitialPose(UPopcornFXEmitterComponent *emitter);
 	bool											UpdateSkinning();
-	void											UpdateTransforms();
+	void											UpdateTransforms(UPopcornFXEmitterComponent *emitter);
 	void											FetchClothData(uint32 vertexStart, uint32 vertexCount);
 	void											Clear();
 
@@ -347,7 +371,6 @@ private:
 	void											Skin_Finish(const PopcornFX::SSkinContext &ctx);
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
 	FPopcornFXAttributeSamplerPropertiesShape	Properties;
 
 private:
@@ -361,4 +384,18 @@ private:
 #if WITH_EDITOR
 	bool						m_IndirectSelectedThisTick;
 #endif // WITH_EDITOR
+};
+
+UCLASS(meta = (BlueprintSpawnableComponent))
+class POPCORNFX_API UPopcornFXAttributeSamplerShapeAsset : public UPopcornFXAttributeSamplerAsset
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	FPopcornFXAttributeSamplerPropertiesShape	Properties;
+
+public:
+	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const override { return &Properties; }
+	virtual FPopcornFXAttributeSamplerProperties		*GetProperties() override { return &Properties; }
+
 };

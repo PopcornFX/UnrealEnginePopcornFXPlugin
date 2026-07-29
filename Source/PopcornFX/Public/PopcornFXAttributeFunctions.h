@@ -21,7 +21,7 @@ public:
 
 	/// Returns the index of the Attribute
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="PopcornFX|Attributes", meta=(DefaultToSelf="Emitter"))
-	static int32			FindAttributeIndex(const UPopcornFXEmitterComponent *Emitter, FString InAttributeName);
+	static int32			FindAttributeIndex(UPopcornFXEmitterComponent *Emitter, FString InAttributeName);
 
 	/// Reset Attribute values to default
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="PopcornFX|Attributes", meta=(DefaultToSelf="Emitter"))
@@ -185,5 +185,4 @@ public:
 	static bool				SetAttributeAsBool4ByName(UPopcornFXEmitterComponent *Emitter, FString InAttributeName, bool InValueX, bool InValueY, bool InValueZ, bool InValueW);
 	UFUNCTION(BlueprintCallable, meta=(DisplayName="Get Attribute", BlueprintInternalUseOnly="true", DefaultToSelf="Emitter"), Category="PopcornFX|Attributes")
 	static bool				GetAttributeAsBool4ByName(UPopcornFXEmitterComponent *Emitter, FString InAttributeName, bool &OutValueX, bool &OutValueY, bool &OutValueZ, bool &OutValueW);
-
 };

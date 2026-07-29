@@ -18,6 +18,7 @@
 #include "Platforms/PopcornFXPlatform.h"
 
 #include "Engine/TextureRenderTarget2D.h"
+#include "Engine/TextureRenderTarget.h"
 #include "Engine/TextureRenderTargetVolume.h"
 
 #include "Materials/MaterialInstanceDynamic.h"
@@ -149,6 +150,247 @@ namespace
 };
 
 //----------------------------------------------------------------------------
+//
+// FPopcornFXAttributeSamplerPropertiesGrid
+//
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	if (bAssetGrid)
+	{
+		if (RenderTarget == null)
+		{
+			FString errorMsg = TEXT("Null render target");
+#if WITH_EDITOR
+			m_UnsupportedProperties.FindOrAdd(TEXT("RenderTarget"), *errorMsg);
+#endif
+			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+
+		UTextureRenderTarget2D *RT2D = Cast<UTextureRenderTarget2D>(RenderTarget);
+		UTextureRenderTargetVolume *RTVolume = Cast<UTextureRenderTargetVolume>(RenderTarget);
+		if (RT2D == nullptr && RTVolume == nullptr)
+		{
+#if WITH_EDITOR
+			m_UnsupportedProperties.FindOrAdd(TEXT("RenderTarget"), TEXT("Can only setup attribute sampler from UTextureRenderTarget2D or UTextureRenderTargetVolume"));
+#endif
+			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: Can only setup attribute sampler from UTextureRenderTarget2D or UTextureRenderTargetVolume"));
+			return false;
+		}
+		return true;
+	}
+	if (SizeX <= 0)
+	{
+		FString errorMsg = TEXT("Size X must be > 0");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("SizeX"), errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	if (SizeY <= 0)
+	{
+		FString errorMsg = TEXT("Size Y must be > 0");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("SizeY"), errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	if (SizeZ <= 0)
+	{
+		FString errorMsg = TEXT("Size Z must be > 0");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("SizeZ"), errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+
+	if (Order != EPopcornFXGridOrder::OneD && Order != EPopcornFXGridOrder::TwoD && Order != EPopcornFXGridOrder::ThreeD)
+	{
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("Order"), TEXT("Only 1D, 2D and 3D grids are supported"));
+#endif
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: Only 1D, 2D and 3D grids are supported"));
+		return false;
+	}
+
+	if (Order == EPopcornFXGridOrder::OneD || Order == EPopcornFXGridOrder::TwoD)
+	{
+		if (DataType == EPopcornFXGridDataType::Int ||
+			DataType == EPopcornFXGridDataType::Int2 ||
+			DataType == EPopcornFXGridDataType::Int4)
+		{
+			FString errorMsg = TEXT("Int data type is only supported for 3D grids");
+#if WITH_EDITOR
+			m_UnsupportedProperties.FindOrAdd(TEXT("DataType"), *errorMsg);
+#endif
+			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+	}
+
+	PopcornFX::EBaseTypeID		dataType = ToPk(DataType);
+	
+	if (!PK_VERIFY(dataType != PopcornFX::EBaseTypeID::BaseType_Void))
+		return false;
+
+	if (dataType == PopcornFX::EBaseTypeID::BaseType_Float3 || dataType == PopcornFX::EBaseTypeID::BaseType_Int3)
+	{
+		FString errorMsg = FString::Printf(TEXT("Unsupported data type: %s"),
+			dataType == PopcornFX::EBaseTypeID::BaseType_Float3 ? *FString("float3") : *FString("int3"));
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("DataType"), *errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	if (bAssetGrid)
+	{
+		return IsRenderTargetCompatible(RenderTarget, emitter, samplerName, defaultSampler);
+	}
+
+	// Make sure the sampler matches what the effect expects
+	// Mismatchs should only happen when using an external sampler
+	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
+	if (!PK_VERIFY(defaultGridSampler != null))
+		return false;
+
+	FString										errorMsg;
+	const u32									gridOrder = static_cast<u32>(Order + 1);
+	const PopcornFX::Nodegraph::SDataTypeTraits &srcTypeTraits = PopcornFX::Nodegraph::SDataTypeTraits::Traits((PopcornFX::Nodegraph::EDataType)defaultGridSampler->Type());
+	if (defaultGridSampler->Order() != gridOrder)
+	{
+		errorMsg = FString::Printf(TEXT("Effect '%s' needs a %dD grid, sampler is set to %dD"),
+			*emitter->Effect->GetName(), defaultGridSampler->Order(), gridOrder);
+#if WITH_EDITOR
+		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("Other"), *errorMsg);
+#endif
+		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+
+	PopcornFX::EBaseTypeID		dataType = ToPk(DataType);
+	if (srcTypeTraits.BaseType() != dataType)
+	{
+		errorMsg = FString::Printf(TEXT("Effect '%s' uses %s data type, sampler is set to %s"),
+			*emitter->Effect->GetName(), UTF8_TO_TCHAR(srcTypeTraits.Name()),
+			UTF8_TO_TCHAR(PopcornFX::CBaseTypeTraits::Traits(dataType).Name));
+#if WITH_EDITOR
+		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("Other"), *errorMsg);
+#endif
+		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesGrid::IsRenderTargetCompatible(const UTextureRenderTarget *texture, UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
+	if (!PK_VERIFY(defaultGridSampler != null))
+		return false;
+	const u32									gridOrder = static_cast<u32>(Order + 1);
+	const PopcornFX::Nodegraph::SDataTypeTraits	&srcTypeTraits = PopcornFX::Nodegraph::SDataTypeTraits::Traits((PopcornFX::Nodegraph::EDataType)defaultGridSampler->Type());
+	const PopcornFX::EBaseTypeID				srcBaseType = srcTypeTraits.BaseType();
+
+	const UTextureRenderTarget2D		*RT2D = Cast<UTextureRenderTarget2D>(texture);
+	const UTextureRenderTargetVolume	*RTVolume = Cast<UTextureRenderTargetVolume>(texture);
+	EPixelFormat						RTFormat = PF_Unknown;
+
+	if (RT2D != null)
+	{
+		// Warn the user that using a 2D render target for a 1D grid is not optimal
+		if (defaultGridSampler->Order() == 1)
+		{
+			FString warningMsg = FString::Printf(TEXT("Using a 2D render target for a 1D grid creates overhead"));
+			UE_LOG_WARNING_SAMPLER(LogPopcornFXAttributeSamplerGrid, Warning, grid, *samplerName, emitter, warningMsg);
+		}
+		if (defaultGridSampler->Order() > 2)
+		{
+			FString errorMsg = FString::Printf(TEXT("Can't use a 2D render target for a %dD grid"), defaultGridSampler->Order());
+#if WITH_EDITOR
+			emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+#endif
+			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+		RTFormat = RT2D->GetFormat();
+	}
+
+	if (RTVolume != null)
+	{
+		if (defaultGridSampler->Order() != 3)
+		{
+			FString errorMsg = FString::Printf(TEXT("Can't use a volume render target (= 3D) for a %dD grid"), defaultGridSampler->Order());
+#if WITH_EDITOR
+			emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+#endif
+			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+		RTFormat = RTVolume->GetFormat();
+	}
+
+	FString dataTypeString = DataTypeToString(ToUE(srcBaseType));
+
+	switch (RTFormat)
+	{
+	case	PF_R32_FLOAT:
+	{
+		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float)
+			return true;
+		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_R32f (R32_FLOAT) render target for a %s grid"), *dataTypeString);
+#if WITH_EDITOR
+		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+#endif
+		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	case	PF_G32R32F:
+	{
+		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float2)
+			return true;
+		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RG32f (G32R32F) render target for a %s grid"), *dataTypeString);
+#if WITH_EDITOR
+		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+#endif
+		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	case	PF_A32B32G32R32F:
+	{
+		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float4)
+			return true;
+		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RGBA32f (A32B32G32R32F) render target for a %s grid"), *dataTypeString);
+#if WITH_EDITOR
+		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+#endif
+		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	default:
+		return false;
+	};
+}
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXAttributeSamplerGrid
+//
+//----------------------------------------------------------------------------
 
 struct	FAttributeSamplerGridData
 {
@@ -170,7 +412,7 @@ struct	FAttributeSamplerGridData
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerGrid::SetRenderTarget(class UTextureRenderTarget *InRenderTarget)
+void	FPopcornFXAttributeSamplerGrid::SetRenderTarget(class UTextureRenderTarget *InRenderTarget)
 {
 	Properties.RenderTarget = InRenderTarget;
 
@@ -179,7 +421,7 @@ void	UPopcornFXAttributeSamplerGrid::SetRenderTarget(class UTextureRenderTarget 
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerGrid::SetAsMaterialTextureParameter(UMaterialInstanceDynamic *Material, FName ParameterName)
+void	FPopcornFXAttributeSamplerGrid::SetAsMaterialTextureParameter(UMaterialInstanceDynamic *Material, FName ParameterName)
 {
 	if (Material == null)
 	{
@@ -197,11 +439,8 @@ void	UPopcornFXAttributeSamplerGrid::SetAsMaterialTextureParameter(UMaterialInst
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSamplerGrid::UPopcornFXAttributeSamplerGrid(const FObjectInitializer &PCIP)
-:	Super(PCIP)
+FPopcornFXAttributeSamplerGrid::FPopcornFXAttributeSamplerGrid()
 {
-	bAutoActivate = true;
-
 	Properties.RenderTarget = null;
 	Properties.bAssetGrid = false;
 
@@ -215,8 +454,9 @@ UPopcornFXAttributeSamplerGrid::UPopcornFXAttributeSamplerGrid(const FObjectInit
 
 	Properties.DataType = EPopcornFXGridDataType::Float4;
 
-	// UPopcornFXAttributeSampler override:
+	// FPopcornFXAttributeSampler override:
 	m_SamplerType = EPopcornFXAttributeSamplerType::Grid;
+	m_GridTexture = null;
 
 	m_Data = new FAttributeSamplerGridData();
 	check(m_Data != null);
@@ -224,22 +464,7 @@ UPopcornFXAttributeSamplerGrid::UPopcornFXAttributeSamplerGrid(const FObjectInit
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerGrid::OnUnregister()
-{
-	if (m_Data != null)
-	{
-		// Unregister the component during OnUnregister instead of BeginDestroy.
-		// In editor mode, BeginDestroy is only called when saving a level:
-		// Components ReregisterComponent() do not have a matching BeginDestroy call in editor
-		m_Data->m_Desc = null;
-		m_Data->m_ReloadGrid = true;
-	}
-	Super::OnUnregister();
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXAttributeSamplerGrid::BeginDestroy()
+void	FPopcornFXAttributeSamplerGrid::BeginDestroy()
 {
 	if (m_Data != null)
 	{
@@ -251,16 +476,14 @@ void	UPopcornFXAttributeSamplerGrid::BeginDestroy()
 
 //----------------------------------------------------------------------------
 
-UTexture	*UPopcornFXAttributeSamplerGrid::GridTexture()
+UTexture	*FPopcornFXAttributeSamplerGrid::GridTexture()
 {
 	return Properties.bAssetGrid != 0 ? Properties.RenderTarget : m_GridTexture;
 }
 
-//----------------------------------------------------------------------------
-
 #if WITH_EDITOR
 
-void	UPopcornFXAttributeSamplerGrid::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+void	FPopcornFXAttributeSamplerGrid::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.Property != NULL)
 	{
@@ -280,24 +503,17 @@ void	UPopcornFXAttributeSamplerGrid::PostEditChangeProperty(FPropertyChangedEven
 		}
 	}
 
-	if (!ArePropertiesSupported())
-	{
-#if WITH_EDITOR
-		OnSamplerValidStateChanged.Broadcast();
-#endif
-	}
-
 	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerGrid::CopyPropertiesFrom(const UPopcornFXAttributeSampler *other)
+void	FPopcornFXAttributeSamplerGrid::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
 {
-	const FPopcornFXAttributeSamplerPropertiesGrid *newGridProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesGrid *>(other->GetProperties());
+	const FPopcornFXAttributeSamplerPropertiesGrid *newGridProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesGrid *>(other);
 	if (!PK_VERIFY(newGridProperties != null))
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("New properties are null or not curve properties"));
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("New properties are null or not grid properties"));
 		return;
 	}
 
@@ -320,74 +536,83 @@ void	UPopcornFXAttributeSamplerGrid::CopyPropertiesFrom(const UPopcornFXAttribut
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerGrid::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+void	FPopcornFXAttributeSamplerGrid::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
 {
-	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+	const FPopcornFXAttributeSamplerPropertiesGrid *newGridProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesGrid *>(other);
+	if (newGridProperties == null)
+		return;
 
-	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+	if (newGridProperties->bAssetGrid != Properties.bAssetGrid ||
+		newGridProperties->bSRGB != Properties.bSRGB ||
+		newGridProperties->RenderTarget != Properties.RenderTarget ||
+		newGridProperties->SizeX != Properties.SizeX ||
+		newGridProperties->SizeY != Properties.SizeY ||
+		newGridProperties->SizeZ != Properties.SizeZ ||
+		newGridProperties->DataType != Properties.DataType)
+	{
+		// Rebuild
+		m_Data->m_ReloadGrid = true;
+	}
 
-	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	Properties = *newGridProperties;
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerPropertiesGrid::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(decl, updateUnlockedValues);
+
+	if (decl == nullptr)
 	{
 		return;
 	}
-
-	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
-	if (samplerList.Count() == 0)
-	{
-		return;
-	}
-	const PopcornFX::CParticleAttributeSamplerDeclaration * const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
-	PK_ASSERT(samplerDesc != null);
-	if (samplerDesc == null)
-	{
-		return;
-	}
-	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+	const PopcornFX::PResourceDescriptor		defaultSampler = decl->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_Grid	*grid = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Grid>(defaultSampler.Get());
 	if (grid != null)
 	{
-		Properties.Order = static_cast<EPopcornFXGridOrder>(grid->Order() - 1);
-		PK_ASSERT(Properties.Order >= EPopcornFXGridOrder::OneD && Properties.Order <= EPopcornFXGridOrder::ThreeD);
+		Order = static_cast<EPopcornFXGridOrder>(grid->Order() - 1);
+		PK_ASSERT(Order >= EPopcornFXGridOrder::OneD && Order <= EPopcornFXGridOrder::ThreeD);
 		// Don't reset the sizes to 1 when the grid order is reduced, the user may want to keep them for later
 		// if they increase the order back
 		if (updateUnlockedValues)
 		{
 			PopcornFX::CInt4	dimensions = grid->Dimensions4();
-			Properties.SizeX = dimensions.x();
-			if (Properties.Order >= EPopcornFXGridOrder::TwoD)
-				Properties.SizeY = dimensions.y();
-			if (Properties.Order >= EPopcornFXGridOrder::ThreeD)
-				Properties.SizeZ = dimensions.z();
+			SizeX = dimensions.x();
+			if (Order >= EPopcornFXGridOrder::TwoD)
+				SizeY = dimensions.y();
+			if (Order >= EPopcornFXGridOrder::ThreeD)
+				SizeZ = dimensions.z();
 		}
 
 		switch (grid->DataType())
 		{
 		case PopcornFX::Nodegraph::EDataType::DataType_Float1:
-			Properties.DataType = EPopcornFXGridDataType::Float;
+			DataType = EPopcornFXGridDataType::Float;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Float2:
-			Properties.DataType = EPopcornFXGridDataType::Float2;
+			DataType = EPopcornFXGridDataType::Float2;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Float3:
 			// Unsupported
-			Properties.DataType = EPopcornFXGridDataType::Float3;
+			DataType = EPopcornFXGridDataType::Float3;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Float4:
-			Properties.DataType = EPopcornFXGridDataType::Float4;
+			DataType = EPopcornFXGridDataType::Float4;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Int1:
-			Properties.DataType = EPopcornFXGridDataType::Int;
+			DataType = EPopcornFXGridDataType::Int;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Int2:
-			Properties.DataType = EPopcornFXGridDataType::Int2;
+			DataType = EPopcornFXGridDataType::Int2;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Int3:
 			// Unsupported
-			Properties.DataType = EPopcornFXGridDataType::Int3;
+			DataType = EPopcornFXGridDataType::Int3;
 			break;
 		case PopcornFX::Nodegraph::EDataType::DataType_Int4:
-			Properties.DataType = EPopcornFXGridDataType::Int4;
+			DataType = EPopcornFXGridDataType::Int4;
 			break;
 		default:
 			break;
@@ -401,7 +626,7 @@ void	UPopcornFXAttributeSamplerGrid::SetupDefaults(UPopcornFXEffect *effect, con
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::HasRenderTargetChanged() const
+bool	FPopcornFXAttributeSamplerGrid::HasRenderTargetChanged() const
 {
 	const UTextureRenderTarget2D		*RT2D = Cast<UTextureRenderTarget2D>(Properties.RenderTarget);
 	const UTextureRenderTargetVolume	*RTVolume = Cast<UTextureRenderTargetVolume>(Properties.RenderTarget);
@@ -427,229 +652,17 @@ bool	UPopcornFXAttributeSamplerGrid::HasRenderTargetChanged() const
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::IsRenderTargetCompatible(const UTextureRenderTarget *texture, UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
-	if (!PK_VERIFY(defaultGridSampler != null))
-		return false;
-	const u32									gridOrder = static_cast<u32>(Properties.Order + 1);
-	const PopcornFX::Nodegraph::SDataTypeTraits	&srcTypeTraits = PopcornFX::Nodegraph::SDataTypeTraits::Traits((PopcornFX::Nodegraph::EDataType)defaultGridSampler->Type());
-	const PopcornFX::EBaseTypeID				srcBaseType = srcTypeTraits.BaseType();
-
-	const UTextureRenderTarget2D		*RT2D = Cast<UTextureRenderTarget2D>(texture);
-	const UTextureRenderTargetVolume	*RTVolume = Cast<UTextureRenderTargetVolume>(texture);
-	EPixelFormat						RTFormat = PF_Unknown;
-
-	if (RT2D != null)
-	{
-		// Warn the user that using a 2D render target for a 1D grid is not optimal
-		if (defaultGridSampler->Order() == 1)
-		{
-			FString warningMsg = FString::Printf(TEXT("Using a 2D render target for a 1D grid creates overhead"));
-			UE_LOG_WARNING_SAMPLER(LogPopcornFXAttributeSamplerGrid, Warning, grid, this, emitter, warningMsg);
-		}
-		if (defaultGridSampler->Order() > 2)
-		{
-			FString errorMsg = FString::Printf(TEXT("Can't use a 2D render target for a %dD grid"), defaultGridSampler->Order());
-#if WITH_EDITOR
-			m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
-#endif
-			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, emitter, errorMsg);
-			return false;
-		}
-		RTFormat = RT2D->GetFormat();
-	}
-
-	if (RTVolume != null)
-	{
-		if (defaultGridSampler->Order() != 3)
-		{
-			FString errorMsg = FString::Printf(TEXT("Can't use a volume render target (= 3D) for a %dD grid"), defaultGridSampler->Order());
-#if WITH_EDITOR
-			m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
-#endif
-			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, emitter, errorMsg);
-			return false;
-		}
-		RTFormat = RTVolume->GetFormat();
-	}
-
-	FString dataTypeString = DataTypeToString(ToUE(srcBaseType));
-
-	switch (RTFormat)
-	{
-	case	PF_R32_FLOAT:
-	{
-		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float)
-			return true;
-		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_R32f (R32_FLOAT) render target for a %s grid"), *dataTypeString);
-#if WITH_EDITOR
-		m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
-#endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, emitter, errorMsg);
-		return false;
-	}
-	case	PF_G32R32F:
-	{
-		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float2)
-			return true;
-		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RG32f (G32R32F) render target for a %s grid"), *dataTypeString);
-#if WITH_EDITOR
-		m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
-#endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, emitter, errorMsg);
-		return false;
-	}
-	case	PF_A32B32G32R32F:
-	{
-		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float4)
-			return true;
-		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RGBA32f (A32B32G32R32F) render target for a %s grid"), *dataTypeString);
-#if WITH_EDITOR
-		m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
-#endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, emitter, errorMsg);
-		return false;
-	}
-	default:
-		return false;
-	};
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerGrid::ArePropertiesSupported()
-{
-	if (Properties.bAssetGrid)
-	{
-		if (Properties.RenderTarget == null)
-		{
-			FString errorMsg = TEXT("Null render target");
-#if WITH_EDITOR
-			m_UnsupportedProperties.FindOrAdd(TEXT("RenderTarget"), *errorMsg);
-#endif
-			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, errorMsg);
-			return false;
-		}
-		return true;
-	}
-	if (Properties.SizeX <= 0)
-	{
-		FString errorMsg = TEXT("Size X must be > 0");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("SizeX"), errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, errorMsg);
-		return false;
-	}
-	if (Properties.SizeY <= 0)
-	{
-		FString errorMsg = TEXT("Size Y must be > 0");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("SizeY"), errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, errorMsg);
-		return false;
-	}
-	if (Properties.SizeZ <= 0)
-	{
-		FString errorMsg = TEXT("Size Z must be > 0");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("SizeZ"), errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, errorMsg);
-		return false;
-	}
-
-	if (Properties.Order == EPopcornFXGridOrder::OneD || Properties.Order == EPopcornFXGridOrder::TwoD)
-	{
-		if (Properties.DataType == EPopcornFXGridDataType::Int ||
-			Properties.DataType == EPopcornFXGridDataType::Int2 ||
-			Properties.DataType == EPopcornFXGridDataType::Int4)
-		{
-			FString errorMsg = TEXT("Int data types are only supported for 3D grids");
-#if WITH_EDITOR
-			m_UnsupportedProperties.FindOrAdd(TEXT("DataType"), *errorMsg);
-#endif
-			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, errorMsg);
-			return false;
-		}
-	}
-
-	PopcornFX::EBaseTypeID		dataType = ToPk(Properties.DataType);
-	
-	if (!PK_VERIFY(dataType != PopcornFX::EBaseTypeID::BaseType_Void))
-		return false;
-
-	if (dataType == PopcornFX::EBaseTypeID::BaseType_Float3 || dataType == PopcornFX::EBaseTypeID::BaseType_Int3)
-	{
-		FString errorMsg = FString::Printf(TEXT("Unsupported data type: %s"),
-			dataType == PopcornFX::EBaseTypeID::BaseType_Float3 ? *FString("float3") : *FString("int3"));
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("DataType"), *errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, errorMsg);
-		return false;
-	}
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerGrid::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	if (Properties.bAssetGrid)
-	{
-		return IsRenderTargetCompatible(Properties.RenderTarget, emitter, defaultSampler);
-	}
-
-	// Make sure the sampler matches what the effect expects
-	// Mismatchs should only happen when using an external sampler
-	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
-	if (!PK_VERIFY(defaultGridSampler != null))
-		return false;
-
-	FString										errorMsg;
-	const u32									gridOrder = static_cast<u32>(Properties.Order + 1);
-	const PopcornFX::Nodegraph::SDataTypeTraits &srcTypeTraits = PopcornFX::Nodegraph::SDataTypeTraits::Traits((PopcornFX::Nodegraph::EDataType)defaultGridSampler->Type());
-	if (defaultGridSampler->Order() != gridOrder)
-	{
-		errorMsg = FString::Printf(TEXT("Effect '%s' needs a %dD grid, sampler '%s' is set to %dD"),
-			*emitter->Effect->GetName(), defaultGridSampler->Order(), *GetName(), gridOrder);
-#if WITH_EDITOR
-		m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("Other"), *errorMsg);
-		m_Data->Clear();
-		OnSamplerValidStateChanged.Broadcast();
-#endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, emitter, errorMsg);
-		return false;
-	}
-
-	PopcornFX::EBaseTypeID		dataType = ToPk(Properties.DataType);
-	if (srcTypeTraits.BaseType() != dataType)
-	{
-		errorMsg = FString::Printf(TEXT("Effect '%s' uses %s data type, sampler '%s' is set to %s"),
-			*emitter->Effect->GetName(), UTF8_TO_TCHAR(srcTypeTraits.Name()),
-			*GetName(), UTF8_TO_TCHAR(PopcornFX::CBaseTypeTraits::Traits(dataType).Name));
-#if WITH_EDITOR
-		m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("Other"), *errorMsg);
-		m_Data->Clear();
-		OnSamplerValidStateChanged.Broadcast();
-#endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, this, emitter, errorMsg);
-		return false;
-	}
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerGrid::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*FPopcornFXAttributeSamplerGrid::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
 	if (!PK_VERIFY(defaultGridSampler != null))
 		return null;
+
+	const FPopcornFXAttributeSamplerPropertiesGrid *propertiesGrid = static_cast<const FPopcornFXAttributeSamplerPropertiesGrid *>(properties);
+	if (propertiesGrid == nullptr)
+		return null;
+	Properties = *propertiesGrid;
 
 	if (Properties.bAssetGrid && Properties.RenderTarget && m_Data->m_Desc != null
 		&& HasRenderTargetChanged())
@@ -661,10 +674,6 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerGrid::_AttribSa
 	{
 		if (!RebuildGridSampler(emitter, defaultSampler))
 		{
-#if WITH_EDITOR
-			OnSamplerValidStateChanged.Broadcast();
-			emitter->SetWarningSprite();
-#endif
 			return null;
 		}
 		m_Data->m_ReloadGrid = false;
@@ -675,14 +684,12 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerGrid::_AttribSa
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::RebuildGridSampler(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerGrid::RebuildGridSampler(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	if (!_RebuildGridSampler(emitter, defaultSampler))
 	{
 		const FString	imageName = Properties.RenderTarget != null ? Properties.RenderTarget->GetName() : FString(TEXT("null"));
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning,
-				TEXT("Failed to setup grid attribute sampler '%s' (Owner = %s)"),
-				*GetName(), GetOwner() != null ? *GetOwner()->GetName() : *FString(TEXT("null")));
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Failed to setup grid attribute sampler '%s'"), *m_SamplerName);
 		m_Data->Clear();
 		return false;
 	}
@@ -691,9 +698,9 @@ bool	UPopcornFXAttributeSamplerGrid::RebuildGridSampler(UPopcornFXEmitterCompone
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerGrid::Build grid sampler", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerGrid::Build grid sampler", POPCORNFX_UE_PROFILER_COLOR);
 
 	PopcornFX::PParticleSamplerDescriptor_Grid_Default	descriptor = PK_NEW(PopcornFX::CParticleSamplerDescriptor_Grid_Default);
 	if (!PK_VERIFY(descriptor != null))
@@ -769,15 +776,6 @@ bool	UPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 			isVolumeTexture = true;
 			pixelFormat = RTVolume->GetFormat();
 		}
-		else
-		{
-#if WITH_EDITOR
-			m_UnsupportedProperties.FindOrAdd(TEXT("RenderTarget"), TEXT("Can only setup attribute sampler from UTextureRenderTarget2D or UTextureRenderTargetVolume"));
-			m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("RenderTarget"), TEXT("Can only setup attribute sampler from UTextureRenderTarget2D or UTextureRenderTargetVolume"));
-#endif
-			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: Can only setup attribute sampler from UTextureRenderTarget2D or UTextureRenderTargetVolume"));
-			return false;
-		}
 	}
 	else
 	{
@@ -839,17 +837,6 @@ bool	UPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 			}
 			else if (Properties.Order == EPopcornFXGridOrder::OneD || Properties.Order == EPopcornFXGridOrder::TwoD)
 			{
-				if (Properties.DataType == EPopcornFXGridDataType::Int ||
-					Properties.DataType == EPopcornFXGridDataType::Int2 ||
-					Properties.DataType == EPopcornFXGridDataType::Int4)
-				{
-#if WITH_EDITOR
-					m_UnsupportedProperties.FindOrAdd(TEXT("DataType"), TEXT("Can only build 1D and 2D textures with float data types"));
-					m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("DataType"), TEXT("Can only build 1D and 2D textures with float data types"));
-#endif
-					UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: Can only build 1D and 2D textures with float data types"));
-					return false;
-				}
 				UTextureRenderTarget2D	*newTexture = NewObject<UTextureRenderTarget2D>(GetTransientPackage(), TEXT("PopcornFX Grid Attribute Sampler 2D"), RF_Transient);
 				check(newTexture != null);
 				newTexture->bAutoGenerateMips = false;
@@ -859,21 +846,8 @@ bool	UPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 				newTexture->UpdateResourceImmediate(true);
 				texture = newTexture;
 			}
-			else
-			{
-#if WITH_EDITOR
-				m_UnsupportedProperties.FindOrAdd(TEXT("Order"), TEXT("Only 1D, 2D and 3D grids are supported"));
-				m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("Order"), TEXT("Only 1D, 2D and 3D grids are supported"));
-#endif
-				UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: Only 1D, 2D and 3D grids are supported"));
-				return false;
-			}
 			if (texture == null)
 			{
-#if WITH_EDITOR
-				m_UnsupportedProperties.FindOrAdd(TEXT("Other"), TEXT("Couldn't create transient texture"));
-				m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("Other"), TEXT("Couldn't create transient texture"));
-#endif
 				UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: couldn't create transient texture"));
 				return false;
 			}
@@ -901,27 +875,18 @@ bool	UPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 		FTextureReferenceRHIRef	texRef = texture->TextureReference.TextureReferenceRHI;
 		if (!IsValidRef(texRef))
 		{
-#if WITH_EDITOR
-			m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("Other"), TEXT("UTexture TextureReference not available"));
-#endif
 			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: UTexture TextureReference not available \"%s\""), *texture->GetPathName());
 			return false;
 		}
 		FRHITexture	*texRHI = texRef->GetReferencedTexture();
 		if (texRHI == null)
 		{
-#if WITH_EDITOR
-			m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("Other"), TEXT("UTexture TextureReference FRHITexture not available"));
-#endif
 			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: UTexture TextureReference FRHITexture not available \"%s\""), *texture->GetPathName());
 			return false;
 		}
 		ID3D12Resource	*gpuTexture = static_cast<ID3D12Resource*>(texRHI->GetNativeResource());
 		if (gpuTexture == null)
 		{
-#if WITH_EDITOR
-			m_IncompatibleProperties.FindOrAdd(emitter).m_Properties.Add(TEXT("Other"), TEXT("UTexture TextureReference FRHITexture D3D12 not available"));
-#endif
 			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: UTexture TextureReference FRHITexture D3D12 not available \"%s\""), *texture->GetPathName());
 			return false;
 		}
@@ -953,7 +918,7 @@ bool	UPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 // 
 //---------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::CanReadFromGrid(UPopcornFXAttributeSamplerGrid *Grid, EPopcornFXGridDataType::Type WantedType)
+bool	FPopcornFXAttributeSamplerGrid::CanReadFromGrid(FPopcornFXAttributeSamplerGrid *Grid, EPopcornFXGridDataType::Type WantedType)
 {
 	if (!Grid)
 	{
@@ -963,20 +928,14 @@ bool	UPopcornFXAttributeSamplerGrid::CanReadFromGrid(UPopcornFXAttributeSamplerG
 
 	if (Grid->Properties.DataType != WantedType)
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Trying to read %s values from a %s grid attribute sampler '%s'"
-			" in actor '%s'%s"),
-			*DataTypeToString(WantedType), *DataTypeToString(Grid->Properties.DataType),
-			*Grid->GetName(), Grid->GetAttachmentRootActor() ? *Grid->GetAttachmentRootActor()->GetName() : TEXT("null"),
-			Grid->bIsInline ? *FString::Printf(TEXT(" for emitter '%s'"), *Grid->GetOuter()->GetName()) : TEXT(""));
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Trying to read %s values from a %s grid attribute sampler '%s'"),
+			*DataTypeToString(WantedType), *DataTypeToString(Grid->Properties.DataType), *Grid->m_SamplerName);
 		return false;
 	}
 
 	if (!Grid->m_Data || Grid->m_Data->m_Desc == null)
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Null grid descriptor when trying to read from grid attribute sampler '%s'"
-			" in actor '%s'%s"),
-			*Grid->GetName(), Grid->GetAttachmentRootActor() ? *Grid->GetAttachmentRootActor()->GetName() : TEXT("null"),
-			Grid->bIsInline ? *FString::Printf(TEXT(" for emitter '%s'"), *Grid->GetOuter()->GetName()) : TEXT(""));
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Null grid descriptor when trying to read from grid attribute sampler '%s'"), *Grid->m_SamplerName);
 		return false;
 	}
 
@@ -985,7 +944,7 @@ bool	UPopcornFXAttributeSamplerGrid::CanReadFromGrid(UPopcornFXAttributeSamplerG
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridFloatValues(UPopcornFXAttributeSamplerGrid *InSelf, TArray<float> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridFloatValues(FPopcornFXAttributeSamplerGrid *InSelf, TArray<float> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Float))
 		return false;
@@ -1004,7 +963,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridFloatValues(UPopcornFXAttributeSamp
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat2Values(UPopcornFXAttributeSamplerGrid *InSelf, TArray<FVector2D> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridFloat2Values(FPopcornFXAttributeSamplerGrid *InSelf, TArray<FVector2D> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Float2))
 		return false;
@@ -1025,7 +984,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat2Values(UPopcornFXAttributeSam
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat3Values(UPopcornFXAttributeSamplerGrid *InSelf, TArray<FVector> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridFloat3Values(FPopcornFXAttributeSamplerGrid *InSelf, TArray<FVector> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Float3))
 		return false;
@@ -1047,7 +1006,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat3Values(UPopcornFXAttributeSam
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat4Values(UPopcornFXAttributeSamplerGrid *InSelf, TArray<FVector4> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridFloat4Values(FPopcornFXAttributeSamplerGrid *InSelf, TArray<FVector4> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Float4))
 		return false;
@@ -1070,7 +1029,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat4Values(UPopcornFXAttributeSam
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridIntValues(UPopcornFXAttributeSamplerGrid *InSelf, TArray<int> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridIntValues(FPopcornFXAttributeSamplerGrid *InSelf, TArray<int> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Int))
 		return false;
@@ -1090,7 +1049,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridIntValues(UPopcornFXAttributeSample
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridInt2Values(UPopcornFXAttributeSamplerGrid *InSelf, TArray<FIntPoint> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridInt2Values(FPopcornFXAttributeSamplerGrid *InSelf, TArray<FIntPoint> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Int2))
 		return false;
@@ -1111,7 +1070,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridInt2Values(UPopcornFXAttributeSampl
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridInt3Values(UPopcornFXAttributeSamplerGrid *InSelf, TArray<FIntVector> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridInt3Values(FPopcornFXAttributeSamplerGrid *InSelf, TArray<FIntVector> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Int3))
 		return false;
@@ -1133,7 +1092,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridInt3Values(UPopcornFXAttributeSampl
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::ReadGridInt4Values(UPopcornFXAttributeSamplerGrid *InSelf, TArray<FIntVector4> &OutValues)
+bool	FPopcornFXAttributeSamplerGrid::ReadGridInt4Values(FPopcornFXAttributeSamplerGrid *InSelf, TArray<FIntVector4> &OutValues)
 {
 	if (!CanReadFromGrid(InSelf, EPopcornFXGridDataType::Int4))
 		return false;
@@ -1162,7 +1121,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridInt4Values(UPopcornFXAttributeSampl
 // 
 //---------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::CanWriteToGrid(UPopcornFXAttributeSamplerGrid *Grid, EPopcornFXGridDataType::Type WantedType, const int32 InValuesCount)
+bool	FPopcornFXAttributeSamplerGrid::CanWriteToGrid(FPopcornFXAttributeSamplerGrid *Grid, EPopcornFXGridDataType::Type WantedType, const int32 InValuesCount)
 {
 	if (!Grid)
 	{
@@ -1172,29 +1131,22 @@ bool	UPopcornFXAttributeSamplerGrid::CanWriteToGrid(UPopcornFXAttributeSamplerGr
 
 	if (Grid->Properties.DataType != WantedType)
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Trying to write %s values into a %s grid attribute sampler '%s'"
-			" in actor '%s'%s"),
-			*DataTypeToString(WantedType), *DataTypeToString(Grid->Properties.DataType),
-			*Grid->GetName(), Grid->GetAttachmentRootActor() ? *Grid->GetAttachmentRootActor()->GetName() : TEXT("null"),
-			Grid->bIsInline ? *FString::Printf(TEXT(" for emitter '%s'"), *Grid->GetOuter()->GetName()) : TEXT(""));
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Trying to write %s values into a %s grid attribute sampler '%s'"),
+			*DataTypeToString(WantedType), *DataTypeToString(Grid->Properties.DataType), *Grid->m_SamplerName);
 		return false;
 	}
 
 	if (!PK_VERIFY(InValuesCount == Grid->GetCellCount()))
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Invalid input array size when trying to write into grid attribute sampler '%s'"
-			" in actor '%s'%s. Grid size: %d (%d x %d x %d). Input array size: %d"),
-			*Grid->GetName(), Grid->GetAttachmentRootActor() ? *Grid->GetAttachmentRootActor()->GetName() : TEXT("null"),
-			Grid->bIsInline ? *FString::Printf(TEXT(" for emitter '%s'"), *Grid->GetOuter()->GetName()) : TEXT(""),
-			Grid->GetCellCount(), Grid->Properties.SizeX, Grid->Properties.SizeY, Grid->Properties.SizeZ, InValuesCount);
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Invalid input array size when trying to write into grid attribute sampler '%s'."
+			" Grid size: %d (%d x %d x %d). Input array size: %d"),
+			*Grid->m_SamplerName, Grid->GetCellCount(), Grid->Properties.SizeX, Grid->Properties.SizeY, Grid->Properties.SizeZ, InValuesCount);
 		return false;
 	}
 	if (!Grid->m_Data || Grid->m_Data->m_Desc == null)
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Null grid descriptor when trying to write into grid attribute sampler '%s'"
-			" in actor '%s'%s"),
-			*Grid->GetName(), Grid->GetAttachmentRootActor() ? *Grid->GetAttachmentRootActor()->GetName() : TEXT("null"),
-			Grid->bIsInline ? *FString::Printf(TEXT(" for emitter '%s'"), *Grid->GetOuter()->GetName()) : TEXT(""));
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("Null grid descriptor when trying to write into grid attribute sampler '%s'"),
+			*Grid->m_SamplerName);
 			return false;
 	}
 	return true;
@@ -1202,16 +1154,16 @@ bool	UPopcornFXAttributeSamplerGrid::CanWriteToGrid(UPopcornFXAttributeSamplerGr
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridFloatValues(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<float> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridFloatValues(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<float> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Float, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Float, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<float> values(reinterpret_cast<float*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<float> values(reinterpret_cast<float*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(float));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1221,16 +1173,16 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridFloatValues(UPopcornFXAttributeSam
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridFloat2Values(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<FVector2D> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridFloat2Values(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<FVector2D> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Float2, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Float2, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<PopcornFX::CFloat2> values(reinterpret_cast<PopcornFX::CFloat2*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<PopcornFX::CFloat2> values(reinterpret_cast<PopcornFX::CFloat2*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CFloat2));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1241,16 +1193,16 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridFloat2Values(UPopcornFXAttributeSa
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridFloat3Values(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<FVector> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridFloat3Values(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<FVector> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Float3, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Float3, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<PopcornFX::CFloat3> values(reinterpret_cast<PopcornFX::CFloat3*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<PopcornFX::CFloat3> values(reinterpret_cast<PopcornFX::CFloat3*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CFloat3));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1262,16 +1214,16 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridFloat3Values(UPopcornFXAttributeSa
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridFloat4Values(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<FVector4> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridFloat4Values(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<FVector4> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Float4, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Float4, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<PopcornFX::CFloat4> values(reinterpret_cast<PopcornFX::CFloat4*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<PopcornFX::CFloat4> values(reinterpret_cast<PopcornFX::CFloat4*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CFloat4));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1284,16 +1236,16 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridFloat4Values(UPopcornFXAttributeSa
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridIntValues(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<int> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridIntValues(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<int> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Int, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Int, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<int> values(reinterpret_cast<int*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<int> values(reinterpret_cast<int*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(int));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1303,16 +1255,16 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridIntValues(UPopcornFXAttributeSampl
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridInt2Values(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<FIntPoint> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridInt2Values(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<FIntPoint> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Int2, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Int2, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<PopcornFX::CInt2> values(reinterpret_cast<PopcornFX::CInt2*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<PopcornFX::CInt2> values(reinterpret_cast<PopcornFX::CInt2*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CInt2));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1323,16 +1275,16 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridInt2Values(UPopcornFXAttributeSamp
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridInt3Values(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<FIntVector> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridInt3Values(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<FIntVector> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Int3, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Int3, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<PopcornFX::CInt3> values(reinterpret_cast<PopcornFX::CInt3*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<PopcornFX::CInt3> values(reinterpret_cast<PopcornFX::CInt3*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CInt3));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1344,16 +1296,16 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridInt3Values(UPopcornFXAttributeSamp
 	return true;
 }
 
-bool	UPopcornFXAttributeSamplerGrid::WriteGridInt4Values(UPopcornFXAttributeSamplerGrid *InSelf, const TArray<FIntVector4> &InValues)
+bool	FPopcornFXAttributeSamplerGrid::WriteGridInt4Values(FPopcornFXAttributeSamplerGrid *InGrid, const TArray<FIntVector4> &InValues)
 {
-	if (!CanWriteToGrid(InSelf, EPopcornFXGridDataType::Int4, InValues.Num()))
+	if (!CanWriteToGrid(InGrid, EPopcornFXGridDataType::Int4, InValues.Num()))
 		return false;
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->GetCellCount();
+	const u32	expectedCount = InGrid->GetCellCount();
 
-	PopcornFX::TStridedMemoryView<PopcornFX::CInt4> values(reinterpret_cast<PopcornFX::CInt4*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
+	PopcornFX::TStridedMemoryView<PopcornFX::CInt4> values(reinterpret_cast<PopcornFX::CInt4*>(InGrid->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CInt4));
 
 	for (u32 i = 0; i < expectedCount; i++)
@@ -1368,7 +1320,7 @@ bool	UPopcornFXAttributeSamplerGrid::WriteGridInt4Values(UPopcornFXAttributeSamp
 
 //----------------------------------------------------------------------------
 
-int32	UPopcornFXAttributeSamplerGrid::GetCellCount() const
+int32	FPopcornFXAttributeSamplerGrid::GetCellCount() const
 {
 	if (Properties.bAssetGrid && Properties.RenderTarget)
 	{
@@ -1400,7 +1352,7 @@ int32	UPopcornFXAttributeSamplerGrid::GetCellCount() const
 
 //----------------------------------------------------------------------------
 
-FIntVector	UPopcornFXAttributeSamplerGrid::GetDimensions() const
+FIntVector	FPopcornFXAttributeSamplerGrid::GetDimensions() const
 {
 	FIntVector	dimensions;
 	dimensions.X = 1;
@@ -1434,7 +1386,5 @@ FIntVector	UPopcornFXAttributeSamplerGrid::GetDimensions() const
 	}
 	return dimensions;
 }
-
-//----------------------------------------------------------------------------
 
 #undef LOCTEXT_NAMESPACE

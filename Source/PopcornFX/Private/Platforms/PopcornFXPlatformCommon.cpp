@@ -318,8 +318,10 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 			}
 
 			FShaderCompilerOutput		output;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 8)
 			const FString				workingDirectory;
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 8)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 			FShaderPreprocessOutput		preprocessorOutput;
 			FString						DebugUSF;
 			bool						bSuccess = FFileHelper::LoadFileToString(DebugUSF, *input.VirtualSourceFilePath);
@@ -327,7 +329,11 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 
 			ShaderConvertAndStripComments(DebugUSF, Stripped);
 			preprocessorOutput.EditSource().Set({ Stripped.GetData(), Stripped.Num() });
+#	if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output);
+#	else
 			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output, workingDirectory);
+#	endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 #else
 			FShaderPreprocessOutput		preprocessorOutput;
 			FShaderCompilerEnvironment	mergedEnvironment;
@@ -337,7 +343,7 @@ bool	CompileComputeShaderForAPI(	const PopcornFX::CString				&source,
 				return false;
 			}
 			shaderFormat->CompilePreprocessedShader(input, preprocessorOutput, output, workingDirectory);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 
 			if (output.bSucceeded)
 			{

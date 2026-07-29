@@ -88,9 +88,9 @@ void FPopcornFXCustomizationAttributeSamplerShape::CustomizeChildren(TSharedRef<
 	ChildBuilder.AddProperty(shapesPty.ToSharedRef());
 #endif
 
-	AddErrorableProperty(PropertyHandle, "bUseRelativeTransform", ChildBuilder,
+	AddErrorableProperty(PropertyHandle, "ShapeTransforms", ChildBuilder,
 		shapeType != EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
-
+	
 	// Skeletal mesh
 
 	AddErrorableProperty(PropertyHandle, "TargetActor", ChildBuilder,
@@ -124,13 +124,17 @@ void FPopcornFXCustomizationAttributeSamplerShape::CustomizeChildren(TSharedRef<
 		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
 	AddErrorableProperty(PropertyHandle, "bApplyScale", ChildBuilder,
-		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
+		true, true);
 
 	AddErrorableProperty(PropertyHandle, "bEditorBuildInitialPose", ChildBuilder,
 		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
 
-	AddErrorableProperty(PropertyHandle, "Transforms", ChildBuilder,
+	AddErrorableProperty(PropertyHandle, "SkinnedTransforms", ChildBuilder,
 		shapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh, true);
+
+	AddErrorableProperty(PropertyHandle, "Position", ChildBuilder, true, true);
+
+	AddErrorableProperty(PropertyHandle, "Rotation", ChildBuilder, true, true);
 }
 
 //----------------------------------------------------------------------------

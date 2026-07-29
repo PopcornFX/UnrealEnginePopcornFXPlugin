@@ -111,14 +111,14 @@ TSharedRef<SWidget>	FPopcornFXAttributeTrackEditor::OnGetAddParameterMenuContent
 		emitterComponent->Effect == null)
 		return addParameterMenuBuilder.MakeWidget();
 
-	UPopcornFXAttributeList	*attributeList = emitterComponent->GetAttributeList();
+	FPopcornFXAttributeList	*attributeList = emitterComponent->GetAttributeList();
 	PK_ASSERT(attributeList != null);
 
 	if (!attributeList->Valid() ||
 		!attributeList->IsUpToDate(emitterComponent->Effect))
 		return addParameterMenuBuilder.MakeWidget();
 
-	const u32	attrCount = attributeList->AttributeCount();
+	const u32	attrCount = attributeList->AttributeDescCount();
 	for (u32 iAttr = 0; iAttr < attrCount; ++iAttr)
 	{
 		const FPopcornFXAttributeDesc	*desc = attributeList->GetAttributeDesc(iAttr);

@@ -107,7 +107,7 @@ public:
 		void	ClearBuffers();
 	};
 
-	struct	SAdditionalInput
+	struct	SAdditionalInputDesc
 	{
 		u32		m_BufferOffset = 0;
 		u32		m_ByteSize = 0;
@@ -158,7 +158,7 @@ private:
 	CPooledVertexBuffer				m_SimData;
 
 	// Additional input fields
-	PopcornFX::TArray<SAdditionalInput>						m_AdditionalInputs;
+	PopcornFX::TArray<SAdditionalInputDesc>					m_AdditionalInputDescs;
 	PopcornFX::TArray<PopcornFX::Drawers::SCopyFieldDesc>	m_MappedAdditionalInputs;
 
 #if RHI_RAYTRACING

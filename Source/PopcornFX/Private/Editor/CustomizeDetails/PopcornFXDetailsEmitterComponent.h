@@ -9,19 +9,17 @@
 
 #include "PopcornFXMinimal.h"
 
-#include "PopcornFXDetailsAttributeList.h"
+#include "IDetailCustomization.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "PropertyEditorModule.h"
 
 #include "IDetailCustomization.h"
 
 class UPopcornFXEmitterComponent;
-class UPopcornFXAttributeList;
 class UPopcornFXEffect;
 class IDetailCategoryBuilder;
-struct FPopcornFXSamplerDesc;
 
-class FPopcornFXDetailsEmitterComponent : public FPopcornFXDetailsAttributeList
+class FPopcornFXDetailsEmitterComponent : public IDetailCustomization
 {
 public:
 	FPopcornFXDetailsEmitterComponent();
@@ -32,8 +30,6 @@ public:
 	virtual void			CustomizeDetails(IDetailLayoutBuilder& DetailLayout) override;
 
 private:
-	void					BuildSampler(const FPopcornFXSamplerDesc *desc, const TSharedPtr<IPropertyHandle> samplerPty, const TSharedPtr<IPropertyHandle> samplerDescPty, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory) override;
-
 	void					GatherEmitters(TArray<UPopcornFXEmitterComponent *> &outComponents) const;
 	void					GatherEffects(TArray<UPopcornFXEffect *> &outEffects);
 	FReply					OnStartEmitter();
@@ -44,6 +40,13 @@ private:
 	FReply					OnReimportEffect();
 	bool					IsStartEnabled() const;
 	bool					IsStopEnabled() const;
+	void					RebuildIFN();
+
+protected:
+
+	TArray<TWeakObjectPtr<UObject> >	m_BeingCustomized;
+	TSharedPtr<IPropertyUtilities>		m_PropertyUtilities;
+	IDetailCategoryBuilder				*m_AttributeListCategory;
 };
 
 #endif // WITH_EDITOR

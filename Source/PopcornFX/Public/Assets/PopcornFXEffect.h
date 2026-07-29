@@ -6,11 +6,10 @@
 #pragma once
 
 #include "Assets/PopcornFXFile.h"
+#include "PopcornFXAttributeList.h"
 #include "PopcornFXEffect.generated.h"
 
 class	UPopcornFXEmitterComponent;
-class	UPopcornFXAttributeList;
-class	UPopcornFXAttributeSampler;
 class	UPopcornFXRendererMaterial;
 class	CPopcornFXEffect;
 
@@ -26,12 +25,8 @@ class UPopcornFXEffect : public UPopcornFXFile
 
 public:
 	/** Attribute list used as default values for future emitters and the one in the asset editor viewport */
-	UPROPERTY(Category="PopcornFX Default Attributes", Instanced, VisibleAnywhere)
-	UPopcornFXAttributeList					*DefaultAttributeList;
-
-	/** Attribute samplers to used as default values for future emitters and the one in the asset editor viewport */
-	UPROPERTY(Category = "PopcornFX Default Attributes", VisibleAnywhere)
-	TArray<UPopcornFXAttributeSampler*>		DefaultSamplers;
+	UPROPERTY(Category="PopcornFX Default Attributes", EditAnywhere)
+	FPopcornFXAttributeList					DefaultAttributeList;
 
 	/** UE materials used by the effect to render its particles */
 	UPROPERTY(Category="PopcornFX RendererMaterials", Instanced, VisibleAnywhere)
@@ -40,15 +35,14 @@ public:
 #if WITH_EDITORONLY_DATA
 	// The emitter in the preview/asset edition window if there is one
 	UPROPERTY()
-	UPopcornFXEmitterComponent *PreviewEmitter;
+	UPopcornFXEmitterComponent				*PreviewEmitter;
 #endif // WITH_EDITORONLY_DATA
 
 	bool					LoadEffectIFN();
 	bool					IsLoadCompleted() const;
 	bool					EffectIsLoaded() const { ensure(IsLoadCompleted()); return m_Loaded; }
 
-	bool									IsTheDefaultAttributeList(const UPopcornFXAttributeList *list) const { return list == DefaultAttributeList; }
-	UPopcornFXAttributeList					*GetDefaultAttributeList();
+	bool									IsTheDefaultAttributeList(const FPopcornFXAttributeList *list) const { return list == &DefaultAttributeList; }
 
 	CPopcornFXEffect						*Effect() { return m_Private; }
 

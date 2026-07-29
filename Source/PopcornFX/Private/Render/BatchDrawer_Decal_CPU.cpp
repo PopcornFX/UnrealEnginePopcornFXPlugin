@@ -19,11 +19,7 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "MaterialDomain.h"
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 #include "SceneProxies/DeferredDecalProxy.h"
-#else
-#include "Components/SceneComponent.h"
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 #include <pk_particles/include/Storage/MainMemory/storage_ram.h>
 #include <pk_render_helpers/include/render_features/rh_features_basic.h>

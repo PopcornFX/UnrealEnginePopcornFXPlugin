@@ -22,7 +22,25 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerText, Log, All);
 
 //----------------------------------------------------------------------------
 //
-// UPopcornFXAttributeSamplerText
+// FPopcornFXAttributeSamplerPropertiesText
+//
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesText::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesText::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXAttributeSamplerText
 //
 //----------------------------------------------------------------------------
 
@@ -35,7 +53,7 @@ struct FAttributeSamplerTextData
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerText::SetText(FString InText)
+void	FPopcornFXAttributeSamplerText::SetText(FString InText)
 {
 	m_Data->m_NeedsReload = true;
 	Properties.Text = InText;
@@ -43,13 +61,11 @@ void	UPopcornFXAttributeSamplerText::SetText(FString InText)
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSamplerText::UPopcornFXAttributeSamplerText(const FObjectInitializer &PCIP)
-	: Super(PCIP)
+FPopcornFXAttributeSamplerText::FPopcornFXAttributeSamplerText()
 {
-	bAutoActivate = true;
 
 	Properties.Text = "";
-	// UPopcornFXAttributeSampler override:
+	// FPopcornFXAttributeSampler override:
 	m_SamplerType = EPopcornFXAttributeSamplerType::Text;
 
 	m_Data = new FAttributeSamplerTextData();
@@ -57,7 +73,7 @@ UPopcornFXAttributeSamplerText::UPopcornFXAttributeSamplerText(const FObjectInit
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerText::BeginDestroy()
+void	FPopcornFXAttributeSamplerText::BeginDestroy()
 {
 	if (m_Data != null)
 	{
@@ -71,7 +87,7 @@ void	UPopcornFXAttributeSamplerText::BeginDestroy()
 
 #if WITH_EDITOR
 
-void	UPopcornFXAttributeSamplerText::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+void	FPopcornFXAttributeSamplerText::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.Property != NULL)
 	{
@@ -84,9 +100,9 @@ void	UPopcornFXAttributeSamplerText::PostEditChangeProperty(FPropertyChangedEven
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerText::CopyPropertiesFrom(const UPopcornFXAttributeSampler *other)
+void	FPopcornFXAttributeSamplerText::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
 {
-	const FPopcornFXAttributeSamplerPropertiesText *newTextProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesText *>(other->GetProperties());
+	const FPopcornFXAttributeSamplerPropertiesText *newTextProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesText *>(other);
 	if (!PK_VERIFY(newTextProperties != null))
 	{
 		UE_LOG(LogPopcornFXAttributeSamplerText, Error, TEXT("New properties are null or not text properties"));
@@ -105,36 +121,39 @@ void	UPopcornFXAttributeSamplerText::CopyPropertiesFrom(const UPopcornFXAttribut
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerText::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+void	FPopcornFXAttributeSamplerText::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
 {
-	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
-
-	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
-
-	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	const FPopcornFXAttributeSamplerPropertiesText *newTextProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesText *>(other);
+	if (newTextProperties == null)
 	{
 		return;
 	}
 
-	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
-	if (samplerList.Count() == 0)
+	if (newTextProperties->Text != Properties.Text)
+	{
+		m_Data->m_NeedsReload = true;
+	}
+
+	Properties = *newTextProperties;
+}
+//----------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerPropertiesText::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(decl, updateUnlockedValues);
+
+	if (decl == null)
 	{
 		return;
 	}
-	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
-	PK_ASSERT(samplerDesc != null);
-	if (samplerDesc == null)
-	{
-		return;
-	}
-	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+	const PopcornFX::PResourceDescriptor		defaultSampler = decl->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_Text *text = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Text>(defaultSampler.Get());
 	if (text != null)
 	{
 		if (updateUnlockedValues)
 		{
-			Properties.Text = ToUE(text->TextData());
+			Text = ToUE(text->TextData());
 		}
 	}
 }
@@ -143,26 +162,19 @@ void	UPopcornFXAttributeSamplerText::SetupDefaults(UPopcornFXEffect *effect, con
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerText::ArePropertiesSupported()
-{
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerText::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerText::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSamplerText::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
+
 	const PopcornFX::CResourceDescriptor_Text *defaultTextSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Text>(defaultSampler);
 	if (!PK_VERIFY(defaultTextSampler != null))
 		return null;
+
+	const FPopcornFXAttributeSamplerPropertiesText *propertiesText = static_cast<const FPopcornFXAttributeSamplerPropertiesText *>(properties);
+	if (propertiesText == nullptr)
+		return null;
+	Properties = *propertiesText;
+
 	if (m_Data->m_Desc == null)
 	{
 		m_Data->m_Desc = PK_NEW(PopcornFX::CParticleSamplerDescriptor_Text_Default());

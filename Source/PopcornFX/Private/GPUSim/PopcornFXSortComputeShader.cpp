@@ -7,6 +7,7 @@
 
 #include "GPUSim/PopcornFXGPUSim.h"
 #include "Render/PopcornFXShaderUtils.h"
+#include "ProfilingDebugging/RealtimeGPUProfiler.h"
 
 #include "PipelineStateCache.h"
 #include "ShaderParameterUtils.h"

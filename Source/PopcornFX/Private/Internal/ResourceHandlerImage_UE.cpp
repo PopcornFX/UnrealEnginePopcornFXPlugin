@@ -113,7 +113,11 @@ const TCHAR*	 _My_GetPixelFormatString(EPixelFormat InPixelFormat)
 {
 	switch (InPixelFormat)
 	{
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+		FOREACH_ENUM_EPIXELFORMAT_CORE(_MY_CASE_ENUM_TO_TEXT)
+#else
 		FOREACH_ENUM_EPIXELFORMAT(_MY_CASE_ENUM_TO_TEXT)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 	default:
 		return TEXT("PF_Unknown");
 	}
@@ -124,7 +128,11 @@ const char*	 _My_GetPixelFormatStringANSI(EPixelFormat InPixelFormat)
 {
 	switch (InPixelFormat)
 	{
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+		FOREACH_ENUM_EPIXELFORMAT_CORE(_MY_CASE_ENUM_TO_ANSI)
+#else
 		FOREACH_ENUM_EPIXELFORMAT(_MY_CASE_ENUM_TO_ANSI)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 	default:
 		return "PF_Unknown";
 	}
@@ -521,7 +529,6 @@ bool	CResourceHandlerImage_UE::IsUsed(const PopcornFX::CString &virtualPath, boo
 			return entry->m_ReferenceCount > 1;
 		return true;
 	}
-	return false;
 }
 
 //----------------------------------------------------------------------------

@@ -47,7 +47,6 @@ public:
 	virtual void								OnFocusViewportToSelection() override;
 public:
 	void			ResetEmitterAttributes();
-	void			ResetEmitterSamplers();
 	void			ResetEmitter();
 
 	void			ToggleLoopEmitter(ECheckBoxState newState);

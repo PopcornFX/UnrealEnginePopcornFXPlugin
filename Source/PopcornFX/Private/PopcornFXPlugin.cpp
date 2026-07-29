@@ -423,7 +423,11 @@ void	FPopcornFXPlugin::StartupModule()
 		{
 			UE_LOG(LogPopcornFXPlugin, Error, TEXT("Couldn't startup PopcornFX"));
 		}
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 8)
+		FCoreDelegates::GetOnPostEngineInit().AddRaw(this, &FPopcornFXPlugin::OnPostEngineInit);
+#else
 		FCoreDelegates::OnPostEngineInit.AddRaw(this, &FPopcornFXPlugin::OnPostEngineInit);
+#endif // (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 8)
 	}
 
 #if WITH_EDITOR
@@ -478,7 +482,11 @@ bool	FPopcornFXPlugin::_LinkSimInterfaces()
 
 void	FPopcornFXPlugin::ShutdownModule()
 {
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 8)
+	FCoreDelegates::GetOnPostEngineInit().RemoveAll(this);
+#else
 	FCoreDelegates::OnPostEngineInit.RemoveAll(this);
+#endif // (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 8)
 
 #if WITH_EDITOR
 
@@ -861,7 +869,11 @@ UObject	*FPopcornFXPlugin::LoadUObjectFromPkPath(const PopcornFX::CString &pkPat
 	if (!m_LaunchedPopcornFX) // could happen at shutdown
 		return null;
 
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+	if (!PK_VERIFY(!IsGarbageCollecting() && !UE::IsSavingPackage()))
+#else
 	if (!PK_VERIFY(!IsGarbageCollecting() && !GIsSavingPackage))
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 		return null;
 
 #if WITH_EDITOR

@@ -256,20 +256,20 @@ bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 		_ClearStreamOffsets();
 
 		// Additional inputs sent to shaders (AlphaRemapCursor, Colors, ..)
-		const u32	aFieldCount = toGenerate.m_AdditionalGeneratedInputs.Count();
+		const u32	aFieldCount = m_AdditionalInputs.Count();
 
-		m_AdditionalInputs.Clear();
-		if (!PK_VERIFY(m_AdditionalInputs.Reserve(aFieldCount))) // Max possible additional field count
+		m_AdditionalInputDescs.Clear();
+		if (!PK_VERIFY(m_AdditionalInputDescs.Reserve(aFieldCount))) // Max possible additional field count
 			return false;
 
 		m_SimDataBufferSizeInBytes = 0;
 		for (u32 iField = 0; iField < aFieldCount; ++iField)
 		{
-			const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = toGenerate.m_AdditionalGeneratedInputs[iField];
+			const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = m_AdditionalInputs[iField];
 
 			const PopcornFX::CStringId			&fieldName = additionalInput.m_Name;
 			u32									typeSize = PopcornFX::CBaseTypeTraits::Traits(additionalInput.m_Type).Size;
-			const u32							fieldID = m_AdditionalInputs.Count();
+			const u32							fieldID = m_AdditionalInputDescs.Count();
 			EPopcornFXAdditionalStreamOffsets	streamOffsetType = EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
 
 			if (!_IsAdditionalInputSupported(fieldName, additionalInput.m_Type, streamOffsetType))
@@ -277,9 +277,9 @@ bool	CBatchDrawer_Triangle_CPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 			PK_ASSERT(streamOffsetType < EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount);
 			m_AdditionalStreamOffsets[streamOffsetType].Setup(m_SimDataBufferSizeInBytes, iField);
 
-			if (!PK_VERIFY(m_AdditionalInputs.PushBack().Valid()))
+			if (!PK_VERIFY(m_AdditionalInputDescs.PushBack().Valid()))
 				return false;
-			SAdditionalInput	&newAdditionalInput = m_AdditionalInputs.Last();
+			SAdditionalInputDesc	&newAdditionalInput = m_AdditionalInputDescs.Last();
 
 			newAdditionalInput.m_BufferOffset = m_SimDataBufferSizeInBytes;
 			newAdditionalInput.m_ByteSize = typeSize;
@@ -436,7 +436,7 @@ bool	CBatchDrawer_Triangle_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 			return false;
 		m_BBJobs_Triangle.m_Exec_PNT.m_Texcoords = uv0s;
 	}
-	if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
+	if (!m_AdditionalInputs.Empty())
 	{
 		PK_ASSERT(m_SimData.Valid());
 		PopcornFX::TMemoryView<float>	simData;
@@ -449,13 +449,13 @@ bool	CBatchDrawer_Triangle_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 		float	*_data = simData.Data();
 
 		// Additional inputs
-		const u32	aFieldCount = m_AdditionalInputs.Count();
+		const u32	aFieldCount = m_AdditionalInputDescs.Count();
 
 		if (!PK_VERIFY(m_MappedAdditionalInputs.Resize(aFieldCount)))
 			return false;
 		for (u32 iField = 0; iField < aFieldCount; ++iField)
 		{
-			SAdditionalInput					&field = m_AdditionalInputs[iField];
+			SAdditionalInputDesc				&field = m_AdditionalInputDescs[iField];
 			PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[iField];
 
 			desc.m_Storage.m_Count = totalParticleCount;
@@ -473,9 +473,9 @@ bool	CBatchDrawer_Triangle_CPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 	PK_ASSERT(activeViewCount == m_BBJobs_Triangle.m_PerView.Count());
 	for (u32 iView = 0; iView < activeViewCount; ++iView)
 	{
-		const u32									viewGeneratedInputs = drawPass.m_ToGenerate.m_PerViewGeneratedInputs[iView].m_GeneratedInputs;
-		SViewDependent								&viewDep = m_ViewDependents[iView];
-		PopcornFX::STriangleBatchJobs::SPerView		&dstView = m_BBJobs_Triangle.m_PerView[iView];
+		const u32						viewGeneratedInputs = drawPass.m_ToGenerate.m_PerViewGeneratedInputs[iView].m_GeneratedInputs;
+		SViewDependent					&viewDep = m_ViewDependents[iView];
+		STriangleBatchJobs::SPerView	&dstView = m_BBJobs_Triangle.m_PerView[iView];
 
 		if (viewGeneratedInputs & PopcornFX::Drawers::GenInput_Indices)
 		{

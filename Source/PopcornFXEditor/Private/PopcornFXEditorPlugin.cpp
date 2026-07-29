@@ -14,6 +14,7 @@
 #include "DependencyModules/PopcornFXDependencyModuleSequencer.h"
 
 #include "PopcornFXFileThumbnailRenderer.h"
+#include "PopcornFXStyleEditor.h"
 #include "Editor/PopcornFXAssetBroker.h"
 
 #include "ThumbnailRendering/ThumbnailManager.h"
@@ -59,12 +60,14 @@ void	FPopcornFXEditorPlugin::StartupModule()
 		m_PopcornFXAssetBroker = MakeShareable(new FPopcornFXEmitterComponentAssetBroker);
 		FComponentAssetBrokerage::RegisterBroker(m_PopcornFXAssetBroker, FPopcornFXEmitterComponentAssetBroker::ComponentStaticClass(), true, true);
 	}
+	FPopcornFXStyleEditor::Initialize();
 }
 
 //----------------------------------------------------------------------------
 
 void	FPopcornFXEditorPlugin::ShutdownModule()
 {
+	FPopcornFXStyleEditor::Shutdown();
 	//UThumbnailManager::Get().UnregisterCustomRenderer(UPopcornFXEffect::StaticClass());
 	FModuleManager::Get().OnModulesChanged().Remove(m_OnModulesChangedHandle);
 	UnloadModuleActions(m_DeferredModuleActions);

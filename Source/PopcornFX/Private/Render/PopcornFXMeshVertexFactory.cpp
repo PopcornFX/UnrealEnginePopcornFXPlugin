@@ -92,14 +92,7 @@ bool	FPopcornFXMeshVertexFactory::IsCompatible(UMaterialInterface *material)
 
 void	FPopcornFXMeshVertexFactory::SetData(const FDataType& InData)
 {
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 	check(IsInAnyRenderingThread());
-#else
-	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 	Data = InData;
 	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
 }

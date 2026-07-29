@@ -947,11 +947,11 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 				if (rigidVAT)
 				{
 					// The info isn't stored in the serialized mesh, force a reimport whenever the effect is reimported.
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 					UFbxStaticMeshImportData	*meshImportData = Cast<UFbxStaticMeshImportData>(mat.EditablePropertiesDefault.StaticMesh->GetAssetImportData());
 #else
 					UFbxStaticMeshImportData *meshImportData = Cast<UFbxStaticMeshImportData>(mat.EditablePropertiesDefault.StaticMesh->AssetImportData);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 					meshImportData->Modify();
 					meshImportData->VertexColorImportOption = EVertexColorImportOption::Replace;
 					UReimportFbxStaticMeshFactory*	FbxStaticMeshReimportFactory = NewObject<UReimportFbxStaticMeshFactory>(UReimportFbxStaticMeshFactory::StaticClass());
@@ -2558,12 +2558,12 @@ UStaticMesh		*LoadMeshPk(const PopcornFX::CString &pkPath)
 	UStaticMesh		*mesh = Cast<UStaticMesh>(obj);
 	if (obj != null && mesh == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a mesh: '%s'"), *ToUE(pkPath));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Asset is not a static mesh: '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	if (mesh == null)
 	{
-		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load mesh '%s'"), *ToUE(pkPath));
+		UE_LOG(LogPopcornFXRendererMaterial, Warning, TEXT("Could not load static mesh '%s'"), *ToUE(pkPath));
 		return null;
 	}
 	return mesh;

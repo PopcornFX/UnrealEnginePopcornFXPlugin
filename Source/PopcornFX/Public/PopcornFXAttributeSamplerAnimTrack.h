@@ -38,9 +38,18 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesAnimTrack : public FPop
 	GENERATED_USTRUCT_BODY()
 
 public:
+	//virtual void			CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
+	virtual bool			ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) override;
+	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
+	virtual bool			ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+
+	class USplineComponent	*ResolveSplineComponent(UPopcornFXEmitterComponent *owner, const FString &samplerName, bool logErrors);
+
+public:
 	/** Specifies which actors contains the target SplineComponent */
 	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
-	class AActor			*TargetActor;
+	class AActor									*TargetActor;
 
 	/**
 		Use this property to specify the target spline component name:
@@ -50,22 +59,22 @@ public:
 		- If TargetActor isn't specified, but no spline component has this name, fallbacks to this actor's RootComponent
 	*/
 	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere)
-	FName					SplineComponentName;
+	FName											SplineComponentName;
 
 	/** Enable translations */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
-	uint32					bTranslate : 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PopcornFX AttributeSampler")
+	uint32											bTranslate : 1;
 
 	/**
 		Enable rotations
 		Please note: If you need accurate orientations, disable "FastSampler".
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
-	uint32					bRotate : 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PopcornFX AttributeSampler")
+	uint32											bRotate : 1;
 
 	/** Enable scale */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
-	uint32					bScale : 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PopcornFX AttributeSampler")
+	uint32											bScale : 1;
 
 	/**
 		Enable this to use PopcornFX curve sampling for better performance. The drawback is a lack of accuracy when sampling orientations.
@@ -74,19 +83,24 @@ public:
 		Don't hesitate to contact support for more informations.
 		Note: Restart emitters referencing this sampler when this value gets changed
 	*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
-	uint32					bFastSampler : 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PopcornFX AttributeSampler")
+	uint32											bFastSampler : 1;
 
 	/** EDITOR ONLY: Enable this to rebuild the curve every frame. Useful to iterate quickly when building a spline component. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
-	uint32					bEditorRebuildEachFrame : 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PopcornFX AttributeSampler")
+	uint32											bEditorRebuildEachFrame : 1;
 
 	/** Determines what transforms will be used for this attribute sampler */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<EPopcornFXSplineTransforms::Type>	Transforms;
 
+#if WITH_EDITOR
+	virtual void									SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues = false) override;
+#endif
+
 	FPopcornFXAttributeSamplerPropertiesAnimTrack()
-	:	TargetActor()
+	:	FPopcornFXAttributeSamplerProperties(EPopcornFXAttributeSamplerType::AnimTrack)
+	,	TargetActor()
 	,	bTranslate(true)
 	,	bRotate(false)
 	,	bScale(false)
@@ -95,42 +109,52 @@ public:
 	,	Transforms(EPopcornFXSplineTransforms::AttrSamplerRelativeTr)
 	{ }
 };
-
 /** Can override an Attribute Sampler **AnimTrack** by a **USplineComponent**. */
-UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
-class POPCORNFX_API UPopcornFXAttributeSamplerAnimTrack : public UPopcornFXAttributeSampler
+USTRUCT(meta=(BlueprintSpawnableComponent))
+struct POPCORNFX_API FPopcornFXAttributeSamplerAnimTrack : public FPopcornFXAttributeSampler
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
 	FPopcornFXAttributeSamplerPropertiesAnimTrack	Properties;
 
-private:
+	FPopcornFXAttributeSamplerAnimTrack();
+
 	void	BeginDestroy() override;
 
 #if WITH_EDITOR
 	void	PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent);
 #endif // WITH_EDITOR
 
-	// UPopcornFXAttributeSampler overrides
+	// FPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
 #if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
-	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
+	virtual void									CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	virtual void									RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) override;
 #endif
-	virtual bool									ArePropertiesSupported() override;
-	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual void									_AttribSampler_PreUpdate(float deltaTime);
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual void									_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime) override;
 
-	class USplineComponent							*ResolveSplineComponent(bool logErrors);
-	bool											RebuildCurvesIFN();
+	bool											RebuildCurvesIFN(UPopcornFXEmitterComponent *owner);
 
 private:
 	FAttributeSamplerAnimTrackData	*m_Data;
 
 	FMatrix44f						m_TrackTransforms;
 	FMatrix44f						m_TrackTransformsUnscaled;
+};
+
+UCLASS(meta = (BlueprintSpawnableComponent))
+class POPCORNFX_API UPopcornFXAttributeSamplerAnimTrackAsset : public UPopcornFXAttributeSamplerAsset
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	FPopcornFXAttributeSamplerPropertiesAnimTrack	Properties;
+
+public:
+	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const override { return &Properties; }
+	virtual FPopcornFXAttributeSamplerProperties		*GetProperties() override { return &Properties; }
+
 };

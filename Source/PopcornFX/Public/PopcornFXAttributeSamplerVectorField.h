@@ -50,51 +50,63 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesVectorField : public FP
 {
 	GENERATED_USTRUCT_BODY()
 
+public:
+	//virtual void				CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
+	virtual bool				ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) override;
+	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
+	virtual bool				ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+
 	/** Vectorfield asset. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	class UVectorFieldStatic	*VectorField;
 
 	/** Additional intensity multiplier. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	float						Intensity;
 
 	/** Rotation animation (euler angles / seconds). */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	FVector						RotationAnimation;
 
 	/** Vectorfield wrap mode. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<EPopcornFXVectorFieldWrapMode::Type>		WrapMode;
 
 	/** Vectorfield sampling mode. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<EPopcornFXVectorFieldSamplingMode::Type>	SamplingMode;
 
 	/** Vectorfield bounds type. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<EPopcornFXVectorFieldBounds::Type>			BoundsSource;
 
 	/** Vectorfield volume dimensions. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	FVector					VolumeDimensions;
 
 	/** Relative Transforms will be used if activated.
 	* Enable if sampled in SpawnerScript's Eval(), so vectorfield will be sampled locally to the Emitter.
 	* Disable if sampled in SpawnerScript's **Post**Eval(), in an evolver script or used by a physics evolver, so the vectorfield will be sampled world space.
 	*/
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bUseRelativeTransform : 1;
 
 #if 0
 #if WITH_EDITORONLY_DATA
 	/** Enable to draw individual vectorfield cells. */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere, BlueprintReadWrite)
 	uint32					bDrawCells : 1;
 #endif // WITH_EDITORONLY_DATA
 #endif
 
+#if WITH_EDITOR
+	virtual void									SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues = false) override;
+#endif
+
 	FPopcornFXAttributeSamplerPropertiesVectorField()
-	:	VectorField()
+	:	FPopcornFXAttributeSamplerProperties(EPopcornFXAttributeSamplerType::VectorField)
+	,	VectorField()
 	,	Intensity(1.f)
 	,	RotationAnimation()
 	,	WrapMode(EPopcornFXVectorFieldWrapMode::Wrap)
@@ -105,16 +117,17 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesVectorField : public FP
 	{ }
 };
 
-/** Can override an Attribute Sampler **Turbulence** by a **UVectorFieldStatic**. */
-UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
-class POPCORNFX_API UPopcornFXAttributeSamplerVectorField : public UPopcornFXAttributeSampler
+/** Can override an Attribute Sampler **VectorField** by a **UVectorFieldStatic**. */
+USTRUCT(meta=(BlueprintSpawnableComponent))
+struct POPCORNFX_API FPopcornFXAttributeSamplerVectorField : public FPopcornFXAttributeSampler
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
 	FPopcornFXAttributeSamplerPropertiesVectorField	Properties;
+
+	FPopcornFXAttributeSamplerVectorField();
 
 public:
 	virtual void									BeginDestroy() override;
@@ -122,16 +135,13 @@ public:
 	void											PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif // WITH_EDITOR
 
-private:
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
 #if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
-	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
+	virtual void									CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	virtual void									RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) override;
 #endif
-	virtual bool									ArePropertiesSupported() override;
-	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual void									_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime) override;
 	
 	// PopcornFX Internal
 	void											_BuildVectorFieldFlags(uint32 &flags, uint32 &interpolation) const;
@@ -139,7 +149,7 @@ private:
 
 #if WITH_EDITOR
 	virtual void									_AttribSampler_IndirectSelectedThisTick() override { m_IndirectSelectedThisTick = true; }
-	void											RenderVectorFieldShape(const FMatrix &transforms, const FQuat &rotation, bool isSelected);
+	void											RenderVectorFieldShape(UPopcornFXEmitterComponent *owner, const FMatrix &transforms, const FQuat &rotation, bool isSelected);
 #endif
 private:
 	FAttributeSamplerVectorFieldData				*m_Data;
@@ -150,3 +160,16 @@ private:
 #endif // WITH_EDITOR
 };
 
+UCLASS(meta = (BlueprintSpawnableComponent))
+class POPCORNFX_API UPopcornFXAttributeSamplerVectorFieldAsset : public UPopcornFXAttributeSamplerAsset
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	FPopcornFXAttributeSamplerPropertiesVectorField	Properties;
+
+public:
+	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const override { return &Properties; }
+	virtual FPopcornFXAttributeSamplerProperties		*GetProperties() override { return &Properties; }
+
+};

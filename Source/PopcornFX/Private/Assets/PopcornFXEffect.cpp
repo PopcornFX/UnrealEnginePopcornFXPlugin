@@ -108,7 +108,6 @@ UPopcornFXEffect::UPopcornFXEffect(const FObjectInitializer& PCIP)
 	, m_Cooked(false) // TMP: Until proper implementation of platform cached data
 {
 	m_Private = PK_NEW(CPopcornFXEffect(this));
-	DefaultAttributeList = CreateDefaultSubobject<UPopcornFXAttributeList>(TEXT("DefaultAttributeList"));
 }
 
 //----------------------------------------------------------------------------
@@ -123,22 +122,7 @@ UPopcornFXEffect::~UPopcornFXEffect()
 
 bool	UPopcornFXEffect::IsLoadCompleted() const
 {
-	return HasAnyFlags(RF_LoadCompleted) && DefaultAttributeList != null && DefaultAttributeList->HasAnyFlags(RF_LoadCompleted);
-}
-
-//----------------------------------------------------------------------------
-
-UPopcornFXAttributeList		*UPopcornFXEffect::GetDefaultAttributeList()
-{
-	LoadEffectIFN();
-
-	if (!PK_VERIFY(DefaultAttributeList != null)) // should always be true ?
-		return null;
-	if (!PK_VERIFY(DefaultAttributeList->IsUpToDate(this)))
-		DefaultAttributeList->SetupDefault(this);
-	if (!PK_VERIFY(DefaultAttributeList->Valid()))
-		return null;
-	return DefaultAttributeList;
+	return HasAnyFlags(RF_LoadCompleted);
 }
 
 //----------------------------------------------------------------------------
@@ -166,7 +150,11 @@ void	UPopcornFXEffect::GetAssetRegistryTags(FAssetRegistryTagsContext context) c
 
 void	UPopcornFXEffect::BeginCacheForCookedPlatformData(const ITargetPlatform *targetPlatform)
 {
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+	if (IsTemplate() || IsGarbageCollecting() || UE::IsSavingPackage())
+#else
 	if (IsTemplate() || IsGarbageCollecting() || GIsSavingPackage)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 		return;
 	if (m_Cooked) // TMP: Until proper implementation of platform cached data
 		return;
@@ -270,52 +258,7 @@ bool	UPopcornFXEffect::LoadEffect(bool forceImport)
 
 	m_Loaded = true;
 
-	DefaultAttributeList->SetupDefault(this, forceImport);
-
-	int32 samplerCount = DefaultAttributeList->SamplerCount();
-	// Shrink the array if some samplers were removed and we're reimporting
-	if (samplerCount < DefaultSamplers.Num())
-	{
-		DefaultSamplers.SetNum(samplerCount);
-	}
-	else
-	{
-		DefaultSamplers.Reserve(samplerCount);
-	}
-	for (int32 samplerIdx = 0; samplerIdx < samplerCount; samplerIdx++)
-	{
-		const FPopcornFXSamplerDesc *desc = DefaultAttributeList->GetSamplerDesc(samplerIdx);
-		if (!PK_VERIFY(desc != null))
-		{
-			continue;
-		}
-
-		const UClass *samplerClass = GetSamplerClass(desc->m_SamplerType);
-		if (!PK_VERIFY(samplerClass != null))
-		{
-			continue;
-		}
-
-		if (samplerIdx >= DefaultSamplers.Num())
-		{
-			// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-			UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-			DefaultSamplers.Add(newSampler);
-		}
-		else
-		{
-			if (!DefaultSamplers[samplerIdx] || DefaultSamplers[samplerIdx]->SamplerType() != desc->m_SamplerType
-				|| (samplerIdx < DefaultAttributeList->m_Samplers.Num() && DefaultAttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName))
-			{
-				// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-				UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-				DefaultSamplers[samplerIdx] = newSampler;
-			}
-		}
-#if WITH_EDITOR
-		DefaultSamplers[samplerIdx]->SetupDefaults(this, samplerIdx, true);
-#endif
-	}
+	DefaultAttributeList.SetupDefault(this, forceImport);
 	return m_Loaded;
 }
 
@@ -986,6 +929,8 @@ bool	UPopcornFXEffect::FinishImport(bool bIsReimport)
 	bofile->Write();
 
 	FPopcornFXPlugin::Get().UnloadPkFile(this); // Unload loaded effect
+
+	AskImportAssetDependenciesIFN();
 
 	ReloadRendererMaterials(bIsReimport);
 

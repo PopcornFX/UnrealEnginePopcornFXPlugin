@@ -9,22 +9,23 @@
 
 #include "PopcornFXMinimal.h"
 
-#include "PopcornFXDetailsAttributeList.h"
+#include "IDetailCustomization.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "PropertyEditorModule.h"
 
 #include "IDetailCustomization.h"
 
-class UPopcornFXAttributeList;
+class IDetailCategoryBuilder;
 
-class FPopcornFXDetailsEffectAttributes : public FPopcornFXDetailsAttributeList
+class FPopcornFXDetailsEffectAttributes : public IDetailCustomization
 {
 public:
 
 	virtual void	CustomizeDetails(class IDetailLayoutBuilder& DetailBuilder) override;
 
-private:
-	void			BuildSampler(const FPopcornFXSamplerDesc *desc, const TSharedPtr<IPropertyHandle> samplerPty, const TSharedPtr<IPropertyHandle> samplerDescPty, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory) override;
+protected:
+
+	IDetailCategoryBuilder	*m_AttributeListCategory;
 };
 
 #endif // WITH_EDITOR

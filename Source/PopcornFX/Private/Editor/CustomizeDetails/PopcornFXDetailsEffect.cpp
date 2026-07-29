@@ -113,6 +113,7 @@ void	FPopcornFXDetailsEffect::UpdateBatchMaterials(const FPropertyChangedEvent &
 		UPopcornFXEffect *effect = Cast<UPopcornFXEffect>(editedMat->GetOuter());
 		if (effect != null)
 		{
+			effect->Modify();
 			for (int32 i = 0; i < m_UniqueMats.Num(); i++)
 			{
 				if (m_UniqueMats[i].Mat == editedMat)

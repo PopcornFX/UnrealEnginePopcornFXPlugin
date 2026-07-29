@@ -49,15 +49,10 @@ void	FPopcornFXVertexBuffer::InitRHI(FRHICommandListBase &RHICmdList)
 		else
 			usage |= BUF_Dynamic;
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 		FRHIBufferCreateDesc	bufferDesc =
 			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Buffer"), m_CapacityInBytes, 0, usage | EBufferUsageFlags::VertexBuffer)
 			.SetInitialState(RHIGetDefaultResourceState(usage | EBufferUsageFlags::VertexBuffer, false));
 		VertexBufferRHI = RHICmdList.CreateBuffer(bufferDesc);
-#else
-		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Buffer"));
-		VertexBufferRHI = RHICmdList.CreateVertexBuffer(m_CapacityInBytes, usage, emptyInformations);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 		if (!PK_VERIFY(IsValidRef(VertexBufferRHI)))
 			m_CapacityInBytes = 0;
@@ -276,15 +271,10 @@ void	FPopcornFXIndexBuffer::InitRHI(FRHICommandListBase &RHICmdList)
 		else
 			usage |= BUF_Dynamic;
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 		FRHIBufferCreateDesc	bufferDesc =
 			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Buffer"), m_Capacity * Stride(), Stride(), usage | EBufferUsageFlags::IndexBuffer)
 			.SetInitialState(RHIGetDefaultResourceState(usage | EBufferUsageFlags::IndexBuffer, false));
 		IndexBufferRHI = RHICmdList.CreateBuffer(bufferDesc);
-#else
-		FRHIResourceCreateInfo	emptyInformations(TEXT("PopcornFX Index Buffer"));
-		IndexBufferRHI = RHICmdList.CreateIndexBuffer(Stride(), m_Capacity * Stride(), usage, emptyInformations);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 		if (!PK_VERIFY(IsValidRef(IndexBufferRHI)))
 		{

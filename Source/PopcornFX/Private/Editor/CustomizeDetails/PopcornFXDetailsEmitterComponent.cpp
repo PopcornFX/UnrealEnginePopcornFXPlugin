@@ -14,6 +14,7 @@
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
 #include "IDetailGroup.h"
+#include "IPropertyUtilities.h"
 
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Images/SImage.h"
@@ -198,237 +199,10 @@ FReply	FPopcornFXDetailsEmitterComponent::OnReimportEffect()
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXDetailsEmitterComponent::BuildSampler(const FPopcornFXSamplerDesc *desc, const TSharedPtr<IPropertyHandle> samplerPty, const TSharedPtr<IPropertyHandle> samplerDescPty, const UPopcornFXAttributeList *attrList, uint32 sampleri, uint32 iCategory)
+void	FPopcornFXDetailsEmitterComponent::RebuildIFN()
 {
-	const FString		&name = desc->m_SamplerName;
-
-	FString				defNode;
-	FName				samplerIconName;
-
-	UPopcornFXEffect *effect = ResolveEffect(attrList);
-	if (effect == null)
-		return;
-
-	// TODO(Attributes refactor): This should not use 'CParticleNodeSamplerData'
-	const PopcornFX::CParticleAttributeSamplerDeclaration *particleSampler = static_cast<const PopcornFX::CParticleAttributeSamplerDeclaration *>(attrList->GetParticleSampler(effect, sampleri));
-	if (particleSampler == null)
-		return;
-
-	const char *nodeName = ResolveAttribSamplerNodeName(particleSampler, desc->m_SamplerType);
-	if (nodeName != null)
-	{
-		defNode = nodeName;
-		samplerIconName = FName(*("PopcornFX.Node." + defNode));
-	}
-	else
-	{
-		defNode = "?????";
-		samplerIconName = FName(TEXT("PopcornFX.BadIcon32"));
-	}
-
-	UPopcornFXEmitterComponent *emitter = Cast<UPopcornFXEmitterComponent>(m_BeingCustomized[0].Get());
-	if (!PK_VERIFY(emitter != null))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Could not retrieve the emitter associated with this sampler"));
-		return;
-	}
-
-	UPopcornFXAttributeSampler *sampler = desc->ResolveAttributeSampler(emitter, null);
-	if (sampler)
-		sampler->OnSamplerValidStateChanged.AddThreadSafeSP(this, &FPopcornFXDetailsEmitterComponent::RebuildIFN);
-
-	FSlateColor		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Foreground);
-	FText			tooltipText = FText::FromString(name + ": " + defNode);
-	bool			inBPEditor = emitter->GetName().EndsWith("_GEN_VARIABLE");
-	if (!sampler ||
-		(sampler->m_IncompatibleProperties.Contains(emitter) && !sampler->m_IncompatibleProperties[emitter].m_Properties.IsEmpty())
-		|| sampler->m_UnsupportedProperties.Num() > 0)
-	{
-		samplerNameColor = USlateThemeManager::Get().GetColor(EStyleColor::Error);
-		if (inBPEditor)
-		{
-			tooltipText = FText::FromString("Editing samplers is not supported yet in Blueprint Editor");
-		}
-		else
-		{
-			tooltipText = FText::FromString("One or more properties are not supported. Default values exported from PopcornFX will be used");
-		}
-	}
-
-	IDetailGroup		&newGroup = m_IGroups[iCategory]->AddGroup(FName(desc->m_SamplerName), FText::FromString(desc->m_SamplerName));
-	FDetailWidgetRow	&headerRow = newGroup.HeaderRow();
-	FDetailWidgetDecl	*headerRowContent = inBPEditor ? &headerRow.NameContent() : &headerRow.WholeRowContent();
-	(*headerRowContent)
-		[
-			SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.Padding(1.f)
-				.AutoWidth()
-				.VAlign(VAlign_Center)
-				[
-					SNew(SBox)
-						.WidthOverride(16)
-						.HeightOverride(16)
-						[
-							SNew(SImage)
-								.Image(FPopcornFXStyle::GetBrush(samplerIconName))
-								.ColorAndOpacity(samplerNameColor)
-						]
-				]
-				+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Center)
-				.Padding(4.0f, 0.0f)
-				[
-					SNew(STextBlock)
-						.Text(FText::FromString(name))
-						.ToolTipText(tooltipText)
-						.Font(m_DetailLayoutBuilder->GetDetailFont())
-						.ColorAndOpacity(samplerNameColor)
-				]
-		];
-
-	if (inBPEditor)
-	{
-		headerRow.ValueContent()
-			[
-				SNew(STextBlock)
-					.Text(tooltipText)
-					.Font(m_DetailLayoutBuilder->GetDetailFont())
-					.ColorAndOpacity(samplerNameColor)
-			];
-	}
-
-	if (!samplerPty.IsValid() || !samplerPty->IsValidHandle()
-		|| !samplerDescPty.IsValid() || !samplerDescPty->IsValidHandle())
-	{
-		return;
-	}
-
-	TSharedPtr<IPropertyHandle>	useExternalSamplerPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_UseExternalSampler));
-	PK_ASSERT(useExternalSamplerPty.IsValid() && useExternalSamplerPty->IsValidHandle());
-	if (!useExternalSamplerPty.IsValid() || !useExternalSamplerPty->IsValidHandle())
-		return;
-
-	IDetailPropertyRow &useExternalSamplerPtyRow = newGroup.AddPropertyRow(useExternalSamplerPty.ToSharedRef()).DisplayName(FText::FromString("Use external sampler?"));
-	TSharedPtr<SWidget> defaultNameWidget;
-	TSharedPtr<SWidget> defaultValueWidget;
-	useExternalSamplerPtyRow.GetDefaultWidgets(defaultNameWidget, defaultValueWidget);
-
-	// This erases the current Name, Value and ResetToDefault widgets, don't forget to set them back if you want them!
-	useExternalSamplerPtyRow.CustomWidget(true)
-	.NameContent()
-	[
-		SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.HAlign(HAlign_Fill)
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock)
-					.Text(useExternalSamplerPty->GetPropertyDisplayName())
-					.ToolTipText(useExternalSamplerPty->GetToolTipText())
-					.Font(m_DetailLayoutBuilder->GetDetailFont())
-					.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Foreground))
-			]
-	]
-	.ValueContent() // Set the default Value widget back
-	[
-		defaultValueWidget.ToSharedRef()
-	];
-
-	useExternalSamplerPty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXDetailsEmitterComponent::RebuildIFN));
-
-	TSharedPtr<IPropertyHandle>	restartWhenSamplerChangesPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_RestartWhenSamplerChanges));
-	PK_ASSERT(restartWhenSamplerChangesPty.IsValid() && restartWhenSamplerChangesPty->IsValidHandle());
-	newGroup.AddPropertyRow(restartWhenSamplerChangesPty.ToSharedRef()).DisplayName(FText::FromString("Restart when sampler changes?"))
-		.EditCondition(desc->m_UseExternalSampler, FOnBooleanValueChanged()).EditConditionHides(true);
-
-	if (desc->m_UseExternalSampler)
-	{
-		// Adds properties to reference an external sampler
-
-		TSharedPtr<IPropertyHandle>		samplerActorPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerActor));
-		PK_ASSERT(samplerActorPty.IsValid() && samplerActorPty->IsValidHandle());
-		newGroup.AddPropertyRow(samplerActorPty.ToSharedRef()).DisplayName(FText::FromString("Target actor"));
-
-		TSharedPtr<IPropertyHandle>		samplerCpntPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_AttributeSamplerComponentName));
-		PK_ASSERT(samplerCpntPty.IsValid() && samplerCpntPty->IsValidHandle());
-		IDetailPropertyRow &samplerComponentPtyRow = newGroup.AddPropertyRow(samplerCpntPty.ToSharedRef()).DisplayName(FText::FromString("Sampler component name"));
-
-		TSharedPtr<IPropertyHandle>		validSamplerComponentPty = samplerDescPty->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXSamplerDesc, m_IsSamplerComponentValid));
-		bool isSamplerComponentValid;
-		validSamplerComponentPty->GetValue(isSamplerComponentValid);
-
-		// If we can't find a sampler component with this name, customize the property to set its name font to red
-		if (!isSamplerComponentValid)
-		{
-			samplerComponentPtyRow.GetDefaultWidgets(defaultNameWidget, defaultValueWidget);
-			// This erases the current Name, Value and ResetToDefault widgets, don't forget to set them back if you want them!
-			samplerComponentPtyRow.CustomWidget(true)
-			.NameContent()
-			[
-				SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-							.Text(samplerCpntPty->GetPropertyDisplayName())
-							.ToolTipText(samplerCpntPty->GetToolTipText())
-							.Font(m_DetailLayoutBuilder->GetDetailFont())
-							.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
-					]
-			]
-			.ValueContent() // Set the default Value widget back
-			[
-				defaultValueWidget.ToSharedRef()
-			];
-
-			// Add a new row with an error message
-			newGroup.AddWidgetRow().WholeRowContent()
-			[
-				SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot()
-					.HAlign(HAlign_Fill)
-					.VAlign(VAlign_Center)
-					[
-						SNew(STextBlock)
-							.Text(FText::FromString("Can't find a valid sampler component with this name in the target actor"))
-							.Font(m_DetailLayoutBuilder->GetDetailFont())
-							.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
-					]
-			];
-		}
-		else if (sampler && sampler->m_IncompatibleProperties.Contains(emitter))
-		{
-			// Look for properties that are incompatible with this emitter's effect
-			for (const auto& elem : sampler->m_IncompatibleProperties[emitter].m_Properties)
-			{
-				newGroup.AddWidgetRow().WholeRowContent()
-				[
-					SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.HAlign(HAlign_Fill)
-						.VAlign(VAlign_Center)
-						[
-							SNew(STextBlock)
-								.Text(FText::FromString(elem.Value))
-								.Font(m_DetailLayoutBuilder->GetDetailFont())
-								.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
-						]
-				];
-			}
-		}
-	}
-	else
-	{
-
-		TSharedPtr<IPropertyHandle>	samplerStructPty = ResolveSamplerProperties(samplerPty, desc->SamplerType(), defNode);
-		if (!samplerStructPty.IsValid() || !samplerStructPty->IsValidHandle())
-			return;
-
-		// Adds a custom property row, see PropertyCustomization/PopcornFXCustomizationAttributeSamplerXXX for each sampler
-		newGroup.AddPropertyRow(samplerStructPty.ToSharedRef());
-	}
+	if (PK_VERIFY(m_PropertyUtilities.IsValid()))
+		m_PropertyUtilities->ForceRefresh();
 }
 
 //----------------------------------------------------------------------------
@@ -516,26 +290,6 @@ void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& D
 				.ToolTipText(LOCTEXT("Reimport_ToolTip", "Reimports the PopcornFXEffect."))]
 		];
 
-	m_AttributeListPty = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UPopcornFXEmitterComponent, AttributeList));
-	if (!PK_VERIFY(IsValidHandle(m_AttributeListPty)))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Can't retrieve attribute list property!"));
-		return;
-	}
-	m_SamplersDescPty = m_AttributeListPty->GetChildHandle(GET_MEMBER_NAME_CHECKED(UPopcornFXAttributeList, m_Samplers));
-	if (!PK_VERIFY(IsValidHandle(m_SamplersDescPty)))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Can't retrieve samplers description property!"));
-		return;
-	}
-
-	m_SamplersPty = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UPopcornFXEmitterComponent, Samplers));
-	if (!PK_VERIFY(IsValidHandle(m_SamplersPty)))
-	{
-		UE_LOG(LogPopcornFXDetailsEmitterComponent, Error, TEXT("Can't retrieve samplers property!"));
-		return;
-	}
-
 	TSharedPtr<IPropertyHandle> effectPty = DetailLayout.GetProperty(GET_MEMBER_NAME_CHECKED(UPopcornFXEmitterComponent, Effect));
 	if (!PK_VERIFY(IsValidHandle(effectPty)))
 	{
@@ -543,19 +297,6 @@ void	FPopcornFXDetailsEmitterComponent::CustomizeDetails(IDetailLayoutBuilder& D
 		return;
 	}
 	effectPty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXDetailsEmitterComponent::RebuildIFN));
-
-	// We are in the blueprint editor, the object being edited is a temporary UI only instance, modifying attributes will have no effect on the viewport
-	if (m_BeingCustomized[0]->GetName().EndsWith("_GEN_VARIABLE"))
-	{
-		// Use this to find the actual object in the viewport 
-		//TArray<UObject*> instances;
-		//m_BeingCustomized[0]->GetArchetypeInstances(instances);
-		//TODO: try this
-		//DetailLayout.GetDetailsView()->SetObject(instances[0]);
-		//DetailLayout.GetDetailsViewSharedPtr()->SetObject(instances[0]);
-	}
-
-	Rebuild();
 }
 
 //----------------------------------------------------------------------------

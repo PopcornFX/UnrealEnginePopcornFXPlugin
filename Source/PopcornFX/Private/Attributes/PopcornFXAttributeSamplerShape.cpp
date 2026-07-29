@@ -15,6 +15,7 @@
 #include "PopcornFXPlugin.h"
 #include "PopcornFXStats.h"
 #include "PopcornFXAttributeList.h"
+#include "PopcornFXEmitterComponent.h"
 #include "Assets/PopcornFXMesh.h"
 #include "Assets/PopcornFXEffect.h"
 #include "Assets/PopcornFXEffectPriv.h"
@@ -44,7 +45,84 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerShape, Log, All);\
 
 //----------------------------------------------------------------------------
 //
-// UPopcornFXAttributeSamplerShape
+// FPopcornFXAttributeSamplerPropertiesShape
+//
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesShape::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	if (ShapeType == EPopcornFXAttribSamplerShapeType::StaticMesh && StaticMesh == null)
+	{
+		FString errorMsg = TEXT("Null static mesh");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("StaticMesh"), *errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	else if (ShapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh && ResolveSkinnedMeshComponent(emitter, samplerName) == nullptr)
+	{
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesShape::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+USkinnedMeshComponent	*FPopcornFXAttributeSamplerPropertiesShape::ResolveSkinnedMeshComponent(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::ResolveSkinnedMeshComponent", POPCORNFX_UE_PROFILER_FAST_COLOR);
+
+	AActor	*fallbackActor = emitter->GetOwner();
+	if (fallbackActor == null)
+	{
+		FString errorMsg = TEXT("Null fallback actor");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("TargetActor"), *errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, *samplerName, emitter, errorMsg);
+		return null;
+	}
+	const AActor			*parent = TargetActor == null ? fallbackActor : TargetActor;
+	USkinnedMeshComponent	*skinnedMesh = null;
+	if (SkinnedMeshComponentName != NAME_None)
+	{
+		FObjectPropertyBase	*prop = FindFProperty<FObjectPropertyBase>(parent->GetClass(), SkinnedMeshComponentName);
+
+		if (prop != null)
+			skinnedMesh = Cast<USkinnedMeshComponent>(prop->GetObjectPropertyValue_InContainer(parent));
+	}
+	else
+	{
+		skinnedMesh = Cast<USkinnedMeshComponent>(parent->GetRootComponent());
+	}
+	if (skinnedMesh == null)
+	{
+		const bool	enableLogOnError = true;
+		FString errorMsg = TEXT("Could not find a skinned mesh component");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("SkinnedMeshComponentName"), *errorMsg);
+#endif
+		if (enableLogOnError)
+		{
+			// always log, must have a USkinnedMeshComponent or useless
+			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, *samplerName, emitter, errorMsg);
+		}
+		return null;
+	}
+	return skinnedMesh;
+}
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXAttributeSamplerShape
 //
 //----------------------------------------------------------------------------
 
@@ -56,12 +134,12 @@ namespace
 
 	struct SNewShapeParams
 	{
-		const UPopcornFXAttributeSamplerShape	*self;
+		const FPopcornFXAttributeSamplerShape	*self;
 	};
 
 	struct SUpdateShapeParams
 	{
-		const UPopcornFXAttributeSamplerShape	*self;
+		const FPopcornFXAttributeSamplerShape	*self;
 		CShapeDescriptor						*shape;
 	};
 
@@ -106,7 +184,7 @@ namespace
 		return static_cast<EPopcornFXMeshSamplingMode::Type>(pkMeshSamplingMode);
 	}
 
-	void				_RebuildSamplingStructs(const UPopcornFXAttributeSamplerShape *self, PopcornFX::CShapeDescriptor_Mesh *shapeDesc)
+	void				_RebuildSamplingStructs(const FPopcornFXAttributeSamplerShape *self, PopcornFX::CShapeDescriptor_Mesh *shapeDesc)
 	{
 		PopcornFX::CMeshSurfaceSamplerStructuresRandom	*surfaceSampling = self->SamplerSurface();
 		PopcornFX::PMeshNew								mesh = shapeDesc->Mesh();
@@ -119,7 +197,7 @@ namespace
 		else
 			surfaceSampling->Build(triangleBatch.m_IStream, triangleBatch.m_VStream.Positions());
 
-		shapeDesc->SetSamplingStructs(surfaceSampling, null);
+		shapeDesc->SetSamplingStructs(surfaceSampling, self->SamplerVolume());
 	}
 
 	// NULL
@@ -139,7 +217,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Box>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Properties.BoxDimension.GetMin() >= 0.0f);
 		const FVector3f	safeBoxDimension = FVector3f(self->Properties.BoxDimension);
@@ -151,7 +229,7 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Box>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 		PopcornFX::CShapeDescriptor_Box			*shape = static_cast<PopcornFX::CShapeDescriptor_Box*>(params.shape);
 
 		PK_ASSERT(self->Properties.BoxDimension.GetMin() >= 0.0f);
@@ -165,7 +243,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Sphere>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape		*self = params.self;
+		const FPopcornFXAttributeSamplerShape		*self = params.self;
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
 		PK_ASSERT(self->Properties.InnerRadius >= 0.0f);
@@ -181,7 +259,7 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Sphere>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape		*self = params.self;
+		const FPopcornFXAttributeSamplerShape		*self = params.self;
 		PopcornFX::CShapeDescriptor_Sphere			*shape = static_cast<PopcornFX::CShapeDescriptor_Sphere*>(params.shape);
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
@@ -199,7 +277,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Ellipsoid>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
 		PK_ASSERT(self->Properties.InnerRadius >= 0.0f);
@@ -215,7 +293,7 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Ellipsoid>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 		PopcornFX::CShapeDescriptor_Ellipsoid	*shape = static_cast<PopcornFX::CShapeDescriptor_Ellipsoid*>(params.shape);
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
@@ -233,7 +311,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Cylinder>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
 		PK_ASSERT(self->Properties.InnerRadius >= 0.0f);
@@ -251,7 +329,7 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Cylinder>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 		PopcornFX::CShapeDescriptor_Cylinder	*shape = static_cast<PopcornFX::CShapeDescriptor_Cylinder*>(params.shape);
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
@@ -272,7 +350,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Capsule>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
 		PK_ASSERT(self->Properties.InnerRadius >= 0.0f);
@@ -290,7 +368,7 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Capsule>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 		PopcornFX::CShapeDescriptor_Capsule		*shape = static_cast<PopcornFX::CShapeDescriptor_Capsule*>(params.shape);
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
@@ -311,7 +389,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Cone>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
 		PK_ASSERT(self->Properties.Height >= 0.0f);
@@ -327,7 +405,7 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Cone>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 		PopcornFX::CShapeDescriptor_Cone		*shape = static_cast<PopcornFX::CShapeDescriptor_Cone*>(params.shape);
 
 		PK_ASSERT(self->Properties.Radius >= 0.0f);
@@ -345,7 +423,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_Mesh>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape	*self = params.self;
+		const FPopcornFXAttributeSamplerShape	*self = params.self;
 
 		if (self->Properties.StaticMesh == null)
 			return null;
@@ -385,7 +463,7 @@ namespace
 	template <>
 	void				_UpdateShapeDescriptor<PopcornFX::CShapeDescriptor_Mesh>(const SUpdateShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape		*self = params.self;
+		const FPopcornFXAttributeSamplerShape		*self = params.self;
 		PopcornFX::CShapeDescriptor_Mesh			*shapeDesc = static_cast<PopcornFX::CShapeDescriptor_Mesh*>(params.shape);
 		
 		PK_ASSERT(self->Properties.Scale.GetMin() >= 0.0f);
@@ -402,7 +480,7 @@ namespace
 	template <>
 	CShapeDescriptor	*_NewDescriptor<PopcornFX::CShapeDescriptor_MeshCollection>(const SNewShapeParams &params)
 	{
-		const UPopcornFXAttributeSamplerShape			*self = params.self;
+		const FPopcornFXAttributeSamplerShape			*self = params.self;
 
 		PopcornFX::CShapeDescriptor_MeshCollection	*shapeCollection = PK_NEW(PopcornFX::CShapeDescriptor_MeshCollection());
 		if (shapeCollection == null)
@@ -425,7 +503,7 @@ namespace
 
 			if (attrSampler == null)
 				continue;
-			UPopcornFXAttributeSamplerShape	*shape = Cast<UPopcornFXAttributeSamplerShape>(attrSampler->Sampler);	// This must be a mesh
+			FPopcornFXAttributeSamplerShape	*shape = Cast<FPopcornFXAttributeSamplerShape>(attrSampler->Sampler);	// This must be a mesh
 			if (shape == null || shape->IsCollection())
 				continue;
 
@@ -511,6 +589,7 @@ struct FAttributeSamplerShapeData
 {
 	bool	m_ShouldUpdateTransforms = false;
 	bool	m_BoneVisibilityChanged = false;
+	bool	m_RebuildInitialPose = false;
 
 	float	m_AccumulatedDts = 0.0f;
 
@@ -520,6 +599,7 @@ struct FAttributeSamplerShapeData
 	PopcornFX::PParticleSamplerDescriptor_Shape_Default			m_Desc;
 	PopcornFX::PShapeDescriptor									m_Shape;
 	PopcornFX::CMeshSurfaceSamplerStructuresRandom				m_SamplerSurface;
+	PopcornFX::CMeshVolumeSamplerStructuresRandom				m_SamplerVolume;
 
 	PopcornFX::TArray<CFloat4, PopcornFX::TArrayAligned16>		m_DstPositions;
 	PopcornFX::TArray<CFloat4, PopcornFX::TArrayAligned16>		m_DstNormals;
@@ -549,21 +629,15 @@ struct FAttributeSamplerShapeData
 	TWeakObjectPtr<USkinnedMeshComponent>		m_CurrentSkinnedMeshComponent = null;
 };
 
-UPopcornFXAttributeSamplerShape::UPopcornFXAttributeSamplerShape(const FObjectInitializer &PCIP)
-	: Super(PCIP)
-	, m_LastFrameUpdate(0)
-{
-	bAutoActivate = true;
 
-	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.TickGroup = TG_PostPhysics;
-	PrimaryComponentTick.bAllowTickOnDedicatedServer = false;
-	bTickInEditor = true;
+FPopcornFXAttributeSamplerShape::FPopcornFXAttributeSamplerShape()
+:	m_LastFrameUpdate(0)
+{
 #if WITH_EDITOR
 	m_IndirectSelectedThisTick = false;
 #endif
 
-	// UPopcornFXAttributeSampler override:
+	// FPopcornFXAttributeSampler override:
 	m_SamplerType = EPopcornFXAttributeSamplerType::Shape;
 
 	Properties.ShapeType = EPopcornFXAttribSamplerShapeType::Sphere;
@@ -586,7 +660,8 @@ UPopcornFXAttributeSamplerShape::UPopcornFXAttributeSamplerShape(const FObjectIn
 	Properties.bBuildClothData = false;
 
 	Properties.TargetActor = null;
-	Properties.Transforms = EPopcornFXSkinnedTransforms::AttrSamplerRelativeTr;
+	Properties.SkinnedTransforms = EPopcornFXSkinnedTransforms::EmitterRelativeTr;
+	Properties.ShapeTransforms = EPopcornFXShapeTransforms::EmitterRelativeTr;
 	Properties.bApplyScale = false;
 #if WITH_EDITORONLY_DATA
 	Properties.bEditorBuildInitialPose = false;
@@ -597,14 +672,12 @@ UPopcornFXAttributeSamplerShape::UPopcornFXAttributeSamplerShape(const FObjectIn
 	CollectionUseShapeWeights = 1;
 #endif
 
-	Properties.bUseRelativeTransform = true;
-
 	m_Data = new FAttributeSamplerShapeData();
 }
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::BeginDestroy()
+void	FPopcornFXAttributeSamplerShape::BeginDestroy()
 {
 	Super::BeginDestroy();
 	if (m_Data != null)
@@ -617,7 +690,7 @@ void	UPopcornFXAttributeSamplerShape::BeginDestroy()
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::SetRadius(float radius)
+void	FPopcornFXAttributeSamplerShape::SetRadius(float radius)
 {
 	Properties.Radius = radius;
 	UpdateShapeProperties();
@@ -625,7 +698,7 @@ void	UPopcornFXAttributeSamplerShape::SetRadius(float radius)
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::SetWeight(float height)
+void	FPopcornFXAttributeSamplerShape::SetWeight(float height)
 {
 	Properties.Height = height;
 	UpdateShapeProperties();
@@ -633,7 +706,7 @@ void	UPopcornFXAttributeSamplerShape::SetWeight(float height)
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::SetBoxDimension(FVector boxDimensions)
+void	FPopcornFXAttributeSamplerShape::SetBoxDimension(FVector boxDimensions)
 {
 	Properties.BoxDimension = boxDimensions;
 	UpdateShapeProperties();
@@ -641,7 +714,7 @@ void	UPopcornFXAttributeSamplerShape::SetBoxDimension(FVector boxDimensions)
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::SetInnerRadius(float innerRadius)
+void	FPopcornFXAttributeSamplerShape::SetInnerRadius(float innerRadius)
 {
 	Properties.InnerRadius = innerRadius;
 	UpdateShapeProperties();
@@ -649,7 +722,7 @@ void	UPopcornFXAttributeSamplerShape::SetInnerRadius(float innerRadius)
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::SetHeight(float height)
+void	FPopcornFXAttributeSamplerShape::SetHeight(float height)
 {
 	Properties.Height = height;
 	UpdateShapeProperties();
@@ -657,7 +730,7 @@ void	UPopcornFXAttributeSamplerShape::SetHeight(float height)
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::SetScale(FVector scale)
+void	FPopcornFXAttributeSamplerShape::SetScale(FVector scale)
 {
 	Properties.Scale = scale;
 	UpdateShapeProperties();
@@ -665,7 +738,7 @@ void	UPopcornFXAttributeSamplerShape::SetScale(FVector scale)
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::Clear()
+void	FPopcornFXAttributeSamplerShape::Clear()
 {
 	PK_ASSERT(m_Data != null);
 
@@ -701,15 +774,15 @@ void	UPopcornFXAttributeSamplerShape::Clear()
 
 	if (m_Data->m_CurrentSkinnedMeshComponent != null)
 	{
-		RemoveTickPrerequisiteComponent(m_Data->m_CurrentSkinnedMeshComponent.Get());
+		//RemoveTickPrerequisiteComponent(m_Data->m_CurrentSkinnedMeshComponent.Get());
 		m_Data->m_CurrentSkinnedMeshComponent = null;
 	}
-	PrimaryComponentTick.RemovePrerequisite(GetWorld(), GetWorld()->EndPhysicsTickFunction);
+	//PrimaryComponentTick.RemovePrerequisite(GetWorld(), GetWorld()->EndPhysicsTickFunction);
 }
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::Skin_PreProcess(uint32 vertexStart, uint32 vertexCount, const PopcornFX::SSkinContext &ctx)
+void	FPopcornFXAttributeSamplerShape::Skin_PreProcess(uint32 vertexStart, uint32 vertexCount, const PopcornFX::SSkinContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::Skin_PreProcess", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -728,7 +801,7 @@ void	UPopcornFXAttributeSamplerShape::Skin_PreProcess(uint32 vertexStart, uint32
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::Skin_PostProcess(uint32 vertexStart, uint32 vertexCount, const PopcornFX::SSkinContext &ctx)
+void	FPopcornFXAttributeSamplerShape::Skin_PostProcess(uint32 vertexStart, uint32 vertexCount, const PopcornFX::SSkinContext &ctx)
 {
 	PK_ASSERT(m_Data != null);
 	PK_ASSERT(m_Data->m_Mesh != null);
@@ -781,7 +854,7 @@ void	UPopcornFXAttributeSamplerShape::Skin_PostProcess(uint32 vertexStart, uint3
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::Skin_Finish(const PopcornFX::SSkinContext &ctx)
+void	FPopcornFXAttributeSamplerShape::Skin_Finish(const PopcornFX::SSkinContext &ctx)
 {
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::Skin_Finish", POPCORNFX_UE_PROFILER_FAST_COLOR);
 
@@ -840,7 +913,7 @@ namespace	PopcornFXAttributeSamplers
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::FetchClothData(uint32 vertexStart, uint32 vertexCount)
+void	FPopcornFXAttributeSamplerShape::FetchClothData(uint32 vertexStart, uint32 vertexCount)
 {
 	// Done during skinning job's PostProcess callback
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::FetchClothData", POPCORNFX_UE_PROFILER_COLOR);
@@ -905,76 +978,28 @@ void	UPopcornFXAttributeSamplerShape::FetchClothData(uint32 vertexStart, uint32 
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::Rebuild()
+bool	FPopcornFXAttributeSamplerShape::Rebuild(UPopcornFXEmitterComponent *emitter)
 {
-	return BuildInitialPose();
+	return BuildInitialPose(emitter);
 }
 
 //----------------------------------------------------------------------------
 
-USkinnedMeshComponent	*UPopcornFXAttributeSamplerShape::ResolveSkinnedMeshComponent()
-{
-	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::ResolveSkinnedMeshComponent", POPCORNFX_UE_PROFILER_FAST_COLOR);
-
-	AActor	*fallbackActor = GetOwner();
-	if (fallbackActor == null)
-	{
-		FString errorMsg = TEXT("Null fallback actor");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("TargetActor"), *errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, this, errorMsg);
-		return null;
-	}
-	const AActor			*parent = Properties.TargetActor == null ? fallbackActor : Properties.TargetActor;
-	USkinnedMeshComponent	*skinnedMesh = null;
-	if (Properties.SkinnedMeshComponentName != NAME_None)
-	{
-		FObjectPropertyBase	*prop = FindFProperty<FObjectPropertyBase>(parent->GetClass(), Properties.SkinnedMeshComponentName);
-
-		if (prop != null)
-			skinnedMesh = Cast<USkinnedMeshComponent>(prop->GetObjectPropertyValue_InContainer(parent));
-	}
-	else
-	{
-		skinnedMesh = Cast<USkinnedMeshComponent>(parent->GetRootComponent());
-	}
-	if (skinnedMesh == null)
-	{
-		const bool	enableLogOnError = true;
-		FString errorMsg = TEXT("Could not find a skinned mesh component");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("SkinnedMeshComponentName"), *errorMsg);
-#endif
-		if (enableLogOnError)
-		{
-			// always log, must have a USkinnedMeshComponent or useless
-			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, this, errorMsg);
-		}
-		return null;
-	}
-	return skinnedMesh;
-}
-
-//----------------------------------------------------------------------------
-
-static CFloat3	ToPk(const FPackedNormal &packedNormal)
-{
-	FVector3f			unpackedVector;
-	VectorRegister4f	normal = packedNormal.GetVectorRegister();
-	VectorStoreFloat3(normal, &unpackedVector);
-	return ToPk(unpackedVector);
-}
-
-//----------------------------------------------------------------------------
-
-PopcornFX::CMeshSurfaceSamplerStructuresRandom	*UPopcornFXAttributeSamplerShape::SamplerSurface() const
+PopcornFX::CMeshSurfaceSamplerStructuresRandom	*FPopcornFXAttributeSamplerShape::SamplerSurface() const
 {
 	return &m_Data->m_SamplerSurface;
 }
+
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::CanUpdateShapeProperties(EPopcornFXAttribSamplerShapeType::Type newType)
+PopcornFX::CMeshVolumeSamplerStructuresRandom *FPopcornFXAttributeSamplerShape::SamplerVolume() const
+{
+	return &m_Data->m_SamplerVolume;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerShape::CanUpdateShapeProperties(EPopcornFXAttribSamplerShapeType::Type newType)
 {
 	PK_ASSERT(m_Data != null);
 	if (m_Data->m_Shape == null)
@@ -993,7 +1018,7 @@ bool	UPopcornFXAttributeSamplerShape::CanUpdateShapeProperties(EPopcornFXAttribS
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::UpdateShapeProperties()
+void	FPopcornFXAttributeSamplerShape::UpdateShapeProperties()
 {
 	if (!CanUpdateShapeProperties(Properties.ShapeType))
 		return;
@@ -1006,13 +1031,11 @@ void	UPopcornFXAttributeSamplerShape::UpdateShapeProperties()
 
 #if WITH_EDITOR
 
-void	UPopcornFXAttributeSamplerShape::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+void	FPopcornFXAttributeSamplerShape::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.MemberProperty != null)
 	{
 		// Don't update shapes because parent class properties were modified
-		if (propertyChangedEvent.MemberProperty->GetOwnerClass() != UPopcornFXAttributeSamplerShape::StaticClass())
-			return;
 		if (!CanUpdateShapeProperties(Properties.ShapeType))
 			return;
 		const FString	propertyName = propertyChangedEvent.MemberProperty->GetName();
@@ -1040,7 +1063,7 @@ void	UPopcornFXAttributeSamplerShape::PostEditChangeProperty(FPropertyChangedEve
 			propertyChangedEvent.Property->GetName() == GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, SkinnedMeshComponentName))
 		{
 			Properties.bEditorBuildInitialPose = false;
-			BuildInitialPose();
+			m_Data->m_RebuildInitialPose = true;
 		}
 		else if (propertyChangedEvent.Property->GetName() == GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bSkinPositions) ||
 			propertyChangedEvent.Property->GetName() == GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bSkinNormals) ||
@@ -1051,13 +1074,13 @@ void	UPopcornFXAttributeSamplerShape::PostEditChangeProperty(FPropertyChangedEve
 		{
 			if (!Properties.bSkinPositions)
 				Properties.bComputeVelocities = false;
-			BuildInitialPose();
+			m_Data->m_RebuildInitialPose = true;
 		}
 		else if (propertyChangedEvent.Property->GetName() == GET_MEMBER_NAME_STRING_CHECKED(FPopcornFXAttributeSamplerPropertiesShape, bComputeVelocities))
 		{
 			if (Properties.bComputeVelocities)
 				Properties.bSkinPositions = true;
-			BuildInitialPose();
+			m_Data->m_RebuildInitialPose = true;
 		}
 		else
 		{
@@ -1073,9 +1096,9 @@ void	UPopcornFXAttributeSamplerShape::PostEditChangeProperty(FPropertyChangedEve
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::CopyPropertiesFrom(const UPopcornFXAttributeSampler *other)
+void	FPopcornFXAttributeSamplerShape::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
 {
-	const FPopcornFXAttributeSamplerPropertiesShape *newShapeProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesShape *>(other->GetProperties());
+	const FPopcornFXAttributeSamplerPropertiesShape *newShapeProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesShape *>(other);
 	if (!PK_VERIFY(newShapeProperties != null))
 	{
 		UE_LOG(LogPopcornFXAttributeSamplerShape, Error, TEXT("New properties are null or not Shape properties"));
@@ -1105,15 +1128,15 @@ void	UPopcornFXAttributeSamplerShape::CopyPropertiesFrom(const UPopcornFXAttribu
 		newShapeProperties->DensityColorChannel != oldProperties.DensityColorChannel)
 	{
 		PK_ASSERT(m_Data->m_Shape->ShapeType() == ToPkShapeType(oldProperties.ShapeType));
-		(*kCbUpdateShapeDescriptors[oldProperties.ShapeType.GetValue()])(SUpdateShapeParams{ this, m_Data->m_Shape.Get() });
-		m_Data->m_Shape->m_Weight = oldProperties.Weight;
+		(*kCbUpdateShapeDescriptors[newShapeProperties->ShapeType.GetValue()])(SUpdateShapeParams{ this, m_Data->m_Shape.Get() });
+		m_Data->m_Shape->m_Weight = newShapeProperties->Weight;
 	}
 	else if (newShapeProperties->bEditorBuildInitialPose != oldProperties.bEditorBuildInitialPose ||
 		newShapeProperties->TargetActor != oldProperties.TargetActor ||
 		newShapeProperties->SkinnedMeshComponentName != oldProperties.SkinnedMeshComponentName)
 	{
 		Properties.bEditorBuildInitialPose = false;
-		BuildInitialPose();
+		m_Data->m_RebuildInitialPose = true;
 	}
 	else if (newShapeProperties->bSkinPositions != oldProperties.bSkinPositions ||
 		newShapeProperties->bSkinNormals != oldProperties.bSkinNormals ||
@@ -1124,13 +1147,13 @@ void	UPopcornFXAttributeSamplerShape::CopyPropertiesFrom(const UPopcornFXAttribu
 	{
 		if (!newShapeProperties->bSkinPositions)
 			Properties.bComputeVelocities = false;
-		BuildInitialPose();
+		m_Data->m_RebuildInitialPose = true;
 	}
 	else if (newShapeProperties->bComputeVelocities != oldProperties.bComputeVelocities)
 	{
 		if (!newShapeProperties->bComputeVelocities)
 			Properties.bSkinPositions = false;
-		BuildInitialPose();
+		m_Data->m_RebuildInitialPose = true;
 	}
 	else
 	{
@@ -1143,50 +1166,107 @@ void	UPopcornFXAttributeSamplerShape::CopyPropertiesFrom(const UPopcornFXAttribu
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+void	FPopcornFXAttributeSamplerShape::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
 {
-	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+	const FPopcornFXAttributeSamplerPropertiesShape *newShapeProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesShape *>(other);
+	if (newShapeProperties == null)
+		return;
 
-	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+	const FPopcornFXAttributeSamplerPropertiesShape oldProperties = Properties;
 
-	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	Properties = *newShapeProperties;
+
+	if (!CanUpdateShapeProperties(newShapeProperties->ShapeType))
+		return;
+	if (newShapeProperties->Weight != oldProperties.Weight ||
+		newShapeProperties->BoxDimension != oldProperties.BoxDimension ||
+		newShapeProperties->Radius != oldProperties.Radius ||
+		newShapeProperties->InnerRadius != oldProperties.InnerRadius ||
+		newShapeProperties->Height != oldProperties.Height ||
+		newShapeProperties->Scale != oldProperties.Scale ||
+#if 0 // To re-enable when shape collections are supported by PopcornFX v2
+		newShapeProperties->CollectionSamplingHeuristic != oldProperties.CollectionSamplingHeuristic ||
+		newShapeProperties->CollectionUseShapeWeights != oldProperties.CollectionUseShapeWeights ||
+#endif
+		newShapeProperties->ShapeSamplingMode != oldProperties.ShapeSamplingMode ||
+		newShapeProperties->ShapeType != oldProperties.ShapeType ||
+		newShapeProperties->DensityColorChannel != oldProperties.DensityColorChannel)
+	{
+		(*kCbUpdateShapeDescriptors[newShapeProperties->ShapeType.GetValue()])(SUpdateShapeParams{ this, m_Data->m_Shape.Get() });
+		m_Data->m_Shape->m_Weight = newShapeProperties->Weight;
+	}
+	else if (newShapeProperties->bEditorBuildInitialPose != oldProperties.bEditorBuildInitialPose ||
+		newShapeProperties->TargetActor != oldProperties.TargetActor ||
+		newShapeProperties->SkinnedMeshComponentName != oldProperties.SkinnedMeshComponentName)
+	{
+		Properties.bEditorBuildInitialPose = false;
+		m_Data->m_RebuildInitialPose = true;
+	}
+	else if (newShapeProperties->bSkinPositions != oldProperties.bSkinPositions ||
+		newShapeProperties->bSkinNormals != oldProperties.bSkinNormals ||
+		newShapeProperties->bSkinTangents != oldProperties.bSkinTangents ||
+		newShapeProperties->bBuildColors != oldProperties.bBuildColors ||
+		newShapeProperties->bBuildUVs != oldProperties.bBuildUVs ||
+		newShapeProperties->bBuildClothData != oldProperties.bBuildClothData)
+	{
+		if (!newShapeProperties->bSkinPositions)
+			Properties.bComputeVelocities = false;
+		m_Data->m_RebuildInitialPose = true;
+	}
+	else if (newShapeProperties->bComputeVelocities != oldProperties.bComputeVelocities)
+	{
+		if (!newShapeProperties->bComputeVelocities)
+			Properties.bSkinPositions = false;
+		m_Data->m_RebuildInitialPose = true;
+	}
+	else
+	{
+		// invalidate shape
+		m_Data->m_Desc = null;
+		m_Data->m_Shape = null;
+	}
+
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerPropertiesShape::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(decl, updateUnlockedValues);
+
+	if (decl == null)
 	{
 		return;
 	}
-
-	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
-	if (samplerList.Count() == 0)
-	{
-		return;
-	}
-	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
-	PK_ASSERT(samplerDesc != null);
-	if (samplerDesc == null)
-	{
-		return;
-	}
-	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+	const PopcornFX::PResourceDescriptor		defaultSampler = decl->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_Shape *shape = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Shape>(defaultSampler.Get());
 	if (shape != null)
 	{
 		if (updateUnlockedValues)
 		{
-			Properties.ShapeType = ToUEShapeType(shape->ShapeType());
+			ShapeType = ToUEShapeType(shape->ShapeType());
 			//TODO: detect if static or skeletal
 
-			Properties.BoxDimension.X = shape->BoxDimensions().x();
-			Properties.BoxDimension.Y = shape->BoxDimensions().y();
-			Properties.BoxDimension.Z = shape->BoxDimensions().z();
-			Properties.Radius = shape->Radius();
-			Properties.InnerRadius = shape->InnerRadius();
-			Properties.Height = shape->Height();
-			Properties.Scale.X = shape->MeshScale().x();
-			Properties.Scale.Y = shape->MeshScale().y();
-			Properties.Scale.Z = shape->MeshScale().z();
+			const float scale = FPopcornFXPlugin::GlobalScale();
+			BoxDimension.X = shape->BoxDimensions().x() * scale;
+			BoxDimension.Y = shape->BoxDimensions().y() * scale;
+			BoxDimension.Z = shape->BoxDimensions().z() * scale;
+			Radius = shape->Radius() * scale;
+			InnerRadius = shape->InnerRadius() * scale;
+			Height = shape->Height() * scale;
+			Scale.X = shape->MeshScale().x();
+			Scale.Y = shape->MeshScale().y();
+			Scale.Z = shape->MeshScale().z();
 
-			Properties.ShapeSamplingMode = ToUEMeshSamplingMode(shape->MeshSamplingMode());
-			Properties.DensityColorChannel = static_cast<EPopcornFXColorChannel::Type>(shape->DensityChannel());
+			Position.X = shape->Position().x() * scale;
+			Position.Y = shape->Position().y() * scale;
+			Position.Z = shape->Position().z() * scale;
+
+			Rotation = FRotator(shape->Orientation().x(), shape->Orientation().y(), shape->Orientation().z());
+
+			ShapeSamplingMode = ToUEMeshSamplingMode(shape->MeshSamplingMode());
+			DensityColorChannel = static_cast<EPopcornFXColorChannel::Type>(shape->DensityChannel());
 
 			FAssetRegistryModule &AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 
@@ -1197,10 +1277,10 @@ void	UPopcornFXAttributeSamplerShape::SetupDefaults(UPopcornFXEffect *effect, co
 			UStaticMesh *staticMesh = Cast<UStaticMesh>(AssetData.GetAsset());
 			if (staticMesh && updateUnlockedValues)
 			{
-				Properties.StaticMesh = staticMesh;
+				StaticMesh = staticMesh;
 			}
 
-			Properties.StaticMeshSubIndex = shape->SubMeshIndex();
+			StaticMeshSubIndex = shape->SubMeshIndex();
 		}
 	}
 }
@@ -1209,36 +1289,12 @@ void	UPopcornFXAttributeSamplerShape::SetupDefaults(UPopcornFXEffect *effect, co
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::ArePropertiesSupported()
-{
-	if (Properties.ShapeType == EPopcornFXAttribSamplerShapeType::StaticMesh
-		&& Properties.StaticMesh == null)
-	{
-		FString errorMsg = TEXT("Null static mesh");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("StaticMesh"), *errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerShape, Error, shape, this, errorMsg);
-		return false;
-	}
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerShape::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXAttributeSamplerShape::TickComponent(float deltaTime, ELevelTick tickType, FActorComponentTickFunction *thisTickFunction)
+void	FPopcornFXAttributeSamplerShape::TickComponent(UPopcornFXEmitterComponent *emitter, float deltaTime, ELevelTick tickType, FActorComponentTickFunction *thisTickFunction)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShapeMesh::TickComponent", POPCORNFX_UE_PROFILER_COLOR);
 
-	Super::TickComponent(deltaTime, tickType, thisTickFunction);
+	//Super::TickComponent(deltaTime, tickType, thisTickFunction);
 
 	if (Properties.ShapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh)
 	{
@@ -1259,7 +1315,7 @@ void	UPopcornFXAttributeSamplerShape::TickComponent(float deltaTime, ELevelTick 
 
 		// We don't want to interpolate more than POPCORNFX_MAX_ANIM_IDLE_TIME of inactive animation.
 		if (m_Data->m_AccumulatedDts < POPCORNFX_MAX_ANIM_IDLE_TIME)
-			m_Data->m_AccumulatedDts += GetWorld()->DeltaTimeSeconds;
+			m_Data->m_AccumulatedDts += emitter->GetWorld()->DeltaTimeSeconds;
 		if (shouldUpdateTransforms)
 		{
 			// This means that no emitter is attached to this attr sampler, automatically pause skinning
@@ -1284,15 +1340,15 @@ void	UPopcornFXAttributeSamplerShape::TickComponent(float deltaTime, ELevelTick 
 #if WITH_EDITOR
 	else
 	{
-		PK_ASSERT(GetWorld() != null);
-		if (GetWorld()->IsGameWorld())
+		PK_ASSERT(emitter->GetWorld() != null);
+		if (emitter->GetWorld()->IsGameWorld())
 			return;
 
 		bool				render = FPopcornFXPlugin::Get().SettingsEditor()->bAlwaysRenderAttributeSamplerShapes;
 
 		const USelection	*selectedAssets = GEditor->GetSelectedActors();
 		PK_ASSERT(selectedAssets != null);
-		bool				isSelected = selectedAssets->IsSelected(GetOwner());
+		bool				isSelected = selectedAssets->IsSelected(emitter->GetOwner());
 		if (isSelected || m_IndirectSelectedThisTick)
 		{
 			render = true;
@@ -1306,7 +1362,7 @@ void	UPopcornFXAttributeSamplerShape::TickComponent(float deltaTime, ELevelTick 
 		// Use the TickComponent to render the geometry, because _AttribSampler_PreUpdate()
 		// isn't called on attr samplers that are not directly referenced (ie shape collection referencing other attr sampler shapes)
 		// So they wont be rendered. Attr sampler collections manually rendering their subMeshes isn't an option (might induce multiple draws for a single attr sampler)
-		RenderShapeIFP(isSelected);
+		RenderShapeIFP(emitter, isSelected);
 	}
 #endif // WITH_EDITOR
 }
@@ -1315,28 +1371,28 @@ void	UPopcornFXAttributeSamplerShape::TickComponent(float deltaTime, ELevelTick 
 
 #if WITH_EDITOR
 
-void	UPopcornFXAttributeSamplerShape::RenderShapeIFP(bool isSelected) const
+void	FPopcornFXAttributeSamplerShape::RenderShapeIFP(UPopcornFXEmitterComponent *emitter, bool isSelected) const
 {
-	UWorld *world = GetWorld();
+	UWorld *world = emitter->GetWorld();
 	const FColor	debugColor = isSelected ? kSamplerShapesDebugColorSelected : kSamplerShapesDebugColor;
-	const FVector	location = GetComponentTransform().GetLocation();
+	const FVector	location = emitter->GetComponentTransform().GetLocation();
 	const float		height = FGenericPlatformMath::Max(Properties.Height, 0.0f);
 	const float		radius = FGenericPlatformMath::Max(Properties.Radius, 0.0f);
-	const FVector	upVector = GetUpVector();
+	const FVector	upVector = emitter->GetUpVector();
 	switch (Properties.ShapeType)
 	{
 	case	EPopcornFXAttribSamplerShapeType::Box:
-		DrawDebugBox(world, location, FVector(Properties.BoxDimension * 0.5f), GetComponentTransform().GetRotation(), debugColor);
+		DrawDebugBox(world, location, FVector(Properties.BoxDimension * 0.5f), emitter->GetComponentTransform().GetRotation(), debugColor);
 		break;
 	case	EPopcornFXAttribSamplerShapeType::Sphere:
 		DrawDebugSphere(world, location, radius, kSamplerShapesDebugSegmentCount, debugColor);
 		break;
 		//case	EPopcornFXAttribSamplerShapeType::Ellipsoid:
 	case	EPopcornFXAttribSamplerShapeType::Cylinder:
-		DrawDebugCylinder(GetWorld(), location - upVector * height * 0.5f, location + upVector * height * 0.5f, radius, kSamplerShapesDebugSegmentCount, debugColor);
+		DrawDebugCylinder(emitter->GetWorld(), location - upVector * height * 0.5f, location + upVector * height * 0.5f, radius, kSamplerShapesDebugSegmentCount, debugColor);
 		break;
 	case	EPopcornFXAttribSamplerShapeType::Capsule:
-		DrawDebugCapsule(world, location, (height / 2.0f) + radius, radius, GetComponentTransform().GetRotation(), debugColor);
+		DrawDebugCapsule(world, location, (height / 2.0f) + radius, radius, emitter->GetComponentTransform().GetRotation(), debugColor);
 		break;
 	case	EPopcornFXAttribSamplerShapeType::Cone:
 	{
@@ -1374,21 +1430,21 @@ void	UPopcornFXAttributeSamplerShape::RenderShapeIFP(bool isSelected) const
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::SetComponentTickingGroup(USkinnedMeshComponent *skinnedMesh)
+bool	FPopcornFXAttributeSamplerShape::SetComponentTickingGroup(USkinnedMeshComponent *skinnedMesh)
 {
 	if (Cast<USkeletalMeshComponent>(skinnedMesh) != null)
 	{
 		// Bone transforms are executed in the PrePhysics tick group,
 		// So we set skinned mesh attr sampler components to be ticked in the same ticking group,
 		// And this component will have the target skinned mesh component as prerequisite
-		PrimaryComponentTick.TickGroup = TG_PrePhysics;
-		AddTickPrerequisiteComponent(skinnedMesh);
+		//PrimaryComponentTick.TickGroup = TG_PrePhysics;
+		//AddTickPrerequisiteComponent(skinnedMesh);
 	}
 	else if (Cast<IDestructibleInterface>(skinnedMesh) != null)
 	{
 		// Transforms are updated in TG_EndPhysics after APEX update for Destructible components
-		PrimaryComponentTick.TickGroup = TG_EndPhysics;
-		PrimaryComponentTick.AddPrerequisite(GetWorld(), GetWorld()->EndPhysicsTickFunction);
+		//PrimaryComponentTick.TickGroup = TG_EndPhysics;
+		//PrimaryComponentTick.AddPrerequisite(GetWorld(), GetWorld()->EndPhysicsTickFunction);
 	}
 	else
 	{
@@ -1644,12 +1700,13 @@ namespace
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::BuildInitialPose()
+bool	FPopcornFXAttributeSamplerShape::BuildInitialPose(UPopcornFXEmitterComponent *emitter)
 {
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::BuildInitialPose", POPCORNFX_UE_PROFILER_COLOR);
 
 	check(m_Data != null);
 	Clear();
+	m_Data->m_RebuildInitialPose = false;
 
 	PK_TODO("Big endian");
 #if !PLATFORM_LITTLE_ENDIAN
@@ -1658,7 +1715,7 @@ bool	UPopcornFXAttributeSamplerShape::BuildInitialPose()
 #endif
 
 	SBuildSkinnedMesh	buildDesc;
-	if (!buildDesc.Initialize(ResolveSkinnedMeshComponent()))
+	if (!buildDesc.Initialize(Properties.ResolveSkinnedMeshComponent(emitter, "")))
 		return false;
 
 	if (buildDesc.m_LODRenderData->SkinWeightVertexBuffer.GetBoneInfluenceType() == UnlimitedBoneInfluence)
@@ -1736,11 +1793,11 @@ bool	UPopcornFXAttributeSamplerShape::BuildInitialPose()
 			// No need to clear the oldPositions
 			PopcornFX::Mem::Clear(m_Data->m_DstVelocities.RawDataPointer(), sizeof(CFloat4) * buildDesc.m_TotalVertexCount);
 
-			m_Data->m_SkinContext.m_CustomProcess_PreSkin = PopcornFX::SSkinContext::CbCustomProcess(this, &UPopcornFXAttributeSamplerShape::Skin_PreProcess);
+			m_Data->m_SkinContext.m_CustomProcess_PreSkin = PopcornFX::SSkinContext::CbCustomProcess(this, &FPopcornFXAttributeSamplerShape::Skin_PreProcess);
 			m_Data->m_Override.m_VelocitiesOverride = PopcornFX::TStridedMemoryView<CFloat3>(reinterpret_cast<CFloat3*>(m_Data->m_DstVelocities.RawDataPointer()), m_Data->m_DstVelocities.Count(), 16);
 		}
-		m_Data->m_SkinContext.m_CustomProcess_PostSkin = PopcornFX::SSkinContext::CbCustomProcess(this, &UPopcornFXAttributeSamplerShape::Skin_PostProcess);
-		m_Data->m_SkinContext.m_CustomFinish = PopcornFX::SSkinContext::CbCustomFinish(this, &UPopcornFXAttributeSamplerShape::Skin_Finish);
+		m_Data->m_SkinContext.m_CustomProcess_PostSkin = PopcornFX::SSkinContext::CbCustomProcess(this, &FPopcornFXAttributeSamplerShape::Skin_PostProcess);
+		m_Data->m_SkinContext.m_CustomFinish = PopcornFX::SSkinContext::CbCustomFinish(this, &FPopcornFXAttributeSamplerShape::Skin_Finish);
 	}
 
 	// No need to create bone weights/indices if we don't skin anything..
@@ -1846,7 +1903,7 @@ bool	UPopcornFXAttributeSamplerShape::BuildInitialPose()
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::UpdateSkinning()
+bool	FPopcornFXAttributeSamplerShape::UpdateSkinning()
 {
 	PK_ASSERT(IsInGameThread());
 	PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::UpdateSkinning", POPCORNFX_UE_PROFILER_COLOR);
@@ -1922,50 +1979,45 @@ bool	UPopcornFXAttributeSamplerShape::UpdateSkinning()
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::UpdateTransforms()
+void	FPopcornFXAttributeSamplerShape::UpdateTransforms(UPopcornFXEmitterComponent *emitter)
 {
 	m_WorldTr_Previous = m_WorldTr_Current;
 	m_Angular_Velocity = FVector3f(0);
-	m_Linear_Velocity = FVector3f(ComponentVelocity);
+	m_Linear_Velocity = FVector3f(emitter->ComponentVelocity);
 
 	if (!m_Data->m_CurrentSkinnedMeshComponent.IsValid() &&
-		(Properties.Transforms == EPopcornFXSkinnedTransforms::SkinnedComponentRelativeTr ||
-			Properties.Transforms == EPopcornFXSkinnedTransforms::SkinnedComponentWorldTr))
+		(Properties.SkinnedTransforms == EPopcornFXSkinnedTransforms::SkinnedComponentRelativeTr ||
+			Properties.SkinnedTransforms == EPopcornFXSkinnedTransforms::SkinnedComponentWorldTr))
 	{
 		// No transforms update, keep previously created transforms, if any
 		return;
 	}
 
-	switch (Properties.Transforms)
+	FTransform emitterWorldTr;
+	switch (Properties.SkinnedTransforms)
 	{
 	case	EPopcornFXSkinnedTransforms::SkinnedComponentRelativeTr:
-		if (Properties.bApplyScale)
-			m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetRelativeTransform().ToMatrixWithScale();
-		else
-			m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetRelativeTransform().ToMatrixNoScale();
+		emitterWorldTr = m_Data->m_CurrentSkinnedMeshComponent->GetRelativeTransform();
 		break;
 	case	EPopcornFXSkinnedTransforms::SkinnedComponentWorldTr:
-		if (Properties.bApplyScale)
-			m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetComponentTransform().ToMatrixWithScale();
-		else
-			m_WorldTr_Current = (FMatrix44f)m_Data->m_CurrentSkinnedMeshComponent->GetComponentTransform().ToMatrixNoScale();
+		emitterWorldTr = m_Data->m_CurrentSkinnedMeshComponent->GetComponentTransform();
 		break;
-	case	EPopcornFXSkinnedTransforms::AttrSamplerRelativeTr:
-		if (Properties.bApplyScale)
-			m_WorldTr_Current = (FMatrix44f)GetRelativeTransform().ToMatrixWithScale();
-		else
-			m_WorldTr_Current = (FMatrix44f)GetRelativeTransform().ToMatrixNoScale();
+	case	EPopcornFXSkinnedTransforms::EmitterRelativeTr:
+		emitterWorldTr = emitter->GetRelativeTransform();
 		break;
-	case	EPopcornFXSkinnedTransforms::AttrSamplerWorldTr:
-		if (Properties.bApplyScale)
-			m_WorldTr_Current = (FMatrix44f)GetComponentTransform().ToMatrixWithScale();
-		else
-			m_WorldTr_Current = (FMatrix44f)GetComponentTransform().ToMatrixNoScale();
+	case	EPopcornFXSkinnedTransforms::EmitterSamplerWorldTr:
+		emitterWorldTr = emitter->GetComponentTransform();
 		break;
 	default:
 		PK_ASSERT_NOT_REACHED();
 		break;
 	}
+	emitterWorldTr.AddToTranslation(Properties.Position);
+	emitterWorldTr.SetRotation(emitterWorldTr.GetRotation() * Properties.Rotation.Quaternion());
+	if (Properties.bApplyScale)
+		m_WorldTr_Current = (FMatrix44f)emitterWorldTr.ToMatrixWithScale();
+	else
+		m_WorldTr_Current = (FMatrix44f)emitterWorldTr.ToMatrixNoScale();
 
 	const float		pkScaleRcp = FPopcornFXPlugin::GlobalScaleRcp();
 	m_WorldTr_Current.M[3][0] *= pkScaleRcp;
@@ -1975,7 +2027,7 @@ void	UPopcornFXAttributeSamplerShape::UpdateTransforms()
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerShape::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*FPopcornFXAttributeSamplerShape::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	check(m_Data != null);
@@ -1983,12 +2035,23 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerShape::_AttribS
 	const PopcornFX::CResourceDescriptor_Shape	*defaultShapeSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Shape>(defaultSampler);
 	if (!PK_VERIFY(defaultShapeSampler != null))
 		return null;
+
+	const FPopcornFXAttributeSamplerPropertiesShape *propertiesShape = static_cast<const FPopcornFXAttributeSamplerPropertiesShape *>(properties);
+	if (propertiesShape == nullptr)
+		return null;
+
+	Properties = *propertiesShape;
+
+	if (m_Data->m_RebuildInitialPose)
+	{
+		BuildInitialPose(emitter);
+	}
 	if (Properties.ShapeType == EPopcornFXAttribSamplerShapeType::Type::SkeletalMesh)
 	{
 		Properties.bPauseSkinning = false;
-		if (m_Data->m_Mesh == null)
+		if (m_Data->m_Mesh == null || m_Data->m_RebuildInitialPose || !m_Data->m_CurrentSkinnedMeshComponent.IsValid())
 		{
-			if (!BuildInitialPose())
+			if (!BuildInitialPose(emitter))
 				return null;
 		}
 		if (m_Data->m_Desc == null)
@@ -2004,31 +2067,33 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerShape::_AttribS
 		descMesh->SetSamplingStructs(&m_Data->m_OverrideSurfaceSamplingAccelStructs, null);
 		descMesh->SetMesh(m_Data->m_Mesh, &(m_Data->m_Override));
 
+		m_Data->m_Shape = descMesh;
 		shapeDesc->m_Shape = descMesh;
 		shapeDesc->m_WorldTr_Current = &_Reinterpret<const CFloat4x4>(m_WorldTr_Current);
 		shapeDesc->m_WorldTr_Previous = &_Reinterpret<CFloat4x4>(m_WorldTr_Previous);
 		shapeDesc->m_Angular_Velocity = &_Reinterpret<const CFloat3>(m_Angular_Velocity);
 		shapeDesc->m_Linear_Velocity = &_Reinterpret<CFloat3>(m_Linear_Velocity);
 
-		UpdateTransforms();
+		UpdateTransforms(emitter);
 
-		desc.m_NeedUpdate = true;
+		m_NeedUpdate = true;
 
 		return shapeDesc;
 	}
 
 	m_Data->m_SamplerSurface = PopcornFX::CMeshSurfaceSamplerStructuresRandom();
+	m_Data->m_SamplerVolume = PopcornFX::CMeshVolumeSamplerStructuresRandom();
 
 	if (!InitShape())
 		return null;
-	desc.m_NeedUpdate = true;
-	_AttribSampler_PreUpdate(0.f);
+	m_NeedUpdate = true;
+	_AttribSampler_PreUpdate(emitter, 0.f);
 	return m_Data->m_Desc.Get();
 }
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::InitShape()
+bool	FPopcornFXAttributeSamplerShape::InitShape()
 {
 	bool	needsInit = false;
 	if (m_Data->m_Desc == null)
@@ -2084,14 +2149,14 @@ bool	UPopcornFXAttributeSamplerShape::InitShape()
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerShape::IsValid() const
+bool	FPopcornFXAttributeSamplerShape::IsValid() const
 {
 	return m_Data != null && m_Data->m_Shape != null;
 }
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CShapeDescriptor	*UPopcornFXAttributeSamplerShape::GetShapeDescriptor() const
+PopcornFX::CShapeDescriptor	*FPopcornFXAttributeSamplerShape::GetShapeDescriptor() const
 {
 	PK_ASSERT(m_Data != null);
 	return m_Data->m_Shape.Get();
@@ -2099,10 +2164,10 @@ PopcornFX::CShapeDescriptor	*UPopcornFXAttributeSamplerShape::GetShapeDescriptor
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
+void	FPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime)
 {
 	LLM_SCOPE(ELLMTag::Particles);
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
 
 	if (Properties.ShapeType == EPopcornFXAttribSamplerShapeType::SkeletalMesh)
 	{
@@ -2110,7 +2175,7 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
 			return;
 		m_LastFrameUpdate = GFrameCounter;
 
-		UpdateTransforms();
+		UpdateTransforms(owner);
 
 		if (m_Data->m_CurrentSkinnedMeshComponent.IsValid() &&
 			m_Data->m_ShouldUpdateTransforms)
@@ -2135,16 +2200,26 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
 			m_LastFrameUpdate = GFrameCounter;
 		}
 
-		if (Properties.bUseRelativeTransform)
+		FTransform emitterWorldTr;
+		switch (Properties.ShapeTransforms)
 		{
-			m_WorldTr_Current = (FMatrix44f)GetRelativeTransform().ToMatrixNoScale();
+		case	EPopcornFXShapeTransforms::EmitterRelativeTr:
+			emitterWorldTr = owner->GetRelativeTransform();
+			break;
+		case	EPopcornFXShapeTransforms::EmitterSamplerWorldTr:
+			emitterWorldTr = owner->GetComponentTransform();
+			break;
+		default:
+			PK_ASSERT_NOT_REACHED();
+			break;
 		}
+		emitterWorldTr.AddToTranslation(Properties.Position);
+		emitterWorldTr.SetRotation(emitterWorldTr.GetRotation() * Properties.Rotation.Quaternion());
+		if (Properties.bApplyScale)
+			m_WorldTr_Current = (FMatrix44f)emitterWorldTr.ToMatrixWithScale();
 		else
-		{
-			m_WorldTr_Current = (FMatrix44f)GetComponentTransform().ToMatrixNoScale();
-		}
+			m_WorldTr_Current = (FMatrix44f)emitterWorldTr.ToMatrixNoScale();
 
-		const float	invGlobalScale = FPopcornFXPlugin::GlobalScaleRcp();
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
 		if (IsCollection() && IsValid())
 		{
@@ -2165,7 +2240,7 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
 
 				if (attr == null)
 					continue;
-				const UPopcornFXAttributeSamplerShape *shapeComp = Cast<UPopcornFXAttributeSamplerShape>(attr->Sampler);
+				const FPopcornFXAttributeSamplerShape *shapeComp = Cast<FPopcornFXAttributeSamplerShape>(attr->Sampler);
 				if (shapeComp == null/* || shapeComp->IsCollection()*/)
 					continue;
 				PK_TODO("Remove this Gore non-const cast when the popcornfx runtime is modified the proper way ")
@@ -2191,13 +2266,14 @@ void	UPopcornFXAttributeSamplerShape::_AttribSampler_PreUpdate(float deltaTime)
 				m_Data->m_Shape = null;
 		}
 #endif
+		const float	invGlobalScale = FPopcornFXPlugin::GlobalScaleRcp();
 		m_WorldTr_Current.M[3][0] *= invGlobalScale;
 		m_WorldTr_Current.M[3][1] *= invGlobalScale;
 		m_WorldTr_Current.M[3][2] *= invGlobalScale;
 
 		PK_TODO("attribute angular linear velocity");
 		m_Angular_Velocity = FVector3f(0);
-		m_Linear_Velocity = FVector3f(ComponentVelocity);
+		m_Linear_Velocity = FVector3f(owner->ComponentVelocity);
 	}
 }
 

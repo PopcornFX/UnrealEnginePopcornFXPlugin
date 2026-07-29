@@ -468,11 +468,9 @@ static void		_PopcornFXToggleProfilerHUD(const TArray<FString>& args, UWorld *in
 
 	static FDelegateHandle	s_drawDebugDelegateHandle;
 	APopcornFXHUDProfiler	*HUD = NULL;
-	for (TActorIterator<APopcornFXHUDProfiler> it(inWorld); it; ++it)
-	{
+	TActorIterator<APopcornFXHUDProfiler> it(inWorld);
+	if (it)
 		HUD = *it;
-		break;
-	}
 	if (hasForce && forceOn == (HUD != null))
 		return;
 	if (HUD == null)

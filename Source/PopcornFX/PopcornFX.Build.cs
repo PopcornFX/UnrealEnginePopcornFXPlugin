@@ -171,7 +171,6 @@ namespace UnrealBuildTool.Rules
 					sourceDir,
 					sourceDir + "include/",
 					sourceDir + "include/license/" + clientName + "/",
-					//sourceDir + "../HellHeaven-SDK/Samples/IntegrationUnrealEngine/",
 				}
 			);
 
@@ -231,16 +230,7 @@ namespace UnrealBuildTool.Rules
 
 			string		libPrefix = "";
 			string		libExt = "";
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-			if (Target.Platform == UnrealTargetPlatform.Win32)
-			{
-				libPrefix = clientLibDir + "vs2022_Win32/";
-				libExt = ".lib";
-			}
-			else
-#endif // !UE_5_0_OR_LATER // Support dropped with UE5
-			if (Target.Platform == UnrealTargetPlatform.Win64 ||
-				isWinUNKNOWN) // Win32 UNKNOWN (WINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP), just link with the same libs as Win64
+			if (Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
 			{
 				libPrefix = clientLibDir + "vs2022_x64/";
 				libExt = ".lib";
@@ -250,13 +240,6 @@ namespace UnrealBuildTool.Rules
 				libPrefix = clientLibDir + "gmake_macosx_x64/lib";
 				libExt = ".a";
 			}
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-			else if (Target.Platform == UnrealTargetPlatform.XboxOne)
-			{
-				libPrefix = clientLibDir + "vs2022_Durango/";
-				libExt = ".lib";
-			}
-#endif // !UE_5_0_OR_LATER
 			else if (isXboxOneUNKNOWN)
 			{
 				libPrefix = clientLibDir + "vs2022_UNKNOWN.x64/";
@@ -267,14 +250,6 @@ namespace UnrealBuildTool.Rules
 				libPrefix = clientLibDir + "vs2022_UNKNOWN.x64/";
 				libExt = ".lib";
 			}
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-			else if (Target.Platform == UnrealTargetPlatform.PS4)
-			{
-				libPrefix = clientLibDir + "vs2022_ORBIS/";
-				// "vs" + WindowsPlatform.GetVisualStudioCompilerVersionName(); // error (exception) on >= 4.16
-				libExt = ".a";
-			}
-#endif // !UE_5_0_OR_LATER
 			else if (isUNKNOWN2)
 			{
 				libPrefix = clientLibDir + "vs2022_UNKNOWN2/";
@@ -296,20 +271,11 @@ namespace UnrealBuildTool.Rules
 				libPrefix = clientLibDir + "gmake_linux_x64/lib";
 				libExt = ".a";
 			}
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-			else if (Target.Platform == UnrealTargetPlatform.Switch)
-			{
-				libPrefix = clientLibDir + "vs2022_NX64/";
-				libExt = ".a";
-			}
-#endif // !UE_5_0_OR_LATER
-#if UE_5_6_OR_LATER
 			else if (isUNKNOWN3)
 			{
 				libPrefix = clientLibDir + "vs2022_UNKNOWN3/";
 				libExt = ".a";
 			}
-#endif // !UE_6_0_OR_LATER
 			else
 			{
 				LogError("Target Platform " + Target.Platform.ToString() + " not supported by PopcornFX");
@@ -341,11 +307,7 @@ namespace UnrealBuildTool.Rules
 
 			bool	d3d12Compat = false;
 			bool	d3d11Compat = false;
-			if (
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-				Target.Platform == UnrealTargetPlatform.Win32 ||
-#endif // !UE_5_0_OR_LATER // Support dropped with UE5
-				Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
+			if (Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
 			{
 				if (!isWinUNKNOWN)
 					d3d11Compat = true;
@@ -356,11 +318,7 @@ namespace UnrealBuildTool.Rules
 						"Psapi.lib",
 					});
 			}
-			else if (
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-					Target.Platform == UnrealTargetPlatform.XboxOne ||
-#endif // !UE_5_0_OR_LATER
-					isXboxOneUNKNOWN || isUNKNOWN)
+			else if (isXboxOneUNKNOWN || isUNKNOWN)
 			{
 				if (isUNKNOWN)
 				{
@@ -430,32 +388,22 @@ namespace UnrealBuildTool.Rules
 			if (d3d12Compat)
 			{
 				if (
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-					Target.Platform == UnrealTargetPlatform.Win32 ||
-#endif // !UE_5_0_OR_LATER // Support dropped with UE5
 					Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
 				{
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "NVAftermath");
-#if UE_5_3_OR_LATER
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "NVAPI");
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "IntelExtensionsFramework");
-#endif // UE_5_3_OR_LATER
 				}
 				else
 				{
 					AddDefinition("NV_AFTERMATH=0");
-#if UE_5_3_OR_LATER
 					AddDefinition("WITH_NVAPI=0");
-#endif // UE_5_3_OR_LATER
 				}
 				
-#if UE_5_2_OR_LATER
-				// D3D12RHIPrivate.h
 				if (Target.Platform == UnrealTargetPlatform.Win64 || isWinUNKNOWN)
 					PublicDefinitions.Add("INTEL_EXTENSIONS=1");
 				else
 					PublicDefinitions.Add("INTEL_EXTENSIONS=0");
-#endif // UE_5_2_OR_LATER
 
 				// TODO: Is this still required ?
 				AddDefinition("PK_PARTICLES_UPDATER_USE_D3D12=1");
@@ -464,15 +412,12 @@ namespace UnrealBuildTool.Rules
 
 				// Needed for RHI buffers creation from native resources
 				PublicIncludePaths.Add("Runtime/D3D12RHI/Private");
-#if UE_5_6_OR_LATER
 				PublicIncludePaths.Add("Runtime/D3D12RHI/Internal");
                 PublicIncludePaths.Add("Runtime/RHICore/Internal");
-#endif // UE_5_6_OR_LATER
-                if (
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-					Target.Platform == UnrealTargetPlatform.XboxOne ||
-#endif // !UE_5_0_OR_LATER
-					isXboxOneUNKNOWN || isUNKNOWN)
+#if UE_5_8_OR_LATER
+                PublicIncludePaths.Add("Runtime/Windows/WindowsD3D/Internal");
+#endif
+                if (isXboxOneUNKNOWN || isUNKNOWN)
 				{
 					PublicIncludePaths.Add("../Platforms/XboxCommon/Source/Runtime/D3D12RHI/Private");
 					if (isXboxOneUNKNOWN)
@@ -483,18 +428,7 @@ namespace UnrealBuildTool.Rules
 				else
 					AddEngineThirdPartyPrivateStaticDependencies(Target, "DX12");
 			}
-
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-			if (Target.Platform == UnrealTargetPlatform.PS4)
-			{
-				PrivateDependencyModuleNames.Add("PS4RHI");
-			}
-#endif // !UE_5_0_OR_LATER
-			else if (
-#if !UE_5_0_OR_LATER // Support dropped with UE5
-					Target.Platform == UnrealTargetPlatform.XboxOne ||
-#endif // !UE_5_0_OR_LATER
-					isXboxOneUNKNOWN || isUNKNOWN)
+			else if (isXboxOneUNKNOWN || isUNKNOWN)
 			{
 				PrivateDependencyModuleNames.Add("D3D12RHI");
 			}
@@ -544,17 +478,11 @@ namespace UnrealBuildTool.Rules
 					"RHI",
 					"MovieScene",
 					"MovieSceneTracks",
-#if UE_4_26_OR_LATER // Chaos integration
 					"PhysicsCore",
 					"Chaos",
-#endif
-
-#if UE_5_0_OR_LATER
-						"RHICore", // D3D12 GPU sim: include D3D12RHIPrivate.h
-						"SignalProcessing",
-						"AudioMixerCore",
-#endif // UE_5_0_OR_LATER
-
+					"RHICore", // D3D12 GPU sim: include D3D12RHIPrivate.h
+					"SignalProcessing",
+					"AudioMixerCore",
 					"ClothingSystemRuntimeCommon",
 					"Projects", // Since 4.21
 				}
@@ -562,11 +490,7 @@ namespace UnrealBuildTool.Rules
 
 			SetupModulePhysicsSupport(Target);
 
-#if !UE_5_1_OR_LATER
-			bool compileWithPhysX = Target.bCompilePhysX;
-#else
 			bool compileWithPhysX = false;
-#endif // !UE_5_1_OR_LATER
 			if (compileWithPhysX)
 				PrivateDependencyModuleNames.Add("PhysX");
 			if (Target.bBuildEditor)
@@ -595,9 +519,7 @@ namespace UnrealBuildTool.Rules
 						"Sequencer",
 						"MovieSceneTools",
 						"AppFramework",
-
 						"TargetPlatform", // Baking
-
 						"DesktopPlatform", // Profiler HUD ask for a path to save profiler report
 					}
 					);

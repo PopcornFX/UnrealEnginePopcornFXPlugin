@@ -70,7 +70,7 @@ public:
 		DrawHelper.GridColorAxis = FColor(80, 80, 80);
 		DrawHelper.GridColorMajor = FColor(72, 72, 72);
 		DrawHelper.GridColorMinor = FColor(64, 64, 64);
-		DrawHelper.PerspectiveGridSize = HALF_WORLD_MAX1;
+		DrawHelper.PerspectiveGridSize = static_cast<float>(HALF_WORLD_MAX1);
 
 		SetViewMode(VMI_Lit);
 
@@ -254,6 +254,8 @@ void	SPopcornFXEffectPreviewViewport::SetPreviewEffect(UPopcornFXEffect *effect)
 		m_EmitterComponent->bAutoDestroy = false;
 		m_EmitterComponent->bPlayOnLoad = true;
 		FTransform	spawnTransform = FTransform::Identity;
+		spawnTransform.SetRotation(FQuat::MakeFromEuler(FVector(0.f, 0.0f, 180.f)));
+		spawnTransform.SetTranslation(FVector(0.f, 300.f, 0.0f));
 		m_PreviewScene.AddComponent(m_EmitterComponent, spawnTransform);
 		m_ViewportClient->SetEmitterComponent(m_EmitterComponent);
 		m_EmitterComponent->ResetLoopTimer();
@@ -483,20 +485,9 @@ void	SPopcornFXEffectPreviewViewport::ResetEmitterAttributes()
 {
 	PK_ASSERT(m_EmitterComponent != null);
 	PK_ASSERT(m_EmitterComponent->Effect != null);
-	PK_ASSERT(m_EmitterComponent->GetAttributeList() != null);
 
 	m_EmitterComponent->ResetAttributesToDefault();
-}
-
-//----------------------------------------------------------------------------
-
-void	SPopcornFXEffectPreviewViewport::ResetEmitterSamplers()
-{
-	PK_ASSERT(m_EmitterComponent != null);
-	PK_ASSERT(m_EmitterComponent->Effect != null);
-	PK_ASSERT(m_EmitterComponent->GetAttributeList() != null);
-
-	m_EmitterComponent->ResetSamplersToDefault();
+	m_EmitterComponent->ReregisterComponent();
 }
 
 //----------------------------------------------------------------------------

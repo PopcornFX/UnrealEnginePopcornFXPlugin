@@ -9,6 +9,7 @@
 #include "PopcornFXStats.h"
 #include "PopcornFXHelper.h"
 #include "PopcornFXAttributeList.h"
+#include "PopcornFXEmitterComponent.h"
 #include "GPUSim/PopcornFXGPUSim.h"
 #include "Assets/PopcornFXEffect.h"
 #include "Assets/PopcornFXEffectPriv.h"
@@ -37,7 +38,35 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerImage, Log, All);
 
 //----------------------------------------------------------------------------
 //
-// UPopcornFXAttributeSamplerImage
+// FPopcornFXAttributeSamplerPropertiesImage
+//
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesImage::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	if (!Texture)
+	{
+		FString errorMsg = TEXT("Null texture");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("Texture"), *errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerImage, Error, image, *samplerName, emitter, errorMsg);
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesImage::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
+
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXAttributeSamplerImage
 //
 //----------------------------------------------------------------------------
 
@@ -88,7 +117,7 @@ struct FAttributeSamplerImageData
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerImage::SetTexture(class UTexture *InTexture)
+void	FPopcornFXAttributeSamplerImage::SetTexture(class UTexture *InTexture)
 {
 	Properties.Texture = InTexture;
 	m_Data->m_ReloadTexture = true;
@@ -96,11 +125,8 @@ void	UPopcornFXAttributeSamplerImage::SetTexture(class UTexture *InTexture)
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSamplerImage::UPopcornFXAttributeSamplerImage(const FObjectInitializer &PCIP)
-	: Super(PCIP)
+FPopcornFXAttributeSamplerImage::FPopcornFXAttributeSamplerImage()
 {
-	bAutoActivate = true;
-
 	Properties.bAllowTextureConversionAtRuntime = false;
 
 	Properties.SamplingMode = EPopcornFXImageSamplingMode::Regular;
@@ -109,7 +135,7 @@ UPopcornFXAttributeSamplerImage::UPopcornFXAttributeSamplerImage(const FObjectIn
 
 	Properties.Texture = null;
 	Properties.TextureAtlas = null;
-	// UPopcornFXAttributeSampler override:
+	// FPopcornFXAttributeSampler override:
 	m_SamplerType = EPopcornFXAttributeSamplerType::Image;
 
 	m_Data = new FAttributeSamplerImageData();
@@ -118,21 +144,7 @@ UPopcornFXAttributeSamplerImage::UPopcornFXAttributeSamplerImage(const FObjectIn
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerImage::OnUnregister()
-{
-	if (m_Data != null)
-	{
-		// Unregister the component during OnUnregister instead of BeginDestroy.
-		// In editor mode, BeginDestroy is only called when saving a level:
-		// Components ReregisterComponent() do not have a matching BeginDestroy call in editor
-		m_Data->m_Desc = null;
-	}
-	Super::OnUnregister();
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXAttributeSamplerImage::BeginDestroy()
+void	FPopcornFXAttributeSamplerImage::BeginDestroy()
 {
 	if (m_Data != null)
 	{
@@ -142,11 +154,9 @@ void	UPopcornFXAttributeSamplerImage::BeginDestroy()
 	Super::BeginDestroy();
 }
 
-//----------------------------------------------------------------------------
-
 #if WITH_EDITOR
 
-void	UPopcornFXAttributeSamplerImage::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+void	FPopcornFXAttributeSamplerImage::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.Property != NULL)
 	{
@@ -176,9 +186,9 @@ void	UPopcornFXAttributeSamplerImage::PostEditChangeProperty(FPropertyChangedEve
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerImage::CopyPropertiesFrom(const UPopcornFXAttributeSampler *other)
+void	FPopcornFXAttributeSamplerImage::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
 {
-	const FPopcornFXAttributeSamplerPropertiesImage *newImageProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesImage *>(other->GetProperties());
+	const FPopcornFXAttributeSamplerPropertiesImage *newImageProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesImage *>(other);
 	if (!PK_VERIFY(newImageProperties != null))
 	{
 		UE_LOG(LogPopcornFXAttributeSamplerImage, Error, TEXT("New properties are null or not image properties"));
@@ -210,29 +220,46 @@ void	UPopcornFXAttributeSamplerImage::CopyPropertiesFrom(const UPopcornFXAttribu
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerImage::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+void	FPopcornFXAttributeSamplerImage::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties)
 {
-	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
-
-	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
-
-	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	const FPopcornFXAttributeSamplerPropertiesImage *newImageProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesImage *>(properties);
+	if (newImageProperties == nullptr)
 	{
 		return;
 	}
 
-	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
-	if (samplerList.Count() == 0)
+	if (newImageProperties->Texture != Properties.Texture ||
+		newImageProperties->bAllowTextureConversionAtRuntime != Properties.bAllowTextureConversionAtRuntime)
+	{
+		m_Data->m_ReloadTexture = true;
+		m_Data->m_RebuildPDF = true;
+	}
+	else if (newImageProperties->TextureAtlas != Properties.TextureAtlas)
+	{
+		m_Data->m_ReloadTextureAtlas = true;
+		m_Data->m_RebuildPDF = true;
+	}
+	else if (newImageProperties->SamplingMode != Properties.SamplingMode ||
+		newImageProperties->DensitySource != Properties.DensitySource ||
+		newImageProperties->DensityPower != Properties.DensityPower)
+	{
+		m_Data->m_RebuildPDF = true;
+	}
+
+	Properties = *newImageProperties;
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerPropertiesImage::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(decl, updateUnlockedValues);
+
+	if (decl == null)
 	{
 		return;
 	}
-	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
-	PK_ASSERT(samplerDesc != null);
-	if (samplerDesc == null)
-	{
-		return;
-	}
-	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+	const PopcornFX::PResourceDescriptor		defaultSampler = decl->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_Image *image = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Image>(defaultSampler.Get());
 	if (image != null)
@@ -248,7 +275,7 @@ void	UPopcornFXAttributeSamplerImage::SetupDefaults(UPopcornFXEffect *effect, co
 			UTexture *texture = Cast<UTexture>(AssetData.GetAsset());
 			if (texture)
 			{
-				Properties.Texture = texture;
+				Texture = texture;
 			}
 
 			// Try to fetch the atlas
@@ -258,17 +285,17 @@ void	UPopcornFXAttributeSamplerImage::SetupDefaults(UPopcornFXEffect *effect, co
 			UPopcornFXTextureAtlas *atlas = Cast<UPopcornFXTextureAtlas>(AssetData.GetAsset());
 			if (atlas)
 			{
-				Properties.TextureAtlas = atlas;
+				TextureAtlas = atlas;
 			}
 
 			if (image->SampleRawValues())
 			{
-				Properties.SamplingMode = EPopcornFXImageSamplingMode::Regular;
+				SamplingMode = EPopcornFXImageSamplingMode::Regular;
 			}
 			else
 			{
-				Properties.DensityPower = image->DensityPower();
-				Properties.DensitySource = static_cast<EPopcornFXImageDensitySource::Type>(image->DensitySrc());
+				DensityPower = image->DensityPower();
+				DensitySource = static_cast<EPopcornFXImageDensitySource::Type>(image->DensitySrc());
 			}
 		}
 	}
@@ -278,41 +305,24 @@ void	UPopcornFXAttributeSamplerImage::SetupDefaults(UPopcornFXEffect *effect, co
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerImage::ArePropertiesSupported()
-{
-	if (!Properties.Texture)
-	{
-		FString errorMsg = TEXT("Null texture");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("Texture"), *errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerImage, Error, grid, this, errorMsg);
-		return false;
-	}
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerImage::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerImage::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSamplerImage::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	const PopcornFX::CResourceDescriptor_Image *defaultImageSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Image>(defaultSampler);
 	if (!PK_VERIFY(defaultImageSampler != null))
 		return null;
+
+	const FPopcornFXAttributeSamplerPropertiesImage *propertiesImage = static_cast<const FPopcornFXAttributeSamplerPropertiesImage *>(properties);
+	if (propertiesImage == nullptr)
+		return null;
+	Properties = *propertiesImage;
+
 	if (!/*PK_VERIFY*/(RebuildImageSampler()))
 	{
 		const FString	imageName = Properties.Texture != null ? Properties.Texture->GetName() : FString(TEXT("null"));
 		const FString	atlasName = Properties.TextureAtlas != null ? Properties.TextureAtlas->GetName() : FString(TEXT("null"));
 		// Do we really want to warn if the texture is just not set -> it's just going to use the default one?
-		UE_LOG(LogPopcornFXAttributeSamplerImage, Warning, TEXT("AttrSamplerImage: Failed to setup texture '%s' with atlas '%s' in '%s'"), *imageName, *atlasName, *GetPathName());
+		UE_LOG(LogPopcornFXAttributeSamplerImage, Warning, TEXT("AttrSamplerImage: Failed to setup texture '%s' with atlas '%s' in '%s'"), *imageName, *atlasName, *m_SamplerName);
 		return null;
 	}
 	return m_Data->m_Desc.Get();
@@ -320,7 +330,7 @@ PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerImage::_AttribS
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerImage::RebuildImageSampler()
+bool	FPopcornFXAttributeSamplerImage::RebuildImageSampler()
 {
 	if (!_RebuildImageSampler())
 	{
@@ -332,9 +342,9 @@ bool	UPopcornFXAttributeSamplerImage::RebuildImageSampler()
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
+bool	FPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 {
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerImage::Build image sampler", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerImage::Build image sampler", POPCORNFX_UE_PROFILER_COLOR);
 
 	if (Properties.Texture == null)
 		return false;
@@ -489,9 +499,9 @@ bool	UPopcornFXAttributeSamplerImage::_RebuildImageSampler()
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerImage::_BuildPDFs(PopcornFX::CImageSurface &dstSurface)
+bool	FPopcornFXAttributeSamplerImage::_BuildPDFs(PopcornFX::CImageSurface &dstSurface)
 {
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerImage::Build PDF", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerImage::Build PDF", POPCORNFX_UE_PROFILER_COLOR);
 	if (!m_Data->m_RebuildPDF)
 		return true;
 	m_Data->m_RebuildPDF = false;
@@ -516,9 +526,9 @@ bool	UPopcornFXAttributeSamplerImage::_BuildPDFs(PopcornFX::CImageSurface &dstSu
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurface &dstSurface, bool rebuild)
+bool	FPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurface &dstSurface, bool rebuild)
 {
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerImage::Build Image", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerImage::Build Image", POPCORNFX_UE_PROFILER_COLOR);
 
 	if ((m_Data->m_ImageSampler != null) &&
 		!rebuild)
@@ -540,7 +550,7 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 				*Properties.Texture->GetName(),
 				UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
 				UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(dstFormat)),
-				*GetPathName());
+				*m_SamplerName);
 
 			PopcornFX::CImageSurface	newSurface;
 			newSurface.m_Format = dstFormat;
@@ -551,7 +561,7 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 					*Properties.Texture->GetName(),
 					UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
 					UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(dstFormat)),
-					*GetPathName());
+					*m_SamplerName);
 				return false;
 			}
 			if (!PK_VERIFY(m_Data->m_ImageSampler->SetupFromSurface(newSurface)))
@@ -565,11 +575,10 @@ bool	UPopcornFXAttributeSamplerImage::_BuildRegularImage(PopcornFX::CImageSurfac
 				TEXT("AttrSamplerImage: texture '%s' format %s not supported for sampling (and AllowTextureConvertionAtRuntime not enabled) in %s"),
 				*Properties.Texture->GetName(),
 				UTF8_TO_TCHAR(PopcornFX::CImage::GetFormatName(m_Data->m_TextureResource->m_Format)),
-				*GetPathName());
+				*m_SamplerName);
 			return false;
 		}
 	}
 	return true;
 }
-
 #undef LOCTEXT_NAMESPACE
