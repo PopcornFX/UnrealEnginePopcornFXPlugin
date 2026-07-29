@@ -37,12 +37,10 @@ protected:
 	bool			GetGraphPinsType(EPopcornFXGridDataType::Type type, FEdGraphPinType &outPinType);
 	FString			GetPinValueName(EPopcornFXGridDataType::Type value);
 	FName			GetPinTypeName();
-	FName			GetSelfName();
 
 protected:
 	EPopcornFXGridDataType::Type	DataType() const { return m_DataType; }
 	virtual bool					SetupNativeFunctionCall(UK2Node_CallFunction *functionCall) { return true; }
-	virtual UClass					*GetSelfPinClass() const;
 
 	void			SetValuesPrefix(const FString &prefix);
 

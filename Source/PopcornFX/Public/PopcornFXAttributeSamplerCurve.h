@@ -41,8 +41,15 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesCurve : public FPopcorn
 	GENERATED_USTRUCT_BODY()
 
 public:
+	//virtual void		CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
+	virtual bool		ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) override;
+	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
+	virtual bool		ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+
+public:
 	/** Curve dimension*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PopcornFX AttributeSampler")
 	TEnumAsByte<EAttributeSamplerCurveDimension::Type>	CurveDimension;
 
 	/** Enables DoubleCurve sampling. Legacy feature from v1 that does not exist anymore */
@@ -50,7 +57,7 @@ public:
 	uint32				bIsDoubleCurve : 1;
 
 	/** The 1 Dimension UCurve to be sampled */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PopcornFX AttributeSampler")
 	UCurveFloat			*Curve1D;
 
 	/* Second 1 Dimension UCurve when IsDoubleCurve */
@@ -58,7 +65,7 @@ public:
 	UCurveFloat			*SecondCurve1D;
 
 	/** The 3 Dimensions UCurve to be sampled */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PopcornFX AttributeSampler")
 	UCurveVector		*Curve3D;
 
 	/** Second 3 Dimensions UCurve when IsDoubleCurve */
@@ -66,15 +73,20 @@ public:
 	UCurveVector		*SecondCurve3D;
 
 	/** The 4 Dimensions UCurve to be sampled */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="PopcornFX AttributeSampler")
 	UCurveLinearColor	*Curve4D;
 
 	/** Second 4 Dimensions UCurve when IsDoubleCurve */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="PopcornFX AttributeSampler")
 	UCurveLinearColor	*SecondCurve4D;
 
+#if WITH_EDITOR
+	virtual void		SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues = false) override;
+#endif
+
 	FPopcornFXAttributeSamplerPropertiesCurve()
-	:	CurveDimension(EAttributeSamplerCurveDimension::Float1)
+	:	FPopcornFXAttributeSamplerProperties(EPopcornFXAttributeSamplerType::Curve)
+	,	CurveDimension(EAttributeSamplerCurveDimension::Float1)
 	,	bIsDoubleCurve(false)
 	,	Curve1D()
 	,	SecondCurve1D()
@@ -86,41 +98,37 @@ public:
 };
 
 /** Can override an Attribute Sampler **Curve** by a **UCurve...**. */
-UCLASS(EditInlineNew, meta = (BlueprintSpawnableComponent), ClassGroup = PopcornFX)
-	class POPCORNFX_API UPopcornFXAttributeSamplerCurve : public UPopcornFXAttributeSampler
+USTRUCT(BlueprintType)
+struct POPCORNFX_API FPopcornFXAttributeSamplerCurve : public FPopcornFXAttributeSampler
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
 	/** Changes the Curve Dimension, will clear the current Curve if dimension changes */
-	UFUNCTION(BlueprintCallable, Category="PopcornFX|AttributeSampler")
 	void	SetCurveDimension(TEnumAsByte<EAttributeSamplerCurveDimension::Type> InCurveDimension);
 
 	/** Set the UCurve to be sampled.
 	* Must match the current dimension.
 	* @return true if curve is up.
 	*/
-	UFUNCTION(BlueprintCallable, Category="PopcornFX|AttributeSampler")
 	bool	SetCurve(class UCurveBase *InCurve, bool InIsSecondCurve);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="PopcornFX AttributeSampler")
 	FPopcornFXAttributeSamplerPropertiesCurve	Properties;
 
-	// overrides
-#if WITH_EDITOR
-	void			PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
-#endif // WITH_EDITOR
-	void			BeginDestroy() override;
+	FPopcornFXAttributeSamplerCurve();
 
-	// UPopcornFXAttributeSampler overrides
-	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
-	virtual bool									ArePropertiesSupported() override;
-	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 #if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
-	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
+	void			PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent) override;
+#endif // WITH_EDITOR
+
+	// FPopcornFXAttributeSampler overrides
+	virtual void									BeginDestroy() override;
+	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
+#if WITH_EDITOR
+	virtual void									CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	virtual void									RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) override;
 #endif
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
 private:
 	bool			RebuildCurvesData();
@@ -130,4 +138,18 @@ private:
 
 private:
 	FAttributeSamplerCurveData	*m_Data;
+};
+
+UCLASS(meta = (BlueprintSpawnableComponent))
+class POPCORNFX_API UPopcornFXAttributeSamplerCurveAsset : public UPopcornFXAttributeSamplerAsset
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	FPopcornFXAttributeSamplerPropertiesCurve	Properties;
+
+public:
+	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const override { return &Properties; }
+	virtual FPopcornFXAttributeSamplerProperties		*GetProperties() override { return &Properties; }
+
 };

@@ -30,7 +30,7 @@ struct FPopcornFXAttributePreAnimatedToken : IMovieScenePreAnimatedToken
 		UPopcornFXEmitterComponent	*emitterComponent = CastChecked<UPopcornFXEmitterComponent>(&object);
 		PK_ASSERT(emitterComponent->Effect != null);
 
-		UPopcornFXAttributeList		*attrList = emitterComponent->GetAttributeList();
+		FPopcornFXAttributeList		*attrList = emitterComponent->GetAttributeList();
 		if (PK_VERIFY(attrList != null))
 			attrList->RestoreAttributesFromCachedRawData(m_CachedAttributesRawData);
 	}
@@ -46,7 +46,7 @@ struct FPopcornFXAttributePreAnimatedTokenProducer : IMovieScenePreAnimatedToken
 
 		UPopcornFXEmitterComponent	*emitterComponent = CastChecked<UPopcornFXEmitterComponent>(&object);
 		PK_ASSERT(emitterComponent->Effect != null);
-		UPopcornFXAttributeList		*attrList = emitterComponent->GetAttributeList();
+		FPopcornFXAttributeList		*attrList = emitterComponent->GetAttributeList();
 
 		token.m_CachedAttributesRawData.Empty();
 		if (PK_VERIFY(attrList != null))

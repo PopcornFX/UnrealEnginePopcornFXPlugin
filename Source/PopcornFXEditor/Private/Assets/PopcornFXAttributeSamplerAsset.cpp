@@ -1,0 +1,1 @@
+#include "PopcornFXAttributeSamplerAsset.h"

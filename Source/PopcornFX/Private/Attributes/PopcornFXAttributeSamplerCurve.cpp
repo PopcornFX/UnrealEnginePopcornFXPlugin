@@ -25,7 +25,67 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerCurve, Log, All);
 
 //----------------------------------------------------------------------------
 //
-// UPopcornFXAttributeSamplerCurve
+// FPopcornFXAttributeSamplerPropertiesCurve
+//
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesCurve::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	if (CurveDimension == EAttributeSamplerCurveDimension::Float2)
+	{
+		FString errorMsg = TEXT("2D Curves are not supported");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("CurveDimension"), *errorMsg);
+#endif
+		return false;
+	}
+	if (CurveDimension == EAttributeSamplerCurveDimension::Float1 && Curve1D == nullptr)
+	{
+		FString errorMsg = TEXT("Null Curve");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("Curve1D"), *errorMsg);
+#endif
+		return false;
+	}
+	if (CurveDimension == EAttributeSamplerCurveDimension::Float3 && Curve3D == nullptr)
+	{
+		FString errorMsg = TEXT("Null Curve");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("Curve3D"), *errorMsg);
+#endif
+		return false;
+	}
+	if (CurveDimension == EAttributeSamplerCurveDimension::Float4 && Curve4D == nullptr)
+	{
+		FString errorMsg = TEXT("Null Curve");
+#if WITH_EDITOR
+		m_UnsupportedProperties.FindOrAdd(TEXT("Curve4D"), *errorMsg);
+#endif
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesCurve::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	// Make sure the sampler matches what the effect expects
+	// Mismatchs should only happen when using an external sampler
+	const PopcornFX::CResourceDescriptor_Curve	*defaultCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Curve>(defaultSampler);
+	if (!PK_VERIFY(defaultCurveSampler != null))
+		return false;
+
+	if (CurveDimension != static_cast<EAttributeSamplerCurveDimension::Type>(defaultCurveSampler->ValueType()))
+	{
+		return false;
+	}
+	return true;
+}
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXAttributeSamplerCurve
 //
 //----------------------------------------------------------------------------
 
@@ -51,7 +111,7 @@ struct FAttributeSamplerCurveData
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurve::SetCurveDimension(TEnumAsByte<EAttributeSamplerCurveDimension::Type> InCurveDimension)
+void	FPopcornFXAttributeSamplerCurve::SetCurveDimension(TEnumAsByte<EAttributeSamplerCurveDimension::Type> InCurveDimension)
 {
 	if (Properties.CurveDimension == InCurveDimension)
 		return;
@@ -69,7 +129,7 @@ void	UPopcornFXAttributeSamplerCurve::SetCurveDimension(TEnumAsByte<EAttributeSa
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurve::SetCurve(class UCurveBase *InCurve, bool InIsSecondCurve)
+bool	FPopcornFXAttributeSamplerCurve::SetCurve(class UCurveBase *InCurve, bool InIsSecondCurve)
 {
 	if (!PK_VERIFY(InCurve != null))
 		return false;
@@ -119,14 +179,12 @@ bool	UPopcornFXAttributeSamplerCurve::SetCurve(class UCurveBase *InCurve, bool I
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSamplerCurve::UPopcornFXAttributeSamplerCurve(const FObjectInitializer &PCIP)
-	: Super(PCIP)
+FPopcornFXAttributeSamplerCurve::FPopcornFXAttributeSamplerCurve()
 {
-	bAutoActivate = true;
 	Properties.bIsDoubleCurve = false;
 	Properties.CurveDimension = EAttributeSamplerCurveDimension::Float1;
 
-	// UPopcornFXAttributeSampler override:
+	// FPopcornFXAttributeSampler override:
 	m_SamplerType = EPopcornFXAttributeSamplerType::Curve;
 
 	Properties.Curve1D = null;
@@ -138,7 +196,7 @@ UPopcornFXAttributeSamplerCurve::UPopcornFXAttributeSamplerCurve(const FObjectIn
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurve::BeginDestroy()
+void	FPopcornFXAttributeSamplerCurve::BeginDestroy()
 {
 	if (m_Data != null)
 	{
@@ -161,7 +219,7 @@ void	UPopcornFXAttributeSamplerCurve::BeginDestroy()
 
 #if WITH_EDITOR
 
-void	UPopcornFXAttributeSamplerCurve::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+void	FPopcornFXAttributeSamplerCurve::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.Property != null)
 	{
@@ -173,9 +231,9 @@ void	UPopcornFXAttributeSamplerCurve::PostEditChangeProperty(FPropertyChangedEve
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurve::CopyPropertiesFrom(const UPopcornFXAttributeSampler *other)
+void	FPopcornFXAttributeSamplerCurve::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
 {
-	const FPopcornFXAttributeSamplerPropertiesCurve *newCurveProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesCurve *>(other->GetProperties());
+	const FPopcornFXAttributeSamplerPropertiesCurve *newCurveProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesCurve *>(other);
 	if (!PK_VERIFY(newCurveProperties != null))
 	{
 		UE_LOG(LogPopcornFXAttributeSamplerCurve, Error, TEXT("New properties are null or not curve properties"));
@@ -192,34 +250,33 @@ void	UPopcornFXAttributeSamplerCurve::CopyPropertiesFrom(const UPopcornFXAttribu
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurve::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+void	FPopcornFXAttributeSamplerCurve::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
 {
-	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+	const FPopcornFXAttributeSamplerPropertiesCurve *newCurveProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesCurve *>(other);
+	if (newCurveProperties == null)
+		return;
 
-	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+	// Always rebuild for now
+	m_Data->m_NeedsReload = true;
 
-	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	Properties = *newCurveProperties;
+}
+//----------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerPropertiesCurve::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(decl, updateUnlockedValues);
+
+	if (decl == null)
 	{
 		return;
 	}
-
-	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
-	if (samplerList.Count() == 0)
-	{
-		return;
-	}
-	const PopcornFX::CParticleAttributeSamplerDeclaration * const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
-	PK_ASSERT(samplerDesc != null);
-	if (samplerDesc == null)
-	{
-		return;
-	}
-	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+	const PopcornFX::PResourceDescriptor		defaultSampler = decl->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_Curve	*curve = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_Curve>(defaultSampler.Get());
 	if (curve != null)
 	{
-		Properties.CurveDimension = static_cast<EAttributeSamplerCurveDimension::Type>(curve->ValueType());
+		CurveDimension = static_cast<EAttributeSamplerCurveDimension::Type>(curve->ValueType());
 	}
 }
 
@@ -227,7 +284,7 @@ void	UPopcornFXAttributeSamplerCurve::SetupDefaults(UPopcornFXEffect *effect, co
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurve::FetchCurveData(const FRichCurve *curve, PopcornFX::CCurveDescriptor *curveDescriptor, uint32 axis)
+void	FPopcornFXAttributeSamplerCurve::FetchCurveData(const FRichCurve *curve, PopcornFX::CCurveDescriptor *curveDescriptor, uint32 axis)
 {
 	const PopcornFX::TArray<float, PopcornFX::TArrayAligned16> &times = curveDescriptor->m_Times;
 	PopcornFX::TArray<float, PopcornFX::TArrayAligned16> &values = curveDescriptor->m_FloatValues;
@@ -306,7 +363,7 @@ void	UPopcornFXAttributeSamplerCurve::FetchCurveData(const FRichCurve *curve, Po
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurve::GetAssociatedCurves(UCurveBase *&curve0, UCurveBase *&curve1)
+void	FPopcornFXAttributeSamplerCurve::GetAssociatedCurves(UCurveBase *&curve0, UCurveBase *&curve1)
 {
 	switch (Properties.CurveDimension)
 	{
@@ -337,7 +394,7 @@ void	UPopcornFXAttributeSamplerCurve::GetAssociatedCurves(UCurveBase *&curve0, U
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurve::SetupCurve(PopcornFX::CCurveDescriptor *curveDescriptor, UCurveBase *curve)
+bool	FPopcornFXAttributeSamplerCurve::SetupCurve(PopcornFX::CCurveDescriptor *curveDescriptor, UCurveBase *curve)
 {
 	static const float	kMaximumKey = 1.0f - CURVE_MINIMUM_DELTA;
 	static const float	kMinimumKey = CURVE_MINIMUM_DELTA;
@@ -400,7 +457,7 @@ bool	UPopcornFXAttributeSamplerCurve::SetupCurve(PopcornFX::CCurveDescriptor *cu
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurve::RebuildCurvesData()
+bool	FPopcornFXAttributeSamplerCurve::RebuildCurvesData()
 {
 	UCurveBase *curve0 = null;
 	UCurveBase *curve1 = null;
@@ -417,40 +474,7 @@ bool	UPopcornFXAttributeSamplerCurve::RebuildCurvesData()
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurve::ArePropertiesSupported()
-{
-	if (Properties.CurveDimension == EAttributeSamplerCurveDimension::Float2)
-	{
-		FString errorMsg = TEXT("2D Curves are not supported");
-#if WITH_EDITOR
-		m_UnsupportedProperties.FindOrAdd(TEXT("CurveDimension"), *errorMsg);
-#endif
-		//PK_ASSERT_NOT_REACHED();
-		return false;
-	}
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerCurve::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	// Make sure the sampler matches what the effect expects
-	// Mismatchs should only happen when using an external sampler
-	const PopcornFX::CResourceDescriptor_Curve	*defaultCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Curve>(defaultSampler);
-	if (!PK_VERIFY(defaultCurveSampler != null))
-		return false;
-
-	if (Properties.CurveDimension != static_cast<EAttributeSamplerCurveDimension::Type>(defaultCurveSampler->ValueType()))
-	{
-		return false;
-	}
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerCurve::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSamplerCurve::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_TODO("Determine when this should be set to true : has the curve asset changed ?")
@@ -458,7 +482,14 @@ PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerCurve::_AttribS
 	const PopcornFX::CResourceDescriptor_DoubleCurve *defaultDoubleCurveSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_DoubleCurve>(defaultSampler);
 	if (!PK_VERIFY(defaultCurveSampler != null || defaultDoubleCurveSampler != null))
 		return null;
+
 	PK_ASSERT(defaultCurveSampler == null || defaultDoubleCurveSampler == null);
+
+	const FPopcornFXAttributeSamplerPropertiesCurve *propertiesCurve = static_cast<const FPopcornFXAttributeSamplerPropertiesCurve *>(properties);
+	if (propertiesCurve == nullptr)
+		return null;
+	Properties = *propertiesCurve;
+
 	m_Data->m_NeedsReload = true;
 	const bool	defaultIsDoubleCurve = defaultDoubleCurveSampler != null;
 	if (m_Data->m_NeedsReload)

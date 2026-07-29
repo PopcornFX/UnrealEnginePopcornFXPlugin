@@ -8,7 +8,10 @@
 #include "RenderBatchManager.h"
 #include "SceneManagement.h"
 #include "MaterialDesc.h"
-#include "ParticleResources.h"
+#if (ENGINE_MAJOR_VERSION < 6)
+#	include "ParticleResources.h"
+#endif
+#include "RenderUtils.h"
 
 #include "World/PopcornFXSceneProxy.h"
 #include "Assets/PopcornFXRendererMaterial.h"
@@ -42,18 +45,15 @@ bool	FPopcornFXDrawRequestsBuffer::LoadIFN()
 		const u32		totalByteCount = 0x100 * sizeof(PopcornFX::Drawers::SBillboardDrawRequest); // Is not exposed yet to PK-RenderHelpers
 		const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
 
-#if (ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 		FRHIBufferCreateDesc	bufferDesc =
 			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Draw requests buffer"), totalByteCount, 0, usage).DetermineInitialState();
-#elif (ENGINE_MINOR_VERSION >= 6)
-		FRHIBufferCreateDesc	bufferDesc(TEXT("PopcornFX Draw requests buffer"), totalByteCount, 0, usage);
 #else
-		FRHIResourceCreateInfo	info(TEXT("PopcornFX Draw requests buffer"));
-#endif // (ENGINE_MINOR_VERSION >= 6)
+		FRHIBufferCreateDesc	bufferDesc(TEXT("PopcornFX Draw requests buffer"), totalByteCount, 0, usage);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 
 		FRHICommandListImmediate &RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 
-#if (ENGINE_MINOR_VERSION >= 6)
 		m_DrawRequestsBuffer = RHICmdList.CreateBuffer(bufferDesc);
 
 		// For back-compat reasons, SRVs of byte-address buffers created via this function ignore the Format, and instead create raw views.
@@ -70,10 +70,6 @@ bool	FPopcornFXDrawRequestsBuffer::LoadIFN()
 				.SetFormat(EPixelFormat(PF_A32B32G32R32F))
 			);
 		}
-#else
-		m_DrawRequestsBuffer = RHICmdList.CreateVertexBuffer(totalByteCount, usage, info);
-		m_DrawRequestsBufferSRV = RHICmdList.CreateShaderResourceView(m_DrawRequestsBuffer, sizeof(PopcornFX::Drawers::SBillboardDrawRequest), PF_A32B32G32R32F);
-#endif // (ENGINE_MINOR_VERSION >= 6)
 
 		if (!PK_VERIFY(IsValidRef(m_DrawRequestsBuffer)) ||
 			!PK_VERIFY(IsValidRef(m_DrawRequestsBufferSRV)))
@@ -164,24 +160,15 @@ public:
 
 		void	*data = null;
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 		FRHIBufferCreateDesc CreateDesc =
 			FRHIBufferCreateDesc::Create(TEXT("PopcornFXGPUParticlesIndexBuffer"), sizeInBytes, stride, BUF_Static | BUF_IndexBuffer)
 			.SetGPUMask(FRHIGPUMask::All())
 			.SetInitialState(ERHIAccess::VertexOrIndexBuffer)
 			.SetClassName(NAME_None)
 			.SetOwnerName(NAME_None);
-#else
-		FRHIResourceCreateInfo	info(TEXT("PopcornFXGPUParticlesIndexBuffer"));
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 		IndexBufferRHI = RHICmdList.CreateBuffer(CreateDesc);
 		data = RHICmdList.LockBuffer(IndexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
-#else
-		IndexBufferRHI = RHICmdList.CreateBuffer(sizeInBytes, BUF_Static | BUF_IndexBuffer, stride, ERHIAccess::VertexOrIndexBuffer, info);
-		data = RHICmdList.LockBuffer(IndexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
 
 		u16*	indices = (u16*)data;
 
@@ -502,10 +489,10 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 			// Additional inputs sent to shaders (AlphaRemapCursor, Colors, ..)
 			// We know additional input must match for all draw requests (Drawers::SBillboard_BillboardingRequest::IsGeomCompatibleWith)
 			// So we'll just flag here the additional inputs that'll need to be filled per draw request
-			const u32	aFieldCount = toGenerate.m_AdditionalGeneratedInputs.Count();
+			const u32	aFieldCount = m_AdditionalInputs.Count();
 			for (u32 iField = 0; iField < aFieldCount; ++iField)
 			{
-				const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = toGenerate.m_AdditionalGeneratedInputs[iField];
+				const PopcornFX::SRendererFeatureFieldDefinition	&additionalInput = m_AdditionalInputs[iField];
 
 				const PopcornFX::CStringId			&fieldName = additionalInput.m_Name;
 				EPopcornFXAdditionalStreamOffsets	streamOffsetType = EPopcornFXAdditionalStreamOffsets::__SupportedAdditionalStreamCount;
@@ -573,10 +560,10 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 			}
 
 			// Additional inputs sent to shaders (AlphaRemapCursor, Colors, ..)
-			const u32	aFieldCount = toGenerate.m_AdditionalGeneratedInputs.Count();
+			const u32	aFieldCount = m_AdditionalInputs.Count();
 
-			m_AdditionalInputs.Clear();
-			if (!PK_VERIFY(m_AdditionalInputs.Reserve(aFieldCount))) // Max possible additional field count
+			m_AdditionalInputDescs.Clear();
+			if (!PK_VERIFY(m_AdditionalInputDescs.Reserve(aFieldCount))) // Max possible additional field count
 			{
 				UE_LOG(LogVertexBillboardingPolicy, Error, TEXT("GPUBB: Couldn't reserve %d additional inputs"), aFieldCount);
 				return false;
@@ -584,7 +571,7 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 
 			for (u32 iField = 0; iField < aFieldCount; ++iField)
 			{
-				const PopcornFX::SRendererFeatureFieldDefinition& additionalInput = toGenerate.m_AdditionalGeneratedInputs[iField];
+				const PopcornFX::SRendererFeatureFieldDefinition& additionalInput = m_AdditionalInputs[iField];
 
 				const PopcornFX::CStringId			&fieldName = additionalInput.m_Name;
 				const u32							typeSize = PopcornFX::CBaseTypeTraits::Traits(additionalInput.m_Type).Size;
@@ -598,9 +585,9 @@ bool	CBatchDrawer_Billboard_GPUBB::AllocBuffers(PopcornFX::SRenderContext &ctx)
 				else
 					continue; // Unsupported shader input, discard
 
-				if (!PK_VERIFY(m_AdditionalInputs.PushBack().Valid()))
+				if (!PK_VERIFY(m_AdditionalInputDescs.PushBack().Valid()))
 					return false;
-				SAdditionalInput	&newAdditionalInput = m_AdditionalInputs.Last();
+				SAdditionalInputDesc	&newAdditionalInput = m_AdditionalInputDescs.Last();
 
 				newAdditionalInput.m_BufferOffset = m_TotalGPUBufferSize;
 				newAdditionalInput.m_ByteSize = typeSize;
@@ -736,10 +723,10 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 				m_BBJobs_Billboard.m_Exec_GeomBillboardDrawRequests.m_GeomDrawRequests = drawRequests;
 			}
 
-			if (!drawPass.m_ToGenerate.m_AdditionalGeneratedInputs.Empty())
+			if (!m_AdditionalInputs.Empty())
 			{
 				// Additional inputs
-				const u32	aFieldCount = m_AdditionalInputs.Count();
+				const u32	aFieldCount = m_AdditionalInputDescs.Count();
 
 				if (!PK_VERIFY(m_MappedAdditionalInputs.Resize(aFieldCount)))
 				{
@@ -748,7 +735,7 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 				}
 				for (u32 iField = 0; iField < aFieldCount; ++iField)
 				{
-					SAdditionalInput					&field = m_AdditionalInputs[iField];
+					SAdditionalInputDesc				&field = m_AdditionalInputDescs[iField];
 					PopcornFX::Drawers::SCopyFieldDesc	&desc = m_MappedAdditionalInputs[iField];
 
 					desc.m_Storage.m_Count = totalParticleCount;
@@ -767,9 +754,9 @@ bool	CBatchDrawer_Billboard_GPUBB::MapBuffers(PopcornFX::SRenderContext &ctx)
 	PK_ASSERT(activeViewCount == 0 || activeViewCount <= m_ViewDependents.Count()); // <= because m_ViewDependents is only resized for the main pass (isNewFrame). In VR projects, there are two views in main pass, but 1 view for additional passes
 	for (u32 iView = 0; iView < activeViewCount; ++iView)
 	{
-		const u32										viewGeneratedInputs = drawPass.m_ToGenerate.m_PerViewGeneratedInputs[iView].m_GeneratedInputs;
-		SViewDependent									&viewDep = m_ViewDependents[iView];
-		PopcornFX::SGPUBillboardBatchJobs::SPerView		&dstView = m_BBJobs_Billboard.m_PerView[iView];
+		const u32							viewGeneratedInputs = drawPass.m_ToGenerate.m_PerViewGeneratedInputs[iView].m_GeneratedInputs;
+		SViewDependent						&viewDep = m_ViewDependents[iView];
+		SGPUBillboardBatchJobs::SPerView	&dstView = m_BBJobs_Billboard.m_PerView[iView];
 
 		if (viewGeneratedInputs & PopcornFX::Drawers::GenInput_Indices)
 		{
@@ -808,7 +795,11 @@ bool	CBatchDrawer_Billboard_GPUBB::LaunchCustomTasks(PopcornFX::SRenderContext &
 
 		// stream size buf is already in read state
 		SCOPED_DRAW_EVENT(RHICmdList, PopcornFXBillboarder_Billboard_CopySizeBuffer);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+		RHI_BREADCRUMB_EVENT_STAT(RHICmdList, PopcornFXBillboardCopySizeBuffer, "PopcornFXBillboardCopySizeBuffer");
+#else
 		SCOPED_GPU_STAT(RHICmdList, PopcornFXBillboardCopySizeBuffer);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 
 		RHICmdList.Transition(FRHITransitionInfo(m_DrawIndirectBuffer.UAV, ERHIAccess::IndirectArgs, ERHIAccess::UAVCompute));
 
@@ -1189,29 +1180,31 @@ void	CBatchDrawer_Billboard_GPUBB::_IssueDrawCall_Billboard(const SUERenderConte
 				// Cannot use this, hardcoded vertex factory names: RayTracingDynamicGeometry.cpp::IsSupportedDynamicVertexFactoryType()
 				const u32	totalVertexCount = m_CapsulesDC ? desc.m_TotalParticleCount * 12 : desc.m_TotalParticleCount * 6;
 				const u32	totalTriangleCount = m_CapsulesDC ? desc.m_TotalParticleCount * 4 : desc.m_TotalParticleCount * 2;
-				// Update dynamic ray tracing geometry
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-				RTcollector->AddRayTracingGeometryUpdate(0, 
-#else
-				RTcollector->AddRayTracingGeometryUpdate(
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
-					FRayTracingDynamicGeometryUpdateParams
-						{
-							rayTracingInstance.Materials,
-							meshBatch.Elements[0].NumPrimitives == 0, // gpu sim (indirect draw)
-							totalVertexCount,
-							totalVertexCount * (u32)sizeof(CFloat3), // output from compute shader ?
-							totalTriangleCount,
-							&m_RayTracingGeometry,
-							&m_RayTracingDynamicVertexBuffer
-						}
-					);
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+				// Update dynamic ray tracing geometry
+				FRayTracingDynamicGeometryUpdateParams	updateParams;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+				updateParams.MeshBatchesView = rayTracingInstance.GetMaterials();
+#else
+				updateParams.MeshBatches = rayTracingInstance.Materials;
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+				updateParams.bUsingIndirectDraw = meshBatch.Elements[0].NumPrimitives == 0; // gpu sim (indirect draw)
+				updateParams.NumVertices = totalVertexCount;
+				updateParams.VertexBufferSize = totalVertexCount * (u32)sizeof(CFloat3); // output from compute shader ?
+				updateParams.NumTriangles = totalTriangleCount;
+				updateParams.Geometry = &m_RayTracingGeometry;
+				updateParams.Buffer = &m_RayTracingDynamicVertexBuffer;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
+				RTcollector->AddRayTracingGeometryUpdate(iView, updateParams);
+#else
+				RTcollector->AddRayTracingGeometryUpdate(updateParams);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
+
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 				RTcollector->AddRayTracingInstance(0, rayTracingInstance);
 #else
 				RTcollector->AddRayTracingInstance(rayTracingInstance);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 			}
 			else
 #endif // RHI_RAYTRACING

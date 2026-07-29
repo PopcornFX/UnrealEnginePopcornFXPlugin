@@ -13,29 +13,43 @@
 
 struct	FAttributeSamplerTextData;
 
-
 USTRUCT(BlueprintType)
 struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesText : public FPopcornFXAttributeSamplerProperties
 {
 	GENERATED_USTRUCT_BODY()
 
+public:
+	//virtual void		CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
+	virtual bool		ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) override;
+	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
+	virtual bool		ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+
 	/** The Text to be sampled */
-	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadOnly, EditAnywhere, meta = (Multiline = true))
-	FString		Text;
+	UPROPERTY(Category = "PopcornFX AttributeSampler", BlueprintReadWrite, EditAnywhere, meta = (Multiline = true))
+	FString			Text;
+
+#if WITH_EDITOR
+	virtual void	SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues = false) override;
+#endif
+
+	FPopcornFXAttributeSamplerPropertiesText()
+	:	FPopcornFXAttributeSamplerProperties(EPopcornFXAttributeSamplerType::Text)
+	{ }
 };
 
 /** Can override an Attribute Sampler **Text** by a **FString**. */
-UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
-class POPCORNFX_API UPopcornFXAttributeSamplerText : public UPopcornFXAttributeSampler
+USTRUCT(meta=(BlueprintSpawnableComponent))
+struct POPCORNFX_API FPopcornFXAttributeSamplerText : public FPopcornFXAttributeSampler
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "PopcornFX AttributeSampler")
 	FPopcornFXAttributeSamplerPropertiesText	Properties;
 
-	UFUNCTION(BlueprintCallable, Category="PopcornFX|AttributeSampler")
+	FPopcornFXAttributeSamplerText();
+
 	void		SetText(FString InText);
 
 	// overrides
@@ -44,16 +58,28 @@ public:
 	void		PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
 #endif // WITH_EDITOR
 
-	// UPopcornFXAttributeSampler overrides
+	// FPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
 #if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const UPopcornFXAttributeSampler *other) override;
-	virtual void									SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues) override;
+	virtual void									CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
+	virtual void									RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) override;
 #endif
-	virtual bool									ArePropertiesSupported() override;
-	virtual bool									ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) override;
 
 private:
 	FAttributeSamplerTextData	*m_Data;
+};
+
+UCLASS(meta = (BlueprintSpawnableComponent))
+class POPCORNFX_API UPopcornFXAttributeSamplerTextAsset : public UPopcornFXAttributeSamplerAsset
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere)
+	FPopcornFXAttributeSamplerPropertiesText	Properties;
+
+public:
+	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const override { return &Properties; }
+	virtual FPopcornFXAttributeSamplerProperties		*GetProperties() override { return &Properties; }
+
 };

@@ -6,14 +6,24 @@
 #pragma once
 
 #include "PopcornFXPublic.h"
+#include "PopcornFXSDK.h"
 
+#if WITH_EDITOR
+#	include "ThumbnailRendering/TextureThumbnailRenderer.h"
+#	include "Editor/PopcornFXStyle.h"
+#	include "Engine/Texture2D.h"
+#endif
+
+#include "Engine/DataAsset.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
+#include "UObject/UnrealType.h"
 
 #include "PopcornFXAttributeSampler.generated.h"
 
 FWD_PK_API_BEGIN
 class	CParticleSamplerDescriptor;
+class	CParticleAttributeSamplerDeclaration;
 class	CResourceDescriptor;
 class	CMeshSurfaceSamplerStructuresRandom;
 class	CMeshVolumeSamplerStructuresRandom;
@@ -25,8 +35,6 @@ class	CParticleScene;
 class   UPopcornFXEffect;
 class   UPopcornFXEmitterComponent;
 struct	FPopcornFXSamplerDesc;
-
-DECLARE_MULTICAST_DELEGATE(FPopcornFXSamplerEventSignature);
 
 static const FColor		kSamplerShapesDebugColor = FLinearColor(0.1f, 0.3f, 0.15f, 1.f).ToFColor(false);
 static const FColor		kSamplerShapesDebugColorSelected = FLinearColor(0.2f, 0.5f, 0.75f, 1.f).ToFColor(false);
@@ -43,7 +51,7 @@ namespace EPopcornFXAttributeSamplerComponentType
 		Grid,
 		Curve,
 		AnimTrack,
-		Turbulence,
+		VectorField,
 		Text,
 	};
 }
@@ -59,21 +67,20 @@ namespace EPopcornFXAttributeSamplerType
 		Grid,
 		Curve,
 		AnimTrack,
-		Turbulence,
+		VectorField,
 		Text,
 	};
 }
 enum { EPopcornFXAttributeSamplerType_Max = EPopcornFXAttributeSamplerType::Text + 1 };
 
-/** Wrapper of a map of properties names and their error message so we can create an array of it */
+/** Collection of samplers */
 USTRUCT()
-struct POPCORNFX_API FIncompatibleProperties
+struct POPCORNFX_API FEmitterSamplers
 {
 	GENERATED_USTRUCT_BODY()
 
-	/** Map of properties than are incompatible with an emitter. Key = property name. Value = error message */
 	UPROPERTY(VisibleAnywhere)
-	TMap<FString, FString>	m_Properties;
+	TArray<FString>	m_SamplerNames;
 };
 
 /** Base struct for UE attribute sampler properties */
@@ -81,97 +88,132 @@ USTRUCT()
 struct POPCORNFX_API FPopcornFXAttributeSamplerProperties
 {
 	GENERATED_USTRUCT_BODY()
+
+	virtual ~FPopcornFXAttributeSamplerProperties() {}
+
+	//virtual void				CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other);
+	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
+	virtual bool				ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) { return true; }
+	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
+	virtual bool				ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) { return true; }
+	
+#if WITH_EDITORONLY_DATA
+
+	/** Emitter components that are using these properties for one or more of their samplers */
+	UPROPERTY()
+	TMap<TSoftObjectPtr<UPopcornFXEmitterComponent>, FEmitterSamplers>	m_EmitterSamplersUsingThis;
+
+	/** Properties or combinations that are unsupported, i.e. we can't build a proper sampler descriptor with them in UE. Key = property name, value = error message */
+	UPROPERTY()
+	TMap<FString, FString>								m_UnsupportedProperties;
+
+#endif
+	UPROPERTY()
+	TEnumAsByte<EPopcornFXAttributeSamplerType::Type>	m_SamplerType;
+
+#if WITH_EDITOR
+	/**
+		Setup default properties of this sampler according to the given effect. Only called on inline samplers.
+		If updateUnlocked is false, only "locked" properties will be updated. These are the values
+		that depend on the source effect on inline samplers and that cannot be changed there.
+		If true, every property will be updated, even the ones editable.
+	*/
+	virtual void				SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues = false) {}
+#endif
+
+	FPopcornFXAttributeSamplerProperties()
+	:	m_SamplerType(EPopcornFXAttributeSamplerType::None)
+	{ }
+
+	FPopcornFXAttributeSamplerProperties(EPopcornFXAttributeSamplerType::Type SamplerType)
+	:	m_SamplerType(SamplerType)
+	{ }
 };
 
-const UClass *GetSamplerClassConst(EPopcornFXAttributeSamplerType::Type type);
-UClass *GetSamplerClass(EPopcornFXAttributeSamplerType::Type type);
-
-#define UE_LOG_UNSUPPORTED_SAMPLER(Category, LogLevel, SamplerType, Sampler, ErrorString) \
+#define UE_LOG_UNSUPPORTED_SAMPLER(Category, LogLevel, SamplerType, Sampler, Emitter, ErrorString) \
 	UE_LOG(Category, LogLevel, \
-	TEXT("Can't build " #SamplerType " attribute sampler '%s' in actor '%s'%s:\n\t%s"), \
-	*Sampler->GetName(), \
-	Sampler->GetAttachmentRootActor() ? *Sampler->GetAttachmentRootActor()->GetName() : TEXT("null"), \
-	Sampler->bIsInline ? *FString::Printf(TEXT(" for emitter '%s'"), *Sampler->GetOuter()->GetName()) : TEXT(""), \
-	*ErrorString);
+	TEXT("Can't build " #SamplerType " attribute sampler '%s' for emitter '%s' (effect '%s'):\n%s"), \
+	Sampler, *Emitter->GetName(), *Emitter->Effect->GetName(), *ErrorString);
 
 #define UE_LOG_INCOMPATIBLE_SAMPLER(Category, LogLevel, SamplerType, Sampler, Emitter, ErrorString) \
 	UE_LOG(Category, LogLevel, \
-	TEXT("Can't build " #SamplerType " attribute sampler '%s' in actor '%s' for emitter '%s' in actor '%s':\n\t%s for effect '%s'"), \
-	*Sampler->GetName(), Sampler->GetAttachmentRootActor() ? *Sampler->GetAttachmentRootActor()->GetName() : TEXT("null"), \
-	*Emitter->GetName(), Emitter->GetAttachmentRootActor() ? *Emitter->GetAttachmentRootActor()->GetName() : TEXT("null"), \
-	*ErrorString, *Emitter->Effect->GetName());
+	TEXT("Can't build " #SamplerType " attribute sampler '%s' for emitter '%s' (effect '%s') in actor '%s':\n%s"), \
+	Sampler, *Emitter->GetName(), *Emitter->Effect->GetName(), \
+	Emitter->GetAttachmentRootActor() ? *Emitter->GetAttachmentRootActor()->GetName() : TEXT("null"), \
+	*ErrorString);
 
 #define UE_LOG_WARNING_SAMPLER(Category, LogLevel, SamplerType, Sampler, Emitter, WarningString) \
 	UE_LOG(Category, LogLevel, \
-	TEXT("When building " #SamplerType " attribute sampler '%s' in actor '%s' for emitter '%s' in actor '%s':\n\t%s for effect '%s'"), \
-	*Sampler->GetName(), Sampler->GetAttachmentRootActor() ? *Sampler->GetAttachmentRootActor()->GetName() : TEXT("null"), \
-	*Emitter->GetName(), Emitter->GetAttachmentRootActor() ? *Emitter->GetAttachmentRootActor()->GetName() : TEXT("null"), \
-	*WarningString, *Emitter->Effect->GetName());
+	TEXT("When building " #SamplerType " attribute sampler '%s' for emitter '%s' (effect '%s') in actor '%s':\n%s"), \
+	Sampler, *Emitter->GetName(), *Emitter->Effect->GetName(), \
+	Emitter->GetAttachmentRootActor() ? *Emitter->GetAttachmentRootActor()->GetName() : TEXT("null"), \
+	*WarningString);
 
 /**
-	Base class for UE attribute samplers
+	Base struct for UE attribute samplers
 	They can be created in any actor and referenced as "external" samplers in emitters that want to use them
 	They are also created inside effect assets (UPopcornFXEffect::DefaultSamplers)
 	and emitters (UPopcornFXEmitterComponent::Samplers)	to allow inline editing
 */
-UCLASS(Abstract)
-class POPCORNFX_API UPopcornFXAttributeSampler : public USceneComponent
+USTRUCT(BlueprintType)
+struct POPCORNFX_API FPopcornFXAttributeSampler
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
-	static UClass										*SamplerComponentClass(EPopcornFXAttributeSamplerComponentType::Type type);
+	FPopcornFXAttributeSampler()
+	:	m_SamplerType(EPopcornFXAttributeSamplerType::Type::None)
+	{ }
+	FPopcornFXAttributeSampler(EPopcornFXAttributeSamplerType::Type type)
+	:	m_SamplerType(type)
+	{ }
+
+	virtual ~FPopcornFXAttributeSampler() {}
+
 	EPopcornFXAttributeSamplerType::Type				SamplerType() const { return m_SamplerType; }
+	FString												SamplerName() const { return m_SamplerName; }
+	void												SetType(const EPopcornFXAttributeSamplerType::Type &newType) { m_SamplerType = newType; }
+	void												SetName(const FString &newName) { m_SamplerName = newName; }
 
 	// PopcornFX Internal
-	PopcornFX::CParticleSamplerDescriptor				*_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler);
-	virtual PopcornFX::CParticleSamplerDescriptor		*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) { return nullptr; }
-	virtual void										_AttribSampler_PreUpdate(float deltaTime) { return; }
+	PopcornFX::CParticleSamplerDescriptor				*_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, const FString &samplerName, FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler);
+	virtual PopcornFX::CParticleSamplerDescriptor		*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) { return nullptr; }
+	virtual void										_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime) { return; }
 
 	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const { return nullptr; }
-	virtual void										CopyPropertiesFrom(const UPopcornFXAttributeSampler *other);
-	/** Checks if properties and their combinations are supported */
-	virtual bool										ArePropertiesSupported() { return true; }
-	virtual bool										ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler) { return true; }
+	virtual void										CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) {}
+	/** What to do when we're changing this samplers properties to new ones */
+	virtual void										RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) {}
+	/** Reimplements BeginDestroy for samplers */
+	virtual void										BeginDestroy() {}
 
 #if WITH_EDITOR
 	virtual void										_AttribSampler_IndirectSelectedThisTick() {}
-	/**
-		Setup default properties of this sampler according to the given effect. Only called on inline samplers.
-		If updateUnlocked is false, only "locked" properties will be updated. These are the values 
-		that depend on the source effect on inline samplers and that cannot be changed there.
-		If true, every property will be updated, even the ones editable.
-	*/
-	virtual void										SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues = false) { }
-
-	void												PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent) override;
+	/** Reimplements PostEditChangeProperty for samplers. UI customization will call it */
+	virtual void										PostEditChangeProperty(FPropertyChangedEvent &PropertyChangedEvent) {}
 #endif
 
 	/**
-	If true, this sampler belongs to an UPopcornFXEmitterComponent::Samplers or an UPopcornFXEffect::DefaultSamplers
+	If true, this sampler belongs to an UPopcornFXEmitterComponent::AttributeList or an UPopcornFXEffect::DefaultAttributeList
 	Some of its properties will depend on the emitter's effect.
 	If not, it's a standalone sampler, properties can be modified freely.
 	*/
 	bool												bIsInline = true;
 
-#if WITH_EDITORONLY_DATA
-
-	/** Emitter components that are using this sampler as an external one */
-	UPROPERTY()
-	TArray<UPopcornFXEmitterComponent*>					m_EmittersUsingThis;
-
-	/** Properties of this sampler that are unsupported, i.e. we can't build a proper sampler descriptor with them in UE. Key = property name, value = error message */
-	UPROPERTY()
-	TMap<FString, FString>								m_UnsupportedProperties;
-
-	/** Properties than are incompatible with an emitter's effect. One list for each emitter using this sampler. Key = emitter, value = properties */
-	UPROPERTY()
-	TMap<UPopcornFXEmitterComponent*, FIncompatibleProperties>	m_IncompatibleProperties;
-
-	/** Event broadcasted when a sampler setup becomes valid or invalid */
-	FPopcornFXSamplerEventSignature						OnSamplerValidStateChanged;
-#endif
+	bool												m_NeedUpdate = false;
 
 protected:
 	EPopcornFXAttributeSamplerType::Type				m_SamplerType;
+	UPROPERTY()
+	FString												m_SamplerName;
+};
+
+UCLASS()
+class POPCORNFX_API UPopcornFXAttributeSamplerAsset : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const { return nullptr; }
+	virtual FPopcornFXAttributeSamplerProperties		*GetProperties() { return nullptr; }
 };

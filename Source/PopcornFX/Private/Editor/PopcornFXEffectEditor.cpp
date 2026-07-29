@@ -218,13 +218,7 @@ void	FPopcornFXEffectEditor::OnFileChanged(const UPopcornFXFile *file)
 
 void	FPopcornFXEffectEditor::OnObjectPropertyChanged(UObject *object, FPropertyChangedEvent &propertyChangedEvent)
 {
-	if (object == null ||
-		m_Effect == null ||
-		!PreviewViewport.IsValid())
-		return;
-	const UPopcornFXAttributeList	*defaultAttrList = Cast<UPopcornFXAttributeList>(object);
-	if (defaultAttrList == null ||
-		!m_Effect->IsTheDefaultAttributeList(defaultAttrList))
+	if (object == null || object != m_Effect || !PreviewViewport.IsValid())
 		return;
 	PreviewViewport->ResetEmitterAttributes();
 }
@@ -355,7 +349,6 @@ void	FPopcornFXEffectEditor::ReimportEffect()
 
 	FReimportManager::Instance()->Reimport(m_Effect, true);
 	PreviewViewport->ResetEmitterAttributes();
-	PreviewViewport->ResetEmitterSamplers();
 	EffectDetailsView->ForceRefresh();
 	EffectAttributesView->ForceRefresh();
 	PreviewViewport->ResetEmitter();

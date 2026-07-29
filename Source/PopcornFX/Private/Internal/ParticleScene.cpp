@@ -89,7 +89,7 @@
 
 #if (PK_GPU_D3D11 == 1)
 
-#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 
 #	if PLATFORM_WINDOWS
 #		ifdef WINDOWS_PLATFORM_TYPES_GUARD
@@ -103,7 +103,7 @@
 
 #	include "D3D11Resources.h"
 
-#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 
 #	include <d3d11.h>
 #	include <pk_particles/include/Updaters/D3D11/updater_d3d11.h>
@@ -137,11 +137,7 @@
 #include "HAL/PlatformMisc.h"
 
 #include "SceneInterface.h"
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
-#	include "SceneProxies/DeferredDecalProxy.h"
-#else
-#	include "Components/SceneComponent.h"
-#endif
+#include "SceneProxies/DeferredDecalProxy.h"
 
 #if WITH_HAVOK_PHYSICS
 #include "Runtime/Engine/Private/PhysicsEngine/HavokPhysicsSupport.h"
@@ -733,16 +729,8 @@ void	CParticleScene::GetDynamicRayTracingInstances(const FPopcornFXSceneProxy *s
 	// Right now, uses a reference view (first view).
 	// First thing called during render loop, before init views
 	// With RT enabled call flow can be : GDRTI -> GDME (main - all views) -> GDME (shadows)
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 	if (!IsInAnyRenderingThread()) // GetDynamicMeshElements is called on the game thread when resizing viewports
 		return;
-#else
-	if (!(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread)))
-		return;
-#endif
 
 	FPopcornFXPlugin::RegisterCurrentThreadAsUserIFN(); // UE rendering is now done on multiple threads
 
@@ -772,16 +760,8 @@ void	CParticleScene::GetDynamicMeshElements(
 	uint32 VisibilityMap,
 	FMeshElementCollector& Collector)
 {
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 	if (!IsInAnyRenderingThread()) // GetDynamicMeshElements is called on the game thread when resizing viewports
 		return;
-#else
-	if (!(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread)))
-		return;
-#endif
 
 	FPopcornFXPlugin::RegisterCurrentThreadAsUserIFN(); // UE rendering is now done on multiple threads
 
@@ -831,12 +811,7 @@ void	CParticleScene::GatherSimpleLights(const FSceneViewFamily& ViewFamily, FSim
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleScene::GatherSimpleLights", POPCORNFX_UE_PROFILER_COLOR);
 	SCOPE_CYCLE_COUNTER(STAT_PopcornFX_GatherSimpleLightsTime);
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 	PK_ASSERT(IsInAnyRenderingThread());
-#else
-	// Be careful: IsInParallelRenderingThread() can mean in any other thread than the GameThread
-	PK_ASSERT(IsInRenderingThread() || IsInParallelRenderingThread());
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
 
 	m_RenderBatchManager->GatherSimpleLights(ViewFamily, OutParticleLights);
 }
@@ -2473,12 +2448,10 @@ static void		_D3D11_ExecuteImmTasksArray(CParticleScene *self)
 		if (self->m_D3D11_DummyResource == null)
 		{
 			check(self->m_D3D11_DummyView == null);
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 			self->m_D3D11_DummyResource = new FD3D11Buffer(nullptr, FRHIBufferCreateDesc().SetInitialState(ERHIAccess::UAVGraphics));
-#elif (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
-			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferCreateDesc());
 #else
-			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferDesc());
+			self->m_D3D11_DummyResource = new FRHIBuffer(FRHIBufferCreateDesc());
 #endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 			self->m_D3D11_DummyResource->AddRef();
 

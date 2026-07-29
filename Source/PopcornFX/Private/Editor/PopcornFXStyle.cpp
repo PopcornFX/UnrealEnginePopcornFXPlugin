@@ -74,22 +74,15 @@ void	FPopcornFXStyle::Initialize()
 		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon16x16));
 		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon64x64));
 
-		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Shape"), Icon64x64));
-
 		m_StyleSet->Set("PopcornFX.BadIcon32", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon32x32));
 
 		// Abstract, should not be used:
 		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon16x16));
 		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSampler", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon64x64));
-		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon16x16));
-		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerActor", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/BadIcon"), Icon64x64));
 
 #define ATTRIBSAMPLER_STYLE(__name, __iconName, __imagePath) \
 		m_StyleSet->Set("ClassIcon." __name "", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon16x16)); \
 		m_StyleSet->Set("ClassThumbnail." __name "", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon64x64)); \
-		m_StyleSet->Set("ClassIcon." __name "Actor", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon16x16)); \
-		m_StyleSet->Set("ClassThumbnail." __name "Actor", new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon64x64)); \
 		m_StyleSet->Set("PopcornFX.Node." __iconName, new IMAGE_PLUGIN_BRUSH(TEXT(__imagePath), Icon32x32))
 
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerShape", "AttributeSampler_Shape", "SlateBrushes/AttributeSampler_Shape");
@@ -100,9 +93,8 @@ void	FPopcornFXStyle::Initialize()
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerText", "AttributeSampler_Text", "SlateBrushes/AttributeSampler_Text");
 		ATTRIBSAMPLER_STYLE("PopcornFXAttributeSamplerVectorField", "AttributeSampler_VectorField", "SlateBrushes/AttributeSampler_VectorField");
 
-#undef ATTRIBSAMPLER_STYPE
+#undef ATTRIBSAMPLER_STYLE
 
-		// No actor, is a component only
 		m_StyleSet->Set("ClassIcon.PopcornFXAttributeSamplerCurveDynamic", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Curve"), Icon16x16));
 		m_StyleSet->Set("ClassThumbnail.PopcornFXAttributeSamplerCurveDynamic", new IMAGE_PLUGIN_BRUSH(TEXT("SlateBrushes/AttributeSampler_Curve"), Icon64x64));
 

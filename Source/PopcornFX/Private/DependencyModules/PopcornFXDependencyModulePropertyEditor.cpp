@@ -8,14 +8,8 @@
 
 #include "Editor/CustomizeDetails/PopcornFXDetailsSceneComponent.h"
 #include "Editor/CustomizeDetails/PopcornFXDetailsEmitterComponent.h"
-#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeList.h"
-#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerShape.h"
-#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerCurve.h"
-#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerImage.h"
-#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerGrid.h"
-#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerVectorField.h"
-#include "Editor/CustomizeDetails/PopcornFXDetailsAttributeSamplerActor.h"
 
+#include "Editor/PropertyCustomization/PopcornFXCustomizationAttributeList.h"
 #include "Editor/PropertyCustomization/PopcornFXCustomizationAssetDep.h"
 #include "Editor/PropertyCustomization/PopcornFXCustomizationRendererMaterial.h"
 #include "Editor/PropertyCustomization/PopcornFXCustomizationSubRendererMaterial.h"
@@ -55,12 +49,12 @@ void	FPopcornFXDependencyModulePropertyEditor::Load()
 	// Register the custom editor
 	propertyModule.RegisterCustomClassLayout("PopcornFXEmitterComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsEmitterComponent::MakeInstance));
 	propertyModule.RegisterCustomClassLayout("PopcornFXSceneComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsSceneComponent::MakeInstance));
-	propertyModule.RegisterCustomClassLayout("PopcornFXAttributeList", FOnGetDetailCustomizationInstance::CreateStatic(&FPopcornFXDetailsAttributeListHidden::MakeInstance));
 
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAssetDep", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAssetDep::MakeInstance));
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXRendererMaterial", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationRendererMaterial::MakeInstance));
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXSubRendererMaterial", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationSubRendererMaterial::MakeInstance));
 
+	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeList", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeList::MakeInstance));
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerProperties", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSampler::MakeInstance));
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesImage", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerImage::MakeInstance));
 	propertyModule.RegisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesShape", FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FPopcornFXCustomizationAttributeSamplerShape::MakeInstance));
@@ -89,12 +83,12 @@ void	FPopcornFXDependencyModulePropertyEditor::Unload()
 	// Unregister the custom editor
 	propertyModule.UnregisterCustomClassLayout("PopcornFXEmitterComponent");
 	propertyModule.UnregisterCustomClassLayout("PopcornFXSceneComponent");
-	propertyModule.UnregisterCustomClassLayout("PopcornFXAttributeList");
 
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAssetDep");
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXRendererMaterial");
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXSubRendererMaterial");
 
+	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeList");
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerProperties");
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesImage");
 	propertyModule.UnregisterCustomPropertyTypeLayout("PopcornFXAttributeSamplerPropertiesShape");

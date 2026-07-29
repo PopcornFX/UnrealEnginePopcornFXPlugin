@@ -9,6 +9,7 @@
 #include "PopcornFXTypes.h"
 
 #include "PopcornFXEmitter.h"
+#include "PopcornFXAttributeList.h"
 #include "PopcornFXAttributeSampler.h"
 #include "PopcornFXRefPtrWrap.h"
 
@@ -27,13 +28,22 @@ class	FPopcornFXPlugin;
 
 class	CParticleScene;
 class	UPopcornFXEffect;
-class	UPopcornFXAttributeList;
-class	UPopcornFXAttributeSampler;
 class	UPopcornFXEmitterComponent;
 class	APopcornFXSceneActor;
 
 DECLARE_DYNAMIC_DELEGATE(FPopcornFXRaiseEventSignature);
 DECLARE_MULTICAST_DELEGATE(FPopcornFXRefreshUIEventSignature);
+
+/** Wrapper of a map of properties names and their error message so we can create an array of it */
+USTRUCT()
+struct POPCORNFX_API FIncompatibleProperties
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** Map of properties than are incompatible with an emitter. Key = property name. Value = error message */
+	UPROPERTY(VisibleAnywhere)
+	TMap<FString, FString>	m_Properties;
+};
 
 /** Instanciate and Emits a PopcornFX Effect into a PopcornFX Scene. */
 UCLASS(HideCategories=(Object, LOD, Physics, Collision, Activation, "Components|Activation"), meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
@@ -42,9 +52,8 @@ class POPCORNFX_API UPopcornFXEmitterComponent : public USceneComponent
 	GENERATED_UCLASS_BODY()
 
 public:
-	// dont access it direclty, use GetAttributeList() instead
-	UPROPERTY(Category="PopcornFX Attributes", Instanced, VisibleAnywhere, BlueprintReadOnly)
-	class UPopcornFXAttributeList			*AttributeList;
+	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere)
+	FPopcornFXAttributeList					AttributeList;
 
 	/** Effect used by this emitter */
 	UPROPERTY(Category="PopcornFX Emitter", EditAnywhere, BlueprintReadOnly, meta=(DisplayThumbnail="true"))
@@ -123,10 +132,6 @@ public:
 	/** Event called when the particle emission stops */
 	UPROPERTY(Category="PopcornFX Events", BlueprintAssignable)
 	FPopcornFXEmitterStopSignature			OnEmissionStops;
-
-	/** Attribute samplers used by this emitter */
-	UPROPERTY(EditAnywhere)
-	TArray<UPopcornFXAttributeSampler*>		Samplers;
 
 	uint32									bAutoDestroy : 1;
 	uint32									bHasAlreadyPlayOnLoad : 1;
@@ -288,6 +293,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attachment, meta = (EditCondition = "bAutoManageAttachment"))
 	EAttachmentRule	AutoAttachScaleRule;
 
+#if WITH_EDITORONLY_DATA
+	/** Attribute sampler properties that are incompatible with the emitter's effect. Key = sampler name, value = error message */
+	TMap<const FPopcornFXAttributeSamplerProperties*, FIncompatibleProperties>	m_IncompatibleProperties;
+
+#endif
+
 	/**
 	 * Set AutoAttachParent, AutoAttachSocketName, AutoAttachLocationRule, AutoAttachRotationRule, AutoAttachScaleRule to the specified parameters. Does not change bAutoManageAttachment; that must be set separately.
 	 * @param  Parent			Component to attach to. 
@@ -305,22 +316,17 @@ public:
 public:
 	static UPopcornFXEmitterComponent	*CreateStandaloneEmitterComponent(UPopcornFXEffect* effect, APopcornFXSceneActor *scene, UWorld* world, AActor* actor, bool bAutoDestroy);
 
-	class UPopcornFXAttributeList	*GetAttributeList(); // Updates attribute list ifn
-	class UPopcornFXAttributeList	*GetAttributeListIFP() const;
-
-	/** Returns internal sampler or actor's one according to user selection */
-	UPopcornFXAttributeSampler		*GetAttributeSampler(const FString &InAttributeSamplerName);
+	FPopcornFXAttributeList			*GetAttributeList(); // Updates attribute list ifn
 
 	bool							GetPayloadValue(const FString &payloadName, EPopcornFXPayloadType::Type expectedFieldType, void *outValue) const;
 
 	bool							ResolveScene(bool warnIFN);
 	bool							SceneValid() const { return m_CurrentScene != nullptr; }
 
-	/** Update (create if necessary) sampler objects that will be used by this emitter */
-	void							UpdateSamplerObjects(UPopcornFXEffect *effect);
 	void							ResetLoopTimer() { m_Time = 0.0f; }
 
 	//overrides
+	virtual void					PostInitProperties() override;
 	virtual void					PostLoad() override;
 	virtual void					BeginDestroy() override;
 	virtual void					OnRegister() override;
@@ -337,13 +343,15 @@ public:
 #if WITH_EDITOR
 	virtual void					TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
 	virtual bool					CanEditChange(const FProperty* InProperty) const override;
-	virtual void					PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent) override;
+	virtual void					PostEditChangeProperty(FPropertyChangedEvent &PropertyChangedEvent) override;
+	virtual void					PostTransacted(const FTransactionObjectEvent &TransactionEvent);
 	virtual void					CheckForErrors() override;
 	void							SpawnPreviewSceneIFN(UWorld *world);
 	/** Sets a "warning" sprite to the billboard component to show that something is invalid in the emitter setup */
 	void							SetWarningSprite();
 	/** Sets the "normal" sprite to the billboard component */
 	void							SetNormalSprite();
+	void							SetIsTransacting(bool newIsTransacting) { m_IsTransacting = newIsTransacting; }
 #endif // WITH_EDITOR
 
 	virtual const UObject			*AdditionalStatObject() const override;
@@ -367,7 +375,7 @@ private:
 	void							_OnSceneLoaded(APopcornFXSceneActor *sceneActor);
 	void							OnPopcornFXFileUnloaded(const class UPopcornFXFile *file);
 	void							OnPopcornFXFileLoaded(const class UPopcornFXFile *file);
-#endif
+#endif // WITH_EDITOR
 	void							_OnDeathNotifier(const PopcornFX::ParticleEffectInstance_ & instance);
 	void							CheckForDead();
 
@@ -393,6 +401,7 @@ private:
 	bool							m_DiedThisFrame;
 	bool							m_TeleportThisFrame;
 	bool							m_Destroyed;
+	bool							m_IsTransacting = false;
 
 	float							m_Time = 0.0f;
 
@@ -406,7 +415,7 @@ private:
 	FDelegateHandle					m_WaitForSceneDelegateHandle;
 	FDelegateHandle					m_OnPopcornFXFileUnloadedHandle;
 	FDelegateHandle					m_OnPopcornFXFileLoadedHandle;
-#endif
+#endif // WITH_EDITOR
 
 	FMatrix44f						m_CurrentWorldTransforms;
 	FMatrix44f						m_PreviousWorldTransforms;

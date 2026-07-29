@@ -8,6 +8,7 @@
 #define LOCTEXT_NAMESPACE "PopcornFXNode_WriteGridValues"
 
 #include "PopcornFXSDK.h"
+#include "PopcornFXAttributeSamplersFunctions.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXReadGridValues, Log, All);
 
@@ -33,34 +34,34 @@ bool		UPopcornFXNode_ReadGridValues::SetupNativeFunctionCall(UK2Node_CallFunctio
 	switch (DataType())
 	{
 	case	EPopcornFXGridDataType::Float:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridFloatValues);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridFloatValues);
 		break;
 	case	EPopcornFXGridDataType::Float2:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridFloat2Values);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridFloat2Values);
 		break;
 	case	EPopcornFXGridDataType::Float3:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridFloat3Values);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridFloat3Values);
 		break;
 	case	EPopcornFXGridDataType::Float4:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridFloat4Values);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridFloat4Values);
 		break;
 
 	case	EPopcornFXGridDataType::Int:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridIntValues);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridIntValues);
 		break;
 	case	EPopcornFXGridDataType::Int2:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridInt2Values);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridInt2Values);
 		break;
 	case	EPopcornFXGridDataType::Int3:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridInt3Values);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridInt3Values);
 		break;
 	case	EPopcornFXGridDataType::Int4:
-		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplerGrid, ReadGridInt4Values);
+		functionName = GET_FUNCTION_NAME_CHECKED(UPopcornFXAttributeSamplersFunctions, ReadGridInt4Values);
 		break;
 	}
 	if (!functionName.IsValid() || functionName.IsNone())
 		return false;
-	UFunction *function = UPopcornFXAttributeSamplerGrid::StaticClass()->FindFunctionByName(functionName);
+	UFunction *function = UPopcornFXAttributeSamplersFunctions::StaticClass()->FindFunctionByName(functionName);
 	if (!PK_VERIFY(function != null))
 		return false;
 	functionCall->SetFromFunction(function);

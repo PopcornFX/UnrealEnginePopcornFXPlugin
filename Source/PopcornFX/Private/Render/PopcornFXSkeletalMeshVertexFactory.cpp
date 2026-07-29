@@ -246,7 +246,7 @@ bool	FPopcornFXSkelMeshVertexFactory::IsCompatible(UMaterialInterface *material)
 
 void	FPopcornFXSkelMeshVertexFactory::SetData(const FDataType& InData)
 {
-	check(IsInRenderingThread());
+	check(IsInAnyRenderingThread());
 	Data = InData;
 	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
 }

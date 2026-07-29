@@ -18,7 +18,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerCurveDynamic, Log, All);
 
 //----------------------------------------------------------------------------
 //
-// UPopcornFXAttributeSamplerCurveDynamic
+// FPopcornFXAttributeSamplerCurveDynamic
 //
 //----------------------------------------------------------------------------
 
@@ -40,12 +40,9 @@ struct FAttributeSamplerCurveDynamicData
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSamplerCurveDynamic::UPopcornFXAttributeSamplerCurveDynamic(const FObjectInitializer &PCIP)
-:	Super(PCIP)
+FPopcornFXAttributeSamplerCurveDynamic::FPopcornFXAttributeSamplerCurveDynamic()
 {
-	bAutoActivate = true;
-
-	// UPopcornFXAttributeSampler override:
+	// FPopcornFXAttributeSampler2 override:
 	m_SamplerType = EPopcornFXAttributeSamplerType::Curve;
 
 	m_Data = new FAttributeSamplerCurveDynamicData();
@@ -56,7 +53,7 @@ UPopcornFXAttributeSamplerCurveDynamic::UPopcornFXAttributeSamplerCurveDynamic(c
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurveDynamic::BeginDestroy()
+void	FPopcornFXAttributeSamplerCurveDynamic::BeginDestroy()
 {
 	if (m_Data != null)
 	{
@@ -71,7 +68,7 @@ void	UPopcornFXAttributeSamplerCurveDynamic::BeginDestroy()
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::CreateCurveIFN()
+bool	FPopcornFXAttributeSamplerCurveDynamic::CreateCurveIFN()
 {
 	PK_ASSERT(m_Data != null);
 	if (m_Data->m_Curve0 == null)
@@ -94,7 +91,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::CreateCurveIFN()
 //----------------------------------------------------------------------------
 
 template <class _Type>
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetValuesGeneric(const TArray<_Type> &values)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetValuesGeneric(const TArray<_Type> &values)
 {
 	const u32	valueCount = values.Num();
 	if (valueCount < 2)
@@ -115,7 +112,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetValuesGeneric(const TArray<_Type
 //----------------------------------------------------------------------------
 
 template <class _Type>
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangentsGeneric(const TArray<_Type> &arriveTangents, const TArray<_Type> &leaveTangents)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetTangentsGeneric(const TArray<_Type> &arriveTangents, const TArray<_Type> &leaveTangents)
 {
 	if (arriveTangents.Num() != leaveTangents.Num())
 	{
@@ -151,7 +148,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangentsGeneric(const TArray<_Ty
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetTimes(const TArray<float> &Times)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetTimes(const TArray<float> &Times)
 {
 	PK_ASSERT(m_Data != null);
 
@@ -177,7 +174,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetTimes(const TArray<float> &Times
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetValues1D(const TArray<float> &Values)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetValues1D(const TArray<float> &Values)
 {
 	PK_ASSERT(m_Data != null);
 	if (CurveDimension != EAttributeSamplerCurveDimension::Float1)
@@ -190,7 +187,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetValues1D(const TArray<float> &Va
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetValues3D(const TArray<FVector> &Values)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetValues3D(const TArray<FVector> &Values)
 {
 	PK_ASSERT(m_Data != null);
 	if (CurveDimension != EAttributeSamplerCurveDimension::Float3)
@@ -203,7 +200,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetValues3D(const TArray<FVector> &
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetValues4D(const TArray<FLinearColor> &Values)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetValues4D(const TArray<FLinearColor> &Values)
 {
 	PK_ASSERT(m_Data != null);
 	if (CurveDimension != EAttributeSamplerCurveDimension::Float4)
@@ -216,7 +213,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetValues4D(const TArray<FLinearCol
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangents1D(const TArray<float> &ArriveTangents, const TArray<float> &LeaveTangents)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetTangents1D(const TArray<float> &ArriveTangents, const TArray<float> &LeaveTangents)
 {
 	PK_ASSERT(m_Data != null);
 	if (CurveInterpolator != ECurveDynamicInterpolator::Spline)
@@ -231,7 +228,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangents1D(const TArray<float> &
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangents3D(const TArray<FVector> &ArriveTangents, const TArray<FVector> &LeaveTangents)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetTangents3D(const TArray<FVector> &ArriveTangents, const TArray<FVector> &LeaveTangents)
 {
 	PK_ASSERT(m_Data != null);
 	if (CurveInterpolator != ECurveDynamicInterpolator::Spline)
@@ -246,7 +243,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangents3D(const TArray<FVector>
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangents4D(const TArray<FLinearColor> &ArriveTangents, const TArray<FLinearColor> &LeaveTangents)
+bool	FPopcornFXAttributeSamplerCurveDynamic::SetTangents4D(const TArray<FLinearColor> &ArriveTangents, const TArray<FLinearColor> &LeaveTangents)
 {
 	PK_ASSERT(m_Data != null);
 	if (CurveInterpolator != ECurveDynamicInterpolator::Spline)
@@ -261,7 +258,7 @@ bool	UPopcornFXAttributeSamplerCurveDynamic::SetTangents4D(const TArray<FLinearC
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_PreUpdate(float deltaTime)
+void	FPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime)
 {
 	PK_ASSERT(m_Data != null);
 
@@ -316,7 +313,7 @@ void	UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_PreUpdate(float delt
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*FPopcornFXAttributeSamplerCurveDynamic::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
 	PK_ASSERT(m_Data != null);
@@ -329,7 +326,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurveDynamic::_
 	const bool	defaultIsDoubleCurve = defaultDoubleCurveSampler != null;
 	if (defaultIsDoubleCurve)
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerCurveDynamic, Warning, TEXT("Couldn't setup UPopcornFXAttributeSamplerCurveDynamic: Source curve is DoubleCurve, not supported by dynamic curve attr sampler."));
+		UE_LOG(LogPopcornFXAttributeSamplerCurveDynamic, Warning, TEXT("Couldn't setup FPopcornFXAttributeSamplerCurveDynamic: Source curve is DoubleCurve, not supported by dynamic curve attr sampler."));
 		return null;
 	}
 	if (!CreateCurveIFN())
@@ -337,8 +334,8 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerCurveDynamic::_
 	if (m_Data->m_Desc == null)
 		m_Data->m_Desc = PK_NEW(PopcornFX::CParticleSamplerDescriptor_Curve_Default(m_Data->m_Curve0));
 	PK_ASSERT(m_Data->m_Desc->m_Curve0 == m_Data->m_Curve0);
-	desc.m_NeedUpdate = true;
-	_AttribSampler_PreUpdate(0.f);
+	m_NeedUpdate = true;
+	_AttribSampler_PreUpdate(emitter, 0.f);
 	return m_Data->m_Desc.Get();
 }
 

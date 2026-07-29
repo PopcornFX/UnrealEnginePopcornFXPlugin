@@ -5,13 +5,12 @@
 
 #pragma once
 
-#include "PopcornFXMinimal.h"
+#include "PopcornFXBufferPool.h"
 
 #include "RHIDefinitions.h"
 #include "RenderResource.h"
 
 #include "PopcornFXSDK.h"
-#include <pk_render_helpers/include/buffer_pool/rh_bufferpool.h>
 
 //----------------------------------------------------------------------------
 
@@ -240,28 +239,14 @@ public:
 protected:
 	bool		BufferAllocate(CBuffer &buffer, u32 sizeInBytes)
 	{
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 		check(IsInAnyRenderingThread());
-#else
-		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 		buffer.SetResourceUsage(m_BuffersUsedAsUAV, m_BuffersUsedAsSRV, m_ByteAddressBuffers, m_DrawIndirectBuffers);
 		return buffer.HardResize(sizeInBytes);
 	}
 
 	void		BufferRelease(CBuffer &buffer)
 	{
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 		check(IsInAnyRenderingThread());
-#else
-		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 		buffer.Release();
 	}
 };
@@ -277,28 +262,14 @@ public:
 protected:
 	bool		BufferAllocate(CBuffer &buffer, u32 sizeInBytes)
 	{
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 		check(IsInAnyRenderingThread());
-#else
-		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 		buffer.SetResourceUsage(m_BuffersUsedAsUAV, m_BuffersUsedAsSRV, m_ByteAddressBuffers);
 		return buffer.HardResize(sizeInBytes);
 	}
 
 	void		BufferRelease(CBuffer &buffer)
 	{
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 		check(IsInAnyRenderingThread());
-#else
-		check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-			|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 		buffer.Release();
 	}
 };

@@ -47,7 +47,7 @@ void FPopcornFXCustomizationAttributeSamplerCurve::CustomizeChildren(TSharedRef<
 	uint8	curveDimensionValue = 0;
 	curveDimensionPty->GetValue(curveDimensionValue);
 	curveDimensionPty->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationAttributeSamplerCurve::RebuildProperties));
-	AddErrorableProperty(PropertyHandle, "CurveDimension", ChildBuilder, m_Sampler && !m_Sampler->bIsInline, false);
+	AddErrorableProperty(PropertyHandle, "CurveDimension", ChildBuilder, !m_Sampler || !m_Sampler->bIsInline, false);
 
 	AddErrorableProperty(PropertyHandle, "Curve1D", ChildBuilder, curveDimensionValue == EAttributeSamplerCurveDimension::Float1, true);
 

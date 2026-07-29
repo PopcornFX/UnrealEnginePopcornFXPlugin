@@ -1,0 +1,28 @@
+//----------------------------------------------------------------------------
+// Copyright Persistant Studios, SARL.
+// https://popcornfx.com/popcornfx-community-license/
+//----------------------------------------------------------------------------
+
+#pragma once
+
+#include "Styling/SlateStyle.h"
+
+class FPopcornFXStyleEditor
+{
+public:
+	// Register PopcornFX styleset and its icons/brushes
+	static void Initialize();
+
+	// Unregister PopcornFX styleset and its icons/brushes
+	static void Shutdown();
+
+	static const FName			&GetStyleSetName() { check(m_StyleSet.IsValid()); return m_StyleSet->GetStyleSetName(); }
+	static const FSlateBrush	*GetBrush(const FName PropertyName, const ANSICHAR* Specifier = nullptr) { check(m_StyleSet.IsValid()); return m_StyleSet->GetBrush(PropertyName, Specifier); }
+
+private:
+	FPopcornFXStyleEditor() {}
+
+	static FString						InContent(const FString& RelativePath, const ANSICHAR* Extension);
+
+	static TSharedPtr<FSlateStyleSet>	m_StyleSet;
+};

@@ -554,14 +554,7 @@ void	CMaterialDesc_RenderThread::Clear()
 
 bool	CMaterialDesc_RenderThread::SetupFromGame(const CMaterialDesc_GameThread &gameMat)
 {
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 	check(IsInAnyRenderingThread());
-#else
-	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 
 	m_HasAtlasBlending = gameMat.m_HasAtlasBlending;
 	m_HasAlphaRemapper = gameMat.m_HasAlphaRemapper;
@@ -674,14 +667,7 @@ bool	CMaterialDesc_RenderThread::ResolveMaterial(PopcornFX::Drawers::EBillboardi
 	if (m_RendererClass == PopcornFX::Renderer_Light ||
 		m_RendererClass == PopcornFX::Renderer_Sound)
 		return true; // No material to resolve for lights/sounds
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 	check(IsInAnyRenderingThread());
-#else
-	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 	if (!MaterialIsValid())
 		return false;
 

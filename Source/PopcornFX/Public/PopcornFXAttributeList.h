@@ -6,13 +6,21 @@
 #pragma once
 
 #include "PopcornFXAttributeSampler.h"
+#include "PopcornFXAttributeSamplerImage.h"
+#include "PopcornFXAttributeSamplerCurve.h"
+#include "PopcornFXAttributeSamplerGrid.h"
+#include "PopcornFXAttributeSamplerText.h"
+#include "PopcornFXAttributeSamplerVectorField.h"
+#include "PopcornFXAttributeSamplerAnimTrack.h"
+#include "PopcornFXAttributeSamplerShape.h"
 
 #include "PopcornFXAttributeList.generated.h"
+
+DECLARE_MULTICAST_DELEGATE(FPopcornFXAttributeEventSignature);
 
 class	AActor;
 
 class	UPopcornFXEffect;
-class	UPopcornFXAttribSamplerInterface;
 class	UPopcornFXEmitterComponent;
 
 #if WITH_EDITORONLY_DATA
@@ -47,28 +55,28 @@ struct FPopcornFXAttributeDesc
 {
 	GENERATED_USTRUCT_BODY();
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	FString					m_AttributeName;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	FString					m_AttributeCategoryName;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	uint32					m_AttributeType;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	bool					m_IsPrivate;
 #if WITH_EDITORONLY_DATA
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	TEnumAsByte<EPopcornFXAttributeSemantic::Type>	m_AttributeSemantic;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	FVector					m_AttributeEulerAngles;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	TEnumAsByte<EPopcornFXAttributeDropDownMode::Type>	m_DropDownMode;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	TArray<FString>			m_EnumList;
 #endif // WITH_EDITORONLY_DATA
 
@@ -87,7 +95,7 @@ struct FPopcornFXAttributeDesc
 	bool					Valid() const { return !m_AttributeName.IsEmpty(); }
 	FName					AttributeFName() const { return FName(m_AttributeName); }
 	bool					ValidAttributeType() const { return m_AttributeType != ~0U; }
-	uint32					AttributeBaseTypeID() const { verify(ValidAttributeType());  return m_AttributeType; }
+	uint32					AttributeBaseTypeID() const;
 
 	void		Reset()
 	{
@@ -114,65 +122,66 @@ struct FPopcornFXAttributeDesc
 		}
 };
 
+/** Basic description of a PopcornFX attribute sampler + Holds the actual sampling data */
 USTRUCT()
 struct FPopcornFXSamplerDesc
 {
 	GENERATED_USTRUCT_BODY();
 
 	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
-	FString												m_SamplerName;
+	FString														m_SamplerName;
 
 	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
-	FString												m_AttributeCategoryName;
+	FString														m_AttributeCategoryName;
 
 	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
-	TEnumAsByte<EPopcornFXAttributeSamplerType::Type>	m_SamplerType;
+	TEnumAsByte<EPopcornFXAttributeSamplerType::Type>			m_SamplerType;
 
-	/** The actor that contains a sampler component to use for this attribute */
 	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	AActor												*m_AttributeSamplerActor;
+	UPopcornFXAttributeSamplerAsset								*m_SamplerAsset = nullptr;
 
-	/** The name of the sampler component in the target actor. Will try to use the root component if none is specified */
 	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	FString												m_AttributeSamplerComponentName;
+	TOptional<FPopcornFXAttributeSamplerPropertiesImage>		m_ImageProperties;
 
-	/**
-		False if we can't find any sampler component with this name in the target actor
-		Target actor can't be invalid since it falls back on the emitter's owner in not given
-	*/
-	UPROPERTY(VisibleAnywhere)
-	mutable bool										m_IsSamplerComponentValid = false; // Useless?
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerPropertiesCurve>		m_CurveProperties;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerPropertiesAnimTrack>	m_AnimTrackProperties;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerPropertiesGrid>			m_GridProperties;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerPropertiesShape>		m_ShapeProperties;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerPropertiesText>			m_TextProperties;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerPropertiesVectorField>	m_VectorFieldProperties;
 
 	/** Use an external sampler for this attribute */
 	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
-	bool												m_UseExternalSampler;
+	bool														m_UseSamplerAsset;
 
-	/** Restart the emitter when this sampler changes? */
-	UPROPERTY(EditAnywhere)
-	bool												m_RestartWhenSamplerChanges = true;
-
-	UPROPERTY()
-	bool					m_IsPrivate;
-
-	bool					m_NeedUpdate;
+	UPROPERTY(VisibleAnywhere)
+	bool														m_IsPrivate;
 
 	FPopcornFXSamplerDesc()
 	:	m_SamplerName()
 	,	m_AttributeCategoryName()
 	,	m_SamplerType(EPopcornFXAttributeSamplerType::None)
-	,	m_AttributeSamplerActor(nullptr)
-	,	m_AttributeSamplerComponentName()
-	,	m_UseExternalSampler(false)
+	,	m_UseSamplerAsset(false)
 	,	m_IsPrivate(false)
-	,	m_NeedUpdate(false)
 	{ }
 
-	bool		Valid() const { return true; }
 	FName		SamplerFName() const { return FName(m_SamplerName); }
 	EPopcornFXAttributeSamplerType::Type	SamplerType() const { return m_SamplerType; }
 
-	UPopcornFXAttributeSampler		*ResolveExternalAttributeSampler(UPopcornFXEmitterComponent *emitter, const UObject *enableLogForOwner) const;
-	UPopcornFXAttributeSampler		*ResolveAttributeSampler(UPopcornFXEmitterComponent *emitter, const UObject *enableLogForOwner) const;
+	FPopcornFXAttributeSamplerProperties		*ResolveAttributeProperties();
+	const FPopcornFXAttributeSamplerProperties	*ResolveAttributeProperties() const;
+	void										SetProperties(const FPopcornFXAttributeSamplerProperties *newProperties);
 
 	void		Reset()
 	{
@@ -181,28 +190,83 @@ struct FPopcornFXSamplerDesc
 		m_SamplerType = EPopcornFXAttributeSamplerType::None;
 	}
 
-	void		CopyValuesFrom(const FPopcornFXSamplerDesc &other)
+	/** Copy description values (ignore the samplers) */
+	void		CopyValuesFrom(FPopcornFXSamplerDesc &other)
 	{
-		m_AttributeSamplerActor = other.m_AttributeSamplerActor;
-		m_AttributeSamplerComponentName = other.m_AttributeSamplerComponentName;
+		m_SamplerName = other.m_SamplerName;
+		m_SamplerType = other.m_SamplerType;
+		m_UseSamplerAsset = other.m_UseSamplerAsset;
+		m_SamplerAsset = other.m_SamplerAsset;
+		m_AttributeCategoryName = other.m_AttributeCategoryName;
+		m_IsPrivate = other.m_IsPrivate;
 	}
 
+	/** Swap description values (ignore the samplers) */
 	void		SwapValuesWith(FPopcornFXSamplerDesc &other)
 	{
-		Swap(m_AttributeSamplerActor, other.m_AttributeSamplerActor);
-		Swap(m_AttributeSamplerComponentName, other.m_AttributeSamplerComponentName);
+		Swap(m_SamplerName, other.m_SamplerName);
+		Swap(m_AttributeCategoryName, other.m_AttributeCategoryName);
+		Swap(m_SamplerType, other.m_SamplerType);
+		Swap(m_UseSamplerAsset, other.m_UseSamplerAsset);
+		Swap(m_SamplerAsset, other.m_SamplerAsset);
+		Swap(m_IsPrivate, other.m_IsPrivate);
 	}
 
-	void		ResetValue() { m_AttributeSamplerActor = nullptr; m_AttributeSamplerComponentName = FString(); }
-	bool		ValueIsEmpty() const { return m_AttributeSamplerActor == nullptr && m_AttributeSamplerComponentName.IsEmpty(); }
+	/** Reset description values (ignore the samplers) */
+	void		ResetValue()
+	{
+		m_SamplerName = FString();
+		m_SamplerType = EPopcornFXAttributeSamplerType::None;
+		m_AttributeCategoryName = FString();
+		m_UseSamplerAsset = false;
+		m_SamplerAsset = nullptr;
+		m_IsPrivate = false;
+	}
 
 	bool		ExactMatch(const FPopcornFXSamplerDesc &other) const
 	{
-		return Valid() && m_SamplerName == other.m_SamplerName &&
+		return m_SamplerName == other.m_SamplerName &&
 			m_SamplerType == other.m_SamplerType &&
 			m_AttributeCategoryName == other.m_AttributeCategoryName &&
 			m_IsPrivate == other.m_IsPrivate;
 	}
+};
+
+USTRUCT()
+struct FPopcornFXSampler
+{
+	GENERATED_USTRUCT_BODY();
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerImage>			m_SamplerImage;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerCurve>			m_SamplerCurve;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerAnimTrack>		m_SamplerAnimTrack;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerGrid>			m_SamplerGrid;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerShape>			m_SamplerShape;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerText>			m_SamplerText;
+
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
+	TOptional<FPopcornFXAttributeSamplerVectorField>	m_SamplerVectorField;
+
+	FPopcornFXSampler()
+	:	m_SamplerImage()
+	,	m_SamplerCurve()
+	,	m_SamplerAnimTrack()
+	,	m_SamplerGrid()
+	,	m_SamplerShape()
+	,	m_SamplerText()
+	,	m_SamplerVectorField()
+	{ }
 };
 
 // Dummy
@@ -211,13 +275,17 @@ struct	FPopcornFXAttributeValue
 	uint32	m_Value[4];
 };
 
-UCLASS(MinimalAPI)
-class UPopcornFXAttributeList : public UObject
+/*
+* Class representing PopcornFX attributes
+*/
+USTRUCT()
+struct FPopcornFXAttributeList
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
-	~UPopcornFXAttributeList();
+	FPopcornFXAttributeList();
+	~FPopcornFXAttributeList();
 
 	bool			CheckDataIntegrity() const;
 	bool			Valid() const;
@@ -229,21 +297,20 @@ public:
 	void			SetupDefault(UPopcornFXEffect *sourceEffect, bool force = false);
 	bool			Prepare(UPopcornFXEffect *effect, bool force = false);
 	bool			PrepareAttributes(TArray<FPopcornFXAttributeDesc> *attrs, const TArray<FPopcornFXAttributeDesc> *refAttrs, TArray<uint8> *rawData, const TArray<uint8> *refRawData);
-	bool			PrepareSamplers(TArray<FPopcornFXSamplerDesc> *samplers, const TArray<FPopcornFXSamplerDesc> *refSamplers);
-	void			CopyFrom(const UPopcornFXAttributeList *other, AActor *patchParentActor = nullptr);
+	bool			PrepareSamplers(TArray<FPopcornFXSamplerDesc> *samplerDescs, const TArray<FPopcornFXSamplerDesc> *refSamplerDescs, TArray<FPopcornFXSampler> *samplers, const TArray<FPopcornFXSampler> *refSamplers);
+	void			CopyFrom(const FPopcornFXAttributeList *other);
 
-	const UPopcornFXAttributeList		*GetDefaultAttributeList(UPopcornFXEffect *effect) const; // can be self
+	FPopcornFXAttributeList		*GetDefaultAttributeList(UPopcornFXEffect *effect) const; // can be self
 
 	void			ResetAllToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
 	void			ResetAttributesToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
-	void			ResetSamplersToDefaultValues(UPopcornFXEmitterComponent *emitter, UPopcornFXEffect *effect);
 
-	void			RefreshAttributeSamplers(UPopcornFXEmitterComponent *emitter, bool reload = false) { if (m_Samplers.Num() > 0) _RefreshAttributeSamplers(emitter, reload); }
-	void			RefreshAttributes(const UPopcornFXEmitterComponent *emitter) { if (m_Attributes.Num() > 0) _RefreshAttributes(emitter); }
+	void			RefreshAttributeSamplers(UPopcornFXEmitterComponent *emitter, bool reload = false) { if (m_SamplerDescs.Num() > 0 && m_Samplers.Num() > 0) _RefreshAttributeSamplers(emitter, reload); }
+	void			RefreshAttributes(const UPopcornFXEmitterComponent *emitter) { if (m_AttributeDescs.Num() > 0) _RefreshAttributes(emitter); }
 
 	void			Scene_PreUpdate(UPopcornFXEmitterComponent *emitter, float deltaTime);
 #if WITH_EDITOR
-	void			AttributeSamplers_IndirectSelectedThisTick(UPopcornFXEmitterComponent *emitter) const;
+	void			AttributeSamplers_IndirectSelectedThisTick(UPopcornFXEmitterComponent *emitter);
 
 	// Gets & resets restart state
 	bool			GetRestartEmitter() { const bool restartEmitter = m_RestartEmitter; m_RestartEmitter = false; return restartEmitter; }
@@ -253,14 +320,16 @@ public:
 
 #endif
 
-	uint32			AttributeCount() const { return m_Attributes.Num(); }
+	uint32			AttributeDescCount() const { return m_AttributeDescs.Num(); }
 	int32			FindAttributeIndex(const FString &name) const;
 
+	uint32			SamplerDescCount() const { return m_SamplerDescs.Num(); }
 	uint32			SamplerCount() const { return m_Samplers.Num(); }
 	int32			FindSamplerIndex(const FString &name) const;
 
 	const FPopcornFXAttributeDesc						*GetAttributeDesc(uint32 attributeId) const;
-	const FPopcornFXSamplerDesc							*GetSamplerDesc(uint32 samplerId) const;
+	FPopcornFXSamplerDesc								*GetSamplerDesc(uint32 samplerId);
+	FPopcornFXAttributeSampler							*ResolveAttributeSampler(int32 samplerId);
 
 	const void											*GetAttributeDeclaration(UPopcornFXEffect *effect, uint32 attributeId) const;
 #if WITH_EDITOR
@@ -268,8 +337,6 @@ public:
 #endif
 	void												GetAttribute(uint32 attributeId, FPopcornFXAttributeValue &outValue) const;
 	void												SetAttribute(uint32 attributeId, const FPopcornFXAttributeValue &value, bool fromUI = false);
-
-	bool												SetAttributeSampler(const FString &samplerName, AActor *actor, const FString &propertyName);
 
 #if WITH_EDITOR
 	float												GetAttributeQuaternionDim(uint32 attributeId, uint32 dim);
@@ -286,51 +353,51 @@ public:
 	uint32					FileVersionId() const { return m_FileVersionId; }
 	UPopcornFXEffect		*Effect() const { return m_Effect; }
 
-	// overrides UObject
-	virtual bool	IsSafeForRootSet() const override { return false; }
-	virtual void	PostLoad() override;
-	virtual void	PostInitProperties() override;
-	virtual void	BeginDestroy() override;
-	virtual void	PreSave(FObjectPreSaveContext SaveContext) override;
-	virtual void	Serialize(FArchive& Ar) override;
-#if WITH_EDITOR
-	virtual void	PostEditUndo() override;
-#endif
-
 	void			RestoreAttributesFromCachedRawData(const TArray<uint8> &rawData);
 
 private:
 	void			_RefreshAttributes(const UPopcornFXEmitterComponent *emitter);
+	// Emitter not const because we update its clickable sprite if any sampler setup is invalid
 	void			_RefreshAttributeSamplers(UPopcornFXEmitterComponent *emitter, bool reload);
 
 public:
-	UPROPERTY()
+	UPROPERTY(Category="PopcornFX Attributes", VisibleAnywhere)
 	UPopcornFXEffect					*m_Effect;
 
 	UPROPERTY(Category="PopcornFX Attributes", VisibleAnywhere)
 	uint32								m_FileVersionId;
 
-	UPROPERTY(Category="PopcornFX Attributes", VisibleAnywhere)
-	TArray<FPopcornFXAttributeDesc>		m_Attributes;
+	/** Attribute descriptions */
+	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere)
+	TArray<FPopcornFXAttributeDesc>		m_AttributeDescs;
 
-	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere, EditFixedSize)
-	TArray<FPopcornFXSamplerDesc>		m_Samplers;
+	/** Attribute sampler descriptions */
+	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere)
+	TArray<FPopcornFXSamplerDesc>		m_SamplerDescs;
+
+	/** Actual samplers */
+	UPROPERTY(Category = "PopcornFX Attributes", EditAnywhere)
+	TArray<FPopcornFXSampler>			m_Samplers;
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY()
 	TArray<FString>						m_Categories; // Per effect, we don't need that info per emitter
 
+	UPROPERTY()
 	bool								m_RestartEmitter = false; // UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
+
+	UPROPERTY()
+	bool								m_HasPendingOneShotReset = false;
 #endif // WITH_EDITORONLY_DATA
 
-#if WITH_EDITOR
-	bool								m_HasPendingOneShotReset = false;
-#endif // WITH_EDITOR
-
-	UPROPERTY(Category="PopcornFX Attributes", EditAnywhere, BlueprintReadOnly, EditFixedSize)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	TArray<uint8>						m_AttributesRawData;
 
+	// Must not be an UPROPERTY() to not get serialized!
 	TWeakObjectPtr<const UPopcornFXEmitterComponent>	m_Owner;
+
+	/** Event broadcasted when attribute samplers are refreshed */
+	FPopcornFXAttributeEventSignature					OnSamplersRefreshed;
 
 	void								CheckEmitter(const UPopcornFXEmitterComponent *emitter);
 };

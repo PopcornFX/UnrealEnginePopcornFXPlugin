@@ -32,10 +32,10 @@ namespace	ECurveDynamicInterpolator
 }
 
 /** Can override an Attribute Sampler **Curve** by a **TArray of Values**. */
-UCLASS(EditInlineNew, meta=(BlueprintSpawnableComponent), ClassGroup=PopcornFX)
-class POPCORNFX_API UPopcornFXAttributeSamplerCurveDynamic : public UPopcornFXAttributeSampler
+USTRUCT(meta=(BlueprintSpawnableComponent))
+struct POPCORNFX_API FPopcornFXAttributeSamplerCurveDynamic : public FPopcornFXAttributeSampler
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_USTRUCT_BODY()
 
 public:
 	/** Curve dimension */
@@ -46,35 +46,30 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PopcornFX AttributeSampler")
 	TEnumAsByte<ECurveDynamicInterpolator::Type>	CurveInterpolator;
 
+	FPopcornFXAttributeSamplerCurveDynamic();
+
 	/**
 	*	Sets the times from a float array. Times must be in the 0-1 range.
 	*	If this isn't called, times will be automatically generated from the number of values in the range 0-1 (fixed steps).
 	*/
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
 	bool	SetTimes(const TArray<float> &Times);
 
 	/** Sets the values from a float array. */
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
 	bool	SetValues1D(const TArray<float> &Values);
 
 	/** Sets the values from a vector array. */
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
 	bool	SetValues3D(const TArray<FVector> &Values);
 
 	/** Sets the values from a color array. */
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
 	bool	SetValues4D(const TArray<FLinearColor> &Values);
 
 	/** Sets the tangents from a float array. */
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
 	bool	SetTangents1D(const TArray<float> &ArriveTangents, const TArray<float> &LeaveTangents);
 
 	/** Sets the tangents from a vector array. */
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
 	bool	SetTangents3D(const TArray<FVector> &ArriveTangents, const TArray<FVector> &LeaveTangents);
 
 	/** Sets the tangents from a color array. */
-	UFUNCTION(BlueprintCallable, Category="PopcornFX AttributeSampler")
 	bool	SetTangents4D(const TArray<FLinearColor> &ArriveTangents, const TArray<FLinearColor> &LeaveTangents);
 
 private:
@@ -88,8 +83,8 @@ private:
 	bool	SetTangentsGeneric(const TArray<_Type> &arriveTangents, const TArray<_Type> &leaveTangents);
 
 	// PopcornFX Internal
-	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler) override;
-	virtual void									_AttribSampler_PreUpdate(float deltaTime) override;
+	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual void									_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime) override;
 
 private:
 	FAttributeSamplerCurveDynamicData	*m_Data;

@@ -52,7 +52,7 @@ void FPopcornFXCustomizationAttributeSamplerGrid::CustomizeChildren(TSharedRef<I
 	// Always show the property but only editable when using an external sampler
 	if (!isAssetGridValue)
 	{
-		AddErrorableProperty(PropertyHandle, "Order", ChildBuilder, m_Sampler && !m_Sampler->bIsInline, false);
+		AddErrorableProperty(PropertyHandle, "Order", ChildBuilder, !m_Sampler || !m_Sampler->bIsInline, false);
 	}
 
 	// Refresh UI when we change the order to add/remove rows
@@ -71,7 +71,7 @@ void FPopcornFXCustomizationAttributeSamplerGrid::CustomizeChildren(TSharedRef<I
 	// Always show the property but only editable when using an external sampler
 	if (!isAssetGridValue)
 	{
-		AddErrorableProperty(PropertyHandle, "DataType", ChildBuilder, m_Sampler && !m_Sampler->bIsInline, false);
+		AddErrorableProperty(PropertyHandle, "DataType", ChildBuilder, !m_Sampler || !m_Sampler->bIsInline, false);
 	}
 }
 

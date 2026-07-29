@@ -19,6 +19,7 @@
 #include "Logging/MessageLog.h"
 #include "Misc/UObjectToken.h"
 #include "Misc/MapErrors.h"
+#include "Misc/TransactionObjectEvent.h"
 #include "Components/BillboardComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "EngineUtils.h"
@@ -68,7 +69,6 @@ UPopcornFXEmitterComponent	*UPopcornFXEmitterComponent::CreateStandaloneEmitterC
 			psc->Scene = scene;
 		}
 		psc->Effect = effect;
-		psc->UpdateSamplerObjects(effect);
 		//psc->bOverrideLODMethod = false;
 
 		psc->RegisterComponentWithWorld(world);
@@ -132,10 +132,8 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 	}
 	Scene = null;
 
-	AttributeList = CreateDefaultSubobject<UPopcornFXAttributeList>("AttributeList");
-
-	AttributeList->SetFlags(RF_Transactional);
-	AttributeList->CheckEmitter(this);
+	AttributeList.CheckEmitter(this);
+	AttributeList.m_Owner = this;
 
 	bAutoDestroy = false;
 	bHasAlreadyPlayOnLoad = false;
@@ -259,25 +257,28 @@ void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick 
 
 	// UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
 	// Emitters don't tick outside editor
-	if (PK_VERIFY(AttributeList != null))
 	{
 		if (m_Started &&
-			AttributeList->GetRestartEmitter())
+			AttributeList.GetRestartEmitter())
 		{
 			RestartEmitter(true);
 		}
 
-#if WITH_EDITOR
-		// Ugly but necessary for blueprints because modifying their properties only updates the UI instance 
-		// and not the actual BP in the level
-		UpdateSamplerObjects(Effect);
+		for (int32 sampleri = 0; sampleri < AttributeList.m_Samplers.Num(); sampleri++)
+		{
+			FPopcornFXAttributeSamplerShape *samplerShape = AttributeList.m_Samplers[sampleri].m_SamplerShape.GetPtrOrNull();
+			if (samplerShape != nullptr)
+			{
+				samplerShape->TickComponent(this, deltaTime, tickType, thisTickFunction);
+			}
+		}
 
+#if WITH_EDITOR
 		if (bLoopEmitter)
 		{
 			m_Time += deltaTime;
 			if (m_Time >= LoopDelay)
 			{
-				UE_LOG(LogPopcornFXEmitterComponent, Display, TEXT("Loop time = %f >= %f, restarting"), m_Time, LoopDelay);
 				RestartEmitter();
 				m_Time = 0.0f;
 			}
@@ -305,15 +306,15 @@ bool	UPopcornFXEmitterComponent::CanEditChange(const FProperty* InProperty) cons
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXEmitterComponent::PostEditChangeProperty(FPropertyChangedEvent& propertyChangedEvent)
+void	UPopcornFXEmitterComponent::PostEditChangeProperty(FPropertyChangedEvent &PropertyChangedEvent)
 {
 	const UWorld	*world = GetWorld();
 
 	CheckForDead(); // we could have not been able to do that when terminated externally
 
-	if (propertyChangedEvent.Property != null)
+	if (PropertyChangedEvent.Property != null)
 	{
-		const FString	pName = propertyChangedEvent.Property->GetName();
+		const FString	pName = PropertyChangedEvent.Property->GetName();
 
 		if (pName == TEXT("bPlayOnLoad"))
 		{
@@ -327,8 +328,7 @@ void	UPopcornFXEmitterComponent::PostEditChangeProperty(FPropertyChangedEvent& p
 			TerminateEmitter(true);
 			if (Effect == null)
 			{
-				AttributeList->Clean();
-				Samplers.Empty();
+				AttributeList.Clean();
 			}
 			else
 			{
@@ -337,10 +337,22 @@ void	UPopcornFXEmitterComponent::PostEditChangeProperty(FPropertyChangedEvent& p
 		}
 	}
 
-	if (IsValid(AttributeList))
-		AttributeList->CheckEmitter(this);
+	AttributeList.CheckEmitter(this);
 
-	Super::PostEditChangeProperty(propertyChangedEvent); // calls internal OnRegister
+	Super::PostEditChangeProperty(PropertyChangedEvent); // calls internal OnRegister
+}
+
+//----------------------------------------------------------------------------
+
+void	UPopcornFXEmitterComponent::PostTransacted(const FTransactionObjectEvent &TransactionEvent)
+{
+	if (TransactionEvent.GetEventType() == ETransactionObjectEventType::UndoRedo
+		&& TransactionEvent.GetChangedProperties().Contains("AttributeList"))
+	{
+		// Can't know if it's an undo for a sampler or not, refresh the UI just in case
+		AttributeList.OnSamplersRefreshed.Broadcast();
+	}
+	Super::PostTransacted(TransactionEvent);
 }
 
 //----------------------------------------------------------------------------
@@ -469,12 +481,7 @@ UPopcornFXEmitterComponent	*UPopcornFXEmitterComponent::CopyAndStartEmitterAtLoc
 			psc->SetRelativeScale3D(FVector(1.f));
 			psc->UpdateComponentToWorld();
 
-			psc->AttributeList->CopyFrom(AttributeList, GetOwner());
-			psc->UpdateSamplerObjects(Effect);
-			for (int32 sampleri = 0; sampleri < Samplers.Num(); sampleri++)
-			{
-				psc->Samplers[sampleri]->CopyPropertiesFrom(Samplers[sampleri]);
-			}
+			psc->AttributeList.CopyFrom(&AttributeList);
 
 			psc->StartEmitter();
 		}
@@ -529,12 +536,7 @@ UPopcornFXEmitterComponent	*UPopcornFXEmitterComponent::CopyAndStartEmitterAttac
 			psc->UpdateComponentToWorld();
 
 			psc->bEnableUpdates = true;
-			psc->AttributeList->CopyFrom(AttributeList, GetOwner());
-			psc->UpdateSamplerObjects(Effect);
-			for (int32 sampleri = 0; sampleri < Samplers.Num(); sampleri++)
-			{
-				psc->Samplers[sampleri]->CopyPropertiesFrom(Samplers[sampleri]);
-			}
+			psc->AttributeList.CopyFrom(&AttributeList);
 
 			psc->StartEmitter();
 		}
@@ -560,8 +562,7 @@ bool	UPopcornFXEmitterComponent::SetEffect(UPopcornFXEffect *effect, bool startE
 		if (effect == null)
 		{
 			Effect = effect;
-			AttributeList->Clean();
-			Samplers.Empty();
+			AttributeList.Clean();
 			return true;
 		}
 		if (effect != Effect)
@@ -570,16 +571,7 @@ bool	UPopcornFXEmitterComponent::SetEffect(UPopcornFXEffect *effect, bool startE
 #if WITH_EDITOR
 		m_OnPopcornFXFileUnloadedHandle = effect->m_OnPopcornFXFileUnloaded.AddUObject(this, &UPopcornFXEmitterComponent::OnPopcornFXFileUnloaded);
 #endif // WITH_EDITOR
-		PK_VERIFY(AttributeList->Prepare(effect, true));
-		// If we call UpdateSamplerObjects() here, it will allow to edit samplers in the BP editor
-		// but it will prevent saving levels containing those BP
-		// It will create samplers for the _GEN_VARIABLE (which is the BP editor UI instanced object)
-		// that will prevent saving afterwards
-		AActor	*Owner = GetOwner();
-		if (!(Owner && Owner->GetName().StartsWith(GetName() + "_C")))
-		{
-			//UpdateSamplerObjects(Effect);
-		}
+		PK_VERIFY(AttributeList.Prepare(effect, true));
 		if (startEmitter)
 			StartEmitter();
 	}
@@ -697,22 +689,15 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 
 	m_EffectInstancePtr->SetUserData(this);
 
+	AttributeList.Prepare(Effect);
+
 	m_Started = true;
 	m_Stopped = false;
 	m_EffectInstancePtr->m_DeathNotifier += PopcornFX::FastDelegate<void(const PopcornFX::PParticleEffectInstance &)>(this, &UPopcornFXEmitterComponent::_OnDeathNotifier);
 
 	// Refresh attributes once we have instantiated the emitter
-	UPopcornFXAttributeList		*attributeList = GetAttributeList();
-	PK_ASSERT(attributeList != null);
-
-	// This is needed to allow the Blueprint editor viewport's emitter to create its samplers
-	UpdateSamplerObjects(Effect);
-
-	if (IsValid(attributeList))
-	{
-		attributeList->RefreshAttributes(this);
-		attributeList->RefreshAttributeSamplers(this, true);
-	}
+	AttributeList.RefreshAttributes(this);
+	AttributeList.RefreshAttributeSamplers(this, true);
 
 	AActor	*owner = GetOwner();
 	bool	isVisible = IsVisible();
@@ -789,90 +774,6 @@ bool	UPopcornFXEmitterComponent::StartEmitter()
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSampler	*UPopcornFXEmitterComponent::GetAttributeSampler(const FString &InAttributeSamplerName)
-{
-	UPopcornFXAttributeList *attrList = GetAttributeListIFP();
-	if (!PK_VERIFY(attrList != null))
-		return null;
-
-	int32 sampleri = attrList->FindSamplerIndex(InAttributeSamplerName);
-	if (sampleri < 0 || sampleri >= (int32)attrList->SamplerCount() || sampleri >= (int32)Samplers.Num())
-		return null;
-	const FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(sampleri);
-	if (!desc)
-		return null;
-
-	if (desc->m_UseExternalSampler)
-	{
-		return desc->ResolveAttributeSampler(this, nullptr);
-	}
-	return Samplers[sampleri];
-}
-
-//----------------------------------------------------------------------------
-
-void	UPopcornFXEmitterComponent::UpdateSamplerObjects(UPopcornFXEffect *effect)
-{
-	if (!effect || effect->DefaultSamplers.Num() == 0)
-	{
-		Samplers.Empty();
-		return;
-	}
-	const UPopcornFXAttributeList *defaultAttrList = effect->GetDefaultAttributeList();
-
-	// Recreate and setup defaults only if needed
-	int32 samplerCount = defaultAttrList->SamplerCount();
-	// Shrink the array if some samplers were removed after reimporting
-	if (samplerCount < Samplers.Num())
-	{
-		Samplers.SetNum(samplerCount);
-	}
-	else
-	{
-		Samplers.Reserve(samplerCount);
-	}
-	for (int32 samplerIdx = 0; samplerIdx < samplerCount; samplerIdx++)
-	{
-		const FPopcornFXSamplerDesc	*desc = defaultAttrList->GetSamplerDesc(samplerIdx);
-		if (!PK_VERIFY(desc != null))
-		{
-			continue;
-		}
-
-		UClass *samplerClass = GetSamplerClass(desc->m_SamplerType);
-		if (!PK_VERIFY(samplerClass != null))
-		{
-			continue;
-		}
-
-		if (samplerIdx >= Samplers.Num())
-		{
-			// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-			UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-			newSampler->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
-			newSampler->CopyPropertiesFrom(Effect->DefaultSamplers[samplerIdx]);
-			Samplers.Add(newSampler);
-		}
-		else
-		{
-			if (!Samplers[samplerIdx] || Samplers[samplerIdx]->SamplerType() != desc->m_SamplerType
-				|| (samplerIdx < AttributeList->m_Samplers.Num() && AttributeList->m_Samplers[samplerIdx].m_SamplerName != desc->m_SamplerName))
-			{
-				// Let Unreal generate an unique name to avoid collisions between attribute samplers that have the same name
-				UPopcornFXAttributeSampler *newSampler = NewObject<UPopcornFXAttributeSampler>(this, samplerClass);
-				newSampler->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
-				newSampler->CopyPropertiesFrom(Effect->DefaultSamplers[samplerIdx]);
-				Samplers[samplerIdx] = newSampler;
-			}
-		}
-#if WITH_EDITOR
-		Samplers[samplerIdx]->SetupDefaults(Effect, samplerIdx);
-#endif
-	}
-}
-
-//----------------------------------------------------------------------------
-
 
 void	UPopcornFXEmitterComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 {
@@ -880,7 +781,6 @@ void	UPopcornFXEmitterComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 	TerminateEmitter(bKillParticlesOnDestroy);
 
 	m_Destroyed = true;
-	Samplers.Empty();
 	Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
 
@@ -995,8 +895,7 @@ void	UPopcornFXEmitterComponent::TerminateEmitter(bool killParticles)
 		UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::TerminateEmitter %s '%p' - '%p' - '%s'"), m_StartFrameUpdate == GFrameCounter ? L"(first frame)" : L"", this, m_EffectInstancePtr.Get(), IsValid(Effect) ? *Effect->GetPathName() : L"");
 #endif
 
-		if (IsValid(AttributeList)) // something can go wrong when deleting stuff
-			AttributeList->CheckEmitter(this);
+		AttributeList.CheckEmitter(this);
 
 		// keep a ref here
 		PopcornFX::PParticleEffectInstance		instanceForRef = m_EffectInstancePtr.Get();
@@ -1055,7 +954,6 @@ void	UPopcornFXEmitterComponent::TerminateEmitter(bool killParticles)
 	}
 }
 
-
 //----------------------------------------------------------------------------
 
 void	UPopcornFXEmitterComponent::KillParticles()
@@ -1069,7 +967,7 @@ void	UPopcornFXEmitterComponent::KillParticles()
 		if (m_EffectInstancePtr != null)
 		{
 			PK_ASSERT(FPopcornFXPlugin::IsMainThread()); // cannot be called async
-			AttributeList->CheckEmitter(this);
+			AttributeList.CheckEmitter(this);
 			m_EffectInstancePtr->KillDeferred();
 			PK_ASSERT(m_CurrentScene != null);
 
@@ -1088,33 +986,16 @@ void	UPopcornFXEmitterComponent::KillParticles()
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeList	*UPopcornFXEmitterComponent::GetAttributeList()
+FPopcornFXAttributeList *UPopcornFXEmitterComponent::GetAttributeList()
 {
-	if (!PK_VERIFY(AttributeList != null)) // something can go wrong when deleting stuff
-		return null;
-	const UWorld	*world = GetWorld();
+	const UWorld *world = GetWorld();
 	if (!FApp::CanEverRender() || (world != null && world->IsNetMode(NM_DedicatedServer)))
 		return null;
-	if (!PK_VERIFY(AttributeList->Prepare(Effect)))
+	if (!PK_VERIFY(AttributeList.Prepare(Effect)))
 		return null;
-	AttributeList->CheckEmitter(this);
-	PK_ASSERT(AttributeList->Valid() && AttributeList->IsUpToDate(Effect));
-	return AttributeList;
-}
-
-//----------------------------------------------------------------------------
-
-UPopcornFXAttributeList	*UPopcornFXEmitterComponent::GetAttributeListIFP() const
-{
-	if (!PK_VERIFY(AttributeList != null)) // something can go wrong when deleting stuff
-		return null;
-	const UWorld	*world = GetWorld();
-	if (!FApp::CanEverRender() || (world != null && world->IsNetMode(NM_DedicatedServer)))
-		return null;
-	if (!PK_VERIFY(AttributeList->Valid() && AttributeList->IsUpToDate(Effect)))
-		return null;
-	AttributeList->CheckEmitter(this);
-	return AttributeList;
+	AttributeList.CheckEmitter(this);
+	PK_ASSERT(AttributeList.Valid() && AttributeList.IsUpToDate(Effect));
+	return &AttributeList;
 }
 
 //----------------------------------------------------------------------------
@@ -1126,7 +1007,7 @@ bool	UPopcornFXEmitterComponent::GetPayloadValue(const FString &payloadName, EPo
 
 	if (payloadName.IsEmpty())
 	{
-		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Get Payload Value: empty PayloadName for effect"), *Effect->GetName());
+		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Get Payload Value: empty PayloadName for effect '%s'"), *Effect->GetName());
 		return false;
 	}
 
@@ -1137,16 +1018,18 @@ bool	UPopcornFXEmitterComponent::GetPayloadValue(const FString &payloadName, EPo
 
 void	UPopcornFXEmitterComponent::ResetAttributesToDefault()
 {
-	if (!PK_VERIFY(AttributeList != null)) // something can go wrong when deleting stuff
-		return;
-	UPopcornFXAttributeList		*attributeList = GetAttributeList();
+	FPopcornFXAttributeList		*attributeList = GetAttributeList();
 	if (attributeList != null)
 	{
-		for (uint32 samplerIdx = 0; samplerIdx < attributeList->SamplerCount(); samplerIdx++)
+		for (uint32 samplerIdx = 0; samplerIdx < attributeList->SamplerDescCount(); samplerIdx++)
 		{
-			Samplers[samplerIdx]->CopyPropertiesFrom(Effect->DefaultSamplers[samplerIdx]);
+			FPopcornFXAttributeSampler *dest = attributeList->ResolveAttributeSampler(samplerIdx);
+			const FPopcornFXAttributeSamplerProperties *src = Effect->DefaultAttributeList.GetSamplerDesc(samplerIdx)->ResolveAttributeProperties();
+			dest->bIsInline = Effect->DefaultAttributeList.ResolveAttributeSampler(samplerIdx)->bIsInline;
+			dest->SetType(Effect->DefaultAttributeList.ResolveAttributeSampler(samplerIdx)->SamplerType());
+			attributeList->m_SamplerDescs[samplerIdx].CopyValuesFrom(Effect->DefaultAttributeList.m_SamplerDescs[samplerIdx]);
+			attributeList->m_Samplers[samplerIdx] = Effect->DefaultAttributeList.m_Samplers[samplerIdx];
 		}
-		attributeList->ResetAttributesToDefaultValues(this, Effect);
 	}
 }
 
@@ -1154,16 +1037,10 @@ void	UPopcornFXEmitterComponent::ResetAttributesToDefault()
 
 void	UPopcornFXEmitterComponent::ResetSamplersToDefault()
 {
-	if (!PK_VERIFY(AttributeList != null)) // something can go wrong when deleting stuff
-		return;
-	UPopcornFXAttributeList *attributeList = GetAttributeList();
+	FPopcornFXAttributeList *attributeList = GetAttributeList();
 	if (attributeList != null)
 	{
-		for (uint32 samplerIdx = 0; samplerIdx < attributeList->SamplerCount(); samplerIdx++)
-		{
-			Samplers[samplerIdx]->CopyPropertiesFrom(Effect->DefaultSamplers[samplerIdx]);
-		}
-		attributeList->ResetSamplersToDefaultValues(this, Effect);
+		attributeList->ResetAttributesToDefaultValues(this, Effect);
 	}
 }
 
@@ -1274,11 +1151,22 @@ bool	UPopcornFXEmitterComponent::IsEmitterEmitting() const
 
 //----------------------------------------------------------------------------
 
+void	UPopcornFXEmitterComponent::PostInitProperties()
+{
+	LLM_SCOPE(ELLMTag::Particles);
+	AttributeList.m_Owner = nullptr;
+	Super::PostInitProperties();
+}
+
+//----------------------------------------------------------------------------
+
 void	UPopcornFXEmitterComponent::PostLoad()
 {
 	LLM_SCOPE(ELLMTag::Particles);
+	AttributeList.m_Owner = nullptr;
 	Super::PostLoad();
 }
+
 //----------------------------------------------------------------------------
 
 // Compute particle system bounds
@@ -1397,11 +1285,8 @@ void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float de
 		previousVel = currentVel;
 	}
 
-	if (IsValid(AttributeList))// && AttributeList->bNeedTick)
-	{
-		AttributeList->CheckEmitter(this);
-		AttributeList->Scene_PreUpdate(this, deltaTime);
-	}
+	AttributeList.CheckEmitter(this);
+	AttributeList.Scene_PreUpdate(this, deltaTime);
 
 	AActor	*owner = GetOwner();
 	bool	isVisible = IsVisible();
@@ -1422,13 +1307,12 @@ void	UPopcornFXEmitterComponent::Scene_PreUpdate(CParticleScene *scene, float de
 
 #if WITH_EDITOR
 	// Notify samplers they are indirectly selected this frame
-	if (!GetWorld()->IsGameWorld() && IsValid(AttributeList))
+	if (!GetWorld()->IsGameWorld())
 	{
 		const USelection	*selectedAssets = GEditor->GetSelectedActors();
 		PK_ASSERT(selectedAssets != null);
-		bool				isSelected = selectedAssets->IsSelected(GetOwner());
-		if (isSelected)
-			AttributeList->AttributeSamplers_IndirectSelectedThisTick(this);
+		if (selectedAssets->IsSelected(GetOwner()))
+			AttributeList.AttributeSamplers_IndirectSelectedThisTick(this);
 	}
 #endif
 }
@@ -1443,8 +1327,8 @@ void	UPopcornFXEmitterComponent::Scene_PostUpdate(CParticleScene *scene, float d
 #if WITH_EDITOR
 	// This will be called after the update has been complete.
 	// Post-update the attributes if we have some: Needed to reset pulsed bool attributes
-	UPopcornFXAttributeList		*attributeList = GetAttributeListIFP();
-	if (attributeList != null && IsValid(attributeList))
+	FPopcornFXAttributeList		*attributeList = GetAttributeList();
+	if (attributeList != null)
 		attributeList->ResetPulsedBoolAttributesIFN();
 #endif // WITH_EDITOR
 }
@@ -1455,14 +1339,12 @@ void	UPopcornFXEmitterComponent::Scene_PostUpdate(CParticleScene *scene, float d
 
 void	UPopcornFXEmitterComponent::OnPopcornFXFileUnloaded(const UPopcornFXFile *file)
 {
+	(void)file;
 	if (Effect == null)
 	{
 		PK_ASSERT(!IsEmitterEmitting());
 		return; // Legit, emitter in level, asset is destroyed. We have PostEditChangeProperty called before unload method, so our Effect is null. Can't unregister callbacks
 	}
-	PK_ASSERT(!IsTemplate());
-	if (!PK_VERIFY(file == Effect))
-		return;
 	m_ReplayAfterDead = IsEmitterEmitting();
 	Effect->m_OnPopcornFXFileUnloaded.Remove(m_OnPopcornFXFileUnloadedHandle);
 	Effect->m_OnPopcornFXFileLoaded.Remove(m_OnPopcornFXFileLoadedHandle);
@@ -1473,14 +1355,14 @@ void	UPopcornFXEmitterComponent::OnPopcornFXFileUnloaded(const UPopcornFXFile *f
 
 void	UPopcornFXEmitterComponent::OnPopcornFXFileLoaded(const UPopcornFXFile *file)
 {
+	(void)file;
 	if (Effect == null)
 	{
 		PK_ASSERT(!IsEmitterEmitting());
 		return; // Legit, emitter in level, asset is destroyed. We have PostEditChangeProperty called before unload method, so our Effect is null. Can't unregister callbacks
 	}
-	PK_ASSERT(!IsTemplate());
-	if (!PK_VERIFY(file == Effect))
-		return;
+	Modify();
+	AttributeList.Prepare(Effect);
 	if (m_ReplayAfterDead)
 	{
 		Effect->m_OnPopcornFXFileLoaded.Remove(m_OnPopcornFXFileLoadedHandle);
@@ -1547,7 +1429,7 @@ void	UPopcornFXEmitterComponent::OnRegister()
 	}
 
 #if WITH_EDITOR
-	if (GetWorld())
+	if (GetWorld() && SpriteComponent.Get() == nullptr)
 	{
 		CreateSpriteComponent(LoadObject<UTexture2D>(nullptr, TEXT("/PopcornFX/SlateBrushes/icon_PopcornFX_Logo_256x")));
 	}
@@ -1556,15 +1438,9 @@ void	UPopcornFXEmitterComponent::OnRegister()
 	// Keep Super::OnRegister in between the auto attachment system and the rest.
 	Super::OnRegister();
 
-	// Sometimes UE reflection breaks connection with the underlying AttributeList member, not sure why.
-	// Returning here instead of crashing below, and UE properly re-registers the component later on..
-	// Ugly but does the trick (there is probably wrong done plugin side that causes this issue)
-	if (!IsValid(AttributeList))
-		return;
-
 	// Avoids Prepare call on the attribute list before the PostEditChangeProperty is called
 	// This is due to "ReRegister()" called before the PostEditChange is broadcasted.
-	if (Effect == null)
+	if (!IsValid(this) || Effect == null || !IsValid(Effect))
 		return;
 
 	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
@@ -1576,17 +1452,9 @@ void	UPopcornFXEmitterComponent::OnRegister()
 		if (Effect != null)
 		{
 			Effect->ConditionalPostLoad();
-			check(AttributeList != null);
-			AttributeList->ConditionalPostLoad();
-			AttributeList->CheckEmitter(this);
-			PK_VERIFY(AttributeList->Prepare(Effect));
 		}
 
-		AttributeList->CheckEmitter(this);
-
-		// We need to do that again (PostLoad not called when spawned on the fly)
-		check(AttributeList != null);
-		PK_VERIFY(AttributeList->Prepare(Effect));
+		AttributeList.CheckEmitter(this);
 	}
 
 #if WITH_EDITOR
@@ -1903,7 +1771,9 @@ void	UPopcornFXEmitterComponent::OnUnregister()
 #if HEAVY_DEBUG
 	UE_LOG(LogPopcornFXEmitterComponent, Log, TEXT("UPopcornFXEmitterComponent::OnUnregister '%p' - '%p'"), this, m_EffectInstancePtr.Get());
 #endif
-
+	
+	if (m_IsTransacting)
+		return;
 #if WITH_EDITOR
 	m_ReplayAfterDead = IsEmitterEmitting();
 #endif

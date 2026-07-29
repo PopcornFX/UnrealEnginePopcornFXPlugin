@@ -12,6 +12,7 @@
 #include "PopcornFXPlugin.h"
 #include "PopcornFXStats.h"
 #include "PopcornFXAttributeList.h"
+#include "PopcornFXEmitterComponent.h"
 #include "Assets/PopcornFXEffect.h"
 #include "Assets/PopcornFXEffectPriv.h"
 
@@ -34,7 +35,72 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerAnimTrack, Log, All);
 
 //----------------------------------------------------------------------------
 //
-// UPopcornFXAttributeSamplerAnimTrack
+// FPopcornFXAttributeSamplerPropertiesAnimTrack
+//
+//----------------------------------------------------------------------------
+
+
+bool	FPopcornFXAttributeSamplerPropertiesAnimTrack::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+{
+	if (ResolveSplineComponent(emitter, samplerName, true) == nullptr)
+		return false;
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+bool	FPopcornFXAttributeSamplerPropertiesAnimTrack::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+{
+	return true;
+}
+
+//----------------------------------------------------------------------------
+
+USplineComponent	*FPopcornFXAttributeSamplerPropertiesAnimTrack::ResolveSplineComponent(UPopcornFXEmitterComponent *owner, const FString &samplerName, bool logErrors)
+{
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent", POPCORNFX_UE_PROFILER_COLOR);
+
+	AActor	*fallbackActor = owner->GetOwner();
+	if (fallbackActor == null)
+	{
+		FString errorMsg(TEXT("Could not find fallback actor"));
+#if WITH_EDITOR
+		m_UnsupportedProperties.Add(TEXT("TargetActor"), errorMsg);
+#endif
+		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerAnimTrack, Error, animtrack, *samplerName, owner, errorMsg);
+		return null;
+	}
+	const AActor		*parent = TargetActor == null ? fallbackActor : TargetActor;
+	USplineComponent	*spline = null;
+	if (SplineComponentName != NAME_None)
+	{
+		FObjectPropertyBase	*prop = FindFProperty<FObjectPropertyBase>(parent->GetClass(), SplineComponentName);
+
+		if (prop != null)
+			spline = Cast<USplineComponent>(prop->GetObjectPropertyValue_InContainer(parent));
+	}
+	else
+	{
+		spline = Cast<USplineComponent>(parent->GetRootComponent());
+	}
+	if (spline == null)
+	{
+		FString errorMsg(TEXT("Could not find USPlineComponent in target actor"));
+#if WITH_EDITOR
+		m_UnsupportedProperties.Add(TEXT("SplineComponentName"), errorMsg);
+#endif
+		if (logErrors)
+		{
+			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerAnimTrack, Error, animtrack, *samplerName, owner, errorMsg);
+		}
+		return null;
+	}
+	return spline;
+}
+
+//----------------------------------------------------------------------------
+//
+// FPopcornFXAttributeSamplerAnimTrack
 //
 //----------------------------------------------------------------------------
 
@@ -314,11 +380,8 @@ struct	FAttributeSamplerAnimTrackData
 
 //----------------------------------------------------------------------------
 
-UPopcornFXAttributeSamplerAnimTrack::UPopcornFXAttributeSamplerAnimTrack(const FObjectInitializer &PCIP)
-:	Super(PCIP)
+FPopcornFXAttributeSamplerAnimTrack::FPopcornFXAttributeSamplerAnimTrack()
 {
-	bAutoActivate = true;
-
 	// By default, only translate
 	Properties.bTranslate = true;
 	Properties.bScale = false;
@@ -328,7 +391,7 @@ UPopcornFXAttributeSamplerAnimTrack::UPopcornFXAttributeSamplerAnimTrack(const F
 
 	Properties.Transforms = EPopcornFXSplineTransforms::AttrSamplerRelativeTr;
 
-	// UPopcornFXAttributeSampler override:
+	// FPopcornFXAttributeSampler override:
 	m_SamplerType = EPopcornFXAttributeSamplerType::AnimTrack;
 
 	m_Data = new FAttributeSamplerAnimTrackData();
@@ -336,7 +399,7 @@ UPopcornFXAttributeSamplerAnimTrack::UPopcornFXAttributeSamplerAnimTrack(const F
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerAnimTrack::BeginDestroy()
+void	FPopcornFXAttributeSamplerAnimTrack::BeginDestroy()
 {
 	if (m_Data != null)
 	{
@@ -348,52 +411,8 @@ void	UPopcornFXAttributeSamplerAnimTrack::BeginDestroy()
 
 //----------------------------------------------------------------------------
 
-USplineComponent	*UPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent(bool logErrors)
-{
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent", POPCORNFX_UE_PROFILER_COLOR);
-
-	AActor	*fallbackActor = GetOwner();
-	if (fallbackActor == null)
-	{
-		FString errorMsg(TEXT("Could not find fallback actor"));
 #if WITH_EDITOR
-		m_UnsupportedProperties.Add(TEXT("TargetActor"), errorMsg);
-#endif
-		UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerAnimTrack, Error, animtrack, this, errorMsg);
-		return null;
-	}
-	const AActor		*parent = Properties.TargetActor == null ? fallbackActor : Properties.TargetActor;
-	USplineComponent	*spline = null;
-	if (Properties.SplineComponentName != NAME_None)
-	{
-		FObjectPropertyBase	*prop = FindFProperty<FObjectPropertyBase>(parent->GetClass(), Properties.SplineComponentName);
-
-		if (prop != null)
-			spline = Cast<USplineComponent>(prop->GetObjectPropertyValue_InContainer(parent));
-	}
-	else
-	{
-		spline = Cast<USplineComponent>(parent->GetRootComponent());
-	}
-	if (spline == null)
-	{
-		FString errorMsg(TEXT("Could not find USPlineComponent in target actor"));
-#if WITH_EDITOR
-		m_UnsupportedProperties.Add(TEXT("SplineComponentName"), errorMsg);
-#endif
-		if (logErrors)
-		{
-			UE_LOG_UNSUPPORTED_SAMPLER(LogPopcornFXAttributeSamplerAnimTrack, Error, animtrack, this, errorMsg);
-		}
-		return null;
-	}
-	return spline;
-}
-
-//----------------------------------------------------------------------------
-
-#if WITH_EDITOR
-void	UPopcornFXAttributeSamplerAnimTrack::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
+void	FPopcornFXAttributeSamplerAnimTrack::PostEditChangeProperty(FPropertyChangedEvent &propertyChangedEvent)
 {
 	if (propertyChangedEvent.Property != NULL)
 	{
@@ -411,9 +430,9 @@ void	UPopcornFXAttributeSamplerAnimTrack::PostEditChangeProperty(FPropertyChange
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerAnimTrack::CopyPropertiesFrom(const UPopcornFXAttributeSampler *other)
+void	FPopcornFXAttributeSamplerAnimTrack::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
 {
-	const FPopcornFXAttributeSamplerPropertiesAnimTrack *newAnimTrackProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesAnimTrack *>(other->GetProperties());
+	const FPopcornFXAttributeSamplerPropertiesAnimTrack *newAnimTrackProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesAnimTrack *>(other);
 	if (!PK_VERIFY(newAnimTrackProperties != null))
 	{
 		UE_LOG(LogPopcornFXAttributeSamplerAnimTrack, Error, TEXT("New properties are null or not AnimTrack properties"));
@@ -436,38 +455,44 @@ void	UPopcornFXAttributeSamplerAnimTrack::CopyPropertiesFrom(const UPopcornFXAtt
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerAnimTrack::SetupDefaults(UPopcornFXEffect *effect, const uint32 samplerIdx, bool updateUnlockedValues)
+void	FPopcornFXAttributeSamplerAnimTrack::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
 {
-	Super::SetupDefaults(effect, samplerIdx, updateUnlockedValues);
+	const FPopcornFXAttributeSamplerPropertiesAnimTrack *newAnimTrackProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesAnimTrack *>(other);
+	if (newAnimTrackProperties == null)
+		return;
 
-	const PopcornFX::PCParticleAttributeList &attrListPtr = effect->Effect()->AttributeList();
+	if (newAnimTrackProperties->TargetActor != Properties.TargetActor ||
+		newAnimTrackProperties->SplineComponentName != Properties.SplineComponentName ||
+		newAnimTrackProperties->bTranslate != Properties.bTranslate ||
+		newAnimTrackProperties->bRotate != Properties.bRotate ||
+		newAnimTrackProperties->bScale != Properties.bScale)
+	{
+		m_Data->m_NeedsReload = true;
+	}
 
-	if (attrListPtr == null || *(attrListPtr->DefaultAttributes()) == null)
+	Properties = *newAnimTrackProperties;
+}
+
+//----------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerPropertiesAnimTrack::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
+{
+	Super::SetupDefaults(decl, updateUnlockedValues);
+
+	if (decl == null)
 	{
 		return;
 	}
-
-	PopcornFX::TMemoryView<const PopcornFX::CParticleAttributeSamplerDeclaration *const>	samplerList = attrListPtr->UniqueSamplerList();
-	if (samplerList.Count() == 0)
-	{
-		return;
-	}
-	const PopcornFX::CParticleAttributeSamplerDeclaration *const	samplerDesc = attrListPtr->UniqueSamplerList()[samplerIdx];
-	PK_ASSERT(samplerDesc != null);
-	if (samplerDesc == null)
-	{
-		return;
-	}
-	const PopcornFX::PResourceDescriptor		defaultSampler = samplerDesc->AttribSamplerDefaultValue();
+	const PopcornFX::PResourceDescriptor		defaultSampler = decl->AttribSamplerDefaultValue();
 
 	const PopcornFX::CResourceDescriptor_AnimTrack *animTrack = PopcornFX::HBO::Cast<PopcornFX::CResourceDescriptor_AnimTrack>(defaultSampler.Get());
 	if (animTrack != null)
 	{
 		if (updateUnlockedValues)
 		{
-			Properties.bTranslate = animTrack->TransformTranslate();
-			Properties.bRotate = animTrack->TransformRotate();
-			Properties.bScale = animTrack->TransformScale();
+			bTranslate = animTrack->TransformTranslate();
+			bRotate = animTrack->TransformRotate();
+			bScale = animTrack->TransformScale();
 		}
 	}
 }
@@ -476,23 +501,9 @@ void	UPopcornFXAttributeSamplerAnimTrack::SetupDefaults(UPopcornFXEffect *effect
 
 //----------------------------------------------------------------------------
 
-bool	UPopcornFXAttributeSamplerAnimTrack::ArePropertiesSupported()
+bool	FPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN(UPopcornFXEmitterComponent *owner)
 {
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerAnimTrack::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler)
-{
-	return true;
-}
-
-//----------------------------------------------------------------------------
-
-bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
-{
-	USplineComponent	*splineComponent = ResolveSplineComponent(true);
+	USplineComponent	*splineComponent = Properties.ResolveSplineComponent(owner, "", true);
 	if (splineComponent == null)
 		return false;
 
@@ -500,7 +511,7 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 
 	if (Properties.bFastSampler)
 	{
-		PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerAnimTrack::Setup (Fast)", POPCORNFX_UE_PROFILER_COLOR);
+		PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerAnimTrack::Setup (Fast)", POPCORNFX_UE_PROFILER_COLOR);
 
 		if (m_Data->m_DescFast == null)
 			return false; // Requires effect restart
@@ -547,7 +558,7 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 		// Positions curve
 		if (Properties.bTranslate)
 		{
-			PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerAnimTrack::Setup (Fast) - Positions", POPCORNFX_UE_PROFILER_COLOR);
+			PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerAnimTrack::Setup (Fast) - Positions", POPCORNFX_UE_PROFILER_COLOR);
 
 			CFloat3		*dstPos = reinterpret_cast<CFloat3*>(m_Data->m_Positions->m_FloatValues.RawDataPointer());
 			CFloat3		*dstTangents = reinterpret_cast<CFloat3*>(m_Data->m_Positions->m_FloatTangents.RawDataPointer());
@@ -578,7 +589,7 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 		// Scales curve
 		if (Properties.bScale)
 		{
-			PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerAnimTrack::Setup (Fast) - Scales", POPCORNFX_UE_PROFILER_COLOR);
+			PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerAnimTrack::Setup (Fast) - Scales", POPCORNFX_UE_PROFILER_COLOR);
 
 			CFloat3		*dstPos = reinterpret_cast<CFloat3*>(m_Data->m_Scales->m_FloatValues.RawDataPointer());
 			CFloat3		*dstTangents = reinterpret_cast<CFloat3*>(m_Data->m_Scales->m_FloatTangents.RawDataPointer());
@@ -632,13 +643,20 @@ bool	UPopcornFXAttributeSamplerAnimTrack::RebuildCurvesIFN()
 
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, FPopcornFXSamplerDesc &desc, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor	*FPopcornFXAttributeSamplerAnimTrack::_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	LLM_SCOPE(ELLMTag::Particles);
+
 	check(m_Data != null);
 	const PopcornFX::CResourceDescriptor_AnimTrack	*defaultAnimTrackSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_AnimTrack>(defaultSampler);
 	if (!PK_VERIFY(defaultAnimTrackSampler != null))
 		return null;
+
+	const FPopcornFXAttributeSamplerPropertiesAnimTrack *propertiesAnimTrack = static_cast<const FPopcornFXAttributeSamplerPropertiesAnimTrack *>(properties);
+	if (propertiesAnimTrack == nullptr)
+		return null;
+	Properties = *propertiesAnimTrack;
+
 	if (Properties.bFastSampler)
 	{
 		// Keep those around..
@@ -672,13 +690,13 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerAnimTrack::_Att
 	}
 	if (m_Data->m_NeedsReload)
 	{
-		if (!RebuildCurvesIFN())
+		if (!RebuildCurvesIFN(emitter))
 			return null;
 
 		m_Data->m_NeedsReload = false;
 	}
-	desc.m_NeedUpdate = true;
-	_AttribSampler_PreUpdate(0.f);
+	m_NeedUpdate = true;
+	_AttribSampler_PreUpdate(emitter, 0.f);
 	if (Properties.bFastSampler)
 		return m_Data->m_DescFast.Get();
 	return m_Data->m_Desc.Get();
@@ -686,11 +704,11 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerAnimTrack::_Att
 
 //----------------------------------------------------------------------------
 
-void	UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(float deltaTime)
+void	FPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime)
 {
 	check(m_Data != null);
 
-	PK_NAMEDSCOPEDPROFILE_C("UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
+	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate", POPCORNFX_UE_PROFILER_COLOR);
 
 #if WITH_EDITOR
 	if (m_Data->m_Desc == null && m_Data->m_DescFast == null)
@@ -703,12 +721,12 @@ void	UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(float deltaTi
 	if (!Properties.bTranslate && !Properties.bRotate && !Properties.bScale)
 		return;
 	if (!m_Data->m_CurrentSplineComponent.IsValid())
-		m_Data->m_CurrentSplineComponent = ResolveSplineComponent(false);
+		m_Data->m_CurrentSplineComponent = Properties.ResolveSplineComponent(owner, "", false);
 
 #if WITH_EDITOR
 	if (Properties.bEditorRebuildEachFrame)
 	{
-		if (!RebuildCurvesIFN())
+		if (!RebuildCurvesIFN(owner))
 			return;
 	}
 #endif // WITH_EDITOR
@@ -735,13 +753,13 @@ void	UPopcornFXAttributeSamplerAnimTrack::_AttribSampler_PreUpdate(float deltaTi
 			break;
 		case	EPopcornFXSplineTransforms::AttrSamplerRelativeTr:
 			if (Properties.bScale || Properties.bFastSampler)
-				m_TrackTransforms = (FMatrix44f)GetRelativeTransform().ToMatrixWithScale();
-			m_TrackTransformsUnscaled = (FMatrix44f)GetRelativeTransform().ToMatrixNoScale();
+				m_TrackTransforms = (FMatrix44f)owner->GetRelativeTransform().ToMatrixWithScale();
+			m_TrackTransformsUnscaled = (FMatrix44f)owner->GetRelativeTransform().ToMatrixNoScale();
 			break;
 		case	EPopcornFXSplineTransforms::AttrSamplerWorldTr:
 			if (Properties.bScale || Properties.bFastSampler)
-				m_TrackTransforms = (FMatrix44f)GetComponentTransform().ToMatrixWithScale();
-			m_TrackTransformsUnscaled = (FMatrix44f)GetComponentTransform().ToMatrixNoScale();
+				m_TrackTransforms = (FMatrix44f)owner->GetComponentTransform().ToMatrixWithScale();
+			m_TrackTransformsUnscaled = (FMatrix44f)owner->GetComponentTransform().ToMatrixNoScale();
 			break;
 		default:
 			PK_ASSERT_NOT_REACHED();

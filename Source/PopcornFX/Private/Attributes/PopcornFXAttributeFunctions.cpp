@@ -9,6 +9,7 @@
 #include "PopcornFXEmitterComponent.h"
 #include "PopcornFXAttributeList.h"
 #include "Engine/World.h"
+#include "Misc/App.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_maths/include/pk_maths.h>
@@ -52,12 +53,12 @@ namespace
 		const UWorld	*world = component->GetWorld();
 		if (!FApp::CanEverRender() || (world != null && world->IsNetMode(NM_DedicatedServer)))
 				return true;
-		UPopcornFXAttributeList		*attrList = component->GetAttributeList();
+		FPopcornFXAttributeList		*attrList = component->GetAttributeList();
 		if (!PK_VERIFY(attrList != null))
 			return false;
 
 		const u32	attri(_attri);
-		if (attri >= attrList->AttributeCount())
+		if (attri >= attrList->AttributeDescCount())
 		{
 			UE_LOG(LogPopcornFXAttributeFunctions, Warning, TEXT("ResetToDefaultValue: invalid InAttributeIndex %d"), _attri);
 			return false;
@@ -83,12 +84,12 @@ namespace
 		const UWorld	*world = component->GetWorld();
 		if (!FApp::CanEverRender() || (world != null && world->IsNetMode(NM_DedicatedServer)))
 			return true;
-		UPopcornFXAttributeList		*attrList = component->GetAttributeList();
+		FPopcornFXAttributeList		*attrList = component->GetAttributeList();
 		if (!PK_VERIFY(attrList != null))
 			return false;
 
 		const u32	attri(_attri);
-		if (attri >= attrList->AttributeCount())
+		if (attri >= attrList->AttributeDescCount())
 		{
 			UE_LOG(LogPopcornFXAttributeFunctions, Warning, TEXT("SetAttributeAs: invalid InAttributeIndex %d (%s)"), _attri, *(component->GetPathName()));
 			return false;
@@ -147,12 +148,12 @@ namespace
 		const UWorld	*world = component->GetWorld();
 		if (!FApp::CanEverRender() || (world != null && world->IsNetMode(NM_DedicatedServer)))
 			return true;
-		UPopcornFXAttributeList		*attrList = component->GetAttributeList();
+		FPopcornFXAttributeList		*attrList = component->GetAttributeList();
 		if (!PK_VERIFY(attrList != null))
 			return false;
 
 		const uint32	attri(_attri);
-		if (attri >= attrList->AttributeCount())
+		if (attri >= attrList->AttributeDescCount())
 		{
 			UE_LOG(LogPopcornFXAttributeFunctions, Warning, TEXT("GetAttributeAs: invalid InAttributeIndex %d (%s)"), _attri, *(component->GetPathName()));
 			return false;
@@ -202,16 +203,14 @@ UPopcornFXAttributeFunctions::UPopcornFXAttributeFunctions(class FObjectInitiali
 
 //----------------------------------------------------------------------------
 
-int32	UPopcornFXAttributeFunctions::FindAttributeIndex(const UPopcornFXEmitterComponent *Emitter, FString InAttributeName)
+int32	UPopcornFXAttributeFunctions::FindAttributeIndex(UPopcornFXEmitterComponent *Emitter, FString InAttributeName)
 {
 	if (!PK_VERIFY(Emitter != null) || !PK_VERIFY(Emitter->Effect != null))
 		return -1;
 	const UWorld	*world = Emitter->GetWorld();
 	if (!FApp::CanEverRender() || (world != null && world->IsNetMode(NM_DedicatedServer)))
 		return -1;
-	UPopcornFXAttributeList		*attrList = Emitter->GetAttributeListIFP();
-	if (!PK_VERIFY(attrList != null))
-		return -1;
+	FPopcornFXAttributeList		*attrList = Emitter->GetAttributeList();
 	return attrList->FindAttributeIndex(InAttributeName);
 }
 

@@ -11,13 +11,16 @@
 
 #include "Render/PopcornFXShaderUtils.h"
 #include "MeshMaterialShader.h"
-#include "ParticleResources.h"
+#if (ENGINE_MAJOR_VERSION < 6)
+#	include "ParticleResources.h"
+#endif
 #include "PipelineStateCache.h"
 
 #include "MaterialShared.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
 #include "MeshDrawShaderBindings.h"
+#include "MeshBatch.h"
 #include "GlobalRenderResources.h"
 #include "MaterialDomain.h"
 #include "DataDrivenShaderPlatformInfo.h"

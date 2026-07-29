@@ -16,6 +16,8 @@
 #include "PropertyEditorModule.h"
 #include "IPropertyTypeCustomization.h"
 
+struct FPopcornFXAttributeSampler;
+
 /**
 	Base class for customizing attribute sampler properties
 */
@@ -43,6 +45,7 @@ protected:
 		In this case, the property will be customized to show that it causes an error and why
 	*/
 	void			AddErrorableProperty(TSharedPtr<IPropertyHandle> PropertyHandle, const FString &PropertyName, IDetailChildrenBuilder &ChildBuilder, bool editCondition, bool editConditionHides);
+	void			PropagatePostEditChangeProperty(TSharedPtr<IPropertyHandle> Property);
 
 private:
 
@@ -59,9 +62,10 @@ protected:
 		that we then copy to the emitter of the preview viewport (the one suffixed with " preview").
 		We set m_Sampler to this emitter's samplers which is not the one being edited directly but contains the invalid properties
 	*/
-	UPopcornFXAttributeSampler		*m_Sampler;
-	UPopcornFXEmitterComponent		*m_Emitter;
-	UPopcornFXEffect				*m_Effect;
+	FPopcornFXAttributeSamplerProperties	*m_Properties;
+	FPopcornFXAttributeSampler				*m_Sampler;
+	UPopcornFXEmitterComponent				*m_Emitter;
+	UPopcornFXEffect						*m_Effect;
 
 	TSharedPtr<IPropertyUtilities>	m_CachedPropertyUtilities;
 };

@@ -44,7 +44,7 @@ namespace
 			return "Attributesampler_AnimTrack";
 		case	EPopcornFXAttributeSamplerType::Text:
 			return "AttributeSampler_Text";
-		case	EPopcornFXAttributeSamplerType::Turbulence:
+		case	EPopcornFXAttributeSamplerType::VectorField:
 			return "AttributeSampler_VectorField";
 		default:
 			PK_ASSERT_NOT_REACHED();
@@ -58,7 +58,9 @@ namespace
 //----------------------------------------------------------------------------
 
 FPopcornFXCustomizationAttributeSampler::FPopcornFXCustomizationAttributeSampler()
-:	m_Emitter(null)
+:	m_Properties(null)
+,	m_Sampler(null)
+,	m_Emitter(null)
 ,	m_Effect(null)
 ,	m_CachedPropertyUtilities()
 {
@@ -99,45 +101,49 @@ void	FPopcornFXCustomizationAttributeSampler::ResolveParents(TSharedRef<IPropert
 	TArray<UObject *> outerObjects;
 	PropertyHandle->GetOuterObjects(outerObjects);
 	PK_VERIFY(outerObjects.Num() > 0);
-	// If it's the preview/asset editor it will retrieve the effect's sampler from UPopcornFXEffect::DefaultSamplers
-	// If it's an emitter in a level, it will retrieve the emitter's sampler from UPopcornFXEmitterComponent::Samplers
-	m_Sampler = Cast<UPopcornFXAttributeSampler>(outerObjects[0]);
-	if (m_Sampler)
+
+	void	*propertyData = nullptr;
+	PropertyHandle->GetValueData(propertyData);
+	m_Properties = static_cast<FPopcornFXAttributeSamplerProperties*>(propertyData);
+	PK_ASSERT(m_Properties != nullptr);
+
+	// The FPopcornFXSamplerDesc handle (in emitters, twice the parent handle to skip the TOptional)
+	TSharedPtr<IPropertyHandle> samplerDescHandle = PropertyHandle->GetParentHandle()->GetParentHandle();
+
+	FPopcornFXSamplerDesc *desc = nullptr;
+	if (samplerDescHandle)
 	{
-		// If it's the preview/asset editor, outer of the sampler is the effect
-		// If it's an emitter in a level, outer of the sampler is the emitter
-		m_Effect = Cast<UPopcornFXEffect>(m_Sampler->GetOuter());
-		if (m_Effect)
+		void *samplerDescData = nullptr;
+		samplerDescHandle->GetValueData(samplerDescData);
+		desc = static_cast<FPopcornFXSamplerDesc *>(samplerDescData);
+	}
+	if (desc != nullptr)
+	{
+		UPopcornFXEmitterComponent *emitter = Cast<UPopcornFXEmitterComponent>(outerObjects[0]);
+		if (emitter)
 		{
-			m_Emitter = m_Effect->PreviewEmitter;
-			if (!PK_VERIFY(m_Emitter != null))
-			{
-				UE_LOG(LogPopcornFXCustomizationAttributeSampler, Error, TEXT("Could not find preview emitter of effect '%s'"),
-					*m_Effect->GetName());
-				return;
-			}
-
-			int32	sampleri = 0;
-			bool	samplerFound = false;
-			while (sampleri < m_Effect->DefaultSamplers.Num())
-			{
-				if (m_Effect->DefaultSamplers[sampleri] == m_Sampler)
-				{
-					samplerFound = true;
-					break;
-				}
-				sampleri++;
-			}
-
-			PK_VERIFY(samplerFound && sampleri < m_Emitter->Samplers.Num());
-			// Set m_Sampler to be the emitter's one because it will contain the unsupported properties
-			m_Sampler = m_Emitter->Samplers[sampleri];
-			PK_VERIFY(m_Sampler != null);
+			m_Sampler = emitter->AttributeList.ResolveAttributeSampler(samplerDescHandle->GetArrayIndex());
+			m_Emitter = emitter;
+			return;
 		}
-		else
-			m_Emitter = Cast<UPopcornFXEmitterComponent>(m_Sampler->GetOuter());
 
-		m_Sampler->OnSamplerValidStateChanged.AddThreadSafeSP(this, &FPopcornFXCustomizationAttributeSampler::RebuildProperties);
+		// We're editing the effect asset, fetch its preview emitter
+		UPopcornFXEffect *effect = Cast<UPopcornFXEffect>(outerObjects[0]);
+		if (effect)
+		{
+			m_Sampler = effect->PreviewEmitter->AttributeList.ResolveAttributeSampler(samplerDescHandle->GetArrayIndex());
+			m_Emitter = effect->PreviewEmitter;
+			return;
+		}
+	}
+	else
+	{
+		// We are in an external sampler
+		// TODO
+		if (Cast<UPopcornFXAttributeSamplerImageAsset>(outerObjects[0]))
+		{
+			//m_Properties = static_cast<FPopcornFXAttributeSamplerPropertiesImage *>(samplerData);
+		}
 	}
 }
 
@@ -145,7 +151,7 @@ void	FPopcornFXCustomizationAttributeSampler::ResolveParents(TSharedRef<IPropert
 
 void	FPopcornFXCustomizationAttributeSampler::AddErrorableProperty(TSharedPtr<IPropertyHandle> PropertyHandle, const FString &PropertyName, IDetailChildrenBuilder &ChildBuilder, bool editCondition, bool editConditionHides)
 {
-	if (!PK_VERIFY(m_Sampler != null))
+	if (!PK_VERIFY(m_Properties != null))
 		return;
 	TSharedPtr<IPropertyHandle>	property = PropertyHandle->GetChildHandle(*PropertyName);
 	if (!property.IsValid())
@@ -153,10 +159,13 @@ void	FPopcornFXCustomizationAttributeSampler::AddErrorableProperty(TSharedPtr<IP
 		UE_LOG(LogPopcornFXCustomizationAttributeSampler, Error, TEXT("Could not retrieve property '%s'"), *PropertyName);
 		return;
 	}
+	// TODO: need to bind this? or can bind this in PopcornFXCustomizationAttributeList::BuildSampler, SetOnChildPropertyValueChanged
+	// Calls PostEditChangeProperty on the given sampler when one of its property is modified
+	property->SetOnPropertyValueChanged(FSimpleDelegate::CreateSP(this, &FPopcornFXCustomizationAttributeSampler::PropagatePostEditChangeProperty, property));
 
 	// Check if this property is valid and compatible with this sampler's emitter
-	if (!m_Sampler->m_UnsupportedProperties.Contains(*PropertyName) &&
-		(!m_Sampler->m_IncompatibleProperties.Contains(m_Emitter) || !m_Sampler->m_IncompatibleProperties[m_Emitter].m_Properties.Contains(PropertyName)))
+	if (!m_Properties->m_UnsupportedProperties.Contains(PropertyName) &&
+		(!m_Emitter || !m_Emitter->m_IncompatibleProperties.Contains(m_Properties) || !m_Emitter->m_IncompatibleProperties[m_Properties].m_Properties.Contains(PropertyName)))
 	{
 		ChildBuilder.AddProperty(property.ToSharedRef()).
 			EditCondition(editCondition, FOnBooleanValueChanged()).EditConditionHides(editConditionHides);
@@ -166,14 +175,14 @@ void	FPopcornFXCustomizationAttributeSampler::AddErrorableProperty(TSharedPtr<IP
 	FText tooltipMessage = property->GetToolTipText();
 	// Property incompatible with a particular emitter
 	if (m_Emitter &&
-		(m_Sampler->m_IncompatibleProperties.Contains(m_Emitter) && m_Sampler->m_IncompatibleProperties[m_Emitter].m_Properties.Contains(PropertyName)))
+		(m_Emitter->m_IncompatibleProperties.Contains(m_Properties) && m_Emitter->m_IncompatibleProperties[m_Properties].m_Properties.Contains(PropertyName)))
 	{
-		tooltipMessage = FText::FromString(m_Sampler->m_IncompatibleProperties[m_Emitter].m_Properties[PropertyName]);
+		tooltipMessage = FText::FromString(m_Emitter->m_IncompatibleProperties[m_Properties].m_Properties[PropertyName]);
 	}
 	// Unsupported property in the sampler
-	if (m_Sampler->m_UnsupportedProperties.Contains(PropertyName))
+	if (m_Properties->m_UnsupportedProperties.Contains(PropertyName))
 	{
-		tooltipMessage = FText::FromString(m_Sampler->m_UnsupportedProperties[PropertyName]);
+		tooltipMessage = FText::FromString(m_Properties->m_UnsupportedProperties[PropertyName]);
 	}
 	TSharedPtr<SWidget> nameWidget;
 	TSharedPtr<SWidget> valueWidget;
@@ -216,6 +225,40 @@ void	FPopcornFXCustomizationAttributeSampler::AddErrorableProperty(TSharedPtr<IP
 					.ColorAndOpacity(USlateThemeManager::Get().GetColor(EStyleColor::Error))
 			]
 	];*/
+}
+
+void	FPopcornFXCustomizationAttributeSampler::PropagatePostEditChangeProperty(TSharedPtr<IPropertyHandle> Property)
+{
+	// Sampler properties asset: scroll through samplers using these properties and update them
+	FPropertyChangedEvent propertyChangedEvent(Property->GetProperty());
+	if (m_Properties && !m_Sampler)
+	{
+		for (auto &emitterSamplers : m_Properties->m_EmitterSamplersUsingThis)
+		{
+			TSoftObjectPtr<UPopcornFXEmitterComponent>	&emitter = emitterSamplers.Key;
+			if (emitter.IsValid())
+			{
+				TArray<FString> &samplerNames = emitterSamplers.Value.m_SamplerNames;
+				for (const FString &samplerName : samplerNames)
+				{
+					int32 samplerIdx = emitter->AttributeList.FindSamplerIndex(samplerName);
+					if (samplerIdx != -1)
+					{
+						emitter->AttributeList.ResolveAttributeSampler(samplerIdx)->PostEditChangeProperty(propertyChangedEvent);
+					}
+				}
+				emitter->RestartEmitter();
+			}
+		}
+		return;
+	}
+
+	// Inline sampler properties: update its sampler
+	FPopcornFXAttributeSampler *sampler = static_cast<FPopcornFXAttributeSampler *>(m_Sampler);
+	if (sampler != nullptr)
+	{
+		sampler->CopyPropertiesFrom(m_Properties);
+	}
 }
 
 //----------------------------------------------------------------------------

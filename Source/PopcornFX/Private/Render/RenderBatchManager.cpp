@@ -676,8 +676,7 @@ void	CRenderBatchManager::ConcurrentThread_SendRenderDynamicData()
 {
 	PK_NAMEDSCOPEDPROFILE_C("CParticleRenderManager::ConcurrentThread_SendRenderDynamicData", POPCORNFX_UE_PROFILER_COLOR);
 
-	PopcornFX::SParticleCollectedFrameToRender2	*newToRender2 = m_FrameCollector_UE_Render.GetLastCollectedFrame();
-	PopcornFX::SParticleCollectedFrameToRender	*newToRender = null;
+	PopcornFX::SParticleCollectedFrameToRender2	*newToRender = m_FrameCollector_UE_Render.GetLastCollectedFrame();
 #if WITH_EDITOR
 	auto			collectedMaterials = m_LastCollectedUsedMaterials;
 #endif // WITH_EDITOR
@@ -694,11 +693,11 @@ void	CRenderBatchManager::ConcurrentThread_SendRenderDynamicData()
 	const bool											statelessCollect = m_StatelessCollect;
 
 	// /!\ ConcurrentThread_SendRenderDynamicData cannot be called while UpdateThread_Endupdate() gets called
-	if (newToRender != null || newToRender2 != null)
+	if (newToRender != null)
 	{
 		// Always set to true right now
 		ENQUEUE_RENDER_COMMAND(PopcornFXRenderBatchManager_SendRenderDynamicData)(
-			[this, newToRender, newToRender2, dcSortMethod, bbLocation, statelessCollect
+			[this, newToRender, dcSortMethod, bbLocation, statelessCollect
 #if WITH_EDITOR
 			, collectedMaterials
 #endif // WITH_EDITOR
@@ -726,9 +725,9 @@ void	CRenderBatchManager::ConcurrentThread_SendRenderDynamicData()
 			PK_ASSERT(IsInRenderingThread());
 			m_CollectedDrawCalls.Clear();
 
-			if (newToRender2 != null)
+			if (newToRender != null)
 			{
-				PopcornFX::SParticleCollectedFrameToRender2	*previousFrame2 = m_FrameCollector_UE_Render.BuildNewFrame(newToRender2, false);
+				PopcornFX::SParticleCollectedFrameToRender2	*previousFrame2 = m_FrameCollector_UE_Render.BuildNewFrame(newToRender, false);
 				if (previousFrame2 != null)
 				{
 					m_FrameCollector_UE_Render.m_LastFrameDrawCalledCount = previousFrame2->m_RenderedCount;
@@ -792,14 +791,7 @@ void	CRenderBatchManager::RenderThread_DrawCalls(PopcornFX::CRendererSubView &vi
 {
 	PK_NAMEDSCOPEDPROFILE("CRenderBatchManager::RenderThread_DrawCalls");
 
-#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
 	check(IsInAnyRenderingThread());
-#else
-	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
-		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
-#endif
 
 	GarbageBufferPools();
 
