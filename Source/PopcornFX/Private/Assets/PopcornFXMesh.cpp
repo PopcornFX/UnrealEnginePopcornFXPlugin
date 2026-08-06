@@ -288,7 +288,7 @@ bool	AssetImportDataDiffers(const UAssetImportData *a, const UAssetImportData* b
 
 bool	UPopcornFXMesh::SourceMeshChanged() const
 {
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	if (StaticMesh != null && PK_VERIFY(StaticMesh->GetAssetImportData() != null))
 	{
 		return AssetImportDataDiffers(StaticMeshAssetImportData, StaticMesh->GetAssetImportData());
@@ -298,7 +298,7 @@ bool	UPopcornFXMesh::SourceMeshChanged() const
 	{
 		return AssetImportDataDiffers(StaticMeshAssetImportData, StaticMesh->AssetImportData);
 	}
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 #if ENABLE_SKELETALMESH
 	const UAssetImportData	*skelMeshImportData = SkeletalMeshAssetImportData(SkeletalMesh);
 	if (SkeletalMesh != null && PK_VERIFY(skelMeshImportData != null))

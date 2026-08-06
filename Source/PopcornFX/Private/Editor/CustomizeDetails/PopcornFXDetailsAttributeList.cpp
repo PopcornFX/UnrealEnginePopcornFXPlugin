@@ -1105,7 +1105,7 @@ void	FPopcornFXDetailsAttributeList::Rebuild()
 	{
 		m_Effect = attrList->Effect();
 
-		if (!m_Effect->OnEffectReimported.IsBoundToObject(this))
+		if (m_Effect && !m_Effect->OnEffectReimported.IsBoundToObject(this))
 		{
 			m_Effect->OnEffectReimported.AddThreadSafeSP(this, &FPopcornFXDetailsAttributeList::RebuildIFN);
 		}

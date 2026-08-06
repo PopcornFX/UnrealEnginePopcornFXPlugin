@@ -246,7 +246,14 @@ bool	FPopcornFXSkelMeshVertexFactory::IsCompatible(UMaterialInterface *material)
 
 void	FPopcornFXSkelMeshVertexFactory::SetData(const FDataType& InData)
 {
-	check(IsInRenderingThread());
+#if (ENGINE_MAJOR_VERSION >= 5) && (ENGINE_MINOR_VERSION >= 6)
+	check(IsInAnyRenderingThread());
+#else
+	check(FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERenderingThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::EParallelRhiThread)
+		|| FTaskTagScope::IsCurrentTag(ETaskTag::ERhiThread));
+#endif
 	Data = InData;
 	UpdateRHI(FRHICommandListExecutor::GetImmediateCommandList());
 }

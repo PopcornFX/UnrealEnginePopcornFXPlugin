@@ -297,7 +297,7 @@ void	UPopcornFXAttributeSamplerGrid::CopyPropertiesFrom(const UPopcornFXAttribut
 	const FPopcornFXAttributeSamplerPropertiesGrid *newGridProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesGrid *>(other->GetProperties());
 	if (!PK_VERIFY(newGridProperties != null))
 	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("New properties are null or not curve properties"));
+		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("New properties are null or not grid properties"));
 		return;
 	}
 

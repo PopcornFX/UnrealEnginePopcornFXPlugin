@@ -277,7 +277,6 @@ void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick 
 			m_Time += deltaTime;
 			if (m_Time >= LoopDelay)
 			{
-				UE_LOG(LogPopcornFXEmitterComponent, Display, TEXT("Loop time = %f >= %f, restarting"), m_Time, LoopDelay);
 				RestartEmitter();
 				m_Time = 0.0f;
 			}
@@ -1126,7 +1125,7 @@ bool	UPopcornFXEmitterComponent::GetPayloadValue(const FString &payloadName, EPo
 
 	if (payloadName.IsEmpty())
 	{
-		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Get Payload Value: empty PayloadName for effect"), *Effect->GetName());
+		UE_LOG(LogPopcornFXEmitterComponent, Warning, TEXT("Get Payload Value: empty PayloadName for effect '%s'"), *Effect->GetName());
 		return false;
 	}
 

@@ -166,7 +166,11 @@ void	UPopcornFXEffect::GetAssetRegistryTags(FAssetRegistryTagsContext context) c
 
 void	UPopcornFXEffect::BeginCacheForCookedPlatformData(const ITargetPlatform *targetPlatform)
 {
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+	if (IsTemplate() || IsGarbageCollecting() || UE::IsSavingPackage())
+#else
 	if (IsTemplate() || IsGarbageCollecting() || GIsSavingPackage)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 		return;
 	if (m_Cooked) // TMP: Until proper implementation of platform cached data
 		return;
@@ -986,6 +990,8 @@ bool	UPopcornFXEffect::FinishImport(bool bIsReimport)
 	bofile->Write();
 
 	FPopcornFXPlugin::Get().UnloadPkFile(this); // Unload loaded effect
+
+	AskImportAssetDependenciesIFN();
 
 	ReloadRendererMaterials(bIsReimport);
 

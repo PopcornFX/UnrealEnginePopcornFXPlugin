@@ -62,11 +62,11 @@ void	UPopcornFXNode_Attribute::AllocateDefaultPins()
 
 	// Find mode pin
 	{
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 		UEnum *findModeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFXEditor.EPopcornFXAttributeFindMode"), EFindObjectFlags::ExactClass);
 #else
 		UEnum *findModeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFXEditor.EPopcornFXAttributeFindMode"), true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 		UEdGraphPin *findModePin = CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Byte, findModeEnum, GetFindModeName());
 
 		findModePin->bNotConnectable = true;
@@ -112,11 +112,11 @@ void	UPopcornFXNode_Attribute::AllocateDefaultPins()
 
 	// Data type pin
 	{
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 		UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), EFindObjectFlags::ExactClass);
 #else
 		UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFX.EPopcornFXPinDataType"), true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 		UEdGraphPin *pinTypePin = CreatePin(EGPD_Input, UEdGraphSchema_K2::PC_Byte, pinTypeEnum, GetPinTypeName());
 		PK_ASSERT(pinTypePin != null);
 
@@ -186,11 +186,11 @@ void	UPopcornFXNode_Attribute::PinDefaultValueChanged(UEdGraphPin *pin)
 
 	if (pin == FindPinChecked(GetFindModeName()))
 	{
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 		UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFXEditor.EPopcornFXAttributeFindMode"), EFindObjectFlags::ExactClass);
 #else
 		UEnum *pinTypeEnum = FindObject<UEnum>(null, TEXT("/Script/PopcornFXEditor.EPopcornFXAttributeFindMode"), true);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 		check(pinTypeEnum);
 		int32		rawValue = pinTypeEnum->GetValueByName(FName(*pin->DefaultValue)); // GetValueByName is fine with or without "EPopcornFXAttributeFindMode::"...
 		if (!PK_VERIFY(rawValue != INDEX_NONE))

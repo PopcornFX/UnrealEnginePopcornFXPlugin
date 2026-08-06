@@ -119,7 +119,7 @@ namespace
 		else
 			surfaceSampling->Build(triangleBatch.m_IStream, triangleBatch.m_VStream.Positions());
 
-		shapeDesc->SetSamplingStructs(surfaceSampling, null);
+		shapeDesc->SetSamplingStructs(surfaceSampling, self->SamplerVolume());
 	}
 
 	// NULL
@@ -520,6 +520,7 @@ struct FAttributeSamplerShapeData
 	PopcornFX::PParticleSamplerDescriptor_Shape_Default			m_Desc;
 	PopcornFX::PShapeDescriptor									m_Shape;
 	PopcornFX::CMeshSurfaceSamplerStructuresRandom				m_SamplerSurface;
+	PopcornFX::CMeshVolumeSamplerStructuresRandom				m_SamplerVolume;
 
 	PopcornFX::TArray<CFloat4, PopcornFX::TArrayAligned16>		m_DstPositions;
 	PopcornFX::TArray<CFloat4, PopcornFX::TArrayAligned16>		m_DstNormals;
@@ -972,6 +973,14 @@ PopcornFX::CMeshSurfaceSamplerStructuresRandom	*UPopcornFXAttributeSamplerShape:
 {
 	return &m_Data->m_SamplerSurface;
 }
+
+//----------------------------------------------------------------------------
+
+PopcornFX::CMeshVolumeSamplerStructuresRandom *UPopcornFXAttributeSamplerShape::SamplerVolume() const
+{
+	return &m_Data->m_SamplerVolume;
+}
+
 //----------------------------------------------------------------------------
 
 bool	UPopcornFXAttributeSamplerShape::CanUpdateShapeProperties(EPopcornFXAttribSamplerShapeType::Type newType)
@@ -1105,8 +1114,8 @@ void	UPopcornFXAttributeSamplerShape::CopyPropertiesFrom(const UPopcornFXAttribu
 		newShapeProperties->DensityColorChannel != oldProperties.DensityColorChannel)
 	{
 		PK_ASSERT(m_Data->m_Shape->ShapeType() == ToPkShapeType(oldProperties.ShapeType));
-		(*kCbUpdateShapeDescriptors[oldProperties.ShapeType.GetValue()])(SUpdateShapeParams{ this, m_Data->m_Shape.Get() });
-		m_Data->m_Shape->m_Weight = oldProperties.Weight;
+		(*kCbUpdateShapeDescriptors[newShapeProperties->ShapeType.GetValue()])(SUpdateShapeParams{ this, m_Data->m_Shape.Get() });
+		m_Data->m_Shape->m_Weight = newShapeProperties->Weight;
 	}
 	else if (newShapeProperties->bEditorBuildInitialPose != oldProperties.bEditorBuildInitialPose ||
 		newShapeProperties->TargetActor != oldProperties.TargetActor ||
@@ -2018,6 +2027,7 @@ PopcornFX::CParticleSamplerDescriptor	*UPopcornFXAttributeSamplerShape::_AttribS
 	}
 
 	m_Data->m_SamplerSurface = PopcornFX::CMeshSurfaceSamplerStructuresRandom();
+	m_Data->m_SamplerVolume = PopcornFX::CMeshVolumeSamplerStructuresRandom();
 
 	if (!InitShape())
 		return null;

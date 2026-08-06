@@ -47,12 +47,12 @@ bool	CRendererSubView::Setup_GetDynamicRayTracingInstances(
 {
 	m_GlobalScale = FPopcornFXPlugin::GlobalScale();
 	m_SceneProxy = sceneProxy;
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	m_ViewFamily = context.GetViews()[0]->Family; // First view, Epic might change that later?
 #else
 	m_ViewFamily = context.GetReferenceView()->Family; // First view, Epic might change that later?
 	m_RTCollector = &context;
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	m_Pass = CRendererSubView::RenderPass_RT_AccelStructs;
 
 	m_SceneViews.Clear();
@@ -64,25 +64,27 @@ bool	CRendererSubView::Setup_GetDynamicRayTracingInstances(
 
 	SSceneView			&sceneView = m_SceneViews.Last();
 	SBBView				&bbView = m_BBViews.Last();
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	PK_ASSERT(context.GetViews()[0] != null);
 #else
 	PK_ASSERT(context.GetReferenceView() != null);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 
 	sceneView.m_ToRender = true;
 	sceneView.m_BBViewIndex = 0;
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	sceneView.m_SceneView = context.GetViews()[0];
 #else
 	sceneView.m_SceneView = context.GetReferenceView();
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+	const CFloat4x4		viewMatrix = ToPk(context.GetViews()[0]->ViewMatrices.GetWorldToView());
+#elif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
 	const CFloat4x4		viewMatrix = ToPk(context.GetViews()[0]->ViewMatrices.GetViewMatrix());
 #else
 	const CFloat4x4		viewMatrix = ToPk(context.GetReferenceView()->ViewMatrices.GetViewMatrix());
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	bbView.Setup(viewMatrix);
 	bbView.m_ViewsMask |= (1U << 0);
 
@@ -165,7 +167,11 @@ bool	CRendererSubView::Setup_GetDynamicMeshElements(
 		if ((VisibilityMap & (1 << sceneViewi)) == 0)
 			continue;
 
+#if(ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+		const CFloat4x4			viewMatrix = ToPk(sceneView->ViewMatrices.GetWorldToView());
+#else
 		const CFloat4x4			viewMatrix = ToPk(sceneView->ViewMatrices.GetViewMatrix());
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 
 		PK_TODO("Optmization for VR !?");
 		// For VR we could merge both views into a single BBView ?

@@ -312,6 +312,7 @@ public:
 #endif
 
 	PopcornFX::CMeshSurfaceSamplerStructuresRandom	*SamplerSurface() const;
+	PopcornFX::CMeshVolumeSamplerStructuresRandom	*SamplerVolume() const;
 
 	// UPopcornFXAttributeSampler overrides
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }

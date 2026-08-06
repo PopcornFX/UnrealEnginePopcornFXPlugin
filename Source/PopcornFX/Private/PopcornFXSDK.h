@@ -15,18 +15,18 @@
 #	error no ENGINE_MAJOR_VERSION
 #endif
 
-#if (ENGINE_MAJOR_VERSION != 5)
+#if (ENGINE_MAJOR_VERSION != 5 && ENGINE_MAJOR_VERSION != 6)
 #	error invalid ENGINE_MAJOR_VERSION
 #endif
 
-#if (ENGINE_MAJOR_VERSION == 5)
+#if (ENGINE_MAJOR_VERSION >= 5)
 #	ifndef PLATFORM_XBOXONE
 #		define PLATFORM_XBOXONE	0
 #	endif
-#	if (ENGINE_MINOR_VERSION < 5)
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 5)
 #		error PopcornFX Plugin only supported in UE5 >= 5.5
 #	endif
-#endif // (ENGINE_MAJOR_VERSION == 5)
+#endif // (ENGINE_MAJOR_VERSION >= 5)
 
 #if PLATFORM_WINDOWS
 #	include "Windows/MinimalWindowsApi.h"

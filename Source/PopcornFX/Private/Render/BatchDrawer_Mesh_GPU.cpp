@@ -9,7 +9,9 @@
 #include "SceneManagement.h"
 #include "MaterialDesc.h"
 #include "StaticMeshResources.h"
-#include "ParticleResources.h"
+#if (ENGINE_MAJOR_VERSION < 6)
+#	include "ParticleResources.h"
+#endif
 #include "Render/PopcornFXVertexFactoryCommon.h"
 #include "Render/PopcornFXMeshVertexFactory.h"
 

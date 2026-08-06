@@ -492,11 +492,9 @@ static void		PopcornFXToggleMemoryHUD(const TArray<FString>& args, UWorld *InWor
 
 	static FDelegateHandle	s_drawDebugDelegateHandle;
 	APopcornFXHUDMemory		*HUD = NULL;
-	for (TActorIterator<APopcornFXHUDMemory> It(InWorld); It; ++It)
-	{
+	TActorIterator<APopcornFXHUDMemory> It(InWorld);
+	if (It)
 		HUD = *It;
-		break;
-	}
 	if (hasForce && forceOn == (HUD != null))
 		return;
 	if (HUD == null)

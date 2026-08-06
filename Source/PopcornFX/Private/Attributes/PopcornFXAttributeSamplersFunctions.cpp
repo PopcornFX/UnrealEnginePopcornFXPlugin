@@ -18,6 +18,7 @@
 #include "PopcornFXSDK.h"
 
 #include "Engine/World.h"
+#include "Misc/App.h"
 
 //----------------------------------------------------------------------------
 

@@ -253,11 +253,15 @@ void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXA
 
 	Super::CopyPropertiesFrom(other);
 
+	const FPopcornFXAttributeSamplerPropertiesVectorField oldProperties = Properties;
+
+	Properties = *newVectorFieldProperties;
+
 	if (m_Data->m_Desc == null)
 	{
 		return;
 	}
-	if (newVectorFieldProperties->VectorField != Properties.VectorField)
+	if (newVectorFieldProperties->VectorField != oldProperties.VectorField)
 	{
 		m_Data->m_NeedsReload = true;
 		if (Properties.VectorField == null)
@@ -268,18 +272,18 @@ void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXA
 				m_Data->m_RealExtentUnscaled = FVector3f::ZeroVector;
 		}
 	}
-	if (newVectorFieldProperties->Intensity != Properties.Intensity)
+	if (newVectorFieldProperties->Intensity != oldProperties.Intensity)
 	{
 		m_Data->m_Desc->SetStrength(Properties.Intensity);
 	}
-	if (newVectorFieldProperties->BoundsSource != Properties.BoundsSource ||
-		newVectorFieldProperties->VolumeDimensions != Properties.VolumeDimensions)
+	if (newVectorFieldProperties->BoundsSource != oldProperties.BoundsSource ||
+		newVectorFieldProperties->VolumeDimensions != oldProperties.VolumeDimensions)
 	{
 		if (Properties.VectorField != null)
 			_SetBounds();
 	}
-	if (newVectorFieldProperties->WrapMode != Properties.WrapMode ||
-		newVectorFieldProperties->SamplingMode != Properties.SamplingMode)
+	if (newVectorFieldProperties->WrapMode != oldProperties.WrapMode ||
+		newVectorFieldProperties->SamplingMode != oldProperties.SamplingMode)
 	{
 		u32	flags = 0;
 		u32	interpolation = 0;
@@ -287,8 +291,6 @@ void	UPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const UPopcornFXA
 		_BuildVectorFieldFlags(flags, interpolation);
 		m_Data->m_Desc->SetFlags(flags, static_cast<PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::EInterpolation>(interpolation));
 	}
-
-	Properties = *newVectorFieldProperties;
 }
 
 //----------------------------------------------------------------------------

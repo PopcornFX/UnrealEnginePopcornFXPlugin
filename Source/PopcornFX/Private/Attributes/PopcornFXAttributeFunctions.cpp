@@ -9,6 +9,7 @@
 #include "PopcornFXEmitterComponent.h"
 #include "PopcornFXAttributeList.h"
 #include "Engine/World.h"
+#include "Misc/App.h"
 
 #include "PopcornFXSDK.h"
 #include <pk_maths/include/pk_maths.h>

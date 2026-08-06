@@ -56,6 +56,9 @@ int64 FD3D12Resource::NoStateTrackingResourceCount = 0;
 
 #if ENABLE_RESIDENCY_MANAGEMENT
 bool	GEnableResidencyManagement = true;
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+bool	GD3D12StartResourceResident = false;
+#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 #endif
 
 //----------------------------------------------------------------------------
@@ -158,17 +161,17 @@ void FD3D12Resource::StartTrackingForResidency()
 FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 	FRHIGPUMask VisibleNodes,
 	ID3D12Resource* InResource,
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	ED3D12Access InInitialD3D12Access,
 #else
 	D3D12_RESOURCE_STATES InitialState,
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	ED3D12ResourceStateMode InResourceStateMode,
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	ED3D12Access InDefaultD3D12Access,
 #else
 	D3D12_RESOURCE_STATES InDefaultResourceState,
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	const FD3D12ResourceDesc& InDesc,
 	FD3D12Heap* InHeap,
 	D3D12_HEAP_TYPE InHeapType)
@@ -192,11 +195,11 @@ FD3D12Resource::FD3D12Resource(FD3D12Device* ParentDevice,
 		GPUVirtualAddress = Resource->GetGPUVirtualAddress();
 	}
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	InitializeResourceState(nullptr, InInitialD3D12Access, InResourceStateMode, InDefaultD3D12Access);
 #else
 	InitalizeResourceState(InitialState, InResourceStateMode, InDefaultResourceState);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	StartTrackingForResidency();
 	if (Desc.bReservedResource)
 	{
@@ -287,7 +290,7 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D12 *s
 
 	PK_ASSERT(bufferD3D12 != null);
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 	FRHICommandListBase &RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 	if (bufferD3D12 && EnumHasAnyFlags(bufferD3D12->GetDesc().Usage, BUF_ByteAddressBuffer))
 	{
@@ -305,7 +308,7 @@ FShaderResourceViewRHIRef	StreamBufferSRVToRHI(const PopcornFX::SBuffer_D3D12 *s
 #else
 	FRHICommandListBase			&RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
 	return RHICmdList.CreateShaderResourceView(bufferD3D12, sizeof(uint32), pixelFormat);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+#endif (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 }
 
 //----------------------------------------------------------------------------
@@ -332,7 +335,7 @@ FRHIBuffer			*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stream, 
 	// The BUF_UnorderedAccess could technically be left active, but none of the UE plugin shaders are binding any of the PK sim streams as UAV anyways.
 	const EBufferUsageFlags			bufferUsage = BUF_ShaderResource;
 
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	ED3D12Access			access = ED3D12Access::SRVMask;
 	FD3D12Resource			*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource,
 		access, ED3D12ResourceStateMode::Default, access, desc, NULL, D3D12_HEAP_TYPE_DEFAULT);
@@ -340,18 +343,18 @@ FRHIBuffer			*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stream, 
 	const D3D12_RESOURCE_STATES	resourceState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	FD3D12Resource				*resource = new FD3D12Resource(device, device->GetVisibilityMask(), stream->m_Resource,
 		resourceState, ED3D12ResourceStateMode::Default, resourceState, desc, NULL, D3D12_HEAP_TYPE_DEFAULT);
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7)
+#endif //  (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 7) || (ENGINE_MAJOR_VERSION == 6)
 	FD3D12Adapter			*adapter = device->GetParentAdapter();
 	FD3D12Buffer			*buffer = adapter->CreateLinkedObject<FD3D12Buffer>(device->GetVisibilityMask(), [&](FD3D12Device* device, void* empty = nullptr)
 		{
-#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+#if  (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 			FRHIBufferCreateDesc	desc =
 				FRHIBufferCreateDesc::Create(TEXT("PopcornFXBuffer"), stream->m_ByteSize, stride, bufferUsage)
 				.SetInitialState(ERHIAccess::SRVMask);
 			FD3D12Buffer			*newBuffer = new FD3D12Buffer(device, desc);
 #else
 			FD3D12Buffer	*newBuffer = new FD3D12Buffer(device, FRHIBufferDesc(stream->m_ByteSize, stride, bufferUsage));
-#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6)
+#endif //  (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 			return newBuffer;
 		});
 

@@ -45,15 +45,15 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<c
 		m_AtlasBufferCapacity = PopcornFX::Mem::Align<0x100>(bytes + 0x10);
 		const EBufferUsageFlags	usage = BUF_Static | BUF_ShaderResource;
 
-#if (ENGINE_MINOR_VERSION >= 6)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 		FRHIBufferCreateDesc CreateDesc =
 			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Atlas buffer"), m_AtlasBufferCapacity, sizeof(CFloat4), usage)
 			.SetInitialState(RHIGetDefaultResourceState(usage | EBufferUsageFlags::VertexBuffer, false));
 #else
 		FRHIResourceCreateInfo	info(TEXT("PopcornFX Atlas buffer"));
-#endif // (ENGINE_MINOR_VERSION >= 6)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 		m_AtlasBuffer_Raw = RHICmdList.CreateBuffer(CreateDesc);
 
 		// For back-compat reasons, SRVs of byte-address buffers created via this function ignore the Format, and instead create raw views.
@@ -74,7 +74,7 @@ bool	FPopcornFXAtlasRectsVertexBuffer::_LoadRects(const PopcornFX::TMemoryView<c
 #else
 		m_AtlasBuffer_Raw = RHICmdList.CreateVertexBuffer(m_AtlasBufferCapacity, usage, info);
 		m_AtlasBufferSRV = RHICmdList.CreateShaderResourceView(m_AtlasBuffer_Raw, sizeof(CFloat4), PF_A32B32G32R32F);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 
 		if (!PK_VERIFY(IsValidRef(m_AtlasBuffer_Raw)) ||
 			!PK_VERIFY(IsValidRef(m_AtlasBufferSRV)))
@@ -109,7 +109,7 @@ void	FNullFloat4Buffer::InitRHI(FRHICommandListBase &RHICmdList)
 	const u32	totalByteCount = 4 * sizeof(float); // Whatever
 	const EBufferUsageFlags	usage = BUF_Dynamic | BUF_ShaderResource;
 
-#if (ENGINE_MINOR_VERSION >= 6)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 	FRHIBufferCreateDesc CreateDesc =
 		FRHIBufferCreateDesc::Create(TEXT("PopcornFX Null Float4 buffer"), totalByteCount, 0, usage)
 		.SetGPUMask(FRHIGPUMask::All())
@@ -118,9 +118,9 @@ void	FNullFloat4Buffer::InitRHI(FRHICommandListBase &RHICmdList)
 		.SetOwnerName(NAME_None);
 #else
 	FRHIResourceCreateInfo	info(TEXT("PopcornFX Null Float4 buffer"));
-#endif
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 	VertexBufferRHI = RHICmdList.CreateBuffer(CreateDesc);
 
 	// For back-compat reasons, SRVs of byte-address buffers created via this function ignore the Format, and instead create raw views.
@@ -140,7 +140,7 @@ void	FNullFloat4Buffer::InitRHI(FRHICommandListBase &RHICmdList)
 #else
 	VertexBufferRHI = RHICmdList.CreateBuffer(totalByteCount, usage, 0, ERHIAccess::VertexOrIndexBuffer | ERHIAccess::SRVMask, info);
 	SRV = RHICmdList.CreateShaderResourceView(VertexBufferRHI, sizeof(CFloat4), PF_A32B32G32R32F);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 }
 
 //----------------------------------------------------------------------------

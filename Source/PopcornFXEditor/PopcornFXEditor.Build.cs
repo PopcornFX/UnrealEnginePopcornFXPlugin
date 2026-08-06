@@ -51,6 +51,9 @@ namespace UnrealBuildTool.Rules
 					"BlueprintGraph",
 					"KismetCompiler",
 					"CoreUObject",
+#if UE_6_0_OR_LATER
+					"EditorFramework",
+#endif
 				});
 		}
 	}

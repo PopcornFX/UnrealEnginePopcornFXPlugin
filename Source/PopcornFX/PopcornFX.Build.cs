@@ -171,7 +171,6 @@ namespace UnrealBuildTool.Rules
 					sourceDir,
 					sourceDir + "include/",
 					sourceDir + "include/license/" + clientName + "/",
-					//sourceDir + "../HellHeaven-SDK/Samples/IntegrationUnrealEngine/",
 				}
 			);
 
@@ -468,6 +467,9 @@ namespace UnrealBuildTool.Rules
 				PublicIncludePaths.Add("Runtime/D3D12RHI/Internal");
                 PublicIncludePaths.Add("Runtime/RHICore/Internal");
 #endif // UE_5_6_OR_LATER
+#if UE_5_8_OR_LATER
+                PublicIncludePaths.Add("Runtime/Windows/WindowsD3D/Internal");
+#endif
                 if (
 #if !UE_5_0_OR_LATER // Support dropped with UE5
 					Target.Platform == UnrealTargetPlatform.XboxOne ||

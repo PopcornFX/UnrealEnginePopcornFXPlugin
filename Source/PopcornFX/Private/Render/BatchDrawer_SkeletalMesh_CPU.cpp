@@ -930,7 +930,11 @@ void	CBatchDrawer_SkeletalMesh_CPUBB::_IssueDrawCall_Mesh(const SUERenderContext
 		params.m_MeshUniformBuffer = FPopcornFXSkelMeshUniformsRef::CreateUniformBufferImmediate(uniformsSkelMesh, UniformBuffer_SingleFrame);
 
 		SCOPED_DRAW_EVENT(RHICmdList, PopcornFXComputeBoneTransformsCS);
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+		RHI_BREADCRUMB_EVENT_STAT(RHICmdList, PopcornFXComputeBoneTransformsCS, "PopcornFXComputeBoneTransformsCS");
+#else
 		SCOPED_GPU_STAT(RHICmdList, PopcornFXComputeBoneTransformsCS);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 		if (m_MotionBlur)
 		{
 			TShaderMapRef< FPopcornFXComputeMBBoneTransformsCS >	computeBoneTransformsCS(GetGlobalShaderMap(m_FeatureLevel));

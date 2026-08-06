@@ -10,7 +10,9 @@
 
 #include "Render/PopcornFXShaderUtils.h"
 #include "MeshMaterialShader.h"
-#include "ParticleResources.h"
+#if (ENGINE_MAJOR_VERSION < 6)
+#	include "ParticleResources.h"
+#endif
 #include "PipelineStateCache.h"
 
 #include "MaterialShared.h"
@@ -197,7 +199,7 @@ public:
 		const u32				sizeInBytes = sizeof(CFloat2) * 6;
 
 		void	*data = null;
-#if (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 		FRHIBufferCreateDesc	CreateDesc =
 			FRHIBufferCreateDesc::Create(TEXT("PopcornFX Texcoords buffer"), sizeInBytes, sizeof(CFloat2), BUF_Static | BUF_VertexBuffer)
 			.SetInitialState(ERHIAccess::VertexOrIndexBuffer);
@@ -207,7 +209,7 @@ public:
 		FRHIResourceCreateInfo	info(TEXT("PopcornFX Texcoords buffer"));
 		VertexBufferRHI = RHICmdList.CreateBuffer(sizeInBytes, BUF_Static | BUF_VertexBuffer, sizeof(CFloat2), ERHIAccess::VertexOrIndexBuffer, info);
 		data = RHICmdList.LockBuffer(VertexBufferRHI, 0, sizeInBytes, RLM_WriteOnly);
-#endif // (ENGINE_MAJOR_VERSION == 5) && (ENGINE_MINOR_VERSION >= 6)
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6) || (ENGINE_MAJOR_VERSION == 6)
 
 		CFloat2	*vertices = (CFloat2*)data;
 

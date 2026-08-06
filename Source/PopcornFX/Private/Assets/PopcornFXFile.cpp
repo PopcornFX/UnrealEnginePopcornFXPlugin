@@ -9,6 +9,7 @@
 #include "Internal/FileSystemController_UE.h"
 #include "PopcornFXPlugin.h"
 
+#include "RenderingThread.h"
 #include "Misc/FileHelper.h"
 #include "EditorFramework/AssetImportData.h"
 #include "Misc/MessageDialog.h"
@@ -181,8 +182,6 @@ bool	UPopcornFXFile::_ImportFile(const FString &inFilePath, bool bIsReimport)
 			return false;
 		}
 
-		AskImportAssetDependenciesIFN();
-
 		// Reload the file after dependencies have been imported, and patched
 		ReloadFile();
 
@@ -295,7 +294,7 @@ void		UPopcornFXFile::SetFileSourcePath(const FString &fileSourcePath)
 			absoluteImport = false;
 		}
 		else
-			UE_LOG(LogPopcornFile, Warning, TEXT("Imported File is outside Source PopcornFX Project, the file will be imported by absolute path"), *fileSourcePath);
+			UE_LOG(LogPopcornFile, Warning, TEXT("Imported File (%s) is outside Source PopcornFX Project, the file will be imported by absolute path"), *fileSourcePath);
 	}
 	else
 		UE_LOG(LogPopcornFile, Warning, TEXT("Source PopcornFX Project is invalid, the file will be imported by absolute path"));
