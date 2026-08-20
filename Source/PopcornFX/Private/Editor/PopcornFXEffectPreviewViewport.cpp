@@ -254,8 +254,6 @@ void	SPopcornFXEffectPreviewViewport::SetPreviewEffect(UPopcornFXEffect *effect)
 		m_EmitterComponent->bAutoDestroy = false;
 		m_EmitterComponent->bPlayOnLoad = true;
 		FTransform	spawnTransform = FTransform::Identity;
-		spawnTransform.SetRotation(FQuat::MakeFromEuler(FVector(0.f, 0.0f, 180.f)));
-		spawnTransform.SetTranslation(FVector(0.f, 300.f, 0.0f));
 		m_PreviewScene.AddComponent(m_EmitterComponent, spawnTransform);
 		m_ViewportClient->SetEmitterComponent(m_EmitterComponent);
 		m_EmitterComponent->ResetLoopTimer();

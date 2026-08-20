@@ -88,23 +88,6 @@ namespace EPopcornFXRenderCullMethod
 	};
 }
 
-/** PopcornFX Localized page mode */
-UENUM()
-namespace EPopcornFXLocalizedPagesMode
-{
-	enum	Type
-	{
-		/** Disabled */
-		Disable,
-
-		/** Enabled, Default will be off, needs per-layer explicit enabling. */
-		EnableDefaultsToOff,
-
-		/** Enabled, Default will be on, unless per-layer explicit disabling. */
-		EnableDefaultsToOn,
-	};
-}
-
 /** PopcornFX Billboarding location for billboard and ribbon particles */
 UENUM()
 namespace EPopcornFXBillboardingLocation
@@ -146,13 +129,13 @@ struct FPopcornFXSimulationSettings
 
 	/** Particle Collisions takes Physical Materials into account. */
 	UPROPERTY(EditAnywhere, Category="PopcornFX Simulation Settings", meta=(EditCondition="bOverride_bEnablePhysicalMaterials"))
-	uint32 bEnablePhysicalMaterials : 1;
+	uint32	bEnablePhysicalMaterials : 1;
 
 	UPROPERTY(EditAnywhere, Category="PopcornFX Simulation Settings")
-	uint32 bOverride_LocalizedPagesMode : 1;
+	uint32	bOverride_bLocalizedPagesMode : 1;
 
-	UPROPERTY(EditAnywhere, Category="PopcornFX Simulation Settings", meta=(EditCondition="bOverride_LocalizedPagesMode"))
-	TEnumAsByte<EPopcornFXLocalizedPagesMode::Type> LocalizedPagesMode;
+	UPROPERTY(EditAnywhere, Category="PopcornFX Simulation Settings", meta=(EditCondition="bOverride_bLocalizedPagesMode"))
+	uint32	bLocalizedPagesMode : 1;
 
 	UPROPERTY(EditAnywhere, Category="PopcornFX Simulation Settings")
 	uint32 bOverride_SceneUpdateTickGroup : 1;

@@ -190,8 +190,8 @@ UMaterialInterface	*UPopcornFXSettings::GetConfigLegacyMaterial(uint32 ePopcornF
 FPopcornFXSimulationSettings::FPopcornFXSimulationSettings()
 	: bOverride_bEnablePhysicalMaterials(0)
 	, bEnablePhysicalMaterials(true)
-	, bOverride_LocalizedPagesMode(0)
-	, LocalizedPagesMode(EPopcornFXLocalizedPagesMode::EnableDefaultsToOff)
+	, bOverride_bLocalizedPagesMode(0)
+	, bLocalizedPagesMode(true)
 	, bOverride_SceneUpdateTickGroup(0)
 	, SceneUpdateTickGroup(TG_PostPhysics)
 {
@@ -215,7 +215,7 @@ void	FPopcornFXSimulationSettings::ResolveSettingsTo(FPopcornFXSimulationSetting
 	const FPopcornFXSimulationSettings				&configValues = FPopcornFXPlugin::Get().Settings()->SimulationSettings;
 
 	RESOLVE_SETTING(bEnablePhysicalMaterials);
-	RESOLVE_SETTING(LocalizedPagesMode);
+	RESOLVE_SETTING(bLocalizedPagesMode);
 	RESOLVE_SETTING(SceneUpdateTickGroup);
 }
 
