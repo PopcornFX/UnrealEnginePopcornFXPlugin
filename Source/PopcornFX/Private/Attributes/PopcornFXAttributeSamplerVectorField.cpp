@@ -330,6 +330,8 @@ void	UPopcornFXAttributeSamplerVectorField::SetupDefaults(UPopcornFXEffect *effe
 				Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
 				break;
 			case PopcornFX::EGridInterpolator::GridInterpolator_Trilinear:
+				Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Trilinear;
+				break;
 			default:
 				Properties.SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
 				break;
@@ -388,11 +390,10 @@ PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerVectorField::_A
 	}
 	if (m_Data->m_NeedsReload)
 	{
-		m_Data->m_NeedsReload = false;
-
 		const CFloat4	dimensions = CFloat4(Properties.VectorField->SizeX, Properties.VectorField->SizeY, Properties.VectorField->SizeZ, 1);
 		const u32		elementCount = dimensions.x() * dimensions.y() * dimensions.z();
-		PK_ASSERT(Properties.VectorField->SourceData.GetBulkDataSize() == elementCount * sizeof(FFloat16Color));
+		if (!PK_VERIFY(elementCount > 0 && Properties.VectorField->SourceData.GetBulkDataSize() == elementCount * sizeof(FFloat16Color)))
+			return null;
 
 		PopcornFX::PRefCountedMemoryBuffer	gridRawData = PopcornFX::CRefCountedMemoryBuffer::AllocAligned(sizeof(PopcornFX::f16) * 3 * elementCount, PopcornFX::Memory::CacheLineSize);
 		if (!PK_VERIFY(gridRawData != null))
@@ -400,7 +401,11 @@ PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerVectorField::_A
 
 		const PopcornFX::f16 *srcValues = reinterpret_cast<PopcornFX::f16 *>(Properties.VectorField->SourceData.Lock(LOCK_READ_ONLY));
 		if (!PK_VERIFY(srcValues != null))
+		{
+			Properties.VectorField->SourceData.Unlock();
 			return null;
+		}
+
 		PopcornFX::f16 *dstValues = gridRawData->Data<PopcornFX::f16>();
 		const PopcornFX::f16 *endValue = dstValues + elementCount * 3;
 		while (dstValues != endValue)
@@ -423,6 +428,8 @@ PopcornFX::CParticleSamplerDescriptor *UPopcornFXAttributeSamplerVectorField::_A
 			return null;
 
 		_SetBounds();
+
+		m_Data->m_NeedsReload = false;
 	}
 
 	desc.m_NeedUpdate = true;

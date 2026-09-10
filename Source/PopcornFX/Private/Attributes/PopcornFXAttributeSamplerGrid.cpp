@@ -408,21 +408,21 @@ bool	UPopcornFXAttributeSamplerGrid::HasRenderTargetChanged() const
 	const CUint4						&dim = m_Data->m_Desc->m_GridDimensions;
 	if (RT2D)
 	{
-		if (dim.x() != RT2D->SizeX || dim.x() != RT2D->SizeY
+		if (dim.x() != static_cast<uint32>(RT2D->SizeX) || dim.y() != static_cast<uint32>(RT2D->SizeY)
 			|| m_Data->m_Desc->m_DataType != ToPk(RT2D->GetFormat()))
 		{
-			m_Data->m_ReloadGrid = true;
+			return true;
 		}
 	}
 	else if (RTVolume)
 	{
-		if (dim.x() != RTVolume->SizeX || dim.y() != RTVolume->SizeY || dim.z() != RTVolume->SizeZ
+		if (dim.x() != static_cast<uint32>(RTVolume->SizeX) || dim.y() != static_cast<uint32>(RTVolume->SizeY) || dim.z() != static_cast<uint32>(RTVolume->SizeZ)
 			|| m_Data->m_Desc->m_DataType != ToPk(RTVolume->GetFormat()))
 		{
-			m_Data->m_ReloadGrid = true;
+			return true;
 		}
 	}
-	return true;
+	return false;
 }
 
 //----------------------------------------------------------------------------
@@ -1032,7 +1032,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat3Values(UPopcornFXAttributeSam
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->Properties.SizeX *InSelf->Properties.SizeY *InSelf->Properties.SizeZ;
+	const u32	expectedCount = InSelf->GetCellCount();
 
 	PopcornFX::TStridedMemoryView<PopcornFX::CFloat3> values(reinterpret_cast<PopcornFX::CFloat3*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CFloat3));
@@ -1042,7 +1042,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat3Values(UPopcornFXAttributeSam
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
+		OutValues[i].Z = values[i].z();
 	}
 	return true;
 }
@@ -1064,7 +1064,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridFloat4Values(UPopcornFXAttributeSam
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
+		OutValues[i].Z = values[i].z();
 		OutValues[i].W = values[i].w();
 	}
 	return true;
@@ -1128,7 +1128,7 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridInt3Values(UPopcornFXAttributeSampl
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
+		OutValues[i].Z = values[i].z();
 	}
 	return true;
 }
@@ -1150,8 +1150,8 @@ bool	UPopcornFXAttributeSamplerGrid::ReadGridInt4Values(UPopcornFXAttributeSampl
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
-		OutValues[i].Z = values[i].w();
+		OutValues[i].Z = values[i].z();
+		OutValues[i].W = values[i].w();
 	}
 	return true;
 }

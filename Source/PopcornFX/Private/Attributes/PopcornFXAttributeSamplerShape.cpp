@@ -535,7 +535,6 @@ struct FAttributeSamplerShapeData
 
 	PopcornFX::TArray<FPopcornFXClothSection>	m_ClothSections;
 	TMap<int32, FClothSimulData>				m_ClothSimDataCopy;
-	FMatrix44f									m_InverseTransforms;
 
 	PopcornFX::CBaseSkinningStreams				*m_SkinningStreamsProxy = null;
 	PopcornFX::SSkinContext						m_SkinContext;
@@ -734,7 +733,8 @@ void	UPopcornFXAttributeSamplerShape::Skin_PostProcess(uint32 vertexStart, uint3
 	PK_ASSERT(m_Data != null);
 	PK_ASSERT(m_Data->m_Mesh != null);
 
-	if (Properties.bBuildClothData && !m_Data->m_ClothSections.Empty())
+	if (Properties.bBuildClothData && !m_Data->m_ClothSections.Empty() &&
+		(Properties.bSkinPositions || Properties.bSkinNormals))
 		FetchClothData(vertexStart, vertexCount);
 	if (!Properties.bComputeVelocities)
 		return;
@@ -850,14 +850,13 @@ void	UPopcornFXAttributeSamplerShape::FetchClothData(uint32 vertexStart, uint32 
 	if (clothData.Num() == 0)
 		return;
 
-	const float			invScale = FPopcornFXPlugin::GlobalScaleRcp();
-	const FMatrix44f	localM = m_Data->m_InverseTransforms * invScale;
+	const float	invScale = FPopcornFXPlugin::GlobalScaleRcp();
 	for (u32 iSection = 0; iSection < m_Data->m_ClothSections.Count(); ++iSection)
 	{
 		const FPopcornFXClothSection	&section = m_Data->m_ClothSections[iSection];
 
 		const u32	baseVertexOffset = section.m_BaseVertexOffset;
-		if (baseVertexOffset > vertexStart + vertexCount ||
+		if (baseVertexOffset >= vertexStart + vertexCount ||
 			baseVertexOffset + section.m_VertexCount <= vertexStart)
 			continue;
 		if (!PK_VERIFY(clothData.Contains(section.m_ClothDataIndex)))
@@ -866,6 +865,15 @@ void	UPopcornFXAttributeSamplerShape::FetchClothData(uint32 vertexStart, uint32 
 			PK_NAMEDSCOPEDPROFILE_C("AttributeSamplerShape::FetchClothData::Section", POPCORNFX_UE_PROFILER_COLOR);
 
 			const FClothSimulData	&data = clothData[section.m_ClothDataIndex];
+
+			const FMatrix44f	localM = (FMatrix44f)data.ComponentRelativeTransform.ToMatrixWithScale() * invScale;
+			FMatrix44f			normalM = (FMatrix44f)data.ComponentRelativeTransform.ToMatrixNoScale();
+
+			normalM.M[3][0] = 0.f;
+			normalM.M[3][1] = 0.f;
+			normalM.M[3][2] = 0.f;
+			normalM.M[3][3] = 0.f;
+
 			PK_ASSERT(data.Positions.Num() > 0);
 			PK_ASSERT(data.Positions.Num() == data.Normals.Num());
 			PK_ASSERT(section.m_VertexCount == section.m_Indices.Count());
@@ -879,26 +887,28 @@ void	UPopcornFXAttributeSamplerShape::FetchClothData(uint32 vertexStart, uint32 
 			const FVector3f	*srcNormals = data.Normals.GetData();
 			const u32		*srcIndices = section.m_Indices.RawDataPointer() + indicesStart;
 
-			CFloat4		_dummyNormal[1];
-			CFloat4		*dstPositions = m_Data->m_DstPositions.RawDataPointer() + realVertexStart;
-			CFloat4		*dstNormals = Properties.bSkinNormals ? m_Data->m_DstPositions.RawDataPointer() + realVertexStart : _dummyNormal;
+			CFloat4		_dummy[1];
+			CFloat4		*dstPositions = Properties.bSkinPositions ? m_Data->m_DstPositions.RawDataPointer() + realVertexStart : _dummy;
+			CFloat4		*dstNormals = Properties.bSkinNormals ? m_Data->m_DstNormals.RawDataPointer() + realVertexStart : _dummy;
 
-			const u32	dstStride = Properties.bSkinNormals ? 0x10 : 0;
+			const u32	posStride = Properties.bSkinPositions ? 0x10 : 0;
+			const u32	normalStride = Properties.bSkinNormals ? 0x10 : 0;
 
 			for (u32 iVertex = 0; iVertex < realVertexCount; ++iVertex)
 			{
 				const u32	simIndex = srcIndices[iVertex];
 
-				VectorRegister4f		srcPos = VectorLoadFloat3(srcPositions + simIndex);
-				const VectorRegister4f	srcNormal = VectorLoadFloat3(srcNormals + simIndex);
+				VectorRegister4f	srcPos = VectorLoadFloat3(srcPositions + simIndex);
+				VectorRegister4f	srcNormal = VectorLoadFloat3(srcNormals + simIndex);
 
 				srcPos = PopcornFXAttributeSamplers::_TransformVector(srcPos, &localM);
+				srcNormal = PopcornFXAttributeSamplers::_TransformVector(srcNormal, &normalM);
 
 				VectorStore(srcPos, reinterpret_cast<FVector4f*>(dstPositions));
 				VectorStore(srcNormal, reinterpret_cast<FVector4f*>(dstNormals));
 
-				dstPositions = PopcornFX::Mem::AdvanceRawPointer(dstPositions, 0x10);
-				dstNormals = PopcornFX::Mem::AdvanceRawPointer(dstNormals, dstStride);
+				dstPositions = PopcornFX::Mem::AdvanceRawPointer(dstPositions, posStride);
+				dstNormals = PopcornFX::Mem::AdvanceRawPointer(dstNormals, normalStride);
 			}
 		}
 	}
@@ -1550,7 +1560,8 @@ namespace
 			const u32	sectionInfluenceCount = section.MaxBoneInfluences;
 
 			FPopcornFXClothSection		clothSection;
-			const bool					validClothSection = (buildDesc.m_BuildFlags & Build_Cloth) && section.HasClothingData() && skin;
+			const bool					validClothSection = (buildDesc.m_BuildFlags & Build_Cloth) &&
+				(buildDesc.m_BuildFlags & (Build_Positions | Build_Normals)) != 0 && section.HasClothingData();
 
 			bool									buildClothIndices = false;
 			PopcornFX::TMemoryView<const FVector3f>	clothVertices;
@@ -1613,10 +1624,10 @@ namespace
 						else
 						{
 							UE_LOG(LogPopcornFXAttributeSamplerShape, Warning, TEXT("Couldn't build cloth LUT for asset '%s', section %d: Legacy APEX cloth assets not supported"), *buildDesc.m_SkeletalMesh->GetName(), iSection);
+							if (!hasMasterPoseComponent)
+								break;
 						}
 					}
-					if (validClothSection) // Avoid skinning streams altogether
-						continue;
 
 					if (hasMasterPoseComponent)
 					{
@@ -1911,14 +1922,13 @@ bool	UPopcornFXAttributeSamplerShape::UpdateSkinning()
 	if (skelMesh != null && !skelMesh->bDisableClothSimulation)
 	{
 		if (Properties.bBuildClothData &&
-			!m_Data->m_ClothSections.Empty())
+			!m_Data->m_ClothSections.Empty() &&
+			(Properties.bSkinPositions || Properties.bSkinNormals))
 		{
 			SCOPE_CYCLE_COUNTER(STAT_PopcornFX_FetchClothData); // Time cloth data copy
 
 			const TMap<int32, FClothSimulData>	&simData = skelMesh->GetCurrentClothingData_GameThread();
-			const FMatrix44f					&inverseTr = (FMatrix44f)skelMesh->GetComponentToWorld().Inverse().ToMatrixWithScale();
 
-			m_Data->m_InverseTransforms = inverseTr;
 			m_Data->m_ClothSimDataCopy = simData;
 		}
 	}

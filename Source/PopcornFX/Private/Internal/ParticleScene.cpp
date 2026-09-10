@@ -1462,6 +1462,40 @@ namespace
 #endif
 
 #if PK_WITH_CHAOS
+#	if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+class FBlockQueryCallbackChaos : public ICollisionQueryFilterCallback
+{
+public:
+	virtual ~FBlockQueryCallbackChaos() {}
+	virtual ECollisionQueryHitType PreFilter(const FQueryFilterData& FilterData, const Chaos::FPerShapeData& Shape, const Chaos::FGeometryParticle& Actor) override
+	{
+		const Chaos::Filter::FCombinedShapeFilterData&	shapeData = Shape.GetCombinedShapeFilterData();
+		const ECollisionChannel							shapeChannel = GetCollisionChannel(shapeData.GetShapeFilterData());
+		const uint32									shapeChannelBit = ECC_TO_BITFIELD(shapeChannel);
+		const uint64									filterChannelMask = FilterData.GetBlockChannels();
+
+		if (!(filterChannelMask & shapeChannelBit))
+			return ECollisionQueryHitType::None;
+
+		const uint32		shapeFlags = static_cast<uint32>(shapeData.GetShapeFilterData().GetFlags());
+		const uint32		filterFlags = static_cast<uint32>(FilterData.GetFlags());
+		const uint32		commonFlags = shapeFlags & filterFlags;
+
+		if (!(commonFlags & (EPDF_SimpleCollision | EPDF_ComplexCollision)))
+			return ECollisionQueryHitType::None;
+
+		return ECollisionQueryHitType::Block;
+	}
+	virtual ECollisionQueryHitType PreFilter(const FQueryFilterData &FilterData, const Chaos::FPerShapeData& Shape, const Chaos::FGeometryParticleHandle& Actor) override
+	{
+		// TODO
+		return ECollisionQueryHitType::None;
+	}
+
+	virtual ECollisionQueryHitType PostFilter(const FQueryFilterData& FilterData, const ChaosInterface::FPTQueryHit& Hit) override { return ECollisionQueryHitType::Block; }
+	virtual ECollisionQueryHitType PostFilter(const FQueryFilterData& FilterData, const ChaosInterface::FQueryHit& Hit) override { return ECollisionQueryHitType::Block; }
+};
+#	else
 class FBlockQueryCallbackChaos : public ICollisionQueryFilterCallbackBase
 {
 public:
@@ -1488,12 +1522,13 @@ public:
 	}
 
 	virtual ECollisionQueryHitType PostFilter(const FCollisionFilterData &filterData, const ChaosInterface::FPTQueryHit &hit) override { return ECollisionQueryHitType::Block; }
-	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticleHandle &actor)
+	virtual ECollisionQueryHitType PreFilter(const FCollisionFilterData &filterData, const Chaos::FPerShapeData &shape, const Chaos::FGeometryParticleHandle &actor) override
 	{
 		// TODO
 		return ECollisionQueryHitType::None;
 	}
 };
+#	endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 #endif
 
 void	CParticleScene::RayTracePacket(
@@ -1886,24 +1921,38 @@ void	CParticleScene::RayTracePacket(
 
 	// TODO: Contact objects / surfaces with physics
 
-	EHitFlags						outFlags = PK_ONLY_IF_ASSERTS(EHitFlags::Position | ) EHitFlags::Distance | EHitFlags::Normal;
-	FBlockQueryCallbackChaos		callback;
-	FCollisionFilterData			filterData = FCollisionFilterData();
-	filterData.Word0 = 0; // ECollisionQuery::ObjectQuery;
-	filterData.Word1 = objectTypesToQuery;
-	filterData.Word3 = EPDF_SimpleCollision;
-	if (traceComplexGeometry)
-		filterData.Word3 |= EPDF_ComplexCollision;
-
-	EQueryFlags						queryFlags = EQueryFlags::AnyHit | EQueryFlags::PreFilter;
-	ChaosInterface::FQueryFilterData	queryFilterData = ChaosInterface::MakeQueryFilterData(filterData, queryFlags, FCollisionQueryParams());
-	ChaosInterface::FQueryDebugParams	debugParams;
-	FCollisionShape						sphere;
-
 	// Note: There doesn't seem to be a lock necessary for the Chaos accel struct
 	{
 		if (m_CurrentChaosScene && m_CurrentChaosScene->GetSpacialAcceleration())
 		{
+			EHitFlags							outFlags = PK_ONLY_IF_ASSERTS(EHitFlags::Position | ) EHitFlags::Distance | EHitFlags::Normal;
+			FBlockQueryCallbackChaos			callback;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+			FPhysicsObjectQueryFilterBuilder	builder(m_CurrentChaosScene);
+
+			builder.SetObjectTypes(objectTypesToQuery);
+			builder.SetFlags(static_cast<Chaos::EFilterFlags>(EPDF_SimpleCollision), true);
+			if (traceComplexGeometry)
+				builder.SetFlags(static_cast<Chaos::EFilterFlags>(EPDF_ComplexCollision), true);
+
+			Chaos::Filter::FQueryFilterData		filterData = builder.Build();
+#else
+			FCollisionFilterData				filterData = FCollisionFilterData();
+			filterData.Word0 = 0; // ECollisionQuery::ObjectQuery;
+			filterData.Word1 = objectTypesToQuery;
+			filterData.Word3 = EPDF_SimpleCollision;
+			if (traceComplexGeometry)
+				filterData.Word3 |= EPDF_ComplexCollision;
+#endif //(ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+
+			EQueryFlags								queryFlags = EQueryFlags::AnyHit | EQueryFlags::PreFilter;
+			ChaosInterface::FQueryDebugParams		debugParams;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+			ChaosInterface::FSceneQueryCommonParams	sceneQueryCommonParams(callback, filterData, queryFlags, debugParams);
+#else
+			ChaosInterface::FQueryFilterData		queryFilterData = ChaosInterface::MakeQueryFilterData(filterData, queryFlags, FCollisionQueryParams());
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+
 			const auto &solverAccelerationStructure = m_CurrentChaosScene->GetSpacialAcceleration();
 			FChaosSQAccelerator sqAccelerator(*solverAccelerationStructure);
 			{
@@ -1934,7 +1983,11 @@ void	CParticleScene::RayTracePacket(
 						if (emptySphereSweeps || packet.m_RaySweepRadii_Aligned16[rayi] == 0.0f)
 						{
 							FSingleHitBuffer<FHitRaycast>	hitBuffer;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+							sqAccelerator.Raycast(FVector(ToUE(start)), FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, sceneQueryCommonParams);
+#else
 							sqAccelerator.Raycast(FVector(ToUE(start)), FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callback, debugParams);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 							if (hitBuffer.HasBlockingHit())
 							{
 								resultBufferAndIndex.m_HitLocation = *hitBuffer.GetBlock();
@@ -1946,7 +1999,11 @@ void	CParticleScene::RayTracePacket(
 							const FTransform	startTM = FTransform(FVector(ToUE(start)));
 
 							FSingleHitBuffer<FHitSweep>		hitBuffer;
+#if (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
+							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, sceneQueryCommonParams);
+#else
 							sqAccelerator.Sweep(Chaos::TSphere<Chaos::FReal, 3>(Chaos::FVec3::ZeroVector, packet.m_RaySweepRadii_Aligned16[rayi] * scalePkToUE), startTM, FVector(ToUE(rayDir)), rayLen, hitBuffer, outFlags, queryFilterData, callback, debugParams);
+#endif // (ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8) || (ENGINE_MAJOR_VERSION == 6)
 							if (hitBuffer.HasBlockingHit())
 							{
 								resultBufferAndIndex.m_HitLocation = *hitBuffer.GetBlock();
