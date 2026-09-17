@@ -40,7 +40,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerAnimTrack, Log, All);
 //----------------------------------------------------------------------------
 
 
-bool	FPopcornFXAttributeSamplerPropertiesAnimTrack::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+bool	FPopcornFXAttributeSamplerPropertiesAnimTrack::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const
 {
 	if (ResolveSplineComponent(emitter, samplerName, true) == nullptr)
 		return false;
@@ -49,14 +49,14 @@ bool	FPopcornFXAttributeSamplerPropertiesAnimTrack::ArePropertiesSupported(UPopc
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesAnimTrack::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerPropertiesAnimTrack::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const
 {
 	return true;
 }
 
 //----------------------------------------------------------------------------
 
-USplineComponent	*FPopcornFXAttributeSamplerPropertiesAnimTrack::ResolveSplineComponent(UPopcornFXEmitterComponent *owner, const FString &samplerName, bool logErrors)
+USplineComponent	*FPopcornFXAttributeSamplerPropertiesAnimTrack::ResolveSplineComponent(UPopcornFXEmitterComponent *owner, const FString &samplerName, bool logErrors) const
 {
 	PK_NAMEDSCOPEDPROFILE_C("FPopcornFXAttributeSamplerAnimTrack::ResolveSplineComponent", POPCORNFX_UE_PROFILER_COLOR);
 
@@ -428,30 +428,7 @@ void	FPopcornFXAttributeSamplerAnimTrack::PostEditChangeProperty(FPropertyChange
 	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
-//----------------------------------------------------------------------------
-
-void	FPopcornFXAttributeSamplerAnimTrack::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
-{
-	const FPopcornFXAttributeSamplerPropertiesAnimTrack *newAnimTrackProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesAnimTrack *>(other);
-	if (!PK_VERIFY(newAnimTrackProperties != null))
-	{
-		UE_LOG(LogPopcornFXAttributeSamplerAnimTrack, Error, TEXT("New properties are null or not AnimTrack properties"));
-		return;
-	}
-
-	Super::CopyPropertiesFrom(other);
-
-	if (newAnimTrackProperties->TargetActor != Properties.TargetActor ||
-		newAnimTrackProperties->SplineComponentName != Properties.SplineComponentName ||
-		newAnimTrackProperties->bTranslate != Properties.bTranslate ||
-		newAnimTrackProperties->bRotate != Properties.bRotate ||
-		newAnimTrackProperties->bScale != Properties.bScale)
-	{
-		m_Data->m_NeedsReload = true;
-	}
-
-	Properties = *newAnimTrackProperties;
-}
+#endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
 
@@ -474,6 +451,8 @@ void	FPopcornFXAttributeSamplerAnimTrack::RefreshFromProperties(const FPopcornFX
 }
 
 //----------------------------------------------------------------------------
+
+#if WITH_EDITOR
 
 void	FPopcornFXAttributeSamplerPropertiesAnimTrack::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
 {

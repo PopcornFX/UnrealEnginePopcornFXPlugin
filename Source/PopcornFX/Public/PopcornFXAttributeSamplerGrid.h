@@ -54,14 +54,13 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerPropertiesGrid : public FPopcornF
 	GENERATED_USTRUCT_BODY()
 
 public:
-	//virtual void		CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
 	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
-	virtual bool		ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) override;
+	virtual bool		ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const override;
 	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
-	virtual bool		ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual bool		ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const override;
 
 	/** Checks if properties are compatible with the given emitter */
-	bool				IsRenderTargetCompatible(const UTextureRenderTarget *texture, UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler);
+	bool				IsRenderTargetCompatible(const UTextureRenderTarget *texture, UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const;
 
 public:
 
@@ -188,11 +187,9 @@ public:
 	// FPopcornFXAttributeSampler overrides
 	void											BeginDestroy() override;
 	const FPopcornFXAttributeSamplerProperties		*GetProperties() const override { return &Properties; }
-#if WITH_EDITOR
-	virtual void									CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) override;
 	virtual void									RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) override;
-#endif
 	virtual PopcornFX::CParticleSamplerDescriptor	*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) override;
+	virtual void									_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime) override;
 
 private:
 	bool						RebuildGridSampler(UPopcornFXEmitterComponent *emitter, const PopcornFX::CResourceDescriptor *defaultSampler);

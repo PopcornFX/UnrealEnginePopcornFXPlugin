@@ -36,7 +36,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerVectorField, Log, All);
 //
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesVectorField::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+bool	FPopcornFXAttributeSamplerPropertiesVectorField::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const
 {
 	if (VectorField == null)
 	{
@@ -52,7 +52,7 @@ bool	FPopcornFXAttributeSamplerPropertiesVectorField::ArePropertiesSupported(UPo
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesVectorField::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerPropertiesVectorField::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const
 {
 	return true;
 }
@@ -264,18 +264,15 @@ void	FPopcornFXAttributeSamplerVectorField::PostEditChangeProperty(FPropertyChan
 	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
+#endif // WITH_EDITOR
+
 //----------------------------------------------------------------------------
 
-void	FPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
+void	FPopcornFXAttributeSamplerVectorField::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
 {
 	const FPopcornFXAttributeSamplerPropertiesVectorField *newVectorFieldProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesVectorField *>(other);
-	if (!PK_VERIFY(newVectorFieldProperties != null))
-	{
-		UE_LOG(LogPopcornFXAttributeSamplerVectorField, Error, TEXT("New properties are null or not VectorField properties"));
+	if (newVectorFieldProperties == null)
 		return;
-	}
-
-	Super::CopyPropertiesFrom(other);
 
 	const FPopcornFXAttributeSamplerPropertiesVectorField oldProperties = Properties;
 
@@ -288,22 +285,24 @@ void	FPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const FPopcornFXA
 	if (newVectorFieldProperties->VectorField != oldProperties.VectorField)
 	{
 		m_Data->m_NeedsReload = true;
-		if (Properties.VectorField == null)
+		if (newVectorFieldProperties->VectorField == null)
 		{
 			m_Data->m_Desc->Clear();
+#if WITH_EDITOR
 			// Disable debug rendering, we don't have that info
-			if (Properties.BoundsSource == EPopcornFXVectorFieldBounds::Source)
+			if (newVectorFieldProperties->BoundsSource == EPopcornFXVectorFieldBounds::Source)
 				m_Data->m_RealExtentUnscaled = FVector3f::ZeroVector;
+#endif // WITH_EDITOR
 		}
 	}
 	if (newVectorFieldProperties->Intensity != oldProperties.Intensity)
 	{
-		m_Data->m_Desc->SetStrength(Properties.Intensity);
+		m_Data->m_Desc->SetStrength(newVectorFieldProperties->Intensity);
 	}
 	if (newVectorFieldProperties->BoundsSource != oldProperties.BoundsSource ||
 		newVectorFieldProperties->VolumeDimensions != oldProperties.VolumeDimensions)
 	{
-		if (Properties.VectorField != null)
+		if (newVectorFieldProperties->VectorField != null)
 			_SetBounds();
 	}
 	if (newVectorFieldProperties->WrapMode != oldProperties.WrapMode ||
@@ -319,51 +318,7 @@ void	FPopcornFXAttributeSamplerVectorField::CopyPropertiesFrom(const FPopcornFXA
 
 //----------------------------------------------------------------------------
 
-void	FPopcornFXAttributeSamplerVectorField::RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *other)
-{
-	const FPopcornFXAttributeSamplerPropertiesVectorField *newVectorFieldProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesVectorField *>(other);
-	if (newVectorFieldProperties == null)
-		return;
-
-	if (m_Data->m_Desc == null)
-	{
-		return;
-	}
-	if (newVectorFieldProperties->VectorField != Properties.VectorField)
-	{
-		m_Data->m_NeedsReload = true;
-		if (newVectorFieldProperties->VectorField == null)
-		{
-			m_Data->m_Desc->Clear();
-			// Disable debug rendering, we don't have that info
-			if (newVectorFieldProperties->BoundsSource == EPopcornFXVectorFieldBounds::Source)
-				m_Data->m_RealExtentUnscaled = FVector3f::ZeroVector;
-		}
-	}
-	if (newVectorFieldProperties->Intensity != Properties.Intensity)
-	{
-		m_Data->m_Desc->SetStrength(newVectorFieldProperties->Intensity);
-	}
-	if (newVectorFieldProperties->BoundsSource != Properties.BoundsSource ||
-		newVectorFieldProperties->VolumeDimensions != Properties.VolumeDimensions)
-	{
-		if (newVectorFieldProperties->VectorField != null)
-			_SetBounds();
-	}
-	if (newVectorFieldProperties->WrapMode != Properties.WrapMode ||
-		newVectorFieldProperties->SamplingMode != Properties.SamplingMode)
-	{
-		u32	flags = 0;
-		u32	interpolation = 0;
-
-		_BuildVectorFieldFlags(flags, interpolation);
-		m_Data->m_Desc->SetFlags(flags, static_cast<PopcornFX::CParticleSamplerDescriptor_VectorField_Grid::EInterpolation>(interpolation));
-	}
-
-	Properties = *newVectorFieldProperties;
-}
-
-//----------------------------------------------------------------------------
+#if WITH_EDITOR
 
 void	FPopcornFXAttributeSamplerPropertiesVectorField::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
 {
@@ -386,6 +341,8 @@ void	FPopcornFXAttributeSamplerPropertiesVectorField::SetupDefaults(const Popcor
 				SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
 				break;
 			case PopcornFX::EGridInterpolator::GridInterpolator_Trilinear:
+				SamplingMode = EPopcornFXVectorFieldSamplingMode::Trilinear;
+				break;
 			default:
 				SamplingMode = EPopcornFXVectorFieldSamplingMode::Point;
 				break;
@@ -429,11 +386,10 @@ PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSamplerVectorField::_A
 	}
 	if (m_Data->m_NeedsReload)
 	{
-		m_Data->m_NeedsReload = false;
-
 		const CFloat4	dimensions = CFloat4(Properties.VectorField->SizeX, Properties.VectorField->SizeY, Properties.VectorField->SizeZ, 1);
 		const u32		elementCount = dimensions.x() * dimensions.y() * dimensions.z();
-		PK_ASSERT(Properties.VectorField->SourceData.GetBulkDataSize() == elementCount * sizeof(FFloat16Color));
+		if (!PK_VERIFY(elementCount > 0 && Properties.VectorField->SourceData.GetBulkDataSize() == elementCount * sizeof(FFloat16Color)))
+			return null;
 
 		PopcornFX::PRefCountedMemoryBuffer	gridRawData = PopcornFX::CRefCountedMemoryBuffer::AllocAligned(sizeof(PopcornFX::f16) * 3 * elementCount, PopcornFX::Memory::CacheLineSize);
 		if (!PK_VERIFY(gridRawData != null))
@@ -441,7 +397,11 @@ PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSamplerVectorField::_A
 
 		const PopcornFX::f16 *srcValues = reinterpret_cast<PopcornFX::f16 *>(Properties.VectorField->SourceData.Lock(LOCK_READ_ONLY));
 		if (!PK_VERIFY(srcValues != null))
+		{
+			Properties.VectorField->SourceData.Unlock();
 			return null;
+		}
+
 		PopcornFX::f16 *dstValues = gridRawData->Data<PopcornFX::f16>();
 		const PopcornFX::f16 *endValue = dstValues + elementCount * 3;
 		while (dstValues != endValue)
@@ -464,6 +424,8 @@ PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSamplerVectorField::_A
 			return null;
 
 		_SetBounds();
+
+		m_Data->m_NeedsReload = false;
 	}
 
 	m_NeedUpdate = true;

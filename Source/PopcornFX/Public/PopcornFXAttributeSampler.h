@@ -91,11 +91,10 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerProperties
 
 	virtual ~FPopcornFXAttributeSamplerProperties() {}
 
-	//virtual void				CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other);
 	/** Checks if properties set by the user are valid. For example, a Curve attribute sampler needs a Curve asset to be valid. */
-	virtual bool				ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) { return true; }
+	virtual bool				ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const { return true; }
 	/** Checks if properties set by the user are compatible with the emitter using it. For example, if an effect uses a 2D grid and the user sets a 3D grid, it's not compatible */
-	virtual bool				ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) { return true; }
+	virtual bool				ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const { return true; }
 	
 #if WITH_EDITORONLY_DATA
 
@@ -105,7 +104,7 @@ struct POPCORNFX_API FPopcornFXAttributeSamplerProperties
 
 	/** Properties or combinations that are unsupported, i.e. we can't build a proper sampler descriptor with them in UE. Key = property name, value = error message */
 	UPROPERTY()
-	TMap<FString, FString>								m_UnsupportedProperties;
+	mutable TMap<FString, FString>						m_UnsupportedProperties;
 
 #endif
 	UPROPERTY()
@@ -176,12 +175,12 @@ public:
 	void												SetName(const FString &newName) { m_SamplerName = newName; }
 
 	// PopcornFX Internal
-	PopcornFX::CParticleSamplerDescriptor				*_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, const FString &samplerName, FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler);
+	PopcornFX::CParticleSamplerDescriptor				*_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler);
 	virtual PopcornFX::CParticleSamplerDescriptor		*_AttribSampler_SetupSamplerDescriptor(UPopcornFXEmitterComponent *emitter, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler) { return nullptr; }
+	/** PreUpdate that is called every frame from the particle scene. Override this if your sampler needs to do something every frame */
 	virtual void										_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime) { return; }
 
 	virtual const FPopcornFXAttributeSamplerProperties	*GetProperties() const { return nullptr; }
-	virtual void										CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other) {}
 	/** What to do when we're changing this samplers properties to new ones */
 	virtual void										RefreshFromProperties(const FPopcornFXAttributeSamplerProperties *properties) {}
 	/** Reimplements BeginDestroy for samplers */
@@ -191,7 +190,7 @@ public:
 	virtual void										_AttribSampler_IndirectSelectedThisTick() {}
 	/** Reimplements PostEditChangeProperty for samplers. UI customization will call it */
 	virtual void										PostEditChangeProperty(FPropertyChangedEvent &PropertyChangedEvent) {}
-#endif
+#endif // WITH_EDITOR
 
 	/**
 	If true, this sampler belongs to an UPopcornFXEmitterComponent::AttributeList or an UPopcornFXEffect::DefaultAttributeList

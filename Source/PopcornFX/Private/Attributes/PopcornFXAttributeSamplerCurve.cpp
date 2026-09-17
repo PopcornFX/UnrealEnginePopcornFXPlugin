@@ -29,7 +29,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerCurve, Log, All);
 //
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesCurve::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+bool	FPopcornFXAttributeSamplerPropertiesCurve::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const
 {
 	if (CurveDimension == EAttributeSamplerCurveDimension::Float2)
 	{
@@ -68,7 +68,7 @@ bool	FPopcornFXAttributeSamplerPropertiesCurve::ArePropertiesSupported(UPopcornF
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesCurve::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerPropertiesCurve::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const
 {
 	// Make sure the sampler matches what the effect expects
 	// Mismatchs should only happen when using an external sampler
@@ -229,24 +229,7 @@ void	FPopcornFXAttributeSamplerCurve::PostEditChangeProperty(FPropertyChangedEve
 	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
-//----------------------------------------------------------------------------
-
-void	FPopcornFXAttributeSamplerCurve::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
-{
-	const FPopcornFXAttributeSamplerPropertiesCurve *newCurveProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesCurve *>(other);
-	if (!PK_VERIFY(newCurveProperties != null))
-	{
-		UE_LOG(LogPopcornFXAttributeSamplerCurve, Error, TEXT("New properties are null or not curve properties"));
-		return;
-	}
-
-	Super::CopyPropertiesFrom(other);
-
-	// Always rebuild for now
-	m_Data->m_NeedsReload = true;
-
-	Properties = *newCurveProperties;
-}
+#endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
 
@@ -261,7 +244,10 @@ void	FPopcornFXAttributeSamplerCurve::RefreshFromProperties(const FPopcornFXAttr
 
 	Properties = *newCurveProperties;
 }
+
 //----------------------------------------------------------------------------
+
+#if WITH_EDITOR
 
 void	FPopcornFXAttributeSamplerPropertiesCurve::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
 {

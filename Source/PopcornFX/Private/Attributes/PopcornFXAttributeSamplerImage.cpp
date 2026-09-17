@@ -42,7 +42,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerImage, Log, All);
 //
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesImage::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+bool	FPopcornFXAttributeSamplerPropertiesImage::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const
 {
 	if (!Texture)
 	{
@@ -58,7 +58,7 @@ bool	FPopcornFXAttributeSamplerPropertiesImage::ArePropertiesSupported(UPopcornF
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesImage::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerPropertiesImage::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const
 {
 	return true;
 }
@@ -184,39 +184,7 @@ void	FPopcornFXAttributeSamplerImage::PostEditChangeProperty(FPropertyChangedEve
 	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
-//----------------------------------------------------------------------------
-
-void	FPopcornFXAttributeSamplerImage::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
-{
-	const FPopcornFXAttributeSamplerPropertiesImage *newImageProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesImage *>(other);
-	if (!PK_VERIFY(newImageProperties != null))
-	{
-		UE_LOG(LogPopcornFXAttributeSamplerImage, Error, TEXT("New properties are null or not image properties"));
-		return;
-	}
-
-	Super::CopyPropertiesFrom(other);
-
-	if (newImageProperties->Texture != Properties.Texture ||
-		newImageProperties->bAllowTextureConversionAtRuntime != Properties.bAllowTextureConversionAtRuntime)
-	{
-		m_Data->m_ReloadTexture = true;
-		m_Data->m_RebuildPDF = true;
-	}
-	else if (newImageProperties->TextureAtlas != Properties.TextureAtlas)
-	{
-		m_Data->m_ReloadTextureAtlas = true;
-		m_Data->m_RebuildPDF = true;
-	}
-	else if (newImageProperties->SamplingMode != Properties.SamplingMode ||
-		newImageProperties->DensitySource != Properties.DensitySource ||
-		newImageProperties->DensityPower != Properties.DensityPower)
-	{
-		m_Data->m_RebuildPDF = true;
-	}
-
-	Properties = *newImageProperties;
-}
+#endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
 
@@ -250,6 +218,8 @@ void	FPopcornFXAttributeSamplerImage::RefreshFromProperties(const FPopcornFXAttr
 }
 
 //----------------------------------------------------------------------------
+
+#if WITH_EDITOR
 
 void	FPopcornFXAttributeSamplerPropertiesImage::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
 {

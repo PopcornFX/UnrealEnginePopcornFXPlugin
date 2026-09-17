@@ -14,6 +14,26 @@
 #include "PopcornFXSDK.h"
 #include <pk_kernel/include/kr_refcounted_buffer.h>
 
+#if PLATFORM_WINDOWS
+#	ifdef WINDOWS_PLATFORM_TYPES_GUARD
+#		include "Windows/HideWindowsPlatformTypes.h"
+#	endif
+#elif PLATFORM_XBOXONE
+#	ifdef XBOX_PLATFORM_TYPES_GUARD
+#		include "XboxCommonHidePlatformTypes.h"
+#	endif // XBOX_PLATFORM_TYPES_GUARD
+#endif
+
+#if (PK_GPU_D3D12 != 0)
+#	include "D3D12RHIPrivate.h"
+#endif // (PK_GPU_D3D12 != 0)
+
+#if PLATFORM_WINDOWS
+#	include "Windows/AllowWindowsPlatformTypes.h"
+#elif PLATFORM_XBOXONE
+#	include "XboxCommonAllowPlatformTypes.h"
+#endif
+
 #if	WITH_EDITOR
 #	include "Misc/MessageDialog.h"
 #endif // WITH_EDITOR
@@ -1222,18 +1242,23 @@ PopcornFX::CImageGPU_D3D12		*CResourceHandlerImage_UE_D3D12::NewFromTexture(UTex
 		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference not available \"%s\""), *texture->GetPathName());
 		return null;
 	}
-	FRHITexture					*texRHI = texRef->GetReferencedTexture();
+	FD3D12Texture				*texRHI = static_cast<FD3D12Texture*>(texRef->GetReferencedTexture());
 	if (texRHI == null)
 	{
 		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference FRHITexture not available \"%s\""), *texture->GetPathName());
 		return null;
 	}
-	ID3D12Resource	*gpuTexture = static_cast<ID3D12Resource*>(texRHI->GetNativeResource());
+	FD3D12Resource	*gpuTexture = texRHI->GetResource();
 	if (gpuTexture == null)
 	{
 		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference FRHITexture D3D12 not available \"%s\""), *texture->GetPathName());
 		return null;
 	}
+
+#if (PK_D3D12_MANAGE_EXTERNAL_RESIDENCY != 0)
+	if (!gpuTexture->IsResident())
+		PopcornFXD3D12_DeclareExternalResidency(texRHI);
+#endif // (PK_D3D12_MANAGE_EXTERNAL_RESIDENCY != 0)
 
 	PK_TODO("Find the true channel count !");
 	const u32							channelCount = 4;
@@ -1248,7 +1273,7 @@ PopcornFX::CImageGPU_D3D12		*CResourceHandlerImage_UE_D3D12::NewFromTexture(UTex
 
 	PopcornFX::CImageGPU_D3D12		*image = PK_NEW(PopcornFX::CImageGPU_D3D12());
 	if (!PK_VERIFY(image != null) ||
-		!image->Setup(gpuTexture, channelCount, dimensions, imageFormatPK))
+		!image->Setup(gpuTexture->GetResource(), channelCount, dimensions, imageFormatPK))
 	{
 		UE_LOG(LogPopcornFXResourceHandlerImageGPU, Warning, TEXT("UTexture TextureReference final Setup failed \"%s\""), *texture->GetPathName());
 		PK_SAFE_DELETE(image);

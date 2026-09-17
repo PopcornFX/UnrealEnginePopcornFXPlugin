@@ -12,6 +12,7 @@
 
 #include "Engine/StaticMesh.h"
 #include "Engine/SkeletalMesh.h"
+#include "Misc/PackageName.h"
 
 #define FILE_ASSERT		PK_RELEASE_ASSERT
 
@@ -244,17 +245,18 @@ PopcornFX::PFileStream		CFileSystemController_UE::OpenStream(const CString &path
 
 bool	CFileSystemController_UE::Exists(const CString &path, bool pathNotVirtual /*= false*/)
 {
-	if (!IsInGameThread())
+	FString	uePath = FPopcornFXPlugin::Get().BuildPathFromPkPath(PopcornFX::CFilePath::Purified(path), !pathNotVirtual);
+	if (uePath.IsEmpty())
 	{
-		CLog::Log(PK_INFO, "CFileSystemController_UE Exists: cannot load UE packages outside the main thread ('%s' pathNotVirtual:%d)", path.Data(), pathNotVirtual);
+		CLog::Log(PK_DBG, "CFileSystemController_UE Exists FAIL '%s' pathNotVirtual:%d", path.Data(), pathNotVirtual);
 		return false;
 	}
-	UObject			*uobject = LoadUObject(path, pathNotVirtual);
-	if (uobject != null)
+	bool	exists = FPackageName::DoesPackageExist(FPackageName::ObjectPathToPackageName(uePath));
+	if (exists)
 		FS_DEBUG_LOG(PK_INFO, "CFileSystemController_UE Exists OK '%s' pathNotVirtual:%d", path.Data(), pathNotVirtual);
 	else
 		CLog::Log(PK_DBG, "CFileSystemController_UE Exists FAIL '%s' pathNotVirtual:%d", path.Data(), pathNotVirtual);
-	return uobject != null;
+	return exists;
 }
 
 //----------------------------------------------------------------------------
