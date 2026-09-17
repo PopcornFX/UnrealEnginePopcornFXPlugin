@@ -257,7 +257,7 @@ void	FPopcornFXCustomizationAttributeSampler::PropagatePostEditChangeProperty(TS
 	FPopcornFXAttributeSampler *sampler = static_cast<FPopcornFXAttributeSampler *>(m_Sampler);
 	if (sampler != nullptr)
 	{
-		sampler->CopyPropertiesFrom(m_Properties);
+		sampler->RefreshFromProperties(m_Properties);
 	}
 }
 

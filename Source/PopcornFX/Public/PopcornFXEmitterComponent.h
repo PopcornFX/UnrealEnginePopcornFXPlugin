@@ -336,12 +336,12 @@ public:
 	virtual void					EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual FBoxSphereBounds		CalcBounds(const FTransform &localToWorld) const override;
 	virtual void					Serialize(FArchive &Ar) override;
+	virtual void					TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
 
 	virtual void					OnUpdateTransform(EUpdateTransformFlags UpdateTransformFlags, ETeleportType Teleport = ETeleportType::None) override;
 	virtual void					ApplyWorldOffset(const FVector &inOffset, bool worldShift) override;
 
 #if WITH_EDITOR
-	virtual void					TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction) override;
 	virtual bool					CanEditChange(const FProperty* InProperty) const override;
 	virtual void					PostEditChangeProperty(FPropertyChangedEvent &PropertyChangedEvent) override;
 	virtual void					PostTransacted(const FTransactionObjectEvent &TransactionEvent);

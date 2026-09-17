@@ -155,7 +155,7 @@ namespace
 //
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const
 {
 	if (bAssetGrid)
 	{
@@ -253,7 +253,7 @@ bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesSupported(UPopcornFX
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const
 {
 	if (bAssetGrid)
 	{
@@ -297,7 +297,7 @@ bool	FPopcornFXAttributeSamplerPropertiesGrid::ArePropertiesCompatible(UPopcornF
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesGrid::IsRenderTargetCompatible(const UTextureRenderTarget *texture, UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerPropertiesGrid::IsRenderTargetCompatible(const UTextureRenderTarget *texture, UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const
 {
 	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
 	if (!PK_VERIFY(defaultGridSampler != null))
@@ -506,33 +506,7 @@ void	FPopcornFXAttributeSamplerGrid::PostEditChangeProperty(FPropertyChangedEven
 	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
-//----------------------------------------------------------------------------
-
-void	FPopcornFXAttributeSamplerGrid::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
-{
-	const FPopcornFXAttributeSamplerPropertiesGrid *newGridProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesGrid *>(other);
-	if (!PK_VERIFY(newGridProperties != null))
-	{
-		UE_LOG(LogPopcornFXAttributeSamplerGrid, Error, TEXT("New properties are null or not grid properties"));
-		return;
-	}
-
-	Super::CopyPropertiesFrom(other);
-
-	if (newGridProperties->bAssetGrid != Properties.bAssetGrid ||
-		newGridProperties->bSRGB != Properties.bSRGB ||
-		newGridProperties->RenderTarget != Properties.RenderTarget ||
-		newGridProperties->SizeX != Properties.SizeX ||
-		newGridProperties->SizeY != Properties.SizeY ||
-		newGridProperties->SizeZ != Properties.SizeZ ||
-		newGridProperties->DataType != Properties.DataType)
-	{
-		// Rebuild
-		m_Data->m_ReloadGrid = true;
-	}
-
-	Properties = *newGridProperties;
-}
+#endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
 
@@ -558,6 +532,8 @@ void	FPopcornFXAttributeSamplerGrid::RefreshFromProperties(const FPopcornFXAttri
 }
 
 //----------------------------------------------------------------------------
+
+#if WITH_EDITOR
 
 void	FPopcornFXAttributeSamplerPropertiesGrid::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
 {
@@ -633,21 +609,37 @@ bool	FPopcornFXAttributeSamplerGrid::HasRenderTargetChanged() const
 	const CUint4						&dim = m_Data->m_Desc->m_GridDimensions;
 	if (RT2D)
 	{
-		if (dim.x() != RT2D->SizeX || dim.x() != RT2D->SizeY
+		if (dim.x() != static_cast<uint32>(RT2D->SizeX) || dim.y() != static_cast<uint32>(RT2D->SizeY)
 			|| m_Data->m_Desc->m_DataType != ToPk(RT2D->GetFormat()))
 		{
-			m_Data->m_ReloadGrid = true;
+			return true;
 		}
 	}
 	else if (RTVolume)
 	{
-		if (dim.x() != RTVolume->SizeX || dim.y() != RTVolume->SizeY || dim.z() != RTVolume->SizeZ
+		if (dim.x() != static_cast<uint32>(RTVolume->SizeX) || dim.y() != static_cast<uint32>(RTVolume->SizeY) || dim.z() != static_cast<uint32>(RTVolume->SizeZ)
 			|| m_Data->m_Desc->m_DataType != ToPk(RTVolume->GetFormat()))
 		{
-			m_Data->m_ReloadGrid = true;
+			return true;
 		}
 	}
-	return true;
+#if (PK_GPU_D3D12 != 0)
+	// Catch a texture recreation from UE side
+	if (g_PopcornFXRHIAPI == SUERenderContext::D3D12 &&	m_Data->m_Desc->m_GridResourceD3D12 != null
+		&& Properties.RenderTarget != null && Properties.bAssetGrid)
+	{
+		const FTextureReferenceRHIRef	&texRef = Properties.RenderTarget->TextureReference.TextureReferenceRHI;
+		if (IsValidRef(texRef))
+		{
+			const FD3D12Texture	*texRHI = static_cast<const FD3D12Texture*>(texRef->GetReferencedTexture());
+			FD3D12Resource		*gpuTexture = texRHI != null ? texRHI->GetResource() : null;
+			if (gpuTexture != null &&
+				gpuTexture->GetResource() != m_Data->m_Desc->m_GridResourceD3D12)
+				return true;
+		}
+	}
+#endif // (PK_GPU_D3D12 != 0)
+	return false;
 }
 
 //----------------------------------------------------------------------------
@@ -728,7 +720,7 @@ bool	FPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 			const EPixelFormat	RTFormat = GetPixelFormatFromRenderTargetFormat(RT2D->RenderTargetFormat);
 			const bool			hasCorrectGamma = Properties.bSRGB == RT2D->IsSRGB();
 
-			if (!hasCorrectGamma)
+			if (!hasCorrectGamma && needsGPUHandle)
 			{
 				UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Converting UTextureRenderTarget2D format to sRGB=%d"), Properties.bSRGB);
 			}
@@ -761,11 +753,11 @@ bool	FPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 		{
 			const bool	hasCorrectGamma = Properties.bSRGB == RTVolume->SRGB;
 
-			if (!hasCorrectGamma)
+			if (!hasCorrectGamma && needsGPUHandle)
 			{
 				UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Converting UTextureRenderTargetVolume format to sRGB=%d"), Properties.bSRGB);
 			}
-			if ((!RTVolume->bCanCreateUAV || !hasCorrectGamma) || needsGPUHandle)
+			if ((!RTVolume->bCanCreateUAV || !hasCorrectGamma) && needsGPUHandle)
 			{
 				RTVolume->bCanCreateUAV = true;
 				RTVolume->SRGB = Properties.bSRGB;
@@ -878,20 +870,26 @@ bool	FPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: UTexture TextureReference not available \"%s\""), *texture->GetPathName());
 			return false;
 		}
-		FRHITexture	*texRHI = texRef->GetReferencedTexture();
+		FD3D12Texture	*texRHI = static_cast<FD3D12Texture*>(texRef->GetReferencedTexture());
 		if (texRHI == null)
 		{
 			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: UTexture TextureReference FRHITexture not available \"%s\""), *texture->GetPathName());
 			return false;
 		}
-		ID3D12Resource	*gpuTexture = static_cast<ID3D12Resource*>(texRHI->GetNativeResource());
+		FD3D12Resource	*gpuTexture = texRHI->GetResource();
 		if (gpuTexture == null)
 		{
 			UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Couldn't build grid attribute sampler: UTexture TextureReference FRHITexture D3D12 not available \"%s\""), *texture->GetPathName());
 			return false;
 		}
+#if (PK_D3D12_MANAGE_EXTERNAL_RESIDENCY != 0)
+		// (UE 5.8+ creates resources CREATE_NOT_RESIDENT by default), UE has to be told the resource is in use
+		// before we can use it for the sim
+		if (!gpuTexture->IsResident())
+			PopcornFXD3D12_DeclareExternalResidency(texRHI);
+#endif // (PK_D3D12_MANAGE_EXTERNAL_RESIDENCY != 0)
 
-		descriptor->SetupD3D12Resources(gpuTexture,
+		descriptor->SetupD3D12Resources(gpuTexture->GetResource(),
 										(u32)GPixelFormats[pixelFormat].PlatformFormat,
 										(u32)(isVolumeTexture ? D3D12_UAV_DIMENSION_TEXTURE3D : D3D12_UAV_DIMENSION_TEXTURE2D));
 	}
@@ -910,6 +908,14 @@ bool	FPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 
 	m_Data->m_Desc = descriptor;
 	return true;
+}
+
+//---------------------------------------------------------------------------
+
+void	FPopcornFXAttributeSamplerGrid::_AttribSampler_PreUpdate(UPopcornFXEmitterComponent *owner, float deltaTime)
+{
+	// Note(Lucas): UE 5.8+ If we ever get crashes when using a GPU Render target, check here if it has changed since last frame
+	// and track its residency if needed
 }
 
 //---------------------------------------------------------------------------
@@ -991,7 +997,7 @@ bool	FPopcornFXAttributeSamplerGrid::ReadGridFloat3Values(FPopcornFXAttributeSam
 
 	// CPU Grids
 	// TODO: GPU Grids
-	const u32	expectedCount = InSelf->Properties.SizeX *InSelf->Properties.SizeY *InSelf->Properties.SizeZ;
+	const u32	expectedCount = InSelf->GetCellCount();
 
 	PopcornFX::TStridedMemoryView<PopcornFX::CFloat3> values(reinterpret_cast<PopcornFX::CFloat3*>(InSelf->m_Data->m_Desc->m_RawDataPtr),
 		expectedCount, sizeof(PopcornFX::CFloat3));
@@ -1001,7 +1007,7 @@ bool	FPopcornFXAttributeSamplerGrid::ReadGridFloat3Values(FPopcornFXAttributeSam
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
+		OutValues[i].Z = values[i].z();
 	}
 	return true;
 }
@@ -1023,7 +1029,7 @@ bool	FPopcornFXAttributeSamplerGrid::ReadGridFloat4Values(FPopcornFXAttributeSam
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
+		OutValues[i].Z = values[i].z();
 		OutValues[i].W = values[i].w();
 	}
 	return true;
@@ -1087,7 +1093,7 @@ bool	FPopcornFXAttributeSamplerGrid::ReadGridInt3Values(FPopcornFXAttributeSampl
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
+		OutValues[i].Z = values[i].z();
 	}
 	return true;
 }
@@ -1109,8 +1115,8 @@ bool	FPopcornFXAttributeSamplerGrid::ReadGridInt4Values(FPopcornFXAttributeSampl
 	{
 		OutValues[i].X = values[i].x();
 		OutValues[i].Y = values[i].y();
-		OutValues[i].Z = values[i].y();
-		OutValues[i].Z = values[i].w();
+		OutValues[i].Z = values[i].z();
+		OutValues[i].W = values[i].w();
 	}
 	return true;
 }

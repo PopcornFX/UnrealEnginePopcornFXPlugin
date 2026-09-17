@@ -95,13 +95,12 @@ UPopcornFXEmitterComponent::UPopcornFXEmitterComponent(const FObjectInitializer&
 	bAutoActivate = true;
 	//SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 
-#if WITH_EDITOR
-	// UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bRunOnAnyThread = false;
 	PrimaryComponentTick.bAllowTickOnDedicatedServer = false;
-	bTickInEditor = true;
+#if WITH_EDITOR
 	bVisualizeComponent = true;
+	bTickInEditor = true;
 #endif // WITH_EDITOR
 
 	bPlayOnLoad = true;
@@ -223,8 +222,6 @@ PopcornFX::CParticleEffectInstance	*UPopcornFXEmitterComponent::_GetEffectInstan
 
 #if WITH_EDITOR
 
-//----------------------------------------------------------------------------
-
 void	UPopcornFXEmitterComponent::SetWarningSprite()
 {
 	static FString		warningIconPath = TEXT("/PopcornFX/SlateBrushes/icon_PopcornFX_Warning_Logo_256x");
@@ -249,47 +246,46 @@ void	UPopcornFXEmitterComponent::SetNormalSprite()
 		SpriteComponent->SetSprite(normalIcon);
 }
 
+#endif // WITH_EDITOR
+
 //----------------------------------------------------------------------------
 
 void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick tickType, FActorComponentTickFunction *thisTickFunction)
 {
 	Super::TickComponent(deltaTime, tickType, thisTickFunction);
 
-	// UPopcornFXSettingsEditor::bRestartEmitterWhenAttributesChanged
-	// Emitters don't tick outside editor
-	{
-		if (m_Started &&
-			AttributeList.GetRestartEmitter())
-		{
-			RestartEmitter(true);
-		}
-
-		for (int32 sampleri = 0; sampleri < AttributeList.m_Samplers.Num(); sampleri++)
-		{
-			FPopcornFXAttributeSamplerShape *samplerShape = AttributeList.m_Samplers[sampleri].m_SamplerShape.GetPtrOrNull();
-			if (samplerShape != nullptr)
-			{
-				samplerShape->TickComponent(this, deltaTime, tickType, thisTickFunction);
-			}
-		}
-
 #if WITH_EDITOR
-		if (bLoopEmitter)
-		{
-			m_Time += deltaTime;
-			if (m_Time >= LoopDelay)
-			{
-				RestartEmitter();
-				m_Time = 0.0f;
-			}
-		}
-		else
-			m_Time = 0.0f;
-#endif
+	if (m_Started && AttributeList.GetRestartEmitter())
+	{
+		RestartEmitter(true);
 	}
+#endif // WITH_EDITOR
+
+	for (int32 sampleri = 0; sampleri < AttributeList.m_Samplers.Num(); sampleri++)
+	{
+		FPopcornFXAttributeSamplerShape *samplerShape = AttributeList.m_Samplers[sampleri].m_SamplerShape.GetPtrOrNull();
+		if (samplerShape != nullptr)
+		{
+			samplerShape->TickComponent(this, deltaTime, tickType, thisTickFunction);
+		}
+	}
+
+	if (bLoopEmitter)
+	{
+		m_Time += deltaTime;
+		if (m_Time >= LoopDelay)
+		{
+			RestartEmitter();
+			m_Time = 0.0f;
+		}
+	}
+	else
+		m_Time = 0.0f;
 }
 
 //----------------------------------------------------------------------------
+
+#if WITH_EDITOR
 
 bool	UPopcornFXEmitterComponent::CanEditChange(const FProperty* InProperty) const
 {

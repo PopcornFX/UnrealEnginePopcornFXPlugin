@@ -32,7 +32,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSampler, Log, All);
 //
 //----------------------------------------------------------------------------
 
-PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSampler::_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, const FString &samplerName, FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
+PopcornFX::CParticleSamplerDescriptor *FPopcornFXAttributeSampler::_AttribSampler_SetupSampler(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const FPopcornFXAttributeSamplerProperties *properties, const PopcornFX::CResourceDescriptor *defaultSampler)
 {
 	if (properties == nullptr)
 		return nullptr;

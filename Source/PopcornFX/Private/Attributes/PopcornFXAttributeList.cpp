@@ -8,7 +8,6 @@
 #include "PopcornFXPlugin.h"
 #include "Internal/ParticleScene.h"
 #include "Assets/PopcornFXEffect.h"
-#include "Editor/EditorHelpers.h"
 #include "PopcornFXEmitterComponent.h"
 #include "PopcornFXAttributeSamplerShape.h"
 #include "PopcornFXCustomVersion.h"
@@ -1058,36 +1057,20 @@ bool	FPopcornFXAttributeList::Prepare(UPopcornFXEffect *effect, bool force)
 	TArray<uint8>							*rawData = &m_AttributesRawData;
 	const TArray<uint8>						*refRawData = &refAttrList->m_AttributesRawData;
 
-	bool	attrsChanged = false;
-
 	// Re-match Attributes
 	if (refRawData->Num() == 0)
 	{
-		attrsChanged |= !(attrs->Num() == 0);
 		attrs->Empty();
 		rawData->Empty();
 	}
 	else
 	{
-		attrsChanged |= PrepareAttributes(&m_AttributeDescs, &refAttrList->m_AttributeDescs, &m_AttributesRawData, &refAttrList->m_AttributesRawData);
+		PrepareAttributes(&m_AttributeDescs, &refAttrList->m_AttributeDescs, &m_AttributesRawData, &refAttrList->m_AttributesRawData);
 	}
 
-	bool	samplersChanged = false;
-	samplersChanged |= PrepareSamplers(&m_SamplerDescs, &refAttrList->m_SamplerDescs, &m_Samplers, &refAttrList->m_Samplers);
-	for (int32 sampleri = 0; sampleri < m_SamplerDescs.Num(); sampleri++)
-	{
-		ResolveAttributeSampler(sampleri)->RefreshFromProperties(m_SamplerDescs[sampleri].ResolveAttributeProperties());
-	}
+	PrepareSamplers(&m_SamplerDescs, &refAttrList->m_SamplerDescs, &m_Samplers, &refAttrList->m_Samplers);
 
 	PK_ASSERT(CheckDataIntegrity());
-
-#if WITH_EDITOR
-	if (attrsChanged || samplersChanged)
-	{
-		//ForceSetPackageDirty(m_Owner->GetOutermost());
-	}
-#endif
-
 	return true;
 }
 

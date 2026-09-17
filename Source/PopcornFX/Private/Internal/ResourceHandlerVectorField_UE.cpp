@@ -78,8 +78,8 @@ PopcornFX::CVectorField	*CResourceHandlerVectorField_UE::NewFromVectorField(UVec
 	const u32	vectorCount = vectorFieldStatic->SizeX * vectorFieldStatic->SizeY * vectorFieldStatic->SizeZ;
 	const u32	scalarCount = vectorCount * 3;
 
-	PK_ASSERT(vectorCount > 0);
-	PK_ASSERT(scalarCount >= 3);
+	if (!PK_VERIFY(vectorCount > 0 && vectorFieldStatic->SourceData.GetBulkDataSize() == vectorCount * sizeof(FFloat16Color)))
+		return null;
 	PopcornFX::PRefCountedMemoryBuffer	fp16Values = PopcornFX::CRefCountedMemoryBuffer::AllocAligned(scalarCount * sizeof(f16), PopcornFX::Memory::CacheLineSize);
 	if (!PK_VERIFY(fp16Values != null))
 		return null;
@@ -89,7 +89,10 @@ PopcornFX::CVectorField	*CResourceHandlerVectorField_UE::NewFromVectorField(UVec
 		f16			*dstValues = fp16Values->Data<f16>();
 		const f16	*srcValues = reinterpret_cast<f16*>(vectorFieldStatic->SourceData.Lock(LOCK_READ_ONLY));
 		if (!PK_VERIFY(srcValues != null))
+		{
+			vectorFieldStatic->SourceData.Unlock();
 			return null;
+		}
 
 		for (u32 iScalar = 0; iScalar < scalarCount; iScalar += 3)
 		{

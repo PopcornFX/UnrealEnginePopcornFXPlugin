@@ -26,14 +26,14 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplerText, Log, All);
 //
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesText::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName)
+bool	FPopcornFXAttributeSamplerPropertiesText::ArePropertiesSupported(UPopcornFXEmitterComponent *emitter, const FString &samplerName) const
 {
 	return true;
 }
 
 //----------------------------------------------------------------------------
 
-bool	FPopcornFXAttributeSamplerPropertiesText::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler)
+bool	FPopcornFXAttributeSamplerPropertiesText::ArePropertiesCompatible(UPopcornFXEmitterComponent *emitter, const FString &samplerName, const PopcornFX::CResourceDescriptor *defaultSampler) const
 {
 	return true;
 }
@@ -98,26 +98,7 @@ void	FPopcornFXAttributeSamplerText::PostEditChangeProperty(FPropertyChangedEven
 	Super::PostEditChangeProperty(propertyChangedEvent);
 }
 
-//----------------------------------------------------------------------------
-
-void	FPopcornFXAttributeSamplerText::CopyPropertiesFrom(const FPopcornFXAttributeSamplerProperties *other)
-{
-	const FPopcornFXAttributeSamplerPropertiesText *newTextProperties = static_cast<const FPopcornFXAttributeSamplerPropertiesText *>(other);
-	if (!PK_VERIFY(newTextProperties != null))
-	{
-		UE_LOG(LogPopcornFXAttributeSamplerText, Error, TEXT("New properties are null or not text properties"));
-		return;
-	}
-
-	if (newTextProperties->Text != Properties.Text)
-	{
-		m_Data->m_NeedsReload = true;
-	}
-
-	Super::CopyPropertiesFrom(other);
-
-	Properties = *newTextProperties;
-}
+#endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
 
@@ -136,7 +117,10 @@ void	FPopcornFXAttributeSamplerText::RefreshFromProperties(const FPopcornFXAttri
 
 	Properties = *newTextProperties;
 }
+
 //----------------------------------------------------------------------------
+
+#if WITH_EDITOR
 
 void	FPopcornFXAttributeSamplerPropertiesText::SetupDefaults(const PopcornFX::CParticleAttributeSamplerDeclaration *const decl, bool updateUnlockedValues)
 {

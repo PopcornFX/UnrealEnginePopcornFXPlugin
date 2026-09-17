@@ -889,7 +889,7 @@ UObject	*FPopcornFXPlugin::LoadUObjectFromPkPath(const PopcornFX::CString &pkPat
 	//	else // virtual path
 	//		no "/Game/", just "Particles/": so prendpend "/Game/"
 
-	FString	p = BuildPathFromPkPath(pkPath, !pathNotVirtual);
+	FString	p = BuildPathFromPkPath(PopcornFX::CFilePath::Purified(pkPath), !pathNotVirtual);
 	if (p.IsEmpty())
 		return null;
 

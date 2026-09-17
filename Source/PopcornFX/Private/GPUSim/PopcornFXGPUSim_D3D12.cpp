@@ -15,6 +15,7 @@
 
 #include "ShaderCore.h"
 #include "DynamicRHI.h"
+#include "RenderingThread.h"
 
 #if PLATFORM_WINDOWS
 #	ifdef WINDOWS_PLATFORM_TYPES_GUARD
@@ -35,6 +36,7 @@
 #endif
 
 #include "RenderUtils.h"
+#include "ID3D12DynamicRHI.h"
 
 #include <pk_particles/include/ps_mediums.h>
 #include <pk_particles/include/ps_stream_to_render.h>
@@ -317,5 +319,39 @@ FRHIBuffer			*StreamBufferResourceToRHI(const PopcornFX::SBuffer_D3D12 *stream, 
 
 	return buffer;
 }
+
+//----------------------------------------------------------------------------
+//
+//		External (UE owned) resources residency (see PopcornFXGPUSim_D3D12.h)
+//
+//----------------------------------------------------------------------------
+
+#if (PK_D3D12_MANAGE_EXTERNAL_RESIDENCY != 0)
+
+void	PopcornFXD3D12_DeclareExternalResidency(FRHITexture *texture)
+{
+	if (texture == null || g_PopcornFXRHIAPI != SUERenderContext::D3D12)
+		return;
+
+	FTextureRHIRef	textureRef = texture; // Keep it alive until the render thread is done with it
+	ENQUEUE_RENDER_COMMAND(PopcornFXDeclareExternalResidency)(
+		[textureRef](FRHICommandListImmediate &RHICmdList)
+		{
+			// Nested lambda: declaring residency needs a live command context, which only exists while a command is
+			// being translated
+			RHICmdList.EnqueueLambda(
+				[textureRef](FRHICommandListBase &ExecutingCmdList)
+				{
+					ID3D12DynamicRHI	*dynamicRHI = GetID3D12DynamicRHI();
+					FD3D12DynamicRHI	*d3dDynamicRHI = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
+					FD3D12Device		*device = d3dDynamicRHI->GetAdapter().GetDevice(0);
+					dynamicRHI->RHIUpdateResourceResidency(ExecutingCmdList, device->GetGPUIndex(), textureRef.GetReference());
+				});
+		});
+}
+
+#endif // (PK_D3D12_MANAGE_EXTERNAL_RESIDENCY != 0)
+
+//----------------------------------------------------------------------------
 
 #endif // (PK_GPU_D3D12 == 1)

@@ -7,6 +7,7 @@
 
 #include "PopcornFXPlugin.h"
 #include "PopcornFXEmitterComponent.h"
+
 #include "PopcornFXAttributeList.h"
 #include "PopcornFXAttributeSamplerAnimTrack.h"
 #include "PopcornFXAttributeSamplerCurve.h"
@@ -25,6 +26,8 @@
 #define LOCTEXT_NAMESPACE "PopcornFXAttributeSamplersFunctions"
 DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplersFunctions, Log, All);
 
+//----------------------------------------------------------------------------
+
 #define FIND_ATTRIBUTE_SAMPLER(SamplerName, SamplerType, OutSampler) \
 	for (int32 attri = 0; attri < Emitter->AttributeList.m_SamplerDescs.Num(); ++attri) \
 	{ \
@@ -34,17 +37,64 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeSamplersFunctions, Log, All);
 		} \
 	} \
 
-#define CHECK_VALID_CALL(__ReturnValue) \
-	if (Emitter == null) \
-		return __ReturnValue; \
-\
-	const UWorld *world = Emitter->GetWorld(); \
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer))) \
+//----------------------------------------------------------------------------
+
+#define REFRESH_ATTRIBUTE_SAMPLER(SamplerName, SamplerType) \
+	FPopcornFXAttributeList *attrList = Emitter->GetAttributeList(); \
+	if (!PK_VERIFY(attrList != null)) \
+		return false; \
+	const int32 samplerIdx = attrList->FindSamplerIndex(SamplerName); \
+	if (samplerIdx == -1) \
 	{ \
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList(); \
-		if (!PK_VERIFY(attrList != null)) \
-			return __ReturnValue; \
-	}
+		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler "#SamplerType" properties: can't find sampler '%s'"), *SamplerName); \
+		return false; \
+	} \
+	FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx); \
+	if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::SamplerType) \
+	{ \
+		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler "#SamplerType" properties: sampler '%s' is not a(n) "#SamplerType), *SamplerName); \
+		return false; \
+	} \
+	desc->SetProperties(&InProperties); \
+	FPopcornFXAttributeSampler##SamplerType *sampler = static_cast<FPopcornFXAttributeSampler##SamplerType *>(attrList->ResolveAttributeSampler(samplerIdx)); \
+	if (sampler) \
+		sampler->RefreshFromProperties(&InProperties); \
+
+//----------------------------------------------------------------------------
+
+#define FIND_ATTRIBUTE_SAMPLER_PROPERTIES(SamplerName, SamplerType, OutProperties) \
+	FPopcornFXAttributeList *attrList = Emitter->GetAttributeList(); \
+	if (!PK_VERIFY(attrList != null)) \
+		return; \
+	const int32 samplerIdx = attrList->FindSamplerIndex(SamplerName); \
+	if (samplerIdx == -1) \
+	{ \
+		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get "#SamplerType" attribute sampler properties: can't find sampler '%s'"), *SamplerName); \
+		return; \
+	} \
+	FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx); \
+	if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::SamplerType) \
+	{ \
+		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get "#SamplerType" attribute sampler properties: sampler '%s' is not a "#SamplerType), *SamplerName); \
+		return; \
+	} \
+	const FPopcornFXAttributeSamplerProperties##SamplerType *properties = static_cast<const FPopcornFXAttributeSamplerProperties##SamplerType *>(desc->ResolveAttributeProperties()); \
+	if (properties) \
+		OutProperties = *properties; \
+
+//----------------------------------------------------------------------------
+
+#define CHECK_EMITTER(__ReturnValue) \
+	if (Emitter == null) \
+	{ \
+		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Invalid emitter")); \
+		return __ReturnValue; \
+	} \
+
+#define CHECK_CAN_RENDER(__ReturnValue) \
+	const UWorld *world = Emitter->GetWorld(); \
+	if (!(FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))) \
+		return __ReturnValue; \
 
 //----------------------------------------------------------------------------
 
@@ -61,36 +111,9 @@ UPopcornFXAttributeSamplersFunctions::UPopcornFXAttributeSamplersFunctions(class
 
 bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerAnimTrackProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, const FPopcornFXAttributeSamplerPropertiesAnimTrack &InProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler anim track properties: invalid emitter"));
-		return false;
-	}
-
-	const UWorld	*world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return false;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler anim track properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return false;
-		}
-		FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::AnimTrack)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler anim track properties: sampler '%s' is not a anim track"), *InAttributeSamplerName);
-			return false;
-		}
-		desc->SetProperties(&InProperties);
-		FPopcornFXAttributeSamplerAnimTrack *sampler = static_cast<FPopcornFXAttributeSamplerAnimTrack*>(attrList->ResolveAttributeSampler(samplerIdx));
-		if (sampler)
-			sampler->RefreshFromProperties(&InProperties);
-	}
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
+	REFRESH_ATTRIBUTE_SAMPLER(InAttributeSamplerName, AnimTrack);
 	return true;
 }
 
@@ -98,36 +121,9 @@ bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerAnimTrackPropertie
 
 bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerCurveProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, const FPopcornFXAttributeSamplerPropertiesCurve &InProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler curve properties: invalid emitter"));
-		return false;
-	}
-
-	const UWorld	*world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return false;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler curve properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return false;
-		}
-		FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Curve)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler curve properties: sampler '%s' is not a curve"), *InAttributeSamplerName);
-			return false;
-		}
-		desc->SetProperties(&InProperties);
-		FPopcornFXAttributeSamplerCurve *sampler = static_cast<FPopcornFXAttributeSamplerCurve *>(attrList->ResolveAttributeSampler(samplerIdx));
-		if (sampler)
-			sampler->RefreshFromProperties(&InProperties);
-	}
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
+	REFRESH_ATTRIBUTE_SAMPLER(InAttributeSamplerName, Curve);
 	return true;
 }
 
@@ -135,36 +131,9 @@ bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerCurveProperties(UP
 
 bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerGridProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, const FPopcornFXAttributeSamplerPropertiesGrid &InProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler grid properties: invalid emitter"));
-		return false;
-	}
-
-	const UWorld	*world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return false;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler grid properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return false;
-		}
-		FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Grid)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler grid properties: sampler '%s' is not a grid"), *InAttributeSamplerName);
-			return false;
-		}
-		desc->SetProperties(&InProperties);
-		FPopcornFXAttributeSamplerGrid *sampler = static_cast<FPopcornFXAttributeSamplerGrid *>(attrList->ResolveAttributeSampler(samplerIdx));
-		if (sampler)
-			sampler->RefreshFromProperties(&InProperties);
-	}
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
+	REFRESH_ATTRIBUTE_SAMPLER(InAttributeSamplerName, Grid);
 	return true;
 }
 
@@ -172,36 +141,9 @@ bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerGridProperties(UPo
 
 bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerImageProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, const FPopcornFXAttributeSamplerPropertiesImage &InProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler image properties: invalid emitter"));
-		return false;
-	}
-
-	const UWorld	*world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return false;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler image properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return false;
-		}
-		FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Image)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler image properties: sampler '%s' is not a image"), *InAttributeSamplerName);
-			return false;
-		}
-		desc->SetProperties(&InProperties);
-		FPopcornFXAttributeSamplerImage *sampler = static_cast<FPopcornFXAttributeSamplerImage *>(attrList->ResolveAttributeSampler(samplerIdx));
-		if (sampler)
-			sampler->RefreshFromProperties(&InProperties);
-	}
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
+	REFRESH_ATTRIBUTE_SAMPLER(InAttributeSamplerName, Image);
 	return true;
 }
 
@@ -209,36 +151,9 @@ bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerImageProperties(UP
 
 bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerShapeProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, const FPopcornFXAttributeSamplerPropertiesShape &InProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler shape properties: invalid emitter"));
-		return false;
-	}
-
-	const UWorld	*world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return false;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler shape properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return false;
-		}
-		FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Shape)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler shape properties: sampler '%s' is not a shape"), *InAttributeSamplerName);
-			return false;
-		}
-		desc->SetProperties(&InProperties);
-		FPopcornFXAttributeSamplerShape *sampler = static_cast<FPopcornFXAttributeSamplerShape *>(attrList->ResolveAttributeSampler(samplerIdx));
-		if (sampler)
-			sampler->RefreshFromProperties(&InProperties);
-	}
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
+	REFRESH_ATTRIBUTE_SAMPLER(InAttributeSamplerName, Shape);
 	return true;
 }
 
@@ -246,36 +161,9 @@ bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerShapeProperties(UP
 
 bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerTextProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, const FPopcornFXAttributeSamplerPropertiesText &InProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler text properties: invalid emitter"));
-		return false;
-	}
-
-	const UWorld	*world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return false;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler text properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return false;
-		}
-		FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Text)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler text properties: sampler '%s' is not a text"), *InAttributeSamplerName);
-			return false;
-		}
-		desc->SetProperties(&InProperties);
-		FPopcornFXAttributeSamplerText *sampler = static_cast<FPopcornFXAttributeSamplerText *>(attrList->ResolveAttributeSampler(samplerIdx));
-		if (sampler)
-			sampler->RefreshFromProperties(&InProperties);
-	}
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
+	REFRESH_ATTRIBUTE_SAMPLER(InAttributeSamplerName, Text);
 	return true;
 }
 
@@ -283,36 +171,9 @@ bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerTextProperties(UPo
 
 bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerVectorFieldProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, const FPopcornFXAttributeSamplerPropertiesVectorField &InProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler vector field properties: invalid emitter"));
-		return false;
-	}
-
-	const UWorld	*world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return false;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler vector field properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return false;
-		}
-		FPopcornFXSamplerDesc	*desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::VectorField)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't set attribute sampler vector field properties: sampler '%s' is not a vector field"), *InAttributeSamplerName);
-			return false;
-		}
-		desc->SetProperties(&InProperties);
-		FPopcornFXAttributeSamplerVectorField *sampler = static_cast<FPopcornFXAttributeSamplerVectorField *>(attrList->ResolveAttributeSampler(samplerIdx));
-		if (sampler)
-			sampler->RefreshFromProperties(&InProperties);
-	}
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
+	REFRESH_ATTRIBUTE_SAMPLER(InAttributeSamplerName, VectorField);
 	return true;
 }
 
@@ -324,244 +185,62 @@ bool	UPopcornFXAttributeSamplersFunctions::SetAttributeSamplerVectorFieldPropert
 
 void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerAnimTrackProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, FPopcornFXAttributeSamplerPropertiesAnimTrack &OutProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get anim track attribute sampler properties: invalid emitter"));
-		return ;
-	}
-
-	const UWorld *world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return ;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get anim track attribute sampler properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return ;
-		}
-		FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::AnimTrack)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get anim track attribute sampler properties: sampler '%s' is not a anim track"), *InAttributeSamplerName);
-			return ;
-		}
-		const FPopcornFXAttributeSamplerPropertiesAnimTrack *properties = static_cast<const FPopcornFXAttributeSamplerPropertiesAnimTrack *>(desc->ResolveAttributeProperties());
-		if (properties)
-			OutProperties = *properties;
-	}
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
+	FIND_ATTRIBUTE_SAMPLER_PROPERTIES(InAttributeSamplerName, AnimTrack, OutProperties);
 }
 
 //---------------------------------------------------------------------------
 
 void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerCurveProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, FPopcornFXAttributeSamplerPropertiesCurve &OutProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get curve attribute sampler properties: invalid emitter"));
-		return;
-	}
-
-	const UWorld *world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get curve attribute sampler properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return;
-		}
-		FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Curve)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get curve attribute sampler properties: sampler '%s' is not a curve"), *InAttributeSamplerName);
-			return;
-		}
-		const FPopcornFXAttributeSamplerPropertiesCurve *properties = static_cast<const FPopcornFXAttributeSamplerPropertiesCurve *>(desc->ResolveAttributeProperties());
-		if (properties)
-			OutProperties = *properties;
-	}
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
+	FIND_ATTRIBUTE_SAMPLER_PROPERTIES(InAttributeSamplerName, Curve, OutProperties);
 }
 
 //----------------------------------------------------------------------------
 
 void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerGridProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, FPopcornFXAttributeSamplerPropertiesGrid &OutProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get grid attribute sampler properties: invalid emitter"));
-		return ;
-	}
-
-	const UWorld *world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return ;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get grid attribute sampler properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return ;
-		}
-		FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Grid)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get grid attribute sampler properties: sampler '%s' is not a grid"), *InAttributeSamplerName);
-			return ;
-		}
-		const FPopcornFXAttributeSamplerPropertiesGrid *properties = static_cast<const FPopcornFXAttributeSamplerPropertiesGrid *>(desc->ResolveAttributeProperties());
-		if (properties)
-			OutProperties = *properties;
-	}
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
+	FIND_ATTRIBUTE_SAMPLER_PROPERTIES(InAttributeSamplerName, Grid, OutProperties);
 }
 
 //----------------------------------------------------------------------------
 
 void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerImageProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, FPopcornFXAttributeSamplerPropertiesImage &OutProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get image attribute sampler properties: invalid emitter"));
-		return ;
-	}
-
-	const UWorld *world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return ;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get image attribute sampler properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return ;
-		}
-		FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Image)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get image attribute sampler properties: sampler '%s' is not a image"), *InAttributeSamplerName);
-			return ;
-		}
-		const FPopcornFXAttributeSamplerPropertiesImage *properties = static_cast<const FPopcornFXAttributeSamplerPropertiesImage *>(desc->ResolveAttributeProperties());
-		if (properties)
-			OutProperties = *properties;
-	}
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
+	FIND_ATTRIBUTE_SAMPLER_PROPERTIES(InAttributeSamplerName, Image, OutProperties);
 }
 
 //----------------------------------------------------------------------------
 
 void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerShapeProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, FPopcornFXAttributeSamplerPropertiesShape &OutProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get shape attribute sampler properties: invalid emitter"));
-		return ;
-	}
-
-	const UWorld *world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return ;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get shape attribute sampler properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return ;
-		}
-		FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Shape)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get shape attribute sampler properties: sampler '%s' is not a shape"), *InAttributeSamplerName);
-			return ;
-		}
-		const FPopcornFXAttributeSamplerPropertiesShape *properties = static_cast<const FPopcornFXAttributeSamplerPropertiesShape *>(desc->ResolveAttributeProperties());
-		if (properties)
-			OutProperties = *properties;
-	}
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
+	FIND_ATTRIBUTE_SAMPLER_PROPERTIES(InAttributeSamplerName, Shape, OutProperties);
 }
 
 //----------------------------------------------------------------------------
 void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerTextProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, FPopcornFXAttributeSamplerPropertiesText &OutProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get text attribute sampler properties: invalid emitter"));
-		return ;
-	}
-
-	const UWorld *world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return ;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get text attribute sampler properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return ;
-		}
-		FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::Text)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get text attribute sampler properties: sampler '%s' is not a text"), *InAttributeSamplerName);
-			return ;
-		}
-		const FPopcornFXAttributeSamplerPropertiesText *properties = static_cast<const FPopcornFXAttributeSamplerPropertiesText *>(desc->ResolveAttributeProperties());
-		if (properties)
-			OutProperties = *properties;
-	}
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
+	FIND_ATTRIBUTE_SAMPLER_PROPERTIES(InAttributeSamplerName, Text, OutProperties);
 }
 
 //----------------------------------------------------------------------------
 
 void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerVectorFieldProperties(UPopcornFXEmitterComponent *Emitter, FString InAttributeSamplerName, FPopcornFXAttributeSamplerPropertiesVectorField &OutProperties)
 {
-	if (Emitter == null)
-	{
-		UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get vector field attribute sampler properties: invalid emitter"));
-		return ;
-	}
-
-	const UWorld *world = Emitter->GetWorld();
-	if (FApp::CanEverRender() && (world == null || !world->IsNetMode(NM_DedicatedServer)))
-	{
-		FPopcornFXAttributeList *attrList = Emitter->GetAttributeList();
-		if (!PK_VERIFY(attrList != null))
-			return ;
-
-		const int32 samplerIdx = attrList->FindSamplerIndex(InAttributeSamplerName);
-		if (samplerIdx == -1)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get vector field attribute sampler properties: can't find sampler '%s'"), *InAttributeSamplerName);
-			return ;
-		}
-		FPopcornFXSamplerDesc *desc = attrList->GetSamplerDesc(samplerIdx);
-		if (!desc || desc->m_SamplerType != EPopcornFXAttributeSamplerType::VectorField)
-		{
-			UE_LOG(LogPopcornFXAttributeSamplersFunctions, Warning, TEXT("Couldn't get vector field attribute sampler properties: sampler '%s' is not a vector field"), *InAttributeSamplerName);
-			return ;
-		}
-		const FPopcornFXAttributeSamplerPropertiesVectorField *properties = static_cast<const FPopcornFXAttributeSamplerPropertiesVectorField *>(desc->ResolveAttributeProperties());
-		if (properties)
-			OutProperties = *properties;
-	}
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
+	FIND_ATTRIBUTE_SAMPLER_PROPERTIES(InAttributeSamplerName, VectorField, OutProperties);
 }
 
 //---------------------------------------------------------------------------
@@ -573,7 +252,8 @@ void UPopcornFXAttributeSamplersFunctions::GetAttributeSamplerVectorFieldPropert
 #if 0
 void	UPopcornFXAttributeSamplersFunctions::SetImageSamplerTexture(UPopcornFXEmitterComponent *Emitter, FString ImageSamplerName, class UTexture *InTexture)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerImage *samplerImage = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(ImageSamplerName, Image, samplerImage);
@@ -589,7 +269,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetImageSamplerTexture(UPopcornFXEmit
 
 void	UPopcornFXAttributeSamplersFunctions::SetCurveSamplerDimension(UPopcornFXEmitterComponent *Emitter, FString CurveSamplerName, TEnumAsByte<EAttributeSamplerCurveDimension::Type> InCurveDimension)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerCurve *samplerCurve = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(CurveSamplerName, Curve, samplerCurve);
@@ -601,7 +282,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetCurveSamplerDimension(UPopcornFXEm
 
 void	UPopcornFXAttributeSamplersFunctions::SetCurveSamplerCurve(UPopcornFXEmitterComponent *Emitter, FString CurveSamplerName, class UCurveBase *InCurve, bool InIsSecondCurve)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerCurve *samplerCurve = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(CurveSamplerName, Curve, samplerCurve);
@@ -617,7 +299,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetCurveSamplerCurve(UPopcornFXEmitte
 
 void	UPopcornFXAttributeSamplersFunctions::SetTextSamplerText(UPopcornFXEmitterComponent *Emitter, FString TextSamplerName, FString InText)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerText *samplerText = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(TextSamplerName, Text, samplerText);
@@ -633,7 +316,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetTextSamplerText(UPopcornFXEmitterC
 
 void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerRadius(UPopcornFXEmitterComponent *Emitter, FString ShapeSamplerName, float Radius)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerShape *samplerShape = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(ShapeSamplerName, Shape, samplerShape);
@@ -645,7 +329,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerRadius(UPopcornFXEmitt
 
 void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerWeight(UPopcornFXEmitterComponent *Emitter, FString ShapeSamplerName, float Height)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerShape *samplerShape = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(ShapeSamplerName, Shape, samplerShape);
@@ -657,7 +342,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerWeight(UPopcornFXEmitt
 
 void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerBoxDimension(UPopcornFXEmitterComponent *Emitter, FString ShapeSamplerName, FVector BoxDimensions)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerShape *samplerShape = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(ShapeSamplerName, Shape, samplerShape);
@@ -669,7 +355,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerBoxDimension(UPopcornF
 
 void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerInnerRadius(UPopcornFXEmitterComponent *Emitter, FString ShapeSamplerName, float InnerRadius)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerShape *samplerShape = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(ShapeSamplerName, Shape, samplerShape);
@@ -681,7 +368,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerInnerRadius(UPopcornFX
 
 void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerHeight(UPopcornFXEmitterComponent *Emitter, FString ShapeSamplerName, float Height)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerShape *samplerShape = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(ShapeSamplerName, Shape, samplerShape);
@@ -693,7 +381,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerHeight(UPopcornFXEmitt
 
 void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerScale(UPopcornFXEmitterComponent *Emitter, FString ShapeSamplerName, FVector Scale)
 {
-	CHECK_VALID_CALL();
+	CHECK_EMITTER();
+	CHECK_CAN_RENDER();
 
 	FPopcornFXAttributeSamplerShape *samplerShape = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(ShapeSamplerName, Shape, samplerShape);
@@ -710,7 +399,8 @@ void	UPopcornFXAttributeSamplersFunctions::SetShapeSamplerScale(UPopcornFXEmitte
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloatValues(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<float> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -721,7 +411,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloatValues(UPopcornFXEmitter
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloat2Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<FVector2D> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -732,7 +423,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloat2Values(UPopcornFXEmitte
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloat3Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<FVector> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -743,7 +435,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloat3Values(UPopcornFXEmitte
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloat4Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<FVector4> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -754,7 +447,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridFloat4Values(UPopcornFXEmitte
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridIntValues(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<int> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -765,7 +459,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridIntValues(UPopcornFXEmitterCo
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridInt2Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<FIntPoint> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -776,7 +471,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridInt2Values(UPopcornFXEmitterC
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridInt3Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<FIntVector> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -787,7 +483,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridInt3Values(UPopcornFXEmitterC
 
 bool	UPopcornFXAttributeSamplersFunctions::ReadGridInt4Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, TArray<FIntVector4> &OutValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -804,7 +501,8 @@ bool	UPopcornFXAttributeSamplersFunctions::ReadGridInt4Values(UPopcornFXEmitterC
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloatValues(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<float> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -815,7 +513,8 @@ bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloatValues(UPopcornFXEmitte
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloat2Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<FVector2D> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -826,7 +525,8 @@ bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloat2Values(UPopcornFXEmitt
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloat3Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<FVector> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -837,7 +537,8 @@ bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloat3Values(UPopcornFXEmitt
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloat4Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<FVector4> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -848,7 +549,8 @@ bool	UPopcornFXAttributeSamplersFunctions::WriteGridFloat4Values(UPopcornFXEmitt
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridIntValues(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<int> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -859,7 +561,8 @@ bool	UPopcornFXAttributeSamplersFunctions::WriteGridIntValues(UPopcornFXEmitterC
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridInt2Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<FIntPoint> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -870,7 +573,8 @@ bool	UPopcornFXAttributeSamplersFunctions::WriteGridInt2Values(UPopcornFXEmitter
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridInt3Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<FIntVector> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
@@ -881,7 +585,8 @@ bool	UPopcornFXAttributeSamplersFunctions::WriteGridInt3Values(UPopcornFXEmitter
 
 bool	UPopcornFXAttributeSamplersFunctions::WriteGridInt4Values(UPopcornFXEmitterComponent *Emitter, FString InGridSamplerName, const TArray<FIntVector4> &InValues)
 {
-	CHECK_VALID_CALL(false);
+	CHECK_EMITTER(false);
+	CHECK_CAN_RENDER(true);
 
 	FPopcornFXAttributeSamplerGrid *samplerGrid = nullptr;
 	FIND_ATTRIBUTE_SAMPLER(InGridSamplerName, Grid, samplerGrid);
