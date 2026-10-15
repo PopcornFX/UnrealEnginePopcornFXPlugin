@@ -115,7 +115,7 @@ struct FPopcornFXAttributeDesc
 };
 
 USTRUCT()
-struct FPopcornFXSamplerDesc
+struct POPCORNFX_API FPopcornFXSamplerDesc
 {
 	GENERATED_USTRUCT_BODY();
 
@@ -140,7 +140,7 @@ struct FPopcornFXSamplerDesc
 		False if we can't find any sampler component with this name in the target actor
 		Target actor can't be invalid since it falls back on the emitter's owner in not given
 	*/
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
 	mutable bool										m_IsSamplerComponentValid = false; // Useless?
 
 	/** Use an external sampler for this attribute */
@@ -148,7 +148,7 @@ struct FPopcornFXSamplerDesc
 	bool												m_UseExternalSampler;
 
 	/** Restart the emitter when this sampler changes? */
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	bool												m_RestartWhenSamplerChanges = true;
 
 	UPROPERTY()
@@ -211,8 +211,8 @@ struct	FPopcornFXAttributeValue
 	uint32	m_Value[4];
 };
 
-UCLASS(MinimalAPI)
-class UPopcornFXAttributeList : public UObject
+UCLASS()
+class POPCORNFX_API UPopcornFXAttributeList : public UObject
 {
 	GENERATED_UCLASS_BODY()
 

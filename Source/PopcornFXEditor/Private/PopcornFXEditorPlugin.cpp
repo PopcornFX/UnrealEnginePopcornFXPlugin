@@ -14,7 +14,8 @@
 #include "DependencyModules/PopcornFXDependencyModuleSequencer.h"
 
 #include "PopcornFXFileThumbnailRenderer.h"
-#include "Editor/PopcornFXAssetBroker.h"
+#include "PopcornFXAssetBroker.h"
+#include "EffectEditor/PopcornFXEffectEditor.h"
 
 #include "ThumbnailRendering/ThumbnailManager.h"
 
@@ -74,6 +75,15 @@ void	FPopcornFXEditorPlugin::ShutdownModule()
 		FComponentAssetBrokerage::UnregisterBroker(m_PopcornFXAssetBroker);
 		m_PopcornFXAssetBroker = nullptr;
 	}
+}
+
+//----------------------------------------------------------------------------
+
+TSharedRef<class IPopcornFXEffectEditor>	FPopcornFXEditorPlugin::CreateEffectEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, class UPopcornFXEffect* Effect)
+{
+	TSharedRef<FPopcornFXEffectEditor>	effectEditor(new FPopcornFXEffectEditor());
+	effectEditor->InitEffectEditor(Mode, InitToolkitHost, Effect);
+	return effectEditor;
 }
 
 //----------------------------------------------------------------------------

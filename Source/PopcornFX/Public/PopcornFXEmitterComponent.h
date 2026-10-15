@@ -125,7 +125,7 @@ public:
 	FPopcornFXEmitterStopSignature			OnEmissionStops;
 
 	/** Attribute samplers used by this emitter */
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	TArray<UPopcornFXAttributeSampler*>		Samplers;
 
 	uint32									bAutoDestroy : 1;

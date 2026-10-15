@@ -30,7 +30,6 @@ FWD_PK_API_END
 class	FPopcornFXPlugin;
 
 class	UPopcornFXFile;
-class	FPopcornFXDependencyModule;
 class	CPopcornFXProfiler;
 #if WITH_EDITOR
 class	UPopcornFXSettingsEditor;
@@ -49,7 +48,8 @@ struct	SUEViewUniformData
 };
 #endif
 
-class	FPopcornFXPlugin : public IPopcornFXPlugin
+// POPCORNFX_API: PopcornFXEditor links against the plugin singleton (settings, URLs, content dir, ...)
+class	POPCORNFX_API FPopcornFXPlugin : public IPopcornFXPlugin
 {
 private:
 	static FPopcornFXPlugin				*s_Self;
@@ -126,10 +126,6 @@ public:
 	UObject								*LoadUObjectFromPkPath(const PopcornFX::CString &pkPath, bool notVirtual);
 
 	void								NotifyObjectChanged(UObject *object);
-
-#if WITH_EDITOR
-	virtual TSharedRef<class IPopcornFXEffectEditor>	CreateEffectEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, class UPopcornFXEffect* Effect) override;
-#endif
 
 	bool								HandleSettingsModified();
 

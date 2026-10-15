@@ -106,6 +106,7 @@ bool	UPopcornFXNode_DynamicField::GetGraphPinsType(EPopcornFXPinDataType::Type t
 	case EPopcornFXPinDataType::Float3:
 	case EPopcornFXPinDataType::Float4:
 		outPinType.PinCategory = UEdGraphSchema_K2::PC_Real;
+		outPinType.PinSubCategory = UEdGraphSchema_K2::PC_Float;
 		return true;
 	case EPopcornFXPinDataType::Int:
 	case EPopcornFXPinDataType::Int2:
@@ -315,31 +316,6 @@ void	UPopcornFXNode_DynamicField::PostLoad()
 void	UPopcornFXNode_DynamicField::PostReconstructNode()
 {
 	Super::PostReconstructNode();
-
-	// Break and Hide unwanted pins
-
-	const uint32				pinCount = RequiredPinNum(m_DataType);
-	if (pinCount <= 1)
-	{
-		BreakAndHidePinByName(m_ValueNameX);
-		BreakAndHidePinByName(m_ValueNameY);
-		BreakAndHidePinByName(m_ValueNameZ);
-		BreakAndHidePinByName(m_ValueNameW);
-	}
-	else
-	{
-		BreakAndHidePinByName(m_ValueName);
-		//if (pinCount < 1) // false
-		//	BreakAndHidePinByName(m_ValueNameX);
-		if (pinCount < 2)
-			BreakAndHidePinByName(m_ValueNameY);
-		if (pinCount < 3)
-			BreakAndHidePinByName(m_ValueNameZ);
-		if (pinCount < 4)
-			BreakAndHidePinByName(m_ValueNameW);
-	}
-
-	// InApplyGlobalScale can exists in m_CustomParameters
 	if (!CanBeGlobalScaled(m_DataType))
 		BreakAndHidePinByName("InApplyGlobalScale");
 }
@@ -382,6 +358,12 @@ void	UPopcornFXNode_DynamicField::PinDefaultValueChanged(UEdGraphPin *pin)
 				return; // no need to ReconstructNode()
 
 			m_DataType = newValue;
+
+			BreakAndHidePinByName(m_ValueName);
+			BreakAndHidePinByName(m_ValueNameX);
+			BreakAndHidePinByName(m_ValueNameY);
+			BreakAndHidePinByName(m_ValueNameZ);
+			BreakAndHidePinByName(m_ValueNameW);
 		}
 		ReconstructNode();
 	}

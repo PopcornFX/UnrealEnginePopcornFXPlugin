@@ -7,6 +7,7 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 #include "Modules/ModuleManager.h"
+#include "Toolkits/IToolkit.h"
 
 class	UPopcornFXEffect;
 class	IPopcornFXEffectEditor;
@@ -34,4 +35,6 @@ public:
 	{
 		return FModuleManager::Get().IsModuleLoaded("PopcornFXEditor");
 	}
+
+	virtual TSharedRef<class IPopcornFXEffectEditor>	CreateEffectEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, class UPopcornFXEffect* Effect) = 0;
 };

@@ -8,7 +8,7 @@
 #include "PopcornFXPlugin.h"
 #include "Internal/ParticleScene.h"
 #include "Assets/PopcornFXEffect.h"
-#include "Editor/EditorHelpers.h"
+#include "Internal/EditorHelpers.h"
 #include "PopcornFXEmitterComponent.h"
 #include "PopcornFXAttributeSamplerShape.h"
 #include "PopcornFXCustomVersion.h"
@@ -30,10 +30,10 @@ DEFINE_LOG_CATEGORY_STATIC(LogPopcornFXAttributeList, Log, All);
 
 //----------------------------------------------------------------------------
 #if WITH_EDITOR
-template float	UPopcornFXAttributeList::GetAttributeDim<float>(uint32, uint32);
-template int32	UPopcornFXAttributeList::GetAttributeDim<int32>(uint32, uint32);
-template void	UPopcornFXAttributeList::SetAttributeDim<float>(uint32, uint32, float, bool);
-template void	UPopcornFXAttributeList::SetAttributeDim<int32>(uint32, uint32, int32, bool);
+template POPCORNFX_API float	UPopcornFXAttributeList::GetAttributeDim<float>(uint32, uint32);
+template POPCORNFX_API int32	UPopcornFXAttributeList::GetAttributeDim<int32>(uint32, uint32);
+template POPCORNFX_API void		UPopcornFXAttributeList::SetAttributeDim<float>(uint32, uint32, float, bool);
+template POPCORNFX_API void		UPopcornFXAttributeList::SetAttributeDim<int32>(uint32, uint32, int32, bool);
 #endif // WITH_EDITOR
 
 //----------------------------------------------------------------------------
@@ -1285,7 +1285,7 @@ _Scalar	UPopcornFXAttributeList::GetAttributeDim(uint32 attributeId, uint32 dim)
 //----------------------------------------------------------------------------
 
 template<>
-bool	UPopcornFXAttributeList::GetAttributeDim<bool>(uint32 attributeId, uint32 dim)
+POPCORNFX_API bool	UPopcornFXAttributeList::GetAttributeDim<bool>(uint32 attributeId, uint32 dim)
 {
 	PopcornFX::SAttributesContainer_SAttrib	value;
 	GetAttribute(attributeId, *reinterpret_cast<FPopcornFXAttributeValue*>(&value)); // Ugly cast, so PopcornFXAttributeList.h is a public header to satisfy UE nativization bugs. To refactor some day
@@ -1369,7 +1369,7 @@ void	UPopcornFXAttributeList::SetAttributeDim(uint32 attributeId, uint32 dim, _S
 //----------------------------------------------------------------------------
 
 template <>
-void	UPopcornFXAttributeList::SetAttributeDim<bool>(uint32 attributeId, uint32 dim, bool value, bool fromUI/* = false*/)
+POPCORNFX_API void	UPopcornFXAttributeList::SetAttributeDim<bool>(uint32 attributeId, uint32 dim, bool value, bool fromUI/* = false*/)
 {
 #if WITH_EDITOR
 	if (!PK_VERIFY(attributeId < (u32)m_Attributes.Num()))

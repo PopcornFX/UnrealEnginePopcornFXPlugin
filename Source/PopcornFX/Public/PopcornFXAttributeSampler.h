@@ -72,7 +72,7 @@ struct POPCORNFX_API FIncompatibleProperties
 	GENERATED_USTRUCT_BODY()
 
 	/** Map of properties than are incompatible with an emitter. Key = property name. Value = error message */
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
 	TMap<FString, FString>	m_Properties;
 };
 

@@ -17,8 +17,8 @@ class	CPopcornFXEffect;
 DECLARE_MULTICAST_DELEGATE(FPopcornFXReimportEventSignature);
 
 /** PopcornFX Effect Asset imported from a .pkfx file. */
-UCLASS(MinimalAPI, BlueprintType)
-class UPopcornFXEffect : public UPopcornFXFile
+UCLASS(BlueprintType)
+class POPCORNFX_API UPopcornFXEffect : public UPopcornFXFile
 {
 	GENERATED_UCLASS_BODY()
 

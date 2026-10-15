@@ -267,7 +267,6 @@ void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick 
 			RestartEmitter(true);
 		}
 
-#if WITH_EDITOR
 		// Ugly but necessary for blueprints because modifying their properties only updates the UI instance 
 		// and not the actual BP in the level
 		UpdateSamplerObjects(Effect);
@@ -283,7 +282,6 @@ void	UPopcornFXEmitterComponent::TickComponent(float deltaTime, enum ELevelTick 
 		}
 		else
 			m_Time = 0.0f;
-#endif
 	}
 }
 

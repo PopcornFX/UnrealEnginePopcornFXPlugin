@@ -13,6 +13,7 @@
 #include "Assets/PopcornFXAnimTrack.h"
 #include "Assets/PopcornFXSimulationCache.h"
 #include "AssetRegistry/AssetData.h"
+#include "Misc/Paths.h"
 
 #include "Internal/FileSystemController_UE.h"
 
@@ -23,7 +24,7 @@
 #include "VectorField/VectorFieldStatic.h"
 #if WITH_EDITOR
 #	include "AssetRegistry/AssetRegistryModule.h"
-#	include "Editor/EditorHelpers.h"
+#	include "Internal/EditorHelpers.h"
 #endif // WITH_EDITOR
 
 #include "PopcornFXSDK.h"

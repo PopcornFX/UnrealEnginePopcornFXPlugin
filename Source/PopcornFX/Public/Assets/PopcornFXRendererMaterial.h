@@ -465,7 +465,7 @@ public:
 	int32							m_RMId;
 
 	/* Renderer that uses this material */
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX RendererMaterial", VisibleAnywhere)
 	FPopcornFXRendererDesc			Renderer;
 
 	UPROPERTY(Instanced)
@@ -652,8 +652,8 @@ public:
 * A PopcornFXRendererMaterial instance match a specific set of PopcornFX CParticleNodeRenderer*
 * batched together for Rendering.
 */
-UCLASS(MinimalAPI)
-class UPopcornFXRendererMaterial : public UObject
+UCLASS()
+class POPCORNFX_API UPopcornFXRendererMaterial : public UObject
 {
 	GENERATED_UCLASS_BODY()
 

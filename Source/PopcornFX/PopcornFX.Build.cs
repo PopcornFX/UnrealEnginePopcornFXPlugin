@@ -573,30 +573,15 @@ namespace UnrealBuildTool.Rules
 				PrivateDependencyModuleNames.Add("PhysX");
 			if (Target.bBuildEditor)
 			{
-                PublicDependencyModuleNames.AddRange(
-                new string[]
-                {
-                    "GraphEditor",
-                }
-                );
-                PrivateDependencyModuleNames.AddRange(
+				PrivateDependencyModuleNames.AddRange(
 					new string[]
 					{
 						"UnrealEd",
 						"AssetTools",
-						"DirectoryWatcher",
-						"PropertyEditor",
-						"SceneOutliner",
 						"Slate",
 						"SlateCore",
-						"EditorStyle",
-						"EditorWidgets",
-						"PlacementMode",
 						"MessageLog",
 						"LevelEditor",
-						"Sequencer",
-						"MovieSceneTools",
-						"AppFramework",
 
 						"TargetPlatform", // Baking
 

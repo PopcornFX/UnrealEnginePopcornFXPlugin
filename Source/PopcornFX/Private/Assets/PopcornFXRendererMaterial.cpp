@@ -292,7 +292,6 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (mat.Lit)
 		{
-			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
@@ -308,6 +307,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Opaque_CastShadows(), false);
 			finalMatType = kOpaqueBillboard_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 			if (finalMatType == EPopcornFXDefaultMaterialType::Billboard_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
@@ -659,7 +659,6 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		EPopcornFXDefaultMaterialType	finalMatType = mat.DefaultMaterialType;
 		if (mat.Lit)
 		{
-			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
@@ -676,6 +675,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Opaque_CastShadows(), false);
 			finalMatType = kOpaqueBillboard_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 			if (finalMatType == EPopcornFXDefaultMaterialType::Billboard_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);
@@ -1050,7 +1050,6 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (mat.Lit)
 		{
-			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
@@ -1065,6 +1064,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Opaque_CastShadows(), false);
 			type = kOpaqueMesh_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 
 			if (type == EPopcornFXDefaultMaterialType::Mesh_Masked)
@@ -1255,7 +1255,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Distortion()))
 		{
 			mat.EditablePropertiesDefault.TextureDiffuse = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Distortion_DistortionMap(), PopcornFX::CString::EmptyString));
-			finalMatType = EPopcornFXLegacyMaterialType::Mesh_Distortion;
+			finalMatType = EPopcornFXLegacyMaterialType::Billboard_Distortion;
 
 			if (mat.EditablePropertiesDefault.TextureDiffuse != null &&
 				mat.EditablePropertiesDefault.TextureDiffuse->CompressionSettings != TextureCompressionSettings::TC_Normalmap)
@@ -1327,7 +1327,6 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 
 		if (mat.Lit)
 		{
-			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Lit_CastShadows(), false);
 			mat.EditablePropertiesDefault.TextureNormal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_NormalMap(), PopcornFX::CString::EmptyString));
 			mat.EditablePropertiesDefault.TextureRoughMetal = LoadTexturePk(decl.GetPropertyValue_Path(PopcornFX::BasicRendererProperties::SID_Lit_RoughMetalMap(), PopcornFX::CString::EmptyString));
 			mat.Roughness = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Lit_Roughness(), 1.0f);
@@ -1341,6 +1340,7 @@ bool		RM_Setup_Billboard_Default(FPopcornFXSubRendererMaterial& mat, const Popco
 		}
 		else if (decl.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_Opaque()))
 		{
+			mat.CastShadow = decl.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_Opaque_CastShadows(), false);
 			finalMatType = kOpaqueBillboard_DefaultMaterial_ToUE[decl.GetPropertyValue_I1(PopcornFX::BasicRendererProperties::SID_Opaque_Type(), 0)];
 			if (finalMatType == EPopcornFXDefaultMaterialType::Billboard_Masked)
 				mat.MaskThreshold = decl.GetPropertyValue_F1(PopcornFX::BasicRendererProperties::SID_Opaque_MaskThreshold(), 0.0f);

@@ -8,11 +8,6 @@
 #include "PopcornFXPublic.h"
 
 #include "Modules/ModuleManager.h"
-#if WITH_EDITOR
-#	include "Toolkits/IToolkit.h"
-#endif
-
-class	IPopcornFXEffectEditor;
 
 class POPCORNFX_API IPopcornFXPlugin : public IModuleInterface
 {
@@ -37,8 +32,4 @@ public:
 	{
 		return FModuleManager::Get().IsModuleLoaded("PopcornFX");
 	}
-
-#if WITH_EDITOR
-	virtual TSharedRef<class IPopcornFXEffectEditor>		CreateEffectEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, class UPopcornFXEffect* Effect) = 0;
-#endif
 };

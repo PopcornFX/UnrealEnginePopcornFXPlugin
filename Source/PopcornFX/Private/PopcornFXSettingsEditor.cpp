@@ -7,6 +7,8 @@
 
 #include "PopcornFXPlugin.h"
 
+#include "Misc/Paths.h"
+
 #if WITH_EDITOR
 #	include "PopcornFXSDK.h"
 #	include <pk_particles/include/ps_project_settings.h>
