@@ -631,6 +631,10 @@ struct FAttributeSamplerShapeData
 
 FPopcornFXAttributeSamplerShape::FPopcornFXAttributeSamplerShape()
 :	m_LastFrameUpdate(0)
+,	m_WorldTr_Current(FMatrix44f::Identity)
+,	m_WorldTr_Previous(FMatrix44f::Identity)
+,	m_Angular_Velocity(FVector3f::ZeroVector)
+,	m_Linear_Velocity(FVector3f::ZeroVector)
 {
 #if WITH_EDITOR
 	m_IndirectSelectedThisTick = false;

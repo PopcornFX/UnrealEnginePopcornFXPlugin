@@ -213,6 +213,29 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 	if (m_Flags.m_NeedSort && !m_Flags.m_Slicable)
 		m_Flags.m_NeedSort = false;
 
+#define PK_APPLY_BASIC_TRANSFORM_UV() \
+	if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs())) \
+	{ \
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipU())) \
+			m_Flags.m_FlipU = true; \
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipV())) \
+			m_Flags.m_FlipV = true; \
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_RotateUV())) \
+			m_Flags.m_RotateTexture = true; \
+	}
+
+
+#define PK_APPLY_TEXTURE_UV() \
+	if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_TextureUVs())) \
+	{ \
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipU())) \
+			m_Flags.m_FlipU = true; \
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipV())) \
+			m_Flags.m_FlipV = true; \
+		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_TextureUVs_RotateTexture())) \
+			m_Flags.m_RotateTexture = true; \
+	}
+
 	if (renderer->m_RendererType == PopcornFX::Renderer_Billboard)
 	{
 		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_FlipUVs())) // Legacy
@@ -220,29 +243,12 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 			m_Flags.m_FlipU = false;
 			m_Flags.m_FlipV = true;
 		}
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipU()))
-			m_Flags.m_FlipU = true;
-
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipV()))
-			m_Flags.m_FlipV = true;
-
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_RotateUV()))
-			m_Flags.m_RotateTexture = true;
-		
+		PK_APPLY_BASIC_TRANSFORM_UV();
 	}
 	else if (renderer->m_RendererType == PopcornFX::Renderer_Ribbon)
 	{
-		if (renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipU(), false) ||
-			renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipU(), false))
-			m_Flags.m_FlipU = true;
-
-		if (renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_FlipV(), false) ||
-			renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipV(), false))
-			m_Flags.m_FlipV = true;
-
-		if (renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_TextureUVs_RotateTexture(), false)  ||
-			renderer->m_Declaration.GetPropertyValue_B(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_RotateUV(), false))
-			m_Flags.m_RotateTexture = true;
+		PK_APPLY_TEXTURE_UV();
+		PK_APPLY_BASIC_TRANSFORM_UV();
 
 		m_Flags.m_HasRibbonCorrectDeformation = renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_CorrectDeformation());
 	}
@@ -255,16 +261,12 @@ void	CRendererCache::UpdateThread_BuildBillboardingFlags(const PopcornFX::PRende
 	}
 	else if (renderer->m_RendererType == PopcornFX::Renderer_Triangle)
 	{
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipU()))
-			m_Flags.m_FlipU = true;
-
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_FlipV()))
-			m_Flags.m_FlipV = true;
-
-		if (renderer->m_Declaration.IsFeatureEnabled(PopcornFX::BasicRendererProperties::SID_BasicTransformUVs_RotateUV()))
-			m_Flags.m_RotateTexture = true;
+		PK_APPLY_BASIC_TRANSFORM_UV();
 	}
 }
+
+#undef PK_APPLY_TEXTURE_UV
+#undef PK_APPLY_BASIC_TRANSFORM_UV
 
 //----------------------------------------------------------------------------
 

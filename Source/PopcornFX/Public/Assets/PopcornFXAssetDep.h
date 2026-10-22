@@ -80,8 +80,8 @@ public:
 };
 
 /** Describe an Asset needed by a PopcornFX Asset. */
-UCLASS(MinimalAPI, EditInlineNew)
-class UPopcornFXAssetDep : public UObject
+UCLASS(EditInlineNew)
+class POPCORNFX_API UPopcornFXAssetDep : public UObject
 {
 	GENERATED_UCLASS_BODY()
 

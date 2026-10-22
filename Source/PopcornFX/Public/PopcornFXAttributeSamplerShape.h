@@ -266,6 +266,8 @@ public:
 	,	InnerRadius(0.0f)
 	,	Height(100.0f)
 	,	Scale(FVector::OneVector)
+	,	Position(FVector::ZeroVector)
+	,	Rotation(FRotator::ZeroRotator)
 	,	ShapeSamplingMode()
 	,	DensityColorChannel()
 #if 0 // To re-enable when shape collections are supported by PopcornFX v2
@@ -387,7 +389,7 @@ class POPCORNFX_API UPopcornFXAttributeSamplerShapeAsset : public UPopcornFXAttr
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	FPopcornFXAttributeSamplerPropertiesShape	Properties;
 
 public:

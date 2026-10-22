@@ -88,15 +88,15 @@ PK_FORCEINLINE CFloat3		&ToPkRef(FVector3f &vec)
 	return *reinterpret_cast<CFloat3*>(&vec);
 }
 
-PopcornFX::CString		ToPk(const FString &str);
-FString					ToUE(const PopcornFX::CString &str);
-FString					ToUE(const PopcornFX::CStringView &str);
-FString					ToUE(const PopcornFX::CStringUnicode &str);
+POPCORNFX_API PopcornFX::CString	ToPk(const FString &str);
+POPCORNFX_API FString				ToUE(const PopcornFX::CString &str);
+POPCORNFX_API FString				ToUE(const PopcornFX::CStringView &str);
+POPCORNFX_API FString				ToUE(const PopcornFX::CStringUnicode &str);
 
-float					HumanReadF(float v, u32 base = 1024);
-const TCHAR				*HumanReadS(float v, u32 base = 1024);
+POPCORNFX_API float					HumanReadF(float v, u32 base = 1024);
+POPCORNFX_API const TCHAR			*HumanReadS(float v, u32 base = 1024);
 static inline float		SafeRcp(float v) { return v == 0.f ? 0.f : 1.f / v; }
 
 #if WITH_EDITOR
-EAppReturnType::Type	OpenMessageBox(EAppMsgCategory category, EAppMsgType::Type messageType, const FText& message, const FText& title);
+POPCORNFX_API EAppReturnType::Type	OpenMessageBox(EAppMsgCategory category, EAppMsgType::Type messageType, const FText& message, const FText& title);
 #endif

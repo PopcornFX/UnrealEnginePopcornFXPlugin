@@ -26,6 +26,8 @@ public:
 	virtual void		StartupModule() override;
 	virtual void		ShutdownModule() override;
 
+	virtual TSharedRef<class IPopcornFXEffectEditor>	CreateEffectEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, class UPopcornFXEffect* Effect) override;
+
 private:
 	void				OnModulesChangedCallback(FName moduleThatChanged, EModuleChangeReason reason);
 	void				UnloadModuleActions(TMap<FName, FPopcornFXDependencyModule*> &moduleActions);

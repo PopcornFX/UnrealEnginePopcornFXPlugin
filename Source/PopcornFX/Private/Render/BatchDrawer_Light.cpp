@@ -130,7 +130,7 @@ void	CBatchDrawer_Light::_IssueDrawCall_Light(const SUERenderContext &renderCont
 												  // float C = (1.0f / ((x * k + 1.0f) * (x * k + 1.0f)));
 												  // return (C - B) / A;
 												  //------------------------------
-		static const float		kAttenuationSteepness = bbRequest.m_AttenuationSteepness;
+		const float				kAttenuationSteepness = bbRequest.m_AttenuationSteepness;
 		static const float		kAttenuationMultiplier = 4.32f; // represent the function f(x) = 4.32f x + 1.07f
 		static const float		kAttenuationMinimumCoeff = 1.07f; // that simulate UE light intensity compared to PK FX unit-less light intensity
 

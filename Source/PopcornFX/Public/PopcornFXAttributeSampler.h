@@ -10,7 +10,6 @@
 
 #if WITH_EDITOR
 #	include "ThumbnailRendering/TextureThumbnailRenderer.h"
-#	include "Editor/PopcornFXStyle.h"
 #	include "Engine/Texture2D.h"
 #endif
 
@@ -79,7 +78,7 @@ struct POPCORNFX_API FEmitterSamplers
 {
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
 	TArray<FString>	m_SamplerNames;
 };
 

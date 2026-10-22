@@ -386,9 +386,7 @@ void	*CResourceHandlerImage_UE::Load(
 
 			entry->m_Image->m_OnReloading(entry->m_Image.Get());
 
-			PopcornFX::PKSwap(entry->m_Image->m_Flags, resource->m_Flags);
-			PopcornFX::PKSwap(entry->m_Image->m_Format, resource->m_Format);
-			PopcornFX::PKSwap(entry->m_Image->m_Frames, resource->m_Frames);
+			entry->m_Image->Swap(*resource);
 
 			entry->m_Image->m_OnReloaded(entry->m_Image.Get());
 
@@ -519,9 +517,7 @@ void	CResourceHandlerImage_UE::BroadcastResourceChanged(const PopcornFX::CResour
 			PopcornFX::CImage		*dstImage = foundResource->m_Image.Get();
 
 			dstImage->m_OnReloading(dstImage);
-			PopcornFX::PKSwap(dstImage->m_Flags, resource->m_Flags);
-			PopcornFX::PKSwap(dstImage->m_Format, resource->m_Format);
-			PopcornFX::PKSwap(dstImage->m_Frames, resource->m_Frames);
+			dstImage->Swap(*resource);
 			dstImage->m_OnReloaded(dstImage);
 		}
 	}
@@ -647,9 +643,7 @@ bool	CResourceHandlerImage_UE::RegisterVirtualTexture(const PopcornFX::CString &
 
 			entry->m_Image->m_OnReloading(entry->m_Image.Get());
 
-			PopcornFX::PKSwap(entry->m_Image->m_Flags, image.m_Flags);
-			PopcornFX::PKSwap(entry->m_Image->m_Format, image.m_Format);
-			PopcornFX::PKSwap(entry->m_Image->m_Frames, image.m_Frames);
+			entry->m_Image->Swap(image);
 
 			entry->m_Image->m_OnReloaded(entry->m_Image.Get());
 		}
@@ -734,9 +728,7 @@ bool	CResourceHandlerImage_UE::UnregisterVirtualTexture(const PopcornFX::CString
 			dstImage->m_OnReloading(dstImage);
 			if (resource != null)
 			{
-				PopcornFX::PKSwap(dstImage->m_Flags, resource->m_Flags);
-				PopcornFX::PKSwap(dstImage->m_Format, resource->m_Format);
-				PopcornFX::PKSwap(dstImage->m_Frames, resource->m_Frames);
+				dstImage->Swap(*resource);
 			}
 			else
 			{

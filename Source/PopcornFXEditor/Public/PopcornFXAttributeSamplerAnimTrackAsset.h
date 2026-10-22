@@ -7,7 +7,7 @@
 
 #include "PopcornFXAttributeSamplerAsset.h"
 #include "PopcornFXAttributeSamplerAnimTrack.h"
-#include "PopcornFXStyleEditor.h"
+#include "PopcornFXStyle.h"
 
 #include "AssetDefinitionDefault.h"
 #include "CoreMinimal.h"
@@ -38,12 +38,12 @@ protected:
 #if WITH_EDITOR
 	virtual const FSlateBrush *GetThumbnailBrush(const FAssetData &InAssetData, const FName InClassName) const override
 	{
-		return FPopcornFXStyleEditor::GetBrush("PopcornFX.Node.AttributeSampler_AnimTrack");
+		return FPopcornFXStyle::GetBrush("PopcornFX.Node.AttributeSampler_AnimTrack");
 	}
 
 	virtual const FSlateBrush *GetIconBrush(const FAssetData &InAssetData, const FName InClassName) const override
 	{
-		return FPopcornFXStyleEditor::GetBrush("PopcornFX.Node.AttributeSampler_AnimTrack");
+		return FPopcornFXStyle::GetBrush("PopcornFX.Node.AttributeSampler_AnimTrack");
 	}
 #endif
 

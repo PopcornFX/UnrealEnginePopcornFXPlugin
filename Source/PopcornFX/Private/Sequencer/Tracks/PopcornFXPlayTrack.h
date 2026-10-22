@@ -31,7 +31,7 @@ public:
 	virtual void	RemoveSection(UMovieSceneSection &section) override { Sections.Remove(&section); }
 	virtual bool	IsEmpty() const override { return Sections.Num() == 0; }
 
-	void					AddNewSection(FFrameNumber sectionTime);
+	POPCORNFX_API void		AddNewSection(FFrameNumber sectionTime);
 
 	virtual const TArray<UMovieSceneSection*>	&GetAllSections() const override { return Sections; }
 

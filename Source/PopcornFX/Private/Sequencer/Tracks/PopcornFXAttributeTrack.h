@@ -37,9 +37,9 @@ public:
 	virtual FText GetDefaultDisplayName() const override;
 #endif
 
-	void	AddScalarAttributeKey(const FString &attrName, FFrameNumber position, float value);
-	void	AddVectorAttributeKey(const FString &attrName, FFrameNumber position, FVector value);
-	void	AddColorAttributeKey(const FString &attrName, FFrameNumber position, FLinearColor value);
+	POPCORNFX_API void	AddScalarAttributeKey(const FString &attrName, FFrameNumber position, float value);
+	POPCORNFX_API void	AddVectorAttributeKey(const FString &attrName, FFrameNumber position, FVector value);
+	POPCORNFX_API void	AddColorAttributeKey(const FString &attrName, FFrameNumber position, FLinearColor value);
 
 private:
 	UPROPERTY()

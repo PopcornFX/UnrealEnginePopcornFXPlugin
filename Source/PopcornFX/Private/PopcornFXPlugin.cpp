@@ -12,9 +12,6 @@
 #include "Internal/PopcornFXProfiler.h"
 #include "GPUSim/PopcornFXGPUSimInterfaces.h"
 #include "PopcornFXVersionGenerated.h"
-#if WITH_EDITOR
-#	include "Editor/PopcornFXEffectEditor.h"
-#endif
 
 #include "ShaderCore.h"
 
@@ -878,8 +875,10 @@ UObject	*FPopcornFXPlugin::LoadUObjectFromPkPath(const PopcornFX::CString &pkPat
 
 #if WITH_EDITOR
 	// Editor only (baking code is the only place where this occurs)
+	// GOREFIXES: #16117, don't try loading pkcf and pkma from the UE FS
+	// TODO: handle this properly
 	PopcornFX::CStringView	ext = PopcornFX::CFilePath::ExtractExtension(PopcornFX::CStringView(pkPath));
-	if (ext == "pkcf")
+	if (ext == "pkcf" || ext == "pkma")
 		return null;
 #endif // WITH_EDITOR
 
@@ -959,19 +958,6 @@ bool	FPopcornFXPlugin::HandleSettingsModified()
 	return m_Settings != null;
 #endif // WITH_EDITOR
 }
-
-//----------------------------------------------------------------------------
-#if WITH_EDITOR
-
-TSharedRef<class IPopcornFXEffectEditor>	FPopcornFXPlugin::CreateEffectEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, class UPopcornFXEffect* Effect)
-{
-	TSharedRef<FPopcornFXEffectEditor> EffectEditor(new FPopcornFXEffectEditor());
-	EffectEditor->InitEffectEditor(Mode, InitToolkitHost, Effect);
-	return EffectEditor;
-}
-
-#endif // WITH_EDITOR
-//----------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------
 #if WITH_EDITOR

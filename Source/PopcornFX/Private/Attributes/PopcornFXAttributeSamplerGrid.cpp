@@ -302,13 +302,12 @@ bool	FPopcornFXAttributeSamplerPropertiesGrid::IsRenderTargetCompatible(const UT
 	const PopcornFX::CResourceDescriptor_Grid	*defaultGridSampler = PopcornFX::HBO::Cast<const PopcornFX::CResourceDescriptor_Grid>(defaultSampler);
 	if (!PK_VERIFY(defaultGridSampler != null))
 		return false;
-	const u32									gridOrder = static_cast<u32>(Order + 1);
 	const PopcornFX::Nodegraph::SDataTypeTraits	&srcTypeTraits = PopcornFX::Nodegraph::SDataTypeTraits::Traits((PopcornFX::Nodegraph::EDataType)defaultGridSampler->Type());
 	const PopcornFX::EBaseTypeID				srcBaseType = srcTypeTraits.BaseType();
+	const FString								dataTypeString = DataTypeToString(ToUE(srcBaseType));
 
 	const UTextureRenderTarget2D		*RT2D = Cast<UTextureRenderTarget2D>(texture);
 	const UTextureRenderTargetVolume	*RTVolume = Cast<UTextureRenderTargetVolume>(texture);
-	EPixelFormat						RTFormat = PF_Unknown;
 
 	if (RT2D != null)
 	{
@@ -327,7 +326,51 @@ bool	FPopcornFXAttributeSamplerPropertiesGrid::IsRenderTargetCompatible(const UT
 			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
 			return false;
 		}
-		RTFormat = RT2D->GetFormat();
+		switch (RT2D->GetFormat())
+		{
+		case	PF_R32_FLOAT:
+		{
+			if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float)
+				return true;
+			FString errorMsg = FString::Printf(TEXT("Can't use a RTF_R32f (R32_FLOAT) render target for a %s grid"), *dataTypeString);
+#if WITH_EDITOR
+			emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
+#endif
+			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+		case	PF_G32R32F:
+		{
+			if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float2)
+				return true;
+			FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RG32f (G32R32F) render target for a %s grid"), *dataTypeString);
+#if WITH_EDITOR
+			emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
+#endif
+			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+		case	PF_A32B32G32R32F:
+		{
+			if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float4)
+				return true;
+			FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RGBA32f (A32B32G32R32F) render target for a %s grid"), *dataTypeString);
+#if WITH_EDITOR
+			emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
+#endif
+			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+		default:
+		{
+			FString errorMsg = FString::Printf(TEXT("Unsupported 2D render target format %s for a %s grid"), _My_GetPixelFormatString(RT2D->GetFormat()), *dataTypeString);
+#if WITH_EDITOR
+			emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
+#endif
+			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+		}
 	}
 
 	if (RTVolume != null)
@@ -341,49 +384,31 @@ bool	FPopcornFXAttributeSamplerPropertiesGrid::IsRenderTargetCompatible(const UT
 			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
 			return false;
 		}
-		RTFormat = RTVolume->GetFormat();
-	}
-
-	FString dataTypeString = DataTypeToString(ToUE(srcBaseType));
-
-	switch (RTFormat)
-	{
-	case	PF_R32_FLOAT:
-	{
-		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float)
-			return true;
-		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_R32f (R32_FLOAT) render target for a %s grid"), *dataTypeString);
-#if WITH_EDITOR
-		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+		if (RTVolume->GetFormat() != PF_A32B32G32R32F)
+		{
+#if (PK_GPU_D3D12 != 0)
+			if (g_PopcornFXRHIAPI == SUERenderContext::D3D12)
+			{
+				FString warningMsg = FString::Printf(TEXT("Unsupported 3D render target format %s for a %s grid, converting the render target to PF_A32B32G32R32F"), _My_GetPixelFormatString(RTVolume->GetFormat()), *dataTypeString);
+				UE_LOG_WARNING_SAMPLER(LogPopcornFXAttributeSamplerGrid, Warning, grid, *samplerName, emitter, warningMsg);
+				return true;
+			}
 #endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
-		return false;
-	}
-	case	PF_G32R32F:
-	{
-		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float2)
-			return true;
-		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RG32f (G32R32F) render target for a %s grid"), *dataTypeString);
+			FString errorMsg = FString::Printf(TEXT("Unsupported 3D render target format %s for a %s grid"), _My_GetPixelFormatString(RTVolume->GetFormat()), *dataTypeString);
 #if WITH_EDITOR
-		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+			emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
 #endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
-		return false;
+			UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+			return false;
+		}
+		return true;
 	}
-	case	PF_A32B32G32R32F:
-	{
-		if (srcBaseType == PopcornFX::EBaseTypeID::BaseType_Float4)
-			return true;
-		FString errorMsg = FString::Printf(TEXT("Can't use a RTF_RGBA32f (A32B32G32R32F) render target for a %s grid"), *dataTypeString);
+	FString errorMsg = FString(TEXT("Grid must be a 2D or a 3D render target"));
 #if WITH_EDITOR
-		emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), *errorMsg);
+	emitter->m_IncompatibleProperties.FindOrAdd(this).m_Properties.Add(TEXT("RenderTarget"), errorMsg);
 #endif
-		UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
-		return false;
-	}
-	default:
-		return false;
-	};
+	UE_LOG_INCOMPATIBLE_SAMPLER(LogPopcornFXAttributeSamplerGrid, Error, grid, *samplerName, emitter, errorMsg);
+	return false;
 }
 
 //----------------------------------------------------------------------------
@@ -717,18 +742,30 @@ bool	FPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 		UTextureRenderTargetVolume	*RTVolume = Cast<UTextureRenderTargetVolume>(texture);
 		if (RT2D != null)
 		{
-			const EPixelFormat	RTFormat = GetPixelFormatFromRenderTargetFormat(RT2D->RenderTargetFormat);
+			const EPixelFormat	RTFormat = RT2D->GetFormat();
 			const bool			hasCorrectGamma = Properties.bSRGB == RT2D->IsSRGB();
 
-			if (!hasCorrectGamma && needsGPUHandle)
+			if (needsGPUHandle)
 			{
-				UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Converting UTextureRenderTarget2D format to sRGB=%d"), Properties.bSRGB);
-			}
-			if ((!RT2D->bCanCreateUAV || !hasCorrectGamma) && needsGPUHandle)
-			{
-				RT2D->bCanCreateUAV = true;
-				RT2D->SRGB = Properties.bSRGB;
-				RT2D->UpdateResource();
+				bool	modified = false;
+				if (!RT2D->bCanCreateUAV)
+				{
+					UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Allowing UTextureRenderTarget2D to create UAV"));
+					RT2D->Modify();
+					RT2D->bCanCreateUAV = true;
+					modified = true;
+				}
+				if (!hasCorrectGamma)
+				{
+					UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Converting UTextureRenderTarget2D format to sRGB=%d"), Properties.bSRGB);
+					RT2D->Modify();
+					RT2D->SRGB = Properties.bSRGB;
+					modified = true;
+				}
+				if (modified == true)
+				{
+					RT2D->UpdateResource();
+				}
 			}
 
 			PopcornFX::EBaseTypeID	dataType;
@@ -751,17 +788,37 @@ bool	FPopcornFXAttributeSamplerGrid::_RebuildGridSampler(UPopcornFXEmitterCompon
 		}
 		else if (RTVolume != null)
 		{
+			const bool	hasSupportedFormat = RTVolume->GetFormat() == PF_A32B32G32R32F;
 			const bool	hasCorrectGamma = Properties.bSRGB == RTVolume->SRGB;
 
-			if (!hasCorrectGamma && needsGPUHandle)
+			if (needsGPUHandle)
 			{
-				UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Converting UTextureRenderTargetVolume format to sRGB=%d"), Properties.bSRGB);
-			}
-			if ((!RTVolume->bCanCreateUAV || !hasCorrectGamma) && needsGPUHandle)
-			{
-				RTVolume->bCanCreateUAV = true;
-				RTVolume->SRGB = Properties.bSRGB;
-				RTVolume->UpdateResource();
+				bool	modified = false;
+				if (!RTVolume->bCanCreateUAV)
+				{
+					UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Allowing UTextureRenderTargetVolume to create UAV"));
+					RTVolume->Modify();
+					RTVolume->bCanCreateUAV = true;
+					modified = true;
+				}
+				if (!hasCorrectGamma)
+				{
+					UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Converting UTextureRenderTargetVolume format to sRGB=%d"), Properties.bSRGB);
+					RTVolume->Modify();
+					RTVolume->SRGB = Properties.bSRGB;
+					modified = true;
+				}
+				if (!hasSupportedFormat)
+				{
+					UE_LOG(LogPopcornFXAttributeSamplerGrid, Warning, TEXT("Converting UTextureRenderTargetVolume pixel format to PF_A32B32G32R32F"));
+					RTVolume->Modify();
+					RTVolume->OverrideFormat = PF_A32B32G32R32F;
+					modified = true;
+				}
+				if (modified == true)
+				{
+					RTVolume->UpdateResource();
+				}
 			}
 			descriptor->m_DataType = PopcornFX::BaseType_Float4;
 			descriptor->m_GridDimensions = CUint4(RTVolume->SizeX, RTVolume->SizeY, RTVolume->SizeZ, 1);

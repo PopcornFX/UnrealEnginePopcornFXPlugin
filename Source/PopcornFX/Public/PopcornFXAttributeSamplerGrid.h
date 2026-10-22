@@ -199,7 +199,7 @@ private:
 	static bool					CanWriteToGrid(FPopcornFXAttributeSamplerGrid *InGrid, EPopcornFXGridDataType::Type WantedType, const int32 InValuesCount);
 
 	/** Texture only used by the D3D12 GPU sim and to set as a material texture */
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
 	UTexture					*m_GridTexture;
 
 	FAttributeSamplerGridData	*m_Data;
@@ -210,7 +210,7 @@ class POPCORNFX_API UPopcornFXAttributeSamplerGridAsset : public UPopcornFXAttri
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	FPopcornFXAttributeSamplerPropertiesGrid	Properties;
 
 public:
