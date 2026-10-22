@@ -14,7 +14,7 @@
 #include "Assets/PopcornFXRendererMaterial.h"
 #include "PopcornFXEffectPriv.h"
 
-#include "Editor/EditorHelpers.h"
+#include "Internal/EditorHelpers.h"
 
 #include "Scalability.h"
 

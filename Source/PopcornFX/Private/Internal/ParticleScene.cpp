@@ -1866,9 +1866,7 @@ void	CParticleScene::RayTracePacket(
 		const float		hitTime = hit.m_Distance * HK2UU * scaleUEToPk;
 
 		results.m_HitTimes_Aligned16[rayi] = hitTime;
-		FVector3f UENormal;
-		Hk2UVector(hit.m_Normal.asVec4(), UENormal);
-		CFloat3			normal = ToPk(UENormal);
+		CFloat3		normal = ToPk(Hk2U_Vec3(hit.m_Normal));
 		results.m_ContactNormals_Aligned16[rayi].xyz() = normal;
 	}
 

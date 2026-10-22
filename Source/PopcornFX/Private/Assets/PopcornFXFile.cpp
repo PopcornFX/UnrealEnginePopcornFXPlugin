@@ -11,6 +11,7 @@
 
 #include "RenderingThread.h"
 #include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "EditorFramework/AssetImportData.h"
 #include "Misc/MessageDialog.h"
 #include "Engine/AssetUserData.h"

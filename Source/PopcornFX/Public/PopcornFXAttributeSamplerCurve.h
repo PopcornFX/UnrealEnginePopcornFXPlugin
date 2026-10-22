@@ -141,7 +141,7 @@ class POPCORNFX_API UPopcornFXAttributeSamplerCurveAsset : public UPopcornFXAttr
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	FPopcornFXAttributeSamplerPropertiesCurve	Properties;
 
 public:

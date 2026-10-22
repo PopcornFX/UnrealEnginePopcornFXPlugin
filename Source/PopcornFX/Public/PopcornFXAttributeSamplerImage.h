@@ -135,7 +135,7 @@ class POPCORNFX_API UPopcornFXAttributeSamplerImageAsset : public UPopcornFXAttr
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	FPopcornFXAttributeSamplerPropertiesImage	Properties;
 
 public:

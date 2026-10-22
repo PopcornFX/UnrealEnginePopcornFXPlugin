@@ -146,7 +146,7 @@ class POPCORNFX_API UPopcornFXAttributeSamplerAnimTrackAsset : public UPopcornFX
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	FPopcornFXAttributeSamplerPropertiesAnimTrack	Properties;
 
 public:

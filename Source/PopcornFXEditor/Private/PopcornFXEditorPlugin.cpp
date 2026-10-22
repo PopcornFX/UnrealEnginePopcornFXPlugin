@@ -14,8 +14,9 @@
 #include "DependencyModules/PopcornFXDependencyModuleSequencer.h"
 
 #include "PopcornFXFileThumbnailRenderer.h"
-#include "PopcornFXStyleEditor.h"
-#include "Editor/PopcornFXAssetBroker.h"
+#include "PopcornFXAssetBroker.h"
+#include "EffectEditor/PopcornFXEffectEditor.h"
+#include "PopcornFXStyle.h"
 
 #include "ThumbnailRendering/ThumbnailManager.h"
 
@@ -60,14 +61,14 @@ void	FPopcornFXEditorPlugin::StartupModule()
 		m_PopcornFXAssetBroker = MakeShareable(new FPopcornFXEmitterComponentAssetBroker);
 		FComponentAssetBrokerage::RegisterBroker(m_PopcornFXAssetBroker, FPopcornFXEmitterComponentAssetBroker::ComponentStaticClass(), true, true);
 	}
-	FPopcornFXStyleEditor::Initialize();
+	FPopcornFXStyle::Initialize();
 }
 
 //----------------------------------------------------------------------------
 
 void	FPopcornFXEditorPlugin::ShutdownModule()
 {
-	FPopcornFXStyleEditor::Shutdown();
+	FPopcornFXStyle::Shutdown();
 	//UThumbnailManager::Get().UnregisterCustomRenderer(UPopcornFXEffect::StaticClass());
 	FModuleManager::Get().OnModulesChanged().Remove(m_OnModulesChangedHandle);
 	UnloadModuleActions(m_DeferredModuleActions);
@@ -77,6 +78,15 @@ void	FPopcornFXEditorPlugin::ShutdownModule()
 		FComponentAssetBrokerage::UnregisterBroker(m_PopcornFXAssetBroker);
 		m_PopcornFXAssetBroker = nullptr;
 	}
+}
+
+//----------------------------------------------------------------------------
+
+TSharedRef<class IPopcornFXEffectEditor>	FPopcornFXEditorPlugin::CreateEffectEditor(const EToolkitMode::Type Mode, const TSharedPtr< IToolkitHost >& InitToolkitHost, class UPopcornFXEffect* Effect)
+{
+	TSharedRef<FPopcornFXEffectEditor>	effectEditor(new FPopcornFXEffectEditor());
+	effectEditor->InitEffectEditor(Mode, InitToolkitHost, Effect);
+	return effectEditor;
 }
 
 //----------------------------------------------------------------------------

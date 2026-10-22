@@ -51,32 +51,32 @@ namespace EPopcornFXAttributeDropDownMode
 #endif // WITH_EDITORONLY_DATA
 
 USTRUCT()
-struct FPopcornFXAttributeDesc
+struct POPCORNFX_API FPopcornFXAttributeDesc
 {
 	GENERATED_USTRUCT_BODY();
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	FString					m_AttributeName;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	FString					m_AttributeCategoryName;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	uint32					m_AttributeType;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	bool					m_IsPrivate;
 #if WITH_EDITORONLY_DATA
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	TEnumAsByte<EPopcornFXAttributeSemantic::Type>	m_AttributeSemantic;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	FVector					m_AttributeEulerAngles;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	TEnumAsByte<EPopcornFXAttributeDropDownMode::Type>	m_DropDownMode;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX Attributes", VisibleAnywhere)
 	TArray<FString>			m_EnumList;
 #endif // WITH_EDITORONLY_DATA
 
@@ -124,7 +124,7 @@ struct FPopcornFXAttributeDesc
 
 /** Basic description of a PopcornFX attribute sampler + Holds the actual sampling data */
 USTRUCT()
-struct FPopcornFXSamplerDesc
+struct POPCORNFX_API FPopcornFXSamplerDesc
 {
 	GENERATED_USTRUCT_BODY();
 
@@ -165,7 +165,7 @@ struct FPopcornFXSamplerDesc
 	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	bool														m_UseSamplerAsset;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", VisibleAnywhere)
 	bool														m_IsPrivate;
 
 	FPopcornFXSamplerDesc()
@@ -279,7 +279,7 @@ struct	FPopcornFXAttributeValue
 * Class representing PopcornFX attributes
 */
 USTRUCT()
-struct FPopcornFXAttributeList
+struct POPCORNFX_API FPopcornFXAttributeList
 {
 	GENERATED_USTRUCT_BODY()
 
@@ -362,7 +362,7 @@ private:
 
 public:
 	UPROPERTY(Category="PopcornFX Attributes", VisibleAnywhere)
-	UPopcornFXEffect					*m_Effect;
+	UPopcornFXEffect					*m_Effect = nullptr;
 
 	UPROPERTY(Category="PopcornFX Attributes", VisibleAnywhere)
 	uint32								m_FileVersionId;

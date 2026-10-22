@@ -71,7 +71,7 @@ class POPCORNFX_API UPopcornFXAttributeSamplerTextAsset : public UPopcornFXAttri
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	FPopcornFXAttributeSamplerPropertiesText	Properties;
 
 public:

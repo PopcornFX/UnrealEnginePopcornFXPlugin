@@ -40,17 +40,36 @@ namespace UnrealBuildTool.Rules
 					"PopcornFX",
 				});
 
+			PrivateIncludePathModuleNames.AddRange(
+				new string[] {
+					"Settings",
+				});
+
 			PrivateDependencyModuleNames.AddRange(
 				new string[]
 				{
 					"Engine",
 					"UnrealEd",
+					"InputCore",
+					"Projects",
 					"Slate",
 					"SlateCore",
 					"GraphEditor",
 					"BlueprintGraph",
 					"KismetCompiler",
 					"CoreUObject",
+					"AssetTools",
+					"PropertyEditor",
+					"EditorStyle",
+					"EditorWidgets",
+					"AppFramework",
+					"MessageLog",
+					"LevelEditor",
+					"MovieScene",
+					"MovieSceneTracks",
+					"MovieSceneTools",
+					"Sequencer",
+					"RenderCore",
 #if UE_6_0_OR_LATER
 					"EditorFramework",
 #endif

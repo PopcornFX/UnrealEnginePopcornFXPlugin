@@ -8,7 +8,7 @@
 #include "PopcornFXPlugin.h"
 #include "Assets/PopcornFXStaticMeshData.h"
 #include "PopcornFXVersionGenerated.h"
-#include "Editor/EditorHelpers.h"
+#include "Internal/EditorHelpers.h"
 #include "Engine/SkeletalMesh.h"
 #include "Rendering/SkeletalMeshRenderData.h"
 
@@ -902,7 +902,6 @@ bool	UPopcornFXMesh::BuildMesh(_AssetType *mesh)
 
 	m_ResourceMesh->Swap(*newResource);
 
-#if WITH_EDITOR
 	const UAssetImportData	*assetImportData = mesh->GetAssetImportData();
 	const bool				validMesh = assetImportData != null;
 	if (validMesh)
@@ -911,7 +910,6 @@ bool	UPopcornFXMesh::BuildMesh(_AssetType *mesh)
 		StaticMeshAssetImportData->SourceData.SourceFiles.Empty();
 
 	WriteMesh();
-#endif // WITH_EDITOR
 
 	m_ResourceMesh->m_OnReloaded(m_ResourceMesh.Get());
 
@@ -924,10 +922,8 @@ void	UPopcornFXMesh::WriteMesh()
 {
 	PK_NAMEDSCOPEDPROFILE_C("CResourceHandlerMesh_UE::WriteMesh", POPCORNFX_UE_PROFILER_COLOR);
 
-#if WITH_EDITOR
 	Modify(true);
 	ForceSetPackageDirty(this);
-#endif // WITH_EDITOR
 
 	if (m_ResourceMesh != null)
 	{

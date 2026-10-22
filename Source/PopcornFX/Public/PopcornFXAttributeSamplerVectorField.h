@@ -161,7 +161,7 @@ class POPCORNFX_API UPopcornFXAttributeSamplerVectorFieldAsset : public UPopcorn
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(Category = "PopcornFX AttributeSampler", EditAnywhere)
 	FPopcornFXAttributeSamplerPropertiesVectorField	Properties;
 
 public:
